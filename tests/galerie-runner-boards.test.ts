@@ -40,6 +40,7 @@ describe('buildCells — déploiement des colonnes en cellules', () => {
 			question: 'Combien de cm ? @ cm',
 			answer: '300',
 			answerUnit: 'cm',
+			uniteConnue: 'm',
 			colonnes: [
 				{ unite: 'm', nom: 'mètre', transit: false, chiffres: '3' },
 				{ unite: 'dm', nom: 'décimètre', transit: false, chiffres: '0' },
@@ -66,6 +67,7 @@ describe('buildCells — déploiement des colonnes en cellules', () => {
 			question: 'Combien de m ? @ m',
 			answer: '12000',
 			answerUnit: 'm',
+			uniteConnue: 'km',
 			colonnes: [
 				{ unite: 'km', nom: 'kilomètre', transit: false, chiffres: '12' },
 				{ unite: 'hm', nom: 'hectomètre', transit: true, chiffres: '0' },
@@ -109,6 +111,7 @@ describe('buildCells — déploiement des colonnes en cellules', () => {
 			question: '@ g',
 			answer: '5000',
 			answerUnit: 'g',
+			uniteConnue: 'kg',
 			colonnes: [
 				{ unite: 'kg', nom: 'kilogramme', transit: false, chiffres: '5' },
 				{ unite: 'hg', nom: 'hectogramme', transit: true, chiffres: '0' },
@@ -201,6 +204,7 @@ describe('renderTableauBoardHTML — structure du tableau', () => {
 			question: 'Combien de m ? @ m',
 			answer: '12000',
 			answerUnit: 'm',
+			uniteConnue: 'km',
 			colonnes: [
 				{ unite: 'km', nom: 'kilomètre', transit: false, chiffres: '12' },
 				{ unite: 'hm', nom: 'hectomètre', transit: true, chiffres: '0' },
@@ -228,6 +232,7 @@ describe('renderTableauBoardHTML — structure du tableau', () => {
 			question: '@ m',
 			answer: '12000',
 			answerUnit: 'm',
+			uniteConnue: 'km',
 			colonnes: [
 				{ unite: 'km', nom: 'kilomètre', transit: false, chiffres: '12' },
 				{ unite: 'hm', nom: 'hectomètre', transit: true, chiffres: '0' },
@@ -259,6 +264,7 @@ describe('renderTableauBoardHTML — structure du tableau', () => {
 			question: '3 m = @ cm',
 			answer: '300',
 			answerUnit: 'cm',
+			uniteConnue: 'm',
 			colonnes: [
 				{ unite: 'm', nom: 'mètre', transit: false, chiffres: '3' },
 				{ unite: 'dm', nom: 'décimètre', transit: false, chiffres: '0' },
@@ -289,6 +295,7 @@ describe('renderTableauBoardHTML — structure du tableau', () => {
 			question: '35 dm = @ m',
 			answer: '3,5',
 			answerUnit: 'm',
+			uniteConnue: 'dm',
 			virguleApres: 0,
 			colonnes: [
 				{ unite: 'm', nom: 'mètre', transit: false, chiffres: '3' },

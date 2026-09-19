@@ -72,6 +72,12 @@ interface Conversion {
 	//                     pédagogue : contracter petite→grande avant d'étendre l'écriture
 	//                     décimale d'une grande unité vers la petite).
 	decimal?: 'deux-sens' | 'vers-grande';
+	// Relation de CONSOLIDATION (#711) : un pas de rang intermédiaire ouvert au CM1 pour que la
+	// colonne cesse d'être marquée « pas encore vue en classe » (hm↔dam, hg↔dag, daL↔L…). C'est
+	// une vraie relation du programme, mais un outil de MÉTHODE plutôt qu'un savoir réutilisé
+	// ailleurs : tirée moins souvent (cf. `tirerConversion`), et JAMAIS ouverte au décimal —
+	// « 4,5 dag » n'a aucun référent dans la vie d'un enfant, contrairement à « 4,5 kg ».
+	consolidation?: true;
 }
 
 /* Un « fait » mémorisé (toujours dans le sens grande→petite), pour les repères
@@ -91,6 +97,10 @@ interface EchelleUnite {
 	unite: string; // symbole (« km », « dam », « g »…)
 	nom: string; // nom complet singulier (« kilomètre », « décamètre »…)
 }
+
+/* Colonne d'un exemple d'étayage : même forme qu'une `TableauColonne`, `transit` en
+   option (absent = unité étudiée), parce que le moteur de déroulé la lit ainsi. */
+type ColonneExemple = { unite: string; nom: string; chiffres: string; transit?: boolean };
 
 interface MesureConfig {
 	conversions: Conversion[];
@@ -124,7 +134,13 @@ const ECHELLE_MASSE: EchelleUnite[] = [
 	{ unite: 'cg', nom: 'centigramme' },
 	{ unite: 'mg', nom: 'milligramme' },
 ];
+/* Contenances : l'échelle va de l'hectolitre au millilitre (#711, critère 6). Le programme
+   CM1 nomme « les unités de contenance du millilitre à l'hectolitre » — l'échelle s'arrêtait
+   au litre, si bien que hL et daL n'existaient même pas comme colonnes. Le CE2 n'en voit
+   rien : sa tranche se calcule sur SES conversions (L, dL, cL) et ne remonte pas au hL. */
 const ECHELLE_CONTENANCE: EchelleUnite[] = [
+	{ unite: 'hL', nom: 'hectolitre' },
+	{ unite: 'daL', nom: 'décalitre' },
 	{ unite: 'L', nom: 'litre' },
 	{ unite: 'dL', nom: 'décilitre' },
 	{ unite: 'cL', nom: 'centilitre' },
@@ -200,8 +216,22 @@ interface ConvInstance {
 	answerDecimal: boolean;
 }
 
+/* Tirage d'une relation (#711). Le CM1 ouvre toute la chaîne de rangs pour que plus aucune
+   colonne ne soit démotée : on passe de 6 à 12 relations en longueurs. Tirées uniformément,
+   les relations d'ANCRAGE (1 km = 1 000 m, 1 kg = 1 000 g…) — celles qui reviennent dans les
+   problèmes, l'estimation et le choix d'une unité adaptée — deviendraient deux fois plus
+   rares que des pas de rang qui ne consolident que la mécanique du tableau (avis
+   pedagogue-primaire). Elles gardent donc ~2 tirages sur 3. Sans relation marquée
+   `consolidation` — tout le CE2 — le tirage reste STRICTEMENT uniforme, donc inchangé. */
+function tirerConversion(conversions: Conversion[]): Conversion {
+	const ancrages = conversions.filter((c) => !c.consolidation);
+	const pas = conversions.filter((c) => c.consolidation);
+	if (!pas.length || !ancrages.length) return choice(conversions);
+	return rnd(1, 3) === 1 ? choice(pas) : choice(ancrages);
+}
+
 function pickConversionInstance(conversions: Conversion[]): ConvInstance {
-	const c = choice(conversions);
+	const c = tirerConversion(conversions);
 	const maxBig = c.maxBig ?? 9;
 	// ~60 % grande→petite (×, plus intuitif), ~40 % petite→grande (÷, exact).
 	const versPetite = rnd(1, 10) <= 6;
@@ -268,46 +298,80 @@ function generateConversion(conversions: Conversion[]): Exercise {
 	};
 }
 
-/* Génère un exercice « tableau de conversion » (#394) à partir de la MÊME instance que la
-   saisie. Empan VARIABLE par exercice : on n'affiche que la tranche contiguë de l'échelle de
-   la grande unité de la paire à la petite (« 3 km = ? m » → km·hm·dam·m, jamais km→mm). La
-   quantité, exprimée dans la petite unité (`sPetit`, entière), s'étale un chiffre par colonne,
-   la colonne de tête absorbant les chiffres de poids fort (1-2 chiffres, `maxBig ≤ 20`).
+/* Tranche de colonnes AFFICHÉE, FIXE pour un couple (leçon, niveau) — #711. Elle court de la
+   plus grande à la plus petite unité qui apparaissent dans les `conversions` du niveau, et ne
+   dépend donc PAS de la paire tirée.
+
+   Avant #711, l'empan était taillé sur la question (`echelle.slice(iBig, iSmall + 1)`) :
+   l'unité connue et l'unité cible étaient TOUJOURS les deux bords du tableau, si bien que
+   « recopier les chiffres puis compléter de zéros jusqu'à l'autre bord » répondait juste à
+   100 % des items, sans lire un seul nom d'unité. Le geste que le tableau doit installer —
+   situer une unité à son rang — n'était jamais demandé. Avec une tranche fixe, l'enfant
+   décide lui-même où commencer à écrire et où lire sa réponse.
+
+   Un bord reste assumé sur UNE leçon-niveau : les masses au CE2 n'ont qu'une relation au
+   programme (1 kg = 1 000 g ; le programme CE2 ne nomme que g, kg et la tonne, sans chaîne de
+   rangs), donc la tranche s'y réduit à la paire et kg reste la tête de tous les items. Le
+   `pedagogue-primaire` recommandait plutôt de retirer le tableau des masses au CE2, l'outil
+   étant nommément de CM1 ; arbitrage du mainteneur : on garde le mode, un bord assumé sur
+   cette seule leçon-niveau valant mieux qu'un mode en moins pour l'enfant. Partout ailleurs il
+   y a au moins deux relations, donc au moins une unité en position intérieure. */
+function trancheFixe(echelle: EchelleUnite[], conversions: Conversion[]): EchelleUnite[] {
+	let debut = echelle.length;
+	let fin = -1;
+	for (const c of conversions) {
+		for (const u of [c.big, c.small]) {
+			const i = echelle.findIndex((e) => e.unite === u);
+			// Garde-fou : une unité absente de l'échelle de sa famille (typo au prochain ajout)
+			// donnerait une tranche silencieusement fausse — mieux vaut échouer net.
+			if (i < 0) throw new Error(`Tableau : unité hors échelle (${u})`);
+			debut = Math.min(debut, i);
+			fin = Math.max(fin, i);
+		}
+	}
+	if (fin < 0) throw new Error('Tableau : aucune conversion configurée');
+	return echelle.slice(debut, fin + 1);
+}
+
+/* Génère un exercice « tableau de conversion » (#394, empan refondu par #711) à partir de la
+   MÊME instance que la saisie. Les colonnes sont la tranche FIXE du niveau (cf. `trancheFixe`),
+   et la quantité s'y étale un chiffre par colonne À SON RANG — donc des 0 de tête dès que
+   l'unité connue n'est pas la plus grande de la tranche (« 3 cm » ne contient aucun kilomètre).
+   L'enfant remplit toutes les cases : pas de case à laisser vide ni de marqueur de colonne vide
+   (un seul geste inédit à la fois), et la validation reste bloquée tant qu'il en manque une.
    INVARIANT (à ne pas casser) : zéro-de-transit et virgule ne coexistent JAMAIS dans le même
-   exercice. Les colonnes de transit (hm/dam, hg-dag-dg-cg — unités NON étudiées au niveau)
-   n'apparaissent que sur les paires ×1000 STRICTEMENT entières (aucune virgule) ; une virgule
-   n'apparaît que sur les paires ×10/×100 décimales, dont toutes les unités intermédiaires sont
-   déjà enseignées (donc AUCUNE colonne de transit). `virguleApres` est posé même si l'app rend
-   la virgule fixe en v1 (donnée générique, ouvre une saisie de la virgule sans refonte). */
+   exercice. Il tient parce que les deux lots sont partis ensemble — le CM1 n'a plus AUCUNE
+   colonne démotée (toute la chaîne de rangs y est au programme) et le CE2 n'a aucun décimal.
+   `virguleApres` est posé même si l'app rend la virgule fixe en v1 (donnée générique, ouvre une
+   saisie de la virgule sans refonte). */
 function generateTableau(config: MesureConfig): Exercise {
 	const echelle = config.echelle!;
 	const inst = pickConversionInstance(config.conversions);
-	// Unités ÉTUDIÉES au niveau = celles qui figurent dans ses conversions ; les autres
-	// colonnes de l'empan sont « de transit » (en-tête démoté + case pointillés).
+	// Unités ÉTUDIÉES au niveau = celles qui figurent dans ses conversions ; les autres colonnes
+	// sont « de transit » (en-tête démoté + case pointillés). L'équivalence reste exacte aux deux
+	// niveaux : au CE2 les relations configurées SONT les unités nommées par le programme, et au
+	// CM1 la chaîne de rangs est ouverte en entier. Le jour où une relation serait retirée pour
+	// doser la difficulté, sa colonne serait démotée À TORT ; il faudrait alors une liste
+	// d'unités « au programme » distincte des relations tirées — et surtout pas un troisième état
+	// visuel à faire comprendre à l'enfant (avis pedagogue-primaire).
 	const etudiees = new Set<string>();
 	for (const c of config.conversions) {
 		etudiees.add(c.big);
 		etudiees.add(c.small);
 	}
-	const iBig = echelle.findIndex((u) => u.unite === inst.big);
-	const iSmall = echelle.findIndex((u) => u.unite === inst.small);
-	// Garde-fou : une unité d'une `Conversion` absente de l'échelle de sa famille (typo au
-	// prochain ajout) produirait un empan silencieusement faux — mieux vaut échouer net.
-	if (iBig < 0 || iSmall < 0) {
-		throw new Error(`Tableau : unité hors échelle (${inst.big} / ${inst.small})`);
-	}
-	const span = echelle.slice(iBig, iSmall + 1);
-	const m = iSmall - iBig; // nombre de crans entre grande et petite ; facteur = 10^m
+	const span = trancheFixe(echelle, config.conversions);
+	const n = span.length;
+	// `sPetit` est la quantité dans la petite unité de la PAIRE, qui n'est plus forcément la
+	// dernière colonne : on la ramène au rang du bas de la TRANCHE pour l'étaler chiffre à
+	// chiffre. Tout reste entier — aucun flottant, donc aucun artefact d'arrondi.
+	const iSmall = span.findIndex((u) => u.unite === inst.small);
+	const total = inst.sPetit * 10 ** (n - 1 - iSmall);
+	const chiffres = chiffresParColonne(total, n);
 	const colonnes: TableauColonne[] = span.map((u, i) => ({
 		unite: u.unite,
 		nom: u.nom,
 		transit: !etudiees.has(u.unite),
-		// Tête (i = 0) : tous les chiffres de poids fort (⌊sPetit / 10^m⌋, 1-2 chiffres) ;
-		// colonnes suivantes : le chiffre du rang correspondant.
-		chiffres:
-			i === 0
-				? String(Math.floor(inst.sPetit / 10 ** m))
-				: String(Math.floor(inst.sPetit / 10 ** (m - i)) % 10),
+		chiffres: chiffres[i],
 	}));
 	// Virgule : juste après la colonne de l'unité cible, UNIQUEMENT si la réponse est décimale.
 	const virguleApres = inst.answerDecimal
@@ -331,6 +395,7 @@ function generateTableau(config: MesureConfig): Exercise {
 		),
 		answer: inst.answer,
 		answerUnit: inst.answerUnit,
+		uniteConnue: inst.knownUnit,
 		colonnes,
 		parle,
 		...(virguleApres !== undefined ? { virguleApres } : {}),
@@ -412,16 +477,59 @@ const DUREE_FACTS: Fact[] = [
    l'écrire, et pas seulement le prévoir : `saisie` est le mode RECOMMANDÉ de ces trois
    leçons, si bien que l'entrée « tableau » seule laissait sans panneau le mode où les
    enfants travaillent le plus (constat de l'`auteur-tests-logique`). */
+/* Chiffres d'une quantité étalés un par colonne, la TÊTE (colonne 0) absorbant tous les
+   rangs supérieurs. Partagé par l'exercice et par l'exemple d'étayage : c'est ce qui les
+   empêche de diverger. */
+function chiffresParColonne(total: number, n: number): string[] {
+	return Array.from({ length: n }, (_, i) =>
+		i === 0
+			? String(Math.floor(total / 10 ** (n - 1)))
+			: String(Math.floor(total / 10 ** (n - 1 - i)) % 10),
+	);
+}
+
+/* Exemple d'étayage CONSTRUIT par le moteur (#711) : même tranche, mêmes colonnes démotées
+   et mêmes chiffres que l'exercice réel du niveau. Écrit à la main, il dérivait dès qu'une
+   échelle bougeait — et c'est exactement ce qui vient d'arriver : l'exemple des longueurs
+   montrait quatre colonnes là où l'exercice en affiche désormais sept. `valeur` est exprimée
+   dans l'unité `depart`, toujours la plus GRANDE des deux : c'est le sens où les colonnes
+   intermédiaires sont vides, donc celui où se joue la seule vraie difficulté (le 0 qui tient
+   un rang). */
+function exempleTableau(
+	config: MesureConfig,
+	depart: string,
+	valeur: number,
+	cible: string,
+): { colonnes: ColonneExemple[]; depart: string; cible: string } {
+	const span = trancheFixe(config.echelle!, config.conversions);
+	const etudiees = new Set(config.conversions.flatMap((c) => [c.big, c.small]));
+	const iDepart = span.findIndex((u) => u.unite === depart);
+	const chiffres = chiffresParColonne(valeur * 10 ** (span.length - 1 - iDepart), span.length);
+	return {
+		colonnes: span.map((u, i) => ({
+			unite: u.unite,
+			nom: u.nom,
+			chiffres: chiffres[i],
+			...(etudiees.has(u.unite) ? {} : { transit: true }),
+		})),
+		depart,
+		cible,
+	};
+}
+
 function etayageConversion(
 	titre: string,
-	colonnes: { unite: string; nom: string; chiffres: string; transit?: boolean }[],
-	depart: string,
-	cible: string,
+	// Un exemple PAR NIVEAU (#711) : la tranche de colonnes n'est plus la même au CE2 et au
+	// CM1 (le CM1 ouvre toute la chaîne de rangs), donc un exemple unique en montrerait un
+	// faux à l'un des deux. `EtayageEntree` sait se scoper par niveau, l'entrée la plus
+	// spécifique gagnant.
+	exemples: { niveau: 'ce2' | 'cm1'; colonnes: ColonneExemple[]; depart: string; cible: string }[],
 	saisie: { titre: string; regle: string; etapes: string[] },
 ): NonNullable<LessonInput['etayage']> {
 	return [
-		{
-			mode: 'tableau',
+		...exemples.map(({ niveau, ...spec }) => ({
+			niveau,
+			mode: 'tableau' as const,
 			contenu: {
 				titre,
 				// L'idée-force, sous les yeux à chaque pas. Elle ne dit ni « ajoute des zéros » ni
@@ -430,60 +538,127 @@ function etayageConversion(
 				regle:
 					'Chaque colonne est une unité : tu écris un chiffre par colonne, et un 0 ' +
 					"quand il n'y a rien à compter dans cette unité-là.",
-				exemple: { moteur: 'conversion', spec: { colonnes, depart, cible } },
+				exemple: { moteur: 'conversion' as const, spec },
 			},
-		},
+		})),
 		etayageRedige(saisie.titre, saisie.regle, saisie.etapes),
 	];
 }
 
 /* ---------- Descripteurs des quatre leçons (#89) ---------- */
 
+/* Configurations par leçon, sorties du combinateur pour être RELUES par les exemples
+   d'étayage (`exempleTableau`) : l'exemple montré à l'enfant est alors calculé sur la même
+   tranche et les mêmes relations que ses exercices, et ne peut plus dériver. */
+const CONFIG_LONGUEURS: Record<'ce2' | 'cm1', MesureConfig> = {
+	// CE2 : m↔cm, km↔m, ET cm↔mm / m↔mm (mm de longueur = CE2).
+	ce2: {
+		echelle: ECHELLE_LONGUEUR,
+		conversions: [
+			{ big: 'm', small: 'cm', factor: 100 },
+			{ big: 'km', small: 'm', factor: 1000 },
+			{ big: 'cm', small: 'mm', factor: 10 },
+			{ big: 'm', small: 'mm', factor: 1000 },
+		],
+	},
+	// CM1 : mêmes unités en 1–20, + le dm (m↔dm, dm↔cm). Décimaux (#248) : les
+	// paires ×10 (cm↔mm, dm↔cm, m↔dm) en décimal dans les deux sens ; m↔cm (×100)
+	// en décimal petite→grande (« 456 cm = 4,56 m »), l'entier grande→petite gardé ;
+	// km↔m et m↔mm (×1000) restent ENTIÈRES (décimal < 1 hors programme).
+	cm1: {
+		echelle: ECHELLE_LONGUEUR,
+		conversions: [
+			{ big: 'm', small: 'cm', factor: 100, maxBig: 20, decimal: 'vers-grande' },
+			{ big: 'km', small: 'm', factor: 1000, maxBig: 20 },
+			{ big: 'cm', small: 'mm', factor: 10, maxBig: 20, decimal: 'deux-sens' },
+			{ big: 'm', small: 'mm', factor: 1000, maxBig: 20 },
+			{ big: 'dm', small: 'cm', factor: 10, maxBig: 20, decimal: 'deux-sens' },
+			{ big: 'm', small: 'dm', factor: 10, maxBig: 20, decimal: 'deux-sens' },
+			// Pas de rang ouverts par #711 pour que hm et dam cessent d'être « pas encore vus »
+			// alors que le programme CM1 nomme les unités « du millimètre au kilomètre ».
+			// Entiers : une longueur décimale en hectomètres n'a aucun référent réel.
+			{ big: 'km', small: 'hm', factor: 10, maxBig: 20, consolidation: true },
+			{ big: 'hm', small: 'dam', factor: 10, maxBig: 20, consolidation: true },
+			{ big: 'dam', small: 'm', factor: 10, maxBig: 20, consolidation: true },
+		],
+	},
+};
+
+const CONFIG_MASSES: Record<'ce2' | 'cm1', MesureConfig> = {
+	ce2: { echelle: ECHELLE_MASSE, conversions: [{ big: 'kg', small: 'g', factor: 1000 }] },
+	// CM1 : 1–20, + g↔mg. Aucune paire ×10/×100 n'existe en masse → pas de
+	// conversion décimale générique ; on ancre plutôt des REPÈRES décimaux mémorisés
+	// (#248) via les facts : le demi-kilo en toutes lettres + les écritures à virgule
+	// 0,5 kg = 500 g et 0,25 kg = 250 g (correspondance décimal ↔ grammes).
+	cm1: {
+		echelle: ECHELLE_MASSE,
+		conversions: [
+			{ big: 'kg', small: 'g', factor: 1000, maxBig: 20 },
+			{ big: 'g', small: 'mg', factor: 1000, maxBig: 20 },
+			// Chaîne de rangs ouverte par #711 : le programme CM1 nomme les unités « du
+			// milligramme au kilogramme », alors que hg/dag/dg/cg ne figuraient dans aucune
+			// relation et restaient donc affichés « pas encore vus en classe ». Entiers, et
+			// jamais décimaux : « 4,5 dag » ne se rencontre nulle part, contrairement à
+			// « 4,5 kg » (avis pedagogue-primaire).
+			{ big: 'kg', small: 'hg', factor: 10, maxBig: 20, consolidation: true },
+			{ big: 'hg', small: 'dag', factor: 10, maxBig: 20, consolidation: true },
+			{ big: 'dag', small: 'g', factor: 10, maxBig: 20, consolidation: true },
+			{ big: 'g', small: 'dg', factor: 10, maxBig: 20, consolidation: true },
+			{ big: 'dg', small: 'cg', factor: 10, maxBig: 20, consolidation: true },
+			{ big: 'cg', small: 'mg', factor: 10, maxBig: 20, consolidation: true },
+		],
+		facts: [
+			{ left: 'un demi-kilogramme', answerUnit: 'g', answer: 500 },
+			{ left: '0,5 kg', answerUnit: 'g', answer: 500 },
+			{ left: '0,25 kg', answerUnit: 'g', answer: 250 },
+		],
+	},
+};
+
+const CONFIG_CONTENANCES: Record<'ce2' | 'cm1', MesureConfig> = {
+	// CE2 : L↔cL ET L↔dL (le dL est au programme) ; PAS le mL (CM1).
+	ce2: {
+		echelle: ECHELLE_CONTENANCE,
+		conversions: [
+			{ big: 'L', small: 'cL', factor: 100, maxBig: 12 },
+			{ big: 'L', small: 'dL', factor: 10, maxBig: 12 },
+		],
+	},
+	// CM1 : 1–20, + L↔mL (×1000, franchit le millier). Décimaux (#248) : L↔dL (×10)
+	// en décimal dans les deux sens ; L↔cL (×100) en décimal petite→grande
+	// (« 456 cL = 4,56 L »), l'entier grande→petite gardé ; L↔mL (×1000) ENTIÈRE.
+	cm1: {
+		echelle: ECHELLE_CONTENANCE,
+		conversions: [
+			{ big: 'L', small: 'cL', factor: 100, maxBig: 20, decimal: 'vers-grande' },
+			{ big: 'L', small: 'dL', factor: 10, maxBig: 20, decimal: 'deux-sens' },
+			{ big: 'L', small: 'mL', factor: 1000, maxBig: 20 },
+			// Haut de l'échelle ouvert par #711 (programme CM1 : « du millilitre à
+			// l'hectolitre »). L'hectolitre a un ancrage réel (récolte, cuves) ; le décalitre
+			// n'en a aucun dans la France d'aujourd'hui — on l'exerce comme rouage du tableau,
+			// jamais comme une contenance qu'on rencontrerait.
+			{ big: 'hL', small: 'L', factor: 100, maxBig: 20, consolidation: true },
+			{ big: 'hL', small: 'daL', factor: 10, maxBig: 20, consolidation: true },
+			{ big: 'daL', small: 'L', factor: 10, maxBig: 20, consolidation: true },
+		],
+	},
+};
+
 export const MESURE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-longueurs',
 		label: 'Je convertis les longueurs',
-		exerciseType: calibrated<MesureConfig>(
-			{
-				// CE2 : m↔cm, km↔m, ET cm↔mm / m↔mm (mm de longueur = CE2).
-				ce2: {
-					echelle: ECHELLE_LONGUEUR,
-					conversions: [
-						{ big: 'm', small: 'cm', factor: 100 },
-						{ big: 'km', small: 'm', factor: 1000 },
-						{ big: 'cm', small: 'mm', factor: 10 },
-						{ big: 'm', small: 'mm', factor: 1000 },
-					],
-				},
-				// CM1 : mêmes unités en 1–20, + le dm (m↔dm, dm↔cm). Décimaux (#248) : les
-				// paires ×10 (cm↔mm, dm↔cm, m↔dm) en décimal dans les deux sens ; m↔cm (×100)
-				// en décimal petite→grande (« 456 cm = 4,56 m »), l'entier grande→petite gardé ;
-				// km↔m et m↔mm (×1000) restent ENTIÈRES (décimal < 1 hors programme).
-				cm1: {
-					echelle: ECHELLE_LONGUEUR,
-					conversions: [
-						{ big: 'm', small: 'cm', factor: 100, maxBig: 20, decimal: 'vers-grande' },
-						{ big: 'km', small: 'm', factor: 1000, maxBig: 20 },
-						{ big: 'cm', small: 'mm', factor: 10, maxBig: 20, decimal: 'deux-sens' },
-						{ big: 'm', small: 'mm', factor: 1000, maxBig: 20 },
-						{ big: 'dm', small: 'cm', factor: 10, maxBig: 20, decimal: 'deux-sens' },
-						{ big: 'm', small: 'dm', factor: 10, maxBig: 20, decimal: 'deux-sens' },
-					],
-				},
-			},
-			conversionType,
-		),
-		// 3 km = 3 000 m : trois colonnes à remplir de 0, dont deux de transit.
+		exerciseType: calibrated<MesureConfig>(CONFIG_LONGUEURS, conversionType),
+		// Exemple 3 km = 3 000 m, CONSTRUIT par le moteur pour chaque niveau : le CE2 le voit avec
+		// ses colonnes démotées, le CM1 avec la chaîne de rangs complète. Même géométrie que
+		// l'exercice réel, par construction — un exemple écrit à la main mentait dès qu'une
+		// échelle bougeait.
 		etayage: etayageConversion(
 			'Le tableau de conversion des longueurs',
 			[
-				{ unite: 'km', nom: 'kilomètre', chiffres: '3' },
-				{ unite: 'hm', nom: 'hectomètre', chiffres: '0', transit: true },
-				{ unite: 'dam', nom: 'décamètre', chiffres: '0', transit: true },
-				{ unite: 'm', nom: 'mètre', chiffres: '0' },
+				{ niveau: 'ce2', ...exempleTableau(CONFIG_LONGUEURS.ce2, 'km', 3, 'm') },
+				{ niveau: 'cm1', ...exempleTableau(CONFIG_LONGUEURS.cm1, 'km', 3, 'm') },
 			],
-			'km',
-			'm',
 			{
 				titre: 'Convertir une longueur',
 				regle: 'Une grande unité contient plusieurs petites : il faut savoir combien.',
@@ -498,39 +673,17 @@ export const MESURE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-masses',
 		label: 'Je convertis les masses',
-		exerciseType: calibrated<MesureConfig>(
-			{
-				ce2: { echelle: ECHELLE_MASSE, conversions: [{ big: 'kg', small: 'g', factor: 1000 }] },
-				// CM1 : 1–20, + g↔mg. Aucune paire ×10/×100 n'existe en masse → pas de
-				// conversion décimale générique ; on ancre plutôt des REPÈRES décimaux mémorisés
-				// (#248) via les facts : le demi-kilo en toutes lettres + les écritures à virgule
-				// 0,5 kg = 500 g et 0,25 kg = 250 g (correspondance décimal ↔ grammes).
-				cm1: {
-					echelle: ECHELLE_MASSE,
-					conversions: [
-						{ big: 'kg', small: 'g', factor: 1000, maxBig: 20 },
-						{ big: 'g', small: 'mg', factor: 1000, maxBig: 20 },
-					],
-					facts: [
-						{ left: 'un demi-kilogramme', answerUnit: 'g', answer: 500 },
-						{ left: '0,5 kg', answerUnit: 'g', answer: 500 },
-						{ left: '0,25 kg', answerUnit: 'g', answer: 250 },
-					],
-				},
-			},
-			conversionType,
-		),
-		// 2 kg = 2 000 g : mêmes trois colonnes vides, sur une autre grandeur.
+		exerciseType: calibrated<MesureConfig>(CONFIG_MASSES, conversionType),
+		// Exemple 2 kg = 2 000 g, CONSTRUIT par le moteur pour chaque niveau : le CE2 le voit avec
+		// ses colonnes démotées, le CM1 avec la chaîne de rangs complète. Même géométrie que
+		// l'exercice réel, par construction — un exemple écrit à la main mentait dès qu'une
+		// échelle bougeait.
 		etayage: etayageConversion(
 			'Le tableau de conversion des masses',
 			[
-				{ unite: 'kg', nom: 'kilogramme', chiffres: '2' },
-				{ unite: 'hg', nom: 'hectogramme', chiffres: '0', transit: true },
-				{ unite: 'dag', nom: 'décagramme', chiffres: '0', transit: true },
-				{ unite: 'g', nom: 'gramme', chiffres: '0' },
+				{ niveau: 'ce2', ...exempleTableau(CONFIG_MASSES.ce2, 'kg', 2, 'g') },
+				{ niveau: 'cm1', ...exempleTableau(CONFIG_MASSES.cm1, 'kg', 2, 'g') },
 			],
-			'kg',
-			'g',
 			{
 				titre: 'Convertir une masse',
 				regle: 'Une grande unité contient plusieurs petites : il faut savoir combien.',
@@ -545,42 +698,19 @@ export const MESURE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-contenances',
 		label: 'Je convertis les contenances',
-		exerciseType: calibrated<MesureConfig>(
-			{
-				// CE2 : L↔cL ET L↔dL (le dL est au programme) ; PAS le mL (CM1).
-				ce2: {
-					echelle: ECHELLE_CONTENANCE,
-					conversions: [
-						{ big: 'L', small: 'cL', factor: 100, maxBig: 12 },
-						{ big: 'L', small: 'dL', factor: 10, maxBig: 12 },
-					],
-				},
-				// CM1 : 1–20, + L↔mL (×1000, franchit le millier). Décimaux (#248) : L↔dL (×10)
-				// en décimal dans les deux sens ; L↔cL (×100) en décimal petite→grande
-				// (« 456 cL = 4,56 L »), l'entier grande→petite gardé ; L↔mL (×1000) ENTIÈRE.
-				cm1: {
-					echelle: ECHELLE_CONTENANCE,
-					conversions: [
-						{ big: 'L', small: 'cL', factor: 100, maxBig: 20, decimal: 'vers-grande' },
-						{ big: 'L', small: 'dL', factor: 10, maxBig: 20, decimal: 'deux-sens' },
-						{ big: 'L', small: 'mL', factor: 1000, maxBig: 20 },
-					],
-				},
-			},
-			conversionType,
-		),
+		exerciseType: calibrated<MesureConfig>(CONFIG_CONTENANCES, conversionType),
 		// 5 L = 500 cL : deux colonnes vides, toutes deux ÉTUDIÉES (aucune de transit dans
 		// cet empan) — l'exemple montre donc le 0 de rang sans le mêler au code « unité pas
-		// encore vue en classe ».
+		// Exemple 5 L = 500 cL, CONSTRUIT par le moteur pour chaque niveau : le CE2 le voit avec
+		// ses colonnes démotées, le CM1 avec la chaîne de rangs complète. Même géométrie que
+		// l'exercice réel, par construction — un exemple écrit à la main mentait dès qu'une
+		// échelle bougeait.
 		etayage: etayageConversion(
 			'Le tableau de conversion des contenances',
 			[
-				{ unite: 'L', nom: 'litre', chiffres: '5' },
-				{ unite: 'dL', nom: 'décilitre', chiffres: '0' },
-				{ unite: 'cL', nom: 'centilitre', chiffres: '0' },
+				{ niveau: 'ce2', ...exempleTableau(CONFIG_CONTENANCES.ce2, 'L', 5, 'cL') },
+				{ niveau: 'cm1', ...exempleTableau(CONFIG_CONTENANCES.cm1, 'L', 5, 'cL') },
 			],
-			'L',
-			'cL',
 			{
 				titre: 'Convertir une contenance',
 				regle: 'Une grande unité contient plusieurs petites : il faut savoir combien.',

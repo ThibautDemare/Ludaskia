@@ -485,7 +485,7 @@ function verifier(): void {
 	// « Je ne sais pas » cliquable sur un tableau déjà corrigé n'aurait plus de sens) et
 	// « Continuer ▶ » prend le relais.
 	masquerDecision(sheets());
-	const explication = explicationTransit(ex);
+	const explication = explicationRangVide(ex);
 	wireNext(
 		sheets().querySelector('#tcActions') as HTMLElement,
 		sheets().querySelector('#tcFeedback') as HTMLElement,
@@ -534,14 +534,27 @@ function etayageTableauRate(ex: Tableau): { etayage?: EtayageDemande } {
 
 /* Ce que le tableau enseigne au-delà du geste : le 0 qui MARQUE un rang vide. Affiché quand
    la réponse n'est pas donnée — erreur ou question passée (#467), les deux cas où l'enfant a
-   justement besoin de l'explication. Accord singulier/pluriel selon le nombre de colonnes de
-   transit ; chaîne vide s'il n'y en a aucune. */
-function explicationTransit(ex: Tableau): string {
-	const transit = ex.colonnes.filter((c) => c.transit);
-	if (transit.length === 0) return '';
-	return transit.length === 1
-		? `Pense au 0 de l'unité intermédiaire (le ${transit[0].nom}) pour marquer le rang vide.`
-		: `Pense aux 0 des unités intermédiaires (${transit.map((c) => pluriel(c.nom)).join(', ')}) pour marquer les rangs vides.`;
+   justement besoin de l'explication.
+
+   Les colonnes nommées sont celles qui SÉPARENT l'unité donnée de l'unité cherchée et qui
+   attendent un 0 : ce sont elles, le rang à tenir. Jusqu'à #711 on les repérait par le
+   drapeau `transit` (« unité pas encore vue en classe »), ce qui tombait juste par
+   coïncidence tant que le tableau s'arrêtait sur la paire convertie. Depuis que la tranche
+   est fixe et que le CM1 a toute sa chaîne de rangs au programme, plus AUCUNE colonne n'y est
+   de transit : l'explication aurait disparu au niveau même où le tableau est le plus large.
+   Effet de bord assumé : elle apparaît désormais aussi sur les contenances au CE2, où le
+   décilitre tient bien un rang vide entre le litre et le centilitre sans avoir jamais été
+   « pas encore vu ». C'est ce que la phrase a toujours voulu dire. */
+function explicationRangVide(ex: Tableau): string {
+	const iConnue = ex.colonnes.findIndex((c) => c.unite === ex.uniteConnue);
+	const iCible = ex.colonnes.findIndex((c) => c.unite === ex.answerUnit);
+	if (iConnue < 0 || iCible < 0) return '';
+	const [gauche, droite] = iConnue < iCible ? [iConnue, iCible] : [iCible, iConnue];
+	const vides = ex.colonnes.slice(gauche + 1, droite).filter((c) => Number(c.chiffres) === 0);
+	if (vides.length === 0) return '';
+	return vides.length === 1
+		? `Pense au 0 de l'unité intermédiaire (le ${vides[0].nom}) pour marquer le rang vide.`
+		: `Pense aux 0 des unités intermédiaires (${vides.map((c) => pluriel(c.nom)).join(', ')}) pour marquer les rangs vides.`;
 }
 
 /* « Je ne sais pas, montre-moi » (#467) : la réponse est révélée en TEXTE (« 3 000 m »),
@@ -572,7 +585,7 @@ function passer(): void {
 		lessonId: lesson.id,
 	});
 	paintAll(); // retire la surbrillance de la case active (plus de saisie en cours)
-	const explication = explicationTransit(ex);
+	const explication = explicationRangVide(ex);
 	// L'index avance AVANT tout affichage : la photo de reprise (#498) est prise quand
 	// l'enfant quitte l'écran, et un tableau déjà révélé ne doit jamais lui être reposé.
 	idx++;

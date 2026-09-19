@@ -321,6 +321,11 @@ export type Exercise =
 			question: string;
 			answer: string;
 			answerUnit: string; // unité cible (celle du champ) — source unique, évite de re-parser `question`
+			// Unité DONNÉE par l'énoncé (#711). Portée explicitement, et non déduite de la
+			// géométrie : la tranche de colonnes étant désormais FIXE par leçon-niveau, l'unité
+			// connue n'est plus l'extrémité opposée à la cible. La déduire échouerait en SILENCE —
+			// soit plus d'étayage du tout, soit un déroulé qui montre une autre conversion.
+			uniteConnue: string;
 			colonnes: TableauColonne[];
 			virguleApres?: number;
 			parle?: string;

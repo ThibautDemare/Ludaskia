@@ -105,19 +105,24 @@ describe('nombreTableauSaisi (tableau de conversion relu dans l’unité cible)'
 		expect(nombreTableauSaisi(cases('km:3', 'hm:0', 'dam:0', 'm:0'), 'm')).toBe('3000');
 	});
 
-	it('cible = colonne de tête (petite→grande) : virgule juste après la tête', () => {
-		// « 1500 m = ? km » → 1,500 km (soit 1,5 km).
-		expect(nombreTableauSaisi(cases('km:1', 'hm:5', 'dam:0', 'm:0'), 'km')).toBe('1,500');
+	it('cible = colonne de tête (petite→grande) : la virgule suit la tête', () => {
+		// « 1500 m = ? km » → 1,5 km. La virgule est bien APRÈS la tête : posée une colonne
+		// plus loin, la même table se lirait « 15 », et deux colonnes plus loin « 150 ».
+		expect(nombreTableauSaisi(cases('km:1', 'hm:5', 'dam:0', 'm:0'), 'km')).toBe('1,5');
 	});
 
 	it('cible au milieu du tableau : virgule après SA colonne, pas après la première', () => {
-		// « 250 cm = ? dm » sur l'empan m·dm·cm → 25,0 dm.
-		expect(nombreTableauSaisi(cases('m:2', 'dm:5', 'cm:0'), 'dm')).toBe('25,0');
+		// « 253 cm = ? dm » sur l'empan m·dm·cm → 25,3 dm (et non 2,53 : virgule après la tête).
+		expect(nombreTableauSaisi(cases('m:2', 'dm:5', 'cm:3'), 'dm')).toBe('25,3');
+		// Même colonne cible, dernier rang à zéro : la valeur est entière, donc rien ne traîne
+		// derrière une virgule (« 25,0 » n'est pas ce qu'un enfant écrit). Une virgule posée une
+		// colonne trop tôt donnerait « 2,5 » : le décalage reste visible.
+		expect(nombreTableauSaisi(cases('m:2', 'dm:5', 'cm:0'), 'dm')).toBe('25');
 	});
 
 	it('tête à 2 chiffres et cible en tête : virgule après le DERNIER chiffre de la tête', () => {
-		// « 1250 cm = ? m » : la tête « m » porte 12 → 12,50 m (et non 1,250).
-		expect(nombreTableauSaisi(cases('m:1', 'm:2', 'dm:5', 'cm:0'), 'm')).toBe('12,50');
+		// « 1250 cm = ? m » : la tête « m » porte 12 → 12,5 m (et non 1,25).
+		expect(nombreTableauSaisi(cases('m:1', 'm:2', 'dm:5', 'cm:0'), 'm')).toBe('12,5');
 	});
 
 	it('tête à 2 chiffres et cible en bout : les chiffres se suivent sans virgule', () => {
@@ -132,8 +137,26 @@ describe('nombreTableauSaisi (tableau de conversion relu dans l’unité cible)'
 		// Même table relue dans l'autre sens (« 3000 m = ? km ») : le 7 parasite pèse un
 		// centième de km, donc la réponse donnée porte une virgule alors que l'écran n'en
 		// affiche pas (réponse attendue entière). C'est VOULU : « 3070 km » induirait le
-		// parent en erreur, « 3,070 km » face à « 3 km » montre exactement l'écart.
-		expect(nombreTableauSaisi(cases('km:3', 'hm:0', 'dam:7', 'm:0'), 'km')).toBe('3,070');
+		// parent en erreur, « 3,07 km » face à « 3 km » montre exactement l'écart. Le ménage
+		// des zéros sans valeur (#711) n'emporte QUE les zéros de queue : le 7 reste.
+		expect(nombreTableauSaisi(cases('km:3', 'hm:0', 'dam:7', 'm:0'), 'km')).toBe('3,07');
+	});
+
+	/* Tranche de colonnes FIXE (#711) : le tableau affiche toute l'échelle du niveau, donc la
+	   colonne cible traîne presque toujours des colonnes à zéro des deux côtés. Elles n'ont pas
+	   à ressortir dans le journal — le parent y lirait un nombre que son enfant n'a pas écrit. */
+	it('colonnes à zéro autour de la cible : ni zéros de tête, ni virgule en trop (#711)', () => {
+		// « 3 m = ? cm » sur l'échelle complète km→mm : trois colonnes à zéro avant la cible,
+		// une après → « 300 », et surtout pas « 000300,0 ».
+		const table = cases('km:0', 'hm:0', 'dam:0', 'm:3', 'dm:0', 'cm:0', 'mm:0');
+		expect(nombreTableauSaisi(table, 'cm')).toBe('300');
+		// La même table relue plus haut dans l'échelle vaut moins de 1 km : le zéro des unités
+		// PORTE la valeur, lui, et reste écrit (« 0,003 », pas « ,003 »).
+		expect(nombreTableauSaisi(table, 'km')).toBe('0,003');
+	});
+
+	it('tableau entièrement à zéro : se lit « 0 », pas « 000 » ni une chaîne vide', () => {
+		expect(nombreTableauSaisi(cases('m:0', 'dm:0', 'cm:0'), 'dm')).toBe('0');
 	});
 
 	it('unité cible absente des cases : chiffres bruts, sans virgule inventée', () => {
@@ -172,54 +195,96 @@ describe('nombreTableauSaisi — confronté aux tableaux réellement générés 
 			col.chiffres.split('').map((valeur) => ({ unite: col.unite, valeur })),
 		);
 
+	/* Chiffres affichés par l'écran, toutes colonnes confondues (une seule chaîne). */
+	const chiffresEcran = (ex: Tableau): string => ex.colonnes.map((c) => c.chiffres).join('');
+
 	it('un tableau rempli JUSTE se relit exactement comme la réponse attendue', () => {
+		// Le cas que la tranche fixe (#711) rend systématique — colonnes à zéro avant la cible,
+		// colonnes après elle — est-il seulement atteint par le tirage ? Sans ces compteurs, le
+		// test resterait vert sur un jeu de tableaux taillés au plus juste, c'est-à-dire
+		// exactement là où il n'a plus rien à garder.
+		let avecZerosDeTete = 0;
+		let avecColonnesApres = 0;
 		for (const id of FAMILLES) {
 			for (const level of NIVEAUX) {
 				for (const ex of genTab(id, level, 200)) {
 					const lu = nombreTableauSaisi(casesJustes(ex), ex.answerUnit);
-					// Forme lisible : des chiffres, au plus une virgule décimale.
-					expect(lu).toMatch(/^\d+(,\d+)?$/);
-					// Même VALEUR que la réponse (les zéros finaux de « 12,50 » vs « 12,5 » ne
-					// comptent pas ; une virgule mal placée d'un rang, si).
-					expect(Number(lu.replace(',', '.'))).toBeCloseTo(Number(ex.answer.replace(',', '.')), 6);
+					// Le parent lit EXACTEMENT le nombre attendu, pas une variante décorée de
+					// zéros de rang : « 300 », jamais « 000300,0 ».
+					expect(lu).toBe(ex.answer);
+					// Et ce nombre s'écrit comme un enfant l'écrit : au plus une virgule, jamais
+					// suivie d'un zéro final, jamais de zéro de tête devant un autre chiffre.
+					expect(lu).toMatch(/^\d+(,\d*[1-9])?$/);
+					expect(lu).not.toMatch(/^0\d/);
+					const indexCible = ex.colonnes.findIndex((c) => c.unite === ex.answerUnit);
+					const tete = ex.colonnes
+						.slice(0, indexCible)
+						.map((c) => c.chiffres)
+						.join('');
+					if (/^0/.test(tete)) avecZerosDeTete++;
+					if (indexCible < ex.colonnes.length - 1) avecColonnesApres++;
 				}
 			}
 		}
+		expect(avecZerosDeTete).toBeGreaterThan(0);
+		expect(avecColonnesApres).toBeGreaterThan(0);
 	});
 
-	it('quand l’écran pose une virgule, le journal la place au même endroit', () => {
+	it('quand l’écran pose une virgule, le journal la place au même rang', () => {
 		let vus = 0;
 		for (const id of FAMILLES) {
 			for (const ex of genTab(id, 'cm1', 300)) {
 				if (ex.virguleApres === undefined) continue;
 				vus++;
 				const lu = nombreTableauSaisi(casesJustes(ex), ex.answerUnit);
-				// Nombre de chiffres affichés avant la virgule de l'écran (`virguleApres` est un
-				// index de COLONNE, la tête pouvant valoir 2 chiffres).
+				// Ce que l'ÉCRAN montre : les chiffres des colonnes, coupés par la virgule
+				// dessinée après la colonne `virguleApres` (index de COLONNE, la tête pouvant
+				// valoir 2 chiffres).
+				const chiffres = chiffresEcran(ex);
 				const avant = ex.colonnes
 					.slice(0, ex.virguleApres + 1)
 					.reduce((n, c) => n + c.chiffres.length, 0);
-				expect(lu.indexOf(',')).toBe(avant);
+				const entierEcran = chiffres.slice(0, avant);
+				const decimalesEcran = chiffres.slice(avant);
+				// Même VALEUR que le nombre lu à l'écran : une virgule décalée d'un seul rang
+				// multiplie ou divise par 10, donc ne peut pas passer inaperçue.
+				expect(Number(lu.replace(',', '.'))).toBe(Number(entierEcran + '.' + decimalesEcran));
+				// Le journal met une virgule exactement quand les colonnes qui suivent la cible
+				// portent une valeur : ni virgule perdue sur un nombre décimal, ni virgule
+				// fantôme derrière des colonnes vides.
+				expect(lu.includes(',')).toBe(/[1-9]/.test(decimalesEcran));
+				// Les décimales du journal sont celles de l'écran, amputées des SEULS zéros de
+				// queue (ceux qui ne changent pas la valeur).
+				const decimalesJournal = lu.split(',')[1] ?? '';
+				expect(decimalesEcran.startsWith(decimalesJournal)).toBe(true);
+				expect(decimalesEcran.slice(decimalesJournal.length)).toMatch(/^0*$/);
+				expect(decimalesJournal).not.toMatch(/0$/);
 			}
 		}
 		expect(vus).toBeGreaterThan(0); // le cas décimal est bien atteint (pas un test à vide)
 	});
 
-	it('un zéro de transit oublié change la valeur relue (l’erreur ne peut pas passer)', () => {
-		// Les masses portent toujours une colonne de transit (hg/dag ou dg/cg).
+	it('aucun chiffre du tableau n’est ignoré : changer une case change la valeur relue', () => {
+		// L'erreur qui ne doit jamais passer : un zéro de rang oublié, ou un chiffre glissé dans
+		// une colonne de transit, donne une valeur DIFFÉRENTE de la réponse attendue — sinon le
+		// journal afficherait « donné : 300 / attendu : 300 » sous les yeux du parent. Le ménage
+		// des zéros (#711) enlève des zéros SANS VALEUR ; rogner les colonnes avant de lire, lui,
+		// effacerait l'erreur. Toutes les cases sont éprouvées, des deux côtés de la cible.
 		let vus = 0;
-		for (const level of NIVEAUX) {
-			for (const ex of genTab('mes-masses', level, 100)) {
-				const cellules = casesJustes(ex);
-				const uniteTransit = ex.colonnes.find((c) => c.transit)!.unite;
-				const i = cellules.findIndex((c) => c.unite === uniteTransit);
-				cellules[i] = { unite: uniteTransit, valeur: cellules[i].valeur === '7' ? '9' : '7' };
-				const lu = nombreTableauSaisi(cellules, ex.answerUnit);
-				expect(Number(lu.replace(',', '.'))).not.toBeCloseTo(
-					Number(ex.answer.replace(',', '.')),
-					6,
-				);
-				vus++;
+		for (const id of FAMILLES) {
+			for (const level of NIVEAUX) {
+				for (const ex of genTab(id, level, 40)) {
+					const attendue = Number(ex.answer.replace(',', '.'));
+					const cellules = casesJustes(ex);
+					for (let i = 0; i < cellules.length; i++) {
+						const faute = cellules.map((c, j) =>
+							j === i ? { ...c, valeur: String((Number(c.valeur) + 1) % 10) } : c,
+						);
+						const lu = Number(nombreTableauSaisi(faute, ex.answerUnit).replace(',', '.'));
+						expect(lu).not.toBe(attendue);
+						vus++;
+					}
+				}
 			}
 		}
 		expect(vus).toBeGreaterThan(0);

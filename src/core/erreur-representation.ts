@@ -162,18 +162,32 @@ export interface CelluleTableau {
    colonnes suivantes la partie décimale. On lit ainsi TOUTES les cases, y compris celles des
    unités de transit : un chiffre parasite dans une colonne basse (là où un 0 était attendu)
    apparaît donc dans la réponse donnée — c'est précisément l'erreur à montrer au parent.
-   Aucune colonne après la cible → pas de virgule.
 
    La virgule est posée dès qu'une colonne suit la cible, y compris quand l'ÉCRAN n'en affiche
    aucune (il ne la dessine que si la réponse attendue est décimale, cf. `virguleApres`). C'est
-   voulu : sur « 3000 m = @ km », un enfant qui écrit un 7 chez les décamètres a écrit 3,070 km,
-   et le journal doit le dire — rendre « 3070 km » tromperait le parent d'un facteur 1000. */
+   voulu : sur « 3000 m = @ km », un enfant qui écrit un 7 chez les décamètres a écrit 3,07 km,
+   et le journal doit le dire — rendre « 3070 km » tromperait le parent d'un facteur 1000.
+
+   Les zéros SANS VALEUR disparaissent des deux côtés, comme les écrit un enfant (« 000300 »
+   → « 300 », « 300,0 » → « 300 »), exactement comme `lireDansUnite` côté étayage. Ce n'est
+   pas cosmétique depuis la tranche fixe (#711) : le tableau affiche toute l'échelle du
+   niveau, donc la colonne cible est presque toujours suivie d'autres colonnes et précédée de
+   zéros de tête. Sans ce nettoyage, une réponse juste à 300 cm se journaliserait « 000300,0 »
+   et le parent lirait un nombre que son enfant n'a pas écrit. */
 export function nombreTableauSaisi(cells: CelluleTableau[], answerUnit: string): string {
 	const chiffres = cells.map((c) => c.valeur);
 	// Dernière case de la colonne cible (une colonne de tête peut porter 2 chiffres).
 	const fin = cells.reduce((last, c, i) => (c.unite === answerUnit ? i : last), -1);
-	if (fin < 0 || fin >= cells.length - 1) return chiffres.join('');
-	return `${chiffres.slice(0, fin + 1).join('')},${chiffres.slice(fin + 1).join('')}`;
+	if (fin < 0) return chiffres.join('');
+	const entier = chiffres
+		.slice(0, fin + 1)
+		.join('')
+		.replace(/^0+(?=\d)/, '');
+	const decimal = chiffres
+		.slice(fin + 1)
+		.join('')
+		.replace(/0+$/, '');
+	return decimal ? `${entier},${decimal}` : entier;
 }
 
 /* ---------- Appariement (paires reliées) ---------- */

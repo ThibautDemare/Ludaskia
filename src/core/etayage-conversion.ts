@@ -55,22 +55,22 @@ export function cibleColonne(i: number): string {
 /** Spécification tirée de l'exercice que l'enfant vient de RATER, pour lui dérouler sa
     conversion à lui et pas un exemple voisin.
 
-    L'unité DONNÉE ne figure nulle part en clair dans l'exercice (elle n'existe que dans
-    l'énoncé, en texte). On ne la relit pas là-dedans : on la déduit de la STRUCTURE, qui
-    est un invariant du générateur — le tableau couvre exactement l'empan entre la grande et
-    la petite unité de la paire convertie, et l'unité cherchée est l'une des deux extrémités.
-    L'autre extrémité est donc l'unité donnée. `undefined` si cet invariant ne tient pas :
-    on préfère ne rien montrer à désigner la mauvaise colonne. */
+    L'unité DONNÉE est portée par l'exercice (`uniteConnue`, #711). Elle était auparavant
+    DÉDUITE de la géométrie — « la cible est une des deux extrémités, donc l'autre extrémité
+    est le départ » — ce qui ne tenait que tant que le tableau était taillé sur la paire
+    convertie. La tranche fixe supprime cet invariant, et la déduction échouerait alors en
+    SILENCE, de deux façons : cible à l'intérieur du tableau, plus aucun étayage ; cible au
+    bord mais départ à l'intérieur, un déroulé qui démontre une conversion qui n'est pas la
+    sienne. `undefined` si l'une des deux unités n'a pas de colonne, ou si elles sont
+    confondues : mieux vaut ne rien montrer que désigner la mauvaise colonne. */
 export function conversionDepuisTableau(ex: {
 	colonnes: readonly { unite: string; nom: string; transit: boolean; chiffres: string }[];
 	answerUnit: string;
+	uniteConnue: string;
 }): ConversionSpec | undefined {
-	const premier = ex.colonnes[0]?.unite;
-	const dernier = ex.colonnes[ex.colonnes.length - 1]?.unite;
-	if (!premier || !dernier) return undefined;
-	const depart =
-		ex.answerUnit === premier ? dernier : ex.answerUnit === dernier ? premier : undefined;
-	if (depart === undefined || depart === ex.answerUnit) return undefined;
+	const presente = (u: string) => ex.colonnes.some((c) => c.unite === u);
+	if (ex.uniteConnue === ex.answerUnit) return undefined;
+	if (!presente(ex.uniteConnue) || !presente(ex.answerUnit)) return undefined;
 	return {
 		colonnes: ex.colonnes.map((c) => ({
 			unite: c.unite,
@@ -78,7 +78,7 @@ export function conversionDepuisTableau(ex: {
 			chiffres: c.chiffres,
 			...(c.transit ? { transit: true } : {}),
 		})),
-		depart,
+		depart: ex.uniteConnue,
 		cible: ex.answerUnit,
 	};
 }
@@ -120,11 +120,24 @@ function derniereSignificative(colonnes: ColonneConversion[]): number {
 	return 0;
 }
 
+/* Index de la PREMIÈRE colonne significative : elle borne à GAUCHE le nombre donné. Depuis
+   la tranche fixe (#711), le tableau commence en général bien avant lui — « 3 cm » s'écrit
+   dans un tableau qui va du kilomètre au millimètre, précédé de cinq colonnes à 0. Sans
+   cette borne, l'ancrage annoncerait « son dernier chiffre va dans la colonne des
+   centimètres, les autres vers la gauche » en désignant des zéros qui ne sont pas des
+   chiffres du nombre donné. */
+function premiereSignificative(colonnes: ColonneConversion[]): number {
+	for (let i = 0; i < colonnes.length - 1; i++) {
+		if (Number(colonnes[i].chiffres) !== 0) return i;
+	}
+	return colonnes.length - 1;
+}
+
 /** Déroulé d'une conversion : on pose le nombre donné dans SES colonnes, on remplit une à
-    une les colonnes qui manquent jusqu'à l'unité demandée, puis on relit. Déroulé vide
-    (donc pas de panneau, cf. `derouleMontrable`) si l'une des deux unités n'est pas dans
-    le tableau : mieux vaut ne rien montrer qu'une démonstration qui désigne une colonne
-    absente. */
+    une les colonnes qui manquent jusqu'à l'unité demandée, on complète celles qui restent,
+    puis on relit. Déroulé vide (donc pas de panneau, cf. `derouleMontrable`) si l'une des
+    deux unités n'est pas dans le tableau : mieux vaut ne rien montrer qu'une démonstration
+    qui désigne une colonne absente. */
 export function derouleConversion(spec: ConversionSpec): DerouleEtayage {
 	const { colonnes } = spec;
 	const iDepart = colonnes.findIndex((c) => c.unite === spec.depart);
@@ -135,10 +148,12 @@ export function derouleConversion(spec: ConversionSpec): DerouleEtayage {
 	const valeurCible = lireDansUnite(colonnes, iCible);
 	const nomDepart = colonnes[iDepart].nom;
 	const nomCible = colonnes[iCible].nom;
-	// Le nombre donné occupe ses colonnes entières, et déborde à droite s'il est décimal
-	// (« 2,5 km » remplit les kilomètres ET les hectomètres).
-	const finDepart = Math.max(iDepart, derniereSignificative(colonnes));
-	const posees = colonnes.slice(0, finDepart + 1);
+	// Le nombre donné occupe ses colonnes entières, déborde à droite s'il est décimal
+	// (« 2,5 km » remplit les kilomètres ET les hectomètres) et ne commence qu'à son premier
+	// chiffre significatif : les colonnes de rang supérieur ne lui appartiennent pas.
+	const debut = Math.min(iDepart, premiereSignificative(colonnes));
+	const fin = Math.max(iDepart, derniereSignificative(colonnes));
+	const posees = colonnes.slice(debut, fin + 1).map((_, k) => debut + k);
 	const ecrit = (i: number): EcritureEtayage => ({
 		cible: cibleColonne(i),
 		texte: colonnes[i].chiffres,
@@ -155,17 +170,21 @@ export function derouleConversion(spec: ConversionSpec): DerouleEtayage {
 		phrase:
 			posees.length === 1
 				? `On me donne ${valeurDepart} ${spec.depart}. ${sens} J'écris ${valeurDepart} dans la colonne des ${pluriel(nomDepart)}.`
-				: finDepart > iDepart
+				: fin > iDepart
 					? `On me donne ${valeurDepart} ${spec.depart}. ${sens} Le chiffre juste avant la virgule va dans la colonne des ${pluriel(nomDepart)}, les suivants à sa droite.`
 					: `On me donne ${valeurDepart} ${spec.depart}. ${sens} Son dernier chiffre va dans la colonne des ${pluriel(nomDepart)}, les autres vers la gauche.`,
-		ecritures: posees.map((_, i) => ecrit(i)),
-		actifs: posees.map((_, i) => cibleColonne(i)),
+		ecritures: posees.map(ecrit),
+		actifs: posees.map(cibleColonne),
 	};
 
 	// 2. Les colonnes qui manquent jusqu'à l'unité demandée, une par une, chacune NOMMÉE :
 	//    c'est là que se joue la notion (le 0 tient un rang, il ne « rallonge » pas le nombre).
+	//    Le chemin va vers la droite (grande → petite) ou vers la gauche (petite → grande).
 	const pas: PasEtayage[] = [ancrage];
-	for (let i = finDepart + 1; i <= iCible; i++) {
+	const chemin: number[] = [];
+	if (iCible > fin) for (let i = fin + 1; i <= iCible; i++) chemin.push(i);
+	else if (iCible < debut) for (let i = debut - 1; i >= iCible; i--) chemin.push(i);
+	for (const i of chemin) {
 		// « La colonne reste vide », et non « il n'y a aucun mètre » : sur la colonne CIBLE, la
 		// seconde formulation contredirait la conclusion (3 km = 3 000 m, il y a bien des
 		// mètres). Ce qui est vrai des deux, c'est le RANG : rien à cette place-là, donc un 0
@@ -177,7 +196,26 @@ export function derouleConversion(spec: ConversionSpec): DerouleEtayage {
 		});
 	}
 
-	// 3. Lecture : la même case de départ, un autre point de lecture. Quand la réponse est
+	// 3. Les colonnes encore vides HORS du chemin. Elles n'existaient pas avant la tranche
+	//    fixe (#711) : le tableau affiche désormais toute l'échelle du niveau, pas le seul
+	//    empan de la paire, et l'enfant doit les remplir aussi. Groupées en UN pas — ce sont
+	//    des rangs où il n'y a rien, pas la notion qu'on démontre ; les détailler une à une
+	//    noierait les pas qui, eux, comptent.
+	const vues = new Set([...posees, ...chemin]);
+	const restantes = colonnes.map((_, i) => i).filter((i) => !vues.has(i));
+	if (restantes.length) {
+		const noms = restantes.map((i) => pluriel(colonnes[i].nom));
+		pas.push({
+			phrase:
+				noms.length === 1
+					? `Rien à compter dans la colonne des ${noms[0]} : j'écris 0 pour qu'elle garde sa place.`
+					: `Il n'y a rien non plus dans les colonnes qui restent (${noms.join(', ')}) : j'écris 0 dans chacune pour qu'elles gardent leur place.`,
+			ecritures: restantes.map(ecrit),
+			actifs: restantes.map(cibleColonne),
+		});
+	}
+
+	// 4. Lecture : la même case de départ, un autre point de lecture. Quand la réponse est
 	//    décimale, on dit OÙ tombe la virgule (juste après la colonne demandée) — et jamais
 	//    qu'on la « décale », qui ferait croire à un déplacement mécanique.
 	const lecture = valeurCible.includes(',')

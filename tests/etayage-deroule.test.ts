@@ -103,14 +103,15 @@ describe('les exemples déclarés par les leçons — jamais un panneau vide', (
 		const parMoteur = new Map<string, number>();
 		for (const { exemple } of servis)
 			parMoteur.set(exemple.moteur, (parMoteur.get(exemple.moteur) ?? 0) + 1);
-		// Comptes dérivés des données : 3 opérations posées, 3 tableaux de conversion (les
-		// durées n'en ont pas), 3 droites graduées (les entiers en déclarent une PAR NIVEAU —
-		// un cran ne vaut jamais 1 au CM1 —, les décimaux une seule, CM1 only), 6 entrées de
-		// numération (5 leçons, dont « jusqu'à 10 000 » qui en déclare une par niveau), et
-		// 41 (verbe × temps) — les 52 leçons de conjugaison moins les 11 présents irréguliers,
-		// qui n'ont rien d'honnête à dérouler.
+		// Comptes dérivés des données : 3 opérations posées, 6 tableaux de conversion (3 leçons —
+		// les durées n'en ont pas — qui déclarent chacune un exemple PAR NIVEAU depuis #711, la
+		// tranche de colonnes n'étant plus la même au CE2 et au CM1), 3 droites graduées (les
+		// entiers en déclarent une PAR NIVEAU — un cran ne vaut jamais 1 au CM1 —, les décimaux
+		// une seule, CM1 only), 6 entrées de numération (5 leçons, dont « jusqu'à 10 000 » qui en
+		// déclare une par niveau), et 41 (verbe × temps) — les 52 leçons de conjugaison moins les
+		// 11 présents irréguliers, qui n'ont rien d'honnête à dérouler.
 		expect(parMoteur.get('posee')).toBe(3);
-		expect(parMoteur.get('conversion')).toBe(3);
+		expect(parMoteur.get('conversion')).toBe(6);
 		expect(parMoteur.get('droite')).toBe(3);
 		expect(parMoteur.get('position')).toBe(6);
 		expect(parMoteur.get('conjugaison')).toBe(41);

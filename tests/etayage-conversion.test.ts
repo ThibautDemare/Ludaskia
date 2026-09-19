@@ -5,23 +5,33 @@
    (un tableau de conversion est un tableau de rangs, un cran = ×10, et le même tableau se
    lit dans l'unité qu'on veut), jamais recopiés de l'implémentation.
 
+   Depuis #711, le tableau n'est plus taillé sur la question : sa tranche de colonnes est
+   FIXE par couple (leçon, niveau), donc l'enfant voit toujours la même échelle — celle de
+   son niveau — et le nombre donné y flotte, précédé ou suivi de colonnes à zéro qui ne lui
+   appartiennent pas. Deux conséquences que ce fichier garde :
+   - l'unité DONNÉE ne se déduit plus de la géométrie du tableau. Elle est portée par
+     l'exercice ; la déduction d'avant (« la cible est une extrémité, donc l'autre extrémité
+     est le départ ») se tromperait maintenant en silence, ce qui est pire que refuser ;
+   - le déroulé doit remplir TOUT le tableau, pas seulement l'empan de la paire convertie.
+
    Ce qui est éprouvé, et pourquoi :
    - `lireDansUnite` sur des tableaux POSÉS À LA MAIN, avec leur lecture calculée à part :
      c'est la fonction qui porte toute la notion, et une lecture fausse ferait dire au
      panneau « 3 km = 30 m » sans que rien d'autre ne s'en aperçoive ;
-   - la DÉDUCTION de l'unité de départ (`conversionDepuisTableau`) : elle repose sur un
-     invariant du générateur, donc elle se teste contre de VRAIS tableaux tirés par le
-     catalogue — et l'unité attendue est lue dans l'ÉNONCÉ (« 3 km = @ m »), c'est-à-dire
-     dans ce que l'enfant a sous les yeux, jamais dans la structure dont le code la déduit ;
+   - la fidélité de `conversionDepuisTableau` : elle relaie l'unité de l'exercice sans
+     l'inventer, y compris quand départ et cible sont à l'INTÉRIEUR du tableau — et l'unité
+     attendue est lue dans l'ÉNONCÉ (« 3 km = @ m »), c'est-à-dire dans ce que l'enfant a
+     sous les yeux, jamais dans la structure dont le code la tirerait ;
+   - la FIXITÉ de la tranche de colonnes, par leçon et par niveau (#711) ;
    - la VÉRITÉ de ce qui est affirmé, sur un large échantillon des deux sens et des cas
      décimaux : la valeur de départ annoncée est bien celle de l'énoncé, la valeur finale
      est bien la réponse attendue de l'exercice, et l'égalité énoncée est arithmétiquement
      juste (un cran de colonne = un facteur 10) ;
-   - la COHÉRENCE dit / écrit : chaque colonne annoncée vide porte bien un 0, chaque
-     écriture porte le chiffre de sa colonne, et le tableau se remplit de gauche à droite
-     sans trou ni doublon ;
-   - la DÉGRADATION : unité absente du tableau, unité cible au milieu de l'empan, tableau
-     vide → aucun déroulé plutôt qu'une démonstration qui désigne une colonne absente ;
+   - la COHÉRENCE dit / écrit : chaque colonne du tableau est écrite EXACTEMENT une fois,
+     l'ancrage ne pose que les chiffres du nombre donné (pas les zéros de tête), et toute
+     colonne remplie plus tard est nommée ;
+   - la DÉGRADATION : unité absente du tableau, unité confondue avec la cible, tableau vide
+     → aucun déroulé plutôt qu'une démonstration qui désigne une colonne absente ;
    - les RACCOURCIS INTERDITS (« ajoute des zéros », « décale la virgule »), qui marchent
      sur les entiers et cassent au premier décimal.
    ============================================================ */
@@ -61,6 +71,30 @@ const col = (unite: string, nom: string, chiffres: string): ColonneConversion =>
 	nom,
 	chiffres,
 });
+
+/* Les deux niveaux où vivent les leçons à tableau (le catalogue en connaît d'autres). */
+type NiveauTableau = Extract<SchoolLevel, 'ce2' | 'cm1'>;
+const LECONS_TABLEAU = ['mes-longueurs', 'mes-masses', 'mes-contenances'];
+const NIVEAUX: NiveauTableau[] = ['ce2', 'cm1'];
+
+/* La tranche de colonnes attendue par (leçon, niveau) — #711. Écrite d'après l'échelle
+   métrique et le programme, pas relue du générateur : au CE2 on s'arrête au gramme et au
+   centilitre (les rangs plus fins ne sont pas au programme), au CM1 la chaîne va jusqu'au
+   milligramme et au millilitre. Les longueurs, elles, sont déjà complètes au CE2. */
+const TRANCHE: Record<string, Record<NiveauTableau, string[]>> = {
+	'mes-longueurs': {
+		ce2: ['km', 'hm', 'dam', 'm', 'dm', 'cm', 'mm'],
+		cm1: ['km', 'hm', 'dam', 'm', 'dm', 'cm', 'mm'],
+	},
+	'mes-masses': {
+		ce2: ['kg', 'hg', 'dag', 'g'],
+		cm1: ['kg', 'hg', 'dag', 'g', 'dg', 'cg', 'mg'],
+	},
+	'mes-contenances': {
+		ce2: ['L', 'dL', 'cL'],
+		cm1: ['hL', 'daL', 'L', 'dL', 'cL', 'mL'],
+	},
+};
 
 /* ============================================================
    1. LIRE LE TABLEAU DANS UNE UNITÉ — la notion elle-même
@@ -140,39 +174,65 @@ describe('lireDansUnite — un même tableau, une valeur par unité', () => {
 });
 
 /* ============================================================
-   2. DÉROULÉ — les trois exemples déclarés par les leçons de mesures
+   2. DÉROULÉ — les exemples déclarés par les leçons de mesures
    ============================================================ */
 describe('derouleConversion — l’exemple de la leçon (mode tableau)', () => {
-	const exemple = (id: string): ConversionSpec => {
-		const contenu = etayagePour(lecon(id), 'ce2', 'tableau');
+	const exemple = (id: string, niveau: NiveauTableau): ConversionSpec => {
+		const contenu = etayagePour(lecon(id), niveau, 'tableau');
 		if (contenu?.exemple?.moteur !== 'conversion')
-			throw new Error(`pas d'exemple conversion : ${id}`);
+			throw new Error(`pas d'exemple conversion : ${id}/${niveau}`);
 		return contenu.exemple.spec;
 	};
 
 	it('le DÉROULÉ du tableau ne sort jamais du mode tableau (la saisie a son texte à elle)', () => {
-		/* Deux entrées par leçon, et c'est la plus spécifique qui gagne : en mode `tableau`,
-		   l'exemple déroulé ; partout ailleurs, le texte rédigé de la conversion. Ce qu'on
-		   verrouille ici, c'est qu'aucun des deux ne déborde sur l'autre — montrer la grille
-		   de colonnes à un enfant qui tape « 300 cm = ? m » lui expliquerait un écran qu'il
-		   n'a pas sous les yeux. */
-		for (const id of ['mes-longueurs', 'mes-masses', 'mes-contenances']) {
-			expect(etayagePour(lecon(id), 'ce2', 'tableau')?.exemple, id).toBeDefined();
-			const saisie = etayagePour(lecon(id), 'ce2', 'saisie');
-			expect(saisie, id).toBeDefined();
-			expect(saisie?.exemple, id).toBeUndefined();
-			expect(saisie?.etapes?.length, id).toBeGreaterThan(0);
-			// Sans mode (appel générique) : le texte rédigé aussi, jamais le déroulé.
-			expect(etayagePour(lecon(id), 'ce2'), id).toBe(saisie);
-		}
+		/* Plusieurs entrées par leçon, et c'est la plus spécifique qui gagne : en mode
+       `tableau`, l'exemple déroulé (un par niveau depuis #711) ; partout ailleurs, le texte
+       rédigé de la conversion. Ce qu'on verrouille ici, c'est qu'aucun des deux ne déborde
+       sur l'autre — montrer la grille de colonnes à un enfant qui tape « 300 cm = ? m » lui
+       expliquerait un écran qu'il n'a pas sous les yeux. */
+		for (const id of LECONS_TABLEAU)
+			for (const niveau of NIVEAUX) {
+				const ou = `${id}/${niveau}`;
+				expect(etayagePour(lecon(id), niveau, 'tableau')?.exemple, ou).toBeDefined();
+				const saisie = etayagePour(lecon(id), niveau, 'saisie');
+				expect(saisie, ou).toBeDefined();
+				expect(saisie?.exemple, ou).toBeUndefined();
+				expect(saisie?.etapes?.length, ou).toBeGreaterThan(0);
+				// Sans mode (appel générique) : le texte rédigé aussi, jamais le déroulé.
+				expect(etayagePour(lecon(id), niveau), ou).toBe(saisie);
+			}
+	});
+
+	it('l’exemple montre le tableau du NIVEAU de l’enfant, pas celui du voisin', () => {
+		/* #711 : la tranche est fixe par (leçon, niveau), donc l'exemple d'étayage doit
+       montrer la MÊME grille que celle où l'enfant vient de se tromper. Un CM1 à qui l'on
+       déroule le tableau du CE2 (kg → g) verrait une démonstration dans un tableau qui n'a
+       pas les colonnes du sien, et inversement. */
+		for (const id of LECONS_TABLEAU)
+			for (const niveau of NIVEAUX) {
+				const ou = `${id}/${niveau}`;
+				const spec = exemple(id, niveau);
+				const unites = spec.colonnes.map((c) => c.unite);
+				expect(unites, ou).toEqual(TRANCHE[id][niveau]);
+				// Les deux unités de la démonstration sont dans cette grille-là.
+				expect(unites, ou).toContain(spec.depart);
+				expect(unites, ou).toContain(spec.cible);
+				expect(spec.depart, ou).not.toBe(spec.cible);
+				// Et le déroulé reste montrable : une grille plus large ne doit pas faire déborder
+				// le panneau (cf. PAS_MAX), sinon l'enfant n'a plus d'étayage du tout.
+				const deroule = derouleConversion(spec);
+				expect(derouleMontrable(deroule), `${ou} : ${deroule.pas.length} pas, max ${PAS_MAX}`).toBe(
+					true,
+				);
+			}
 	});
 
 	it('les DURÉES font exception : un texte rédigé, valable dans tous les modes', () => {
 		/* Base 60 : il n'y a pas de tableau de rangs à remplir (1 h ne vaut pas 10 min), donc
-		   rien à dérouler — l'entrée est rédigée et n'est PAS scopée au mode tableau, sans
-		   quoi cette leçon mono-mode n'aurait aucun panneau du tout. Ce qu'on verrouille
-		   surtout : elle ne doit jamais devenir un exemple de conversion, qui montrerait à
-		   l'enfant le tableau décimal des longueurs appliqué aux heures. */
+       rien à dérouler — l'entrée est rédigée et n'est PAS scopée au mode tableau, sans
+       quoi cette leçon mono-mode n'aurait aucun panneau du tout. Ce qu'on verrouille
+       surtout : elle ne doit jamais devenir un exemple de conversion, qui montrerait à
+       l'enfant le tableau décimal des longueurs appliqué aux heures. */
 		const durees = lecon('mes-durees');
 		const contenu = etayagePour(durees, 'ce2');
 		expect(contenu).toBeDefined();
@@ -188,19 +248,25 @@ describe('derouleConversion — l’exemple de la leçon (mode tableau)', () => 
 		expect([contenu?.regle, ...(contenu?.etapes ?? [])].join(' ')).toContain('60');
 	});
 
-	it('3 km = 3 000 m : un pas d’ancrage, une colonne vide à la fois, puis la lecture', () => {
-		const deroule = derouleConversion(exemple('mes-longueurs'));
+	it('3 km = 3 000 m : l’ancrage, le chemin colonne par colonne, le reste en bloc, la lecture', () => {
+		const spec = exemple('mes-longueurs', 'ce2');
+		const deroule = derouleConversion(spec);
 		expect(deroule.titre).toBe('3 km = ? m');
-		// 1 ancrage + 3 colonnes à remplir (hm, dam, m) + 1 lecture.
-		expect(deroule.pas.length).toBe(5);
+		// Le tableau va du km au mm (7 colonnes fixes, #711) : le 3 tient dans la colonne des
+		// kilomètres (1 pas d'ancrage), le chemin jusqu'aux mètres traverse hm, dam, m (3 pas
+		// nommés un par un), il reste dm, cm, mm (1 pas groupé), puis on relit (1 pas) → 6.
+		expect(spec.colonnes.map((c) => c.unite)).toEqual(TRANCHE['mes-longueurs'].ce2);
+		expect(deroule.pas.length).toBe(6);
 		expect(deroule.pas[0].phrase).toContain('3 km');
 		expect(deroule.pas[0].phrase).toContain('kilomètres');
+		// L'ancrage ne pose QUE le chiffre donné : les six autres colonnes ne sont pas à lui.
+		expect(deroule.pas[0].ecritures).toEqual([{ cible: cibleColonne(0), texte: '3' }]);
 		// Le sens de lecture est dit UNE fois, au premier pas, et pas ailleurs.
 		const sens = deroule.pas.filter((p) => /gauche/.test(p.phrase));
 		expect(sens.length).toBe(1);
 		expect(deroule.pas[0].phrase).toMatch(/gauche.*droite/);
-		// Chaque colonne vide est NOMMÉE (« il n'y a rien à cette place-là »), jamais un
-		// « j'écris 0 » sec.
+		// Chaque colonne du chemin est NOMMÉE (« il n'y a rien à cette place-là »), jamais un
+		// « j'écris 0 » sec, et remplie une à une jusqu'à celle qu'on demande.
 		expect(deroule.pas[1].phrase).toContain('hectomètres');
 		expect(deroule.pas[2].phrase).toContain('décamètres');
 		expect(deroule.pas[3].phrase).toContain('mètres');
@@ -210,14 +276,27 @@ describe('derouleConversion — l’exemple de la leçon (mode tableau)', () => 
 				{ cible: cibleColonne(i), texte: '0' },
 			]);
 		}
+		// Les colonnes au-delà de la cible sont remplies aussi, groupées en un seul pas : elles
+		// ne portent aucune notion, mais les laisser vides ferait deviner leur contenu.
+		expect(deroule.pas[4].ecritures).toEqual(
+			[4, 5, 6].map((i) => ({ cible: cibleColonne(i), texte: '0' })),
+		);
+		for (const nom of ['décimètres', 'centimètres', 'millimètres'])
+			expect(deroule.pas[4].phrase, nom).toContain(nom);
 		// Conclusion : la vraie égalité, dans les deux unités de la question.
-		expect(deroule.pas[4].phrase).toContain('3000');
-		expect(deroule.pas[4].phrase).toContain('3 km = 3000 m');
+		expect(deroule.pas[5].phrase).toContain('3000');
+		expect(deroule.pas[5].phrase).toContain('3 km = 3000 m');
+		// Et à la fin, AUCUNE case du tableau n'est restée vide, ni remplie deux fois.
+		const ecrites = deroule.pas.flatMap((p) => (p.ecritures ?? []).map((e) => e.cible));
+		expect(ecrites.slice().sort()).toEqual(spec.colonnes.map((_, i) => cibleColonne(i)).sort());
 	});
 
-	it('5 L = 500 cL : deux colonnes vides seulement (l’empan est plus court)', () => {
-		const deroule = derouleConversion(exemple('mes-contenances'));
+	it('5 L = 500 cL : au CE2 le tableau s’arrête au centilitre, donc rien à grouper', () => {
+		const spec = exemple('mes-contenances', 'ce2');
+		const deroule = derouleConversion(spec);
 		expect(deroule.titre).toBe('5 L = ? cL');
+		// L | dL | cL : 1 ancrage + 2 colonnes de chemin + 1 lecture (aucune colonne restante).
+		expect(spec.colonnes.map((c) => c.unite)).toEqual(['L', 'dL', 'cL']);
 		expect(deroule.pas.length).toBe(4);
 		expect(deroule.pas[1].phrase).toContain('décilitres');
 		expect(deroule.pas[2].phrase).toContain('centilitres');
@@ -225,8 +304,11 @@ describe('derouleConversion — l’exemple de la leçon (mode tableau)', () => 
 	});
 
 	it('2 kg = 2 000 g : même méthode, autre grandeur', () => {
-		const deroule = derouleConversion(exemple('mes-masses'));
+		const spec = exemple('mes-masses', 'ce2');
+		const deroule = derouleConversion(spec);
 		expect(deroule.titre).toBe('2 kg = ? g');
+		// kg | hg | dag | g : 1 ancrage + 3 colonnes de chemin + 1 lecture.
+		expect(spec.colonnes.map((c) => c.unite)).toEqual(['kg', 'hg', 'dag', 'g']);
 		expect(deroule.pas.length).toBe(5);
 		expect(deroule.pas[4].phrase).toContain('2 kg = 2000 g');
 	});
@@ -234,18 +316,79 @@ describe('derouleConversion — l’exemple de la leçon (mode tableau)', () => 
 	it('aucun raccourci « on ajoute des zéros » ni « on décale la virgule »', () => {
 		// Ces deux formules marchent sur les entiers et cassent au premier décimal
 		// (3,2 km = 3 200 m, pas 32 000) : elles arment une règle qui explosera au CM1.
-		for (const id of ['mes-longueurs', 'mes-masses', 'mes-contenances']) {
-			const texte = derouleConversion(exemple(id))
-				.pas.map((p) => p.phrase)
-				.join(' ');
-			expect(texte.toLowerCase(), id).not.toMatch(/ajoute[a-z]*\s+(des|un|le)\s+z[ée]ro/);
-			expect(texte.toLowerCase(), id).not.toMatch(/d[ée]cal/);
-		}
+		// Le motif vise le VERBE (décale, décaler, décalage) et non la racine : le tableau des
+		// contenances au CM1 a une colonne de décalitres, qui n'est pas un raccourci.
+		for (const id of LECONS_TABLEAU)
+			for (const niveau of NIVEAUX) {
+				const texte = derouleConversion(exemple(id, niveau))
+					.pas.map((p) => p.phrase)
+					.join(' ');
+				const ou = `${id}/${niveau}`;
+				expect(texte.toLowerCase(), ou).not.toMatch(/ajoute[a-z]*\s+(des|un|le)\s+z[ée]ro/);
+				expect(texte.toLowerCase(), ou).not.toMatch(/d[ée]cal(e|er|age)/);
+			}
 	});
 });
 
 /* ============================================================
-   3. DÉGRADATION — mieux vaut pas de panneau qu’une colonne désignée à tort
+   3. LE NOMBRE DONNÉ FLOTTE DANS LE TABLEAU (#711)
+   ------------------------------------------------------------
+   La tranche fixe met des colonnes à zéro des deux côtés du nombre donné. Ces zéros ne sont
+   pas ses chiffres : les traiter comme tels ferait dire au pas d'ancrage « son dernier
+   chiffre va dans la colonne des centimètres, les autres vers la gauche » en désignant cinq
+   cases que l'enfant n'a jamais écrites.
+   ============================================================ */
+describe('derouleConversion — un petit nombre dans un grand tableau', () => {
+	const PREFIXES = ['kilo', 'hecto', 'déca', '', 'déci', 'centi', 'milli'];
+	const longueurs = (chiffres: string[]): ColonneConversion[] =>
+		['km', 'hm', 'dam', 'm', 'dm', 'cm', 'mm'].map((u, i) =>
+			col(u, `${PREFIXES[i]}mètre`, chiffres[i]),
+		);
+
+	it('« 3 cm = ? mm » : l’ancrage ne pose que le 3, pas les cinq zéros qui le précèdent', () => {
+		const colonnes = longueurs(['0', '0', '0', '0', '0', '3', '0']);
+		const deroule = derouleConversion({ colonnes, depart: 'cm', cible: 'mm' });
+		expect(deroule.titre).toBe('3 cm = ? mm');
+		expect(deroule.pas[0].phrase).toContain('3 cm');
+		expect(deroule.pas[0].phrase).toContain('centimètres');
+		expect(deroule.pas[0].ecritures).toEqual([{ cible: cibleColonne(5), texte: '3' }]);
+		// 1 ancrage + 1 colonne de chemin (mm) + 1 pas groupé (les cinq de gauche) + 1 lecture.
+		expect(deroule.pas.length).toBe(4);
+		expect(deroule.pas[1].ecritures).toEqual([{ cible: cibleColonne(6), texte: '0' }]);
+		expect(deroule.pas[1].phrase).toContain('millimètres');
+		expect(deroule.pas[2].ecritures?.map((e) => e.cible)).toEqual(
+			[0, 1, 2, 3, 4].map(cibleColonne),
+		);
+		expect(deroule.pas[3].phrase).toContain('3 cm = 30 mm');
+		// Aucune case laissée à deviner : les sept colonnes sont écrites, chacune une fois.
+		const ecrites = deroule.pas.flatMap((p) => (p.ecritures ?? []).map((e) => e.cible));
+		expect(ecrites.slice().sort()).toEqual(colonnes.map((_, i) => cibleColonne(i)).sort());
+	});
+
+	it('« 250 cm = ? m » : la colonne demandée porte un vrai chiffre, on n’y écrit pas 0', () => {
+		/* Ici la cible est DANS le nombre donné (2 m 5 dm 0 cm). Dire « rien à compter dans la
+       colonne des mètres » y serait un contresens énoncé au moment même où l'on écrit un 2,
+       et la lecture doit poser la virgule juste après cette colonne — jamais la « décaler ». */
+		const colonnes = longueurs(['0', '0', '0', '2', '5', '0', '0']);
+		const deroule = derouleConversion({ colonnes, depart: 'cm', cible: 'm' });
+		expect(deroule.titre).toBe('250 cm = ? m');
+		// L'ancrage couvre les trois colonnes du nombre donné (m, dm, cm), pas les zéros de tête.
+		expect(deroule.pas[0].ecritures).toEqual([
+			{ cible: cibleColonne(3), texte: '2' },
+			{ cible: cibleColonne(4), texte: '5' },
+			{ cible: cibleColonne(5), texte: '0' },
+		]);
+		// 1 ancrage + 0 colonne de chemin (la cible est déjà posée) + 1 pas groupé + 1 lecture.
+		expect(deroule.pas.length).toBe(3);
+		expect(deroule.pas[1].ecritures?.map((e) => e.cible)).toEqual([0, 1, 2, 6].map(cibleColonne));
+		expect(deroule.pas[2].phrase).toContain('250 cm = 2,5 m');
+		expect(deroule.pas[2].phrase).toContain('virgule');
+		expect(deroule.pas.map((p) => p.phrase).join(' ')).not.toMatch(/d[ée]cal(e|er|age)/);
+	});
+});
+
+/* ============================================================
+   4. DÉGRADATION ET FIDÉLITÉ — mieux vaut pas de panneau qu’une colonne désignée à tort
    ============================================================ */
 describe('derouleConversion / conversionDepuisTableau — refus propre', () => {
 	const TABLE = [
@@ -254,6 +397,16 @@ describe('derouleConversion / conversionDepuisTableau — refus propre', () => {
 		col('dam', 'décamètre', '0'),
 		col('m', 'mètre', '0'),
 	];
+	const brut = TABLE.map((c) => ({ ...c, transit: false }));
+	const specDe = (
+		colonnes: { unite: string; nom: string; transit: boolean; chiffres: string }[],
+		uniteConnue: string,
+		answerUnit: string,
+	): ConversionSpec => {
+		const spec = conversionDepuisTableau({ colonnes, answerUnit, uniteConnue });
+		if (!spec) throw new Error(`aucune spécification : ${uniteConnue} → ${answerUnit}`);
+		return spec;
+	};
 
 	it('une unité absente du tableau : déroulé vide, donc pas de panneau', () => {
 		expect(derouleConversion({ colonnes: TABLE, depart: 'cm', cible: 'm' }).pas).toEqual([]);
@@ -261,56 +414,87 @@ describe('derouleConversion / conversionDepuisTableau — refus propre', () => {
 		expect(derouleMontrable(derouleConversion({ colonnes: TABLE, depart: 'cm', cible: 'm' }))).toBe(
 			false,
 		);
+		// Et en amont : une unité sans colonne ne donne aucune spécification, des deux côtés.
+		expect(
+			conversionDepuisTableau({ colonnes: brut, answerUnit: 'm', uniteConnue: 'cm' }),
+		).toBeUndefined();
+		expect(
+			conversionDepuisTableau({ colonnes: brut, answerUnit: 'mm', uniteConnue: 'km' }),
+		).toBeUndefined();
 	});
 
 	it('un tableau sans colonne ne se décrit pas', () => {
 		expect(derouleConversion({ colonnes: [], depart: 'km', cible: 'm' }).pas).toEqual([]);
-		expect(conversionDepuisTableau({ colonnes: [], answerUnit: 'm' })).toBeUndefined();
-	});
-
-	it('l’unité cherchée doit être une EXTRÉMITÉ de l’empan, sinon on ne déduit rien', () => {
-		// Le générateur pose toujours le tableau entre les deux unités de la paire. Si ce
-		// n'est pas le cas (unité cherchée au milieu), on ne peut pas savoir laquelle est
-		// donnée : désigner la mauvaise colonne serait pire que ne rien montrer.
-		const colonnes = TABLE.map((c) => ({ ...c, transit: false }));
-		expect(conversionDepuisTableau({ colonnes, answerUnit: 'dam' })).toBeUndefined();
-		expect(conversionDepuisTableau({ colonnes, answerUnit: 'hm' })).toBeUndefined();
-		expect(conversionDepuisTableau({ colonnes, answerUnit: 'cL' })).toBeUndefined();
-		// Une seule colonne : les deux extrémités se confondent, il n'y a pas de conversion.
 		expect(
-			conversionDepuisTableau({ colonnes: [{ ...colonnes[0] }], answerUnit: 'km' }),
+			conversionDepuisTableau({ colonnes: [], answerUnit: 'm', uniteConnue: 'km' }),
 		).toBeUndefined();
 	});
 
-	it('les deux extrémités sont bien reconnues, dans les deux sens', () => {
-		const colonnes = TABLE.map((c, i) => ({ ...c, transit: i === 1 || i === 2 }));
-		expect(conversionDepuisTableau({ colonnes, answerUnit: 'm' })?.depart).toBe('km');
-		expect(conversionDepuisTableau({ colonnes, answerUnit: 'km' })?.depart).toBe('m');
-		// Les colonnes de transit sont reportées telles quelles (même géométrie que l'exercice).
+	it('départ et cible confondus : il n’y a rien à convertir, donc rien à montrer', () => {
 		expect(
-			conversionDepuisTableau({ colonnes, answerUnit: 'm' })?.colonnes.map((c) => !!c.transit),
-		).toEqual([false, true, true, false]);
+			conversionDepuisTableau({ colonnes: brut, answerUnit: 'km', uniteConnue: 'km' }),
+		).toBeUndefined();
+		// Tableau d'une seule colonne : le cas ne peut être que celui-là.
+		expect(
+			conversionDepuisTableau({ colonnes: [brut[0]], answerUnit: 'km', uniteConnue: 'km' }),
+		).toBeUndefined();
+	});
+
+	it('l’unité donnée est celle de l’exercice, même quand elle n’est pas au bord du tableau', () => {
+		/* #711 : le tableau n'est plus taillé sur la paire convertie, donc la position d'une
+       colonne ne dit plus rien de la question. Une conversion entre deux colonnes
+       INTÉRIEURES (30 hm = ? dam) est désormais un cas ordinaire, et le déroulé doit parler
+       d'elle — pas des extrémités du tableau, qui poseraient « 3 km = ? m » à un enfant qui
+       lisait « 30 hm = ? dam ». */
+		expect(specDe(brut, 'hm', 'dam').depart).toBe('hm');
+		expect(specDe(brut, 'hm', 'dam').cible).toBe('dam');
+		expect(derouleConversion(specDe(brut, 'hm', 'dam')).titre).toBe('30 hm = ? dam');
+		// Cible intérieure, départ au bord — et l'inverse.
+		expect(derouleConversion(specDe(brut, 'km', 'dam')).titre).toBe('3 km = ? dam');
+		expect(derouleConversion(specDe(brut, 'hm', 'm')).titre).toBe('30 hm = ? m');
+		// Les deux sens, entre les deux extrémités : l'unité donnée n'est jamais inversée.
+		expect(specDe(brut, 'km', 'm').depart).toBe('km');
+		expect(specDe(brut, 'm', 'km').depart).toBe('m');
+		expect(derouleConversion(specDe(brut, 'm', 'km')).titre).toBe('3000 m = ? km');
+	});
+
+	it('les colonnes de transit sont reportées telles quelles (la grille de l’exercice)', () => {
+		// Le tableau montré à l'enfant démote les rangs hors programme : le déroulé doit
+		// travailler sur la MÊME grille, sinon il démontre dans un tableau qui n'est pas le sien.
+		const colonnes = TABLE.map((c, i) => ({ ...c, transit: i === 1 || i === 2 }));
+		expect(specDe(colonnes, 'km', 'm').colonnes.map((c) => !!c.transit)).toEqual([
+			false,
+			true,
+			true,
+			false,
+		]);
+		expect(specDe(colonnes, 'km', 'm').colonnes.map((c) => c.chiffres)).toEqual([
+			'3',
+			'0',
+			'0',
+			'0',
+		]);
 	});
 });
 
 /* ============================================================
-   4. ÉCHANTILLON — de VRAIS tableaux tirés par le catalogue
+   5. ÉCHANTILLON — de VRAIS tableaux tirés par le catalogue
    ------------------------------------------------------------
-   La déduction de l'unité de départ repose sur un invariant du générateur : on l'éprouve
-   donc sur ses tirages réels, dans les deux sens et sur les cas décimaux du CM1. L'unité
-   et la valeur ATTENDUES sont lues dans l'ÉNONCÉ (ce que l'enfant voit), et la réponse
-   dans `answer` (ce que l'exercice corrige) — deux sources indépendantes du module testé.
+   On éprouve le module sur les tirages réels du générateur, dans les deux sens, aux deux
+   niveaux et sur les cas décimaux. L'unité et la valeur ATTENDUES sont lues dans l'ÉNONCÉ
+   (ce que l'enfant voit), et la réponse dans `answer` (ce que l'exercice corrige) — deux
+   sources indépendantes du module testé.
    ============================================================ */
 interface Tire {
 	ou: string;
+	lecon: string;
+	niveau: NiveauTableau;
 	question: string;
 	answer: string;
 	answerUnit: string;
+	uniteConnue: string;
 	colonnes: { unite: string; nom: string; transit: boolean; chiffres: string }[];
 }
-
-const LECONS_TABLEAU = ['mes-longueurs', 'mes-masses', 'mes-contenances'];
-const NIVEAUX: SchoolLevel[] = ['ce2', 'cm1'];
 
 function tableaux(parCombinaison: number): Tire[] {
 	const out: Tire[] = [];
@@ -325,9 +509,12 @@ function tableaux(parCombinaison: number): Tire[] {
 					throw new Error(`${id}/${niveau} : type ${ex.type} au lieu d'un tableau`);
 				out.push({
 					ou: `${id}/${niveau}/${ex.question}`,
+					lecon: id,
+					niveau,
 					question: ex.question,
 					answer: ex.answer,
 					answerUnit: ex.answerUnit,
+					uniteConnue: ex.uniteConnue,
 					colonnes: ex.colonnes,
 				});
 			}
@@ -353,32 +540,65 @@ function enonce(question: string): { valeur: string; unite: string; cible: strin
 
 describe('INVARIANTS sur un large échantillon des vrais tableaux', () => {
 	const tires = tableaux(200);
+	/* Aucun tirage ne doit rester sans spécification : sinon les invariants ci-dessous
+     porteraient sur une liste vide et passeraient en ne gardant rien. */
+	const specObligatoire = (t: Tire): ConversionSpec => {
+		const spec = conversionDepuisTableau(t);
+		if (!spec) throw new Error(`aucune spécification : ${t.ou}`);
+		return spec;
+	};
 
-	it('l’échantillon couvre les deux sens, les décimaux et les colonnes de transit', () => {
+	it('la tranche de colonnes est FIXE par (leçon, niveau), quelle que soit la question', () => {
+		// #711 : le tableau ne se rétrécit plus autour de la paire convertie. Deux enfants de la
+		// même classe voient la même grille, et l'enfant qui enchaîne deux questions aussi.
 		expect(tires.length).toBe(LECONS_TABLEAU.length * NIVEAUX.length * 200);
-		const specs = tires.map((t) => ({ t, spec: conversionDepuisTableau(t) }));
-		const iDe = (s: ConversionSpec) => s.colonnes.findIndex((c) => c.unite === s.depart);
-		const iVers = (s: ConversionSpec) => s.colonnes.findIndex((c) => c.unite === s.cible);
-		const vus = specs
-			.filter((x) => x.spec)
-			.map((x) => ({ t: x.t, spec: x.spec as ConversionSpec }));
-		expect(vus.some(({ spec }) => iDe(spec) < iVers(spec))).toBe(true); // grande → petite
-		expect(vus.some(({ spec }) => iDe(spec) > iVers(spec))).toBe(true); // petite → grande
-		expect(vus.some(({ t }) => t.answer.includes(','))).toBe(true); // réponse décimale
-		expect(vus.some(({ t }) => enonce(t.question).valeur.includes(','))).toBe(true); // donnée décimale
-		expect(vus.some(({ t }) => t.colonnes.some((c) => c.transit))).toBe(true);
-		// Empans courts (une paire voisine) ET longs (×1000, trois colonnes à remplir).
-		expect(vus.some(({ t }) => t.colonnes.length === 2)).toBe(true);
-		expect(vus.some(({ t }) => t.colonnes.length === 4)).toBe(true);
+		for (const id of LECONS_TABLEAU)
+			for (const niveau of NIVEAUX) {
+				const grilles = new Set(
+					tires
+						.filter((t) => t.lecon === id && t.niveau === niveau)
+						.map((t) => t.colonnes.map((c) => c.unite).join(' ')),
+				);
+				expect([...grilles], `${id}/${niveau}`).toEqual([TRANCHE[id][niveau].join(' ')]);
+			}
 	});
 
-	it('l’unité de départ DÉDUITE est celle de l’énoncé, et jamais celle qu’on cherche', () => {
+	it('l’échantillon couvre les deux sens, le transit au CE2 et les décimaux au CM1', () => {
+		const vus = tires.map((t) => ({ t, spec: specObligatoire(t) }));
+		const iDe = (s: ConversionSpec) => s.colonnes.findIndex((c) => c.unite === s.depart);
+		const iVers = (s: ConversionSpec) => s.colonnes.findIndex((c) => c.unite === s.cible);
+		expect(vus.some(({ spec }) => iDe(spec) < iVers(spec))).toBe(true); // grande → petite
+		expect(vus.some(({ spec }) => iDe(spec) > iVers(spec))).toBe(true); // petite → grande
+		const ce2 = vus.filter(({ t }) => t.niveau === 'ce2');
+		const cm1 = vus.filter(({ t }) => t.niveau === 'cm1');
+		// Les décimaux sont une notion de CM1 : c'est là qu'on exige d'en rencontrer, des deux
+		// côtés du signe = (une donnée décimale à replacer, une réponse décimale à lire).
+		expect(cm1.some(({ t }) => t.answer.includes(','))).toBe(true);
+		expect(cm1.some(({ t }) => enonce(t.question).valeur.includes(','))).toBe(true);
+		// Le transit — un rang traversé mais hors programme, montré en pointillés — n'a de sens
+		// qu'au CE2. Au CM1 toute la chaîne des rangs est au programme : une colonne démotée y
+		// dirait à l'enfant qu'un rang qu'il étudie ne compte pas.
+		expect(ce2.some(({ t }) => t.colonnes.some((c) => c.transit))).toBe(true);
+		expect(cm1.filter(({ t }) => t.colonnes.some((c) => c.transit)).map(({ t }) => t.ou)).toEqual(
+			[],
+		);
+		// Les deux empans : une paire voisine (un seul cran) et un ×1000 (trois crans).
+		const crans = ({ spec }: { spec: ConversionSpec }) => Math.abs(iVers(spec) - iDe(spec));
+		expect(vus.some((x) => crans(x) === 1)).toBe(true);
+		expect(vus.some((x) => crans(x) === 3)).toBe(true);
+	});
+
+	it('l’unité de départ est celle de l’ÉNONCÉ, et jamais celle qu’on cherche', () => {
+		/* Le module ne déduit plus l'unité donnée de la géométrie du tableau (#711) : il relaie
+       celle que l'exercice porte. Ce qui reste à garder, et que la déduction cassait en
+       silence dès que le tableau a débordé la paire : l'unité relayée est bien celle que
+       l'enfant LIT dans l'énoncé, et jamais celle qu'on lui demande de trouver. */
 		const ratés: string[] = [];
 		for (const t of tires) {
 			const spec = conversionDepuisTableau(t);
 			const dit = enonce(t.question);
 			if (!spec) {
-				ratés.push(`${t.ou} — aucune spécification (l'invariant du générateur ne tient pas)`);
+				ratés.push(`${t.ou} — aucune spécification`);
 				continue;
 			}
 			if (spec.depart !== dit.unite) ratés.push(`${t.ou} — départ ${spec.depart} ≠ ${dit.unite}`);
@@ -392,8 +612,7 @@ describe('INVARIANTS sur un large échantillon des vrais tableaux', () => {
 	it('tout ce que le déroulé affirme est VRAI (valeur donnée, réponse, égalité finale)', () => {
 		const fautes: string[] = [];
 		for (const t of tires) {
-			const spec = conversionDepuisTableau(t);
-			if (!spec) continue; // signalé par le test précédent
+			const spec = specObligatoire(t);
 			const dit = enonce(t.question);
 			const deroule = derouleConversion(spec);
 			const faute = (raison: string) => fautes.push(`${t.ou} — ${raison}`);
@@ -435,7 +654,7 @@ describe('INVARIANTS sur un large échantillon des vrais tableaux', () => {
 				.join(' ')
 				.toLowerCase();
 			if (/ajoute[a-z]*\s+(des|un|le)\s+z[ée]ro/.test(texte)) faute('« ajoute des zéros »');
-			if (/d[ée]cal/.test(texte)) faute('« décale la virgule »');
+			if (/d[ée]cal(e|er|age)/.test(texte)) faute('« décale la virgule »');
 		}
 		expect({ nombre: fautes.length, premieres: fautes.slice(0, 3) }).toEqual({
 			nombre: 0,
@@ -443,21 +662,27 @@ describe('INVARIANTS sur un large échantillon des vrais tableaux', () => {
 		});
 	});
 
-	it('ce qui est ÉCRIT suit ce qui est DIT : une colonne à la fois, sans trou ni doublon', () => {
+	it('ce qui est ÉCRIT suit ce qui est DIT : chaque colonne une fois, les rangs vides nommés', () => {
 		const fautes: string[] = [];
 		for (const t of tires) {
-			const spec = conversionDepuisTableau(t);
-			if (!spec) continue;
+			const spec = specObligatoire(t);
 			const deroule = derouleConversion(spec);
-			if (!deroule.pas.length) continue;
 			const faute = (raison: string) => fautes.push(`${t.ou} — ${raison}`);
+			// Plancher : poser le nombre donné, puis le relire ailleurs. Quand ce nombre occupe
+			// déjà toute la grille (2000 g = ? kg), il ne reste aucune colonne vide à narrer —
+			// deux pas suffisent, et la notion est portée par la lecture.
+			if (deroule.pas.length < 2) {
+				faute(`déroulé réduit à ${deroule.pas.length} pas`);
+				continue;
+			}
+			const rang = (cible: string) => spec.colonnes.findIndex((_, i) => cibleColonne(i) === cible);
 			const iCible = spec.colonnes.findIndex((c) => c.unite === spec.cible);
 			const iDepart = spec.colonnes.findIndex((c) => c.unite === spec.depart);
 			const ecrites: string[] = [];
 			deroule.pas.forEach((p, k) => {
 				for (const e of p.ecritures ?? []) {
 					ecrites.push(e.cible);
-					const index = spec.colonnes.findIndex((_, i) => cibleColonne(i) === e.cible);
+					const index = rang(e.cible);
 					if (index < 0) faute(`pas ${k} : case « ${e.cible} » hors du tableau`);
 					else if (e.texte !== spec.colonnes[index].chiffres)
 						faute(`pas ${k} : écrit « ${e.texte} » dans ${spec.colonnes[index].unite}`);
@@ -467,30 +692,52 @@ describe('INVARIANTS sur un large échantillon des vrais tableaux', () => {
 					if (!spec.colonnes.some((_, i) => cibleColonne(i) === a))
 						faute(`pas ${k} : surligne « ${a} », hors du tableau`);
 			});
-			// Aucune case remplie deux fois, et toutes les colonnes de l'énoncé à la cible
-			// sont remplies (le tableau ne doit pas rester troué au dernier pas).
+			// 1. À la fin du déroulé, CHAQUE colonne du tableau a été écrite, et une seule fois.
+			//    Depuis la tranche fixe (#711), le tableau déborde la paire convertie : une case
+			//    laissée vide serait un rang que l'enfant devrait deviner tout seul.
 			if (new Set(ecrites).size !== ecrites.length) faute('une case remplie deux fois');
-			const attendues = Array.from({ length: Math.max(iDepart, iCible) + 1 }, (_, i) =>
-				cibleColonne(i),
-			);
-			for (const cible of attendues)
+			for (const cible of spec.colonnes.map((_, i) => cibleColonne(i)))
 				if (!ecrites.includes(cible)) faute(`colonne « ${cible} » jamais remplie`);
-			// Les pas du MILIEU sont les colonnes qu'on remplit une à une (le premier pose le
-			// nombre donné, le dernier relit) : chacune porte un 0 — dire « il n'y a rien à
-			// compter » d'une colonne qui porte un chiffre serait un contresens énoncé au moment
-			// même où on l'écrit —, et chacune est NOMMÉE (le 0 tient un rang, il ne « rallonge »
-			// pas le nombre). Critère structurel, indépendant de la rédaction du moment.
-			deroule.pas.slice(1, -1).forEach((p, k) => {
+			// 2. L'ancrage pose les chiffres du nombre DONNÉ, sur des colonnes contiguës, et ses
+			//    deux bouts sont des chiffres à lui : soit un chiffre non nul, soit sa colonne
+			//    d'unité. Sinon il annonce comme « ses chiffres » des zéros de remplissage.
+			const rangs = (deroule.pas[0].ecritures ?? []).map((e) => rang(e.cible));
+			const sien = (i: number) => i === iDepart || Number(spec.colonnes[i].chiffres) !== 0;
+			if (!rangs.length) faute("l'ancrage ne pose aucun chiffre");
+			else if (!sien(rangs[0]) || !sien(rangs[rangs.length - 1]))
+				faute(`ancrage débordant sur des zéros : colonnes ${rangs.join(',')}`);
+			if (rangs.some((r, k) => k > 0 && r !== rangs[k - 1] + 1))
+				faute(`ancrage sur des colonnes non contiguës : ${rangs.join(',')}`);
+			// 3. Les pas suivants (hors lecture finale) ne remplissent que des 0 — dire « il n'y a
+			//    rien à compter » d'une colonne qui porte un chiffre serait un contresens énoncé au
+			//    moment même où on l'écrit — et NOMMENT chaque colonne remplie (le 0 tient un rang,
+			//    il ne « rallonge » pas le nombre).
+			const milieu = deroule.pas.slice(1, -1);
+			milieu.forEach((p, k) => {
 				const ecritures = p.ecritures ?? [];
-				if (ecritures.length !== 1) {
-					faute(`pas ${k + 1} : ${ecritures.length} cases remplies au lieu d'une`);
-					return;
+				if (!ecritures.length) faute(`pas ${k + 1} : ne remplit rien`);
+				for (const e of ecritures) {
+					if (e.texte !== '0') faute(`pas ${k + 1} : remplit un ${e.texte} hors de l'ancrage`);
+					const index = rang(e.cible);
+					if (index >= 0 && !p.phrase.includes(`${spec.colonnes[index].nom}s`))
+						faute(`pas ${k + 1} : colonne non nommée — « ${p.phrase} »`);
 				}
-				if (ecritures[0].texte !== '0') faute(`pas ${k + 1} : remplit un ${ecritures[0].texte}`);
-				const index = spec.colonnes.findIndex((_, i) => cibleColonne(i) === ecritures[0].cible);
-				if (index >= 0 && !p.phrase.includes(`${spec.colonnes[index].nom}s`))
-					faute(`pas ${k + 1} : colonne non nommée — « ${p.phrase} »`);
 			});
+			// 4. Le chemin se fait colonne par colonne ; seules les colonnes RESTANTES, qui ne
+			//    portent aucune notion, sont groupées — en un seul pas, et à la fin.
+			const groupes = milieu
+				.map((p, k) => ({ k, n: (p.ecritures ?? []).length }))
+				.filter((x) => x.n > 1);
+			if (groupes.length > 1) faute(`${groupes.length} pas groupés au lieu d'un seul`);
+			if (groupes.length === 1 && groupes[0].k !== milieu.length - 1)
+				faute(`pas groupé avant la fin du chemin (pas ${groupes[0].k + 1})`);
+			// 5. La colonne DEMANDÉE n'est jamais noyée dans ce groupe : ou bien le nombre donné
+			//    l'occupe déjà (elle est dans l'ancrage), ou bien elle a son pas à elle.
+			const pasCible = deroule.pas.findIndex((p) =>
+				(p.ecritures ?? []).some((e) => e.cible === cibleColonne(iCible)),
+			);
+			if (pasCible > 0 && (deroule.pas[pasCible].ecritures ?? []).length !== 1)
+				faute(`la colonne demandée (${spec.cible}) est remplie en groupe`);
 		}
 		expect({ nombre: fautes.length, premieres: fautes.slice(0, 3) }).toEqual({
 			nombre: 0,

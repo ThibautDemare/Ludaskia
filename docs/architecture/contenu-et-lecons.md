@@ -1030,17 +1030,26 @@ CM1 (l'`echelle` est portée par le niveau CE2 du `calibrated`, exposée aux deu
 **absente pour les durées** (base 60, un tableau décimal y donnerait des réponses
 fausses) qui restent mono-mode. `generateTableau` part de la **même instance
 tirée** que la saisie (`pickConversionInstance`, aucune duplication de la logique
-sens/décimal) et affiche un **empan variable** : seulement la tranche contiguë de
-l'échelle entre la grande et la petite unité de la paire (« 3 km = ? m » →
-km·hm·dam·m, jamais km→mm). La quantité s'étale un chiffre par colonne, la colonne
-de tête absorbant les chiffres de poids fort (1-2 chiffres). Les unités de l'empan
-non étudiées au niveau sont des **colonnes de transit** (en-tête démoté + case
-pointillés, mais saisissables — l'enfant y écrit des 0). **Invariant** : zéro de
-transit et virgule ne coexistent **jamais** dans un même exercice (les colonnes de
-transit n'apparaissent que sur les paires ×1000 strictement entières ; une virgule
-n'apparaît que sur les paires ×10/×100 décimales CM1, dont toutes les unités
-intermédiaires sont déjà enseignées). Rendu et interaction (pavé de chiffres
-externe, avance automatique) dans `ui/lecon-tableau.ts` (cf.
+sens/décimal) et affiche une **tranche FIXE par couple (leçon, niveau)** : elle
+couvre toutes les unités nommées par les `conversions` du niveau, quelle que soit la
+paire tirée (longueurs : km→mm aux deux niveaux ; masses : kg→g au CE2, kg→mg au CM1 ;
+contenances : L→cL au CE2, hL→mL au CM1). Jusqu'à #711 l'empan était **variable**,
+taillé sur la paire : l'unité connue et l'unité cible étaient donc toujours les deux
+bords, et « recopier les chiffres puis compléter de zéros jusqu'à l'autre bord »
+répondait juste à 100 % des items sans lire un seul nom d'unité. Avec une tranche fixe,
+l'enfant doit décider lui-même **où commencer à écrire** et **où lire la réponse**. La
+quantité s'étale un chiffre par colonne **à son rang**, la colonne de tête absorbant les
+chiffres de poids fort (1-2 chiffres) et valant « 0 » quand la quantité n'atteint pas ce
+rang : l'enfant remplit **toutes** les cases, zéros de tête compris (pas de case à
+laisser vide — un seul geste inédit à la fois). Un **bord subsiste** sur une seule
+leçon-niveau, assumé et écrit dans le code : les masses au CE2 n'ont qu'une relation au
+programme (1 kg = 1 000 g), donc la tranche s'y réduit à la paire. Les unités de la
+tranche non étudiées au niveau sont des **colonnes de transit** (en-tête démoté + case
+pointillés, mais saisissables) — elles ne vivent plus qu'au **CE2**. **Invariant** :
+zéro de transit et virgule ne coexistent **jamais** dans un même exercice ; il tient
+désormais parce que le CM1 n'a plus aucune colonne démotée et que le CE2 n'a aucun
+décimal.
+Rendu et interaction (pavé de chiffres externe, avance automatique) dans
 [Rendu & interactions](ui.md)).
 
 Le CM1 élargit les plages (1–20) et ajoute des unités déjà au programme (dm, g↔mg,
@@ -1061,6 +1070,19 @@ décimale générique. Les 4 leçons, jusqu'ici CE2-only au catalogue, sont dés
 surfacées au CM1 et insérées dans `ORDRE_LECONS.math.cm1` après le bloc décimaux
 (#246/#247) — transfert pédagogique volontaire (écriture à virgule et valeur de
 position décimale tout juste stabilisées).
+
+Depuis #711 le CM1 nomme en outre **toute sa chaîne de rangs** — hm/dam pour les
+longueurs, hg/dag/dg/cg pour les masses, hL/daL pour les contenances (programme :
+« du millimètre au kilomètre », « du milligramme au kilogramme », « du millilitre à
+l'hectolitre ») —, ce qui fait disparaître toute colonne de transit à ce niveau et a
+demandé d'allonger `ECHELLE_CONTENANCE` jusqu'à `hL`. Ces relations de rang portent
+`consolidation: true` : **entières** (jamais de décimal — « 4,5 kg » existe dans la vie
+d'un enfant, « 4,5 dag » nulle part) et tirées **une fois sur trois** par
+`tirerConversion`, pour ne pas diluer les relations d'ancrage (km↔m, m↔cm, kg↔g,
+L↔mL…) qui resservent partout ailleurs. Sans marquage `consolidation` — tout le CE2 —
+le tirage reste strictement uniforme. Effet de bord **assumé** : le mode saisie partage
+les mêmes `conversions`, donc un CM1 voit aussi apparaître « 3 km = ? hm » hors du
+tableau.
 
 **Grandes unités de temps (#252, CM1).** La config CM1 de `mes-durees` ajoute, EN PLUS
 de h↔min / min↔s, les relations **EXACTES** entre unités de temps : **1 siècle = 100 ans,

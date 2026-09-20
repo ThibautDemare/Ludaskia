@@ -62,7 +62,11 @@ test.describe('Galerie visuelle (#412)', () => {
 		// boards via des sélecteurs STABLES du vrai rendu (pas de duplication de markup) :
 		// si un board manquait (générateur cassé, extraction ratée), la galerie ne
 		// détecterait plus la régression du runner correspondant.
-		expect(await page.locator('[data-gallery^="runner-"]').count()).toBe(6);
+		// Sept, et non un par TYPE de runner : le tableau de conversion en a deux depuis #711,
+		// parce que sa largeur dépend de la leçon ET du niveau — les longueurs montrent sept
+		// colonnes dès le CE2, les masses seulement au CM1, avec les noms d'unité les plus
+		// longs du catalogue. Le cas le plus dense n'était comparé à aucune baseline.
+		expect(await page.locator('[data-gallery^="runner-"]').count()).toBe(7);
 		expect(
 			await page.locator('[data-gallery="runner-tuiles"] #ltuiBac .tuile').count(),
 		).toBeGreaterThan(0);

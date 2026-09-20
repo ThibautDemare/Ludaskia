@@ -42,7 +42,7 @@
    ============================================================ */
 import '../styles/galerie.scss';
 import { getAllLessons, getLessonById, CATEGORIES, SUBJECTS } from '../core/catalog';
-import type { LessonDef } from '../core/catalog';
+import type { LessonDef, SchoolLevel } from '../core/catalog';
 import { labelLecon } from '../core/levels';
 import { buildLessonFiche } from '../core/build';
 import { createRenderContext } from '../core/items';
@@ -76,10 +76,19 @@ interface RunnerExemple {
 /* Génère l'Exercise d'une leçon à son premier niveau (comme les fiches), pour le
    mode demandé. Lève si la leçon a disparu du catalogue (signal de maintenance en
    dev — la galerie est DEV-only). */
-function genExemple(lessonId: string, mode?: string): { lesson: LessonDef; ex: Exercise } {
+/* `niveau` par défaut = le PREMIER niveau de la leçon (le CE2 pour la quasi-totalité du
+   catalogue). Le forcer sert aux cas où c'est un niveau SUPÉRIEUR qui produit le rendu le
+   plus exigeant : le tableau de conversion des masses, par exemple, ne montre ses sept
+   colonnes — et les noms d'unité les plus longs du projet — qu'au CM1 (#711). */
+function genExemple(
+	lessonId: string,
+	mode?: string,
+	niveau?: SchoolLevel,
+): { lesson: LessonDef; ex: Exercise; niveau: SchoolLevel } {
 	const lesson = getLessonById(lessonId);
 	if (!lesson) throw new Error(`Galerie (#419) : leçon inconnue « ${lessonId} ».`);
-	return { lesson, ex: lesson.exerciseType.generate({ mode, level: lesson.levels[0] }) };
+	const level = niveau ?? lesson.levels[0];
+	return { lesson, ex: lesson.exerciseType.generate({ mode, level }), niveau: level };
 }
 
 /* Enveloppe « scène » commune aux runners à WIDGET (tuiles/ordre/tri/appariement) :
@@ -203,18 +212,41 @@ const RUNNER_EXEMPLES: RunnerExemple[] = [
   </div>`.balisage;
 		},
 	},
+	/* DEUX tableaux capturés, et pas un seul : la tranche fixe (#711) fait varier la largeur
+	   du tableau avec la leçon ET le niveau, or `genExemple` prend par défaut le premier
+	   niveau de la leçon. Les longueurs montrent sept colonnes dès le CE2 ; les masses ne les
+	   montrent qu'au CM1, avec les noms d'unité les plus longs du catalogue
+	   (« hectogrammes », « centigrammes »). Sans la seconde entrée, le cas le plus défavorable
+	   du projet n'était comparé à aucune baseline (constat relecteur-accessibilite). */
 	{
 		gallery: 'runner-tableau',
-		titre: 'Runner — tableau de conversion (mesures)',
+		titre: 'Runner — tableau de conversion (longueurs, CE2)',
 		render(host) {
-			const { lesson, ex } = genExemple('mes-longueurs', 'tableau');
+			const { lesson, ex, niveau } = genExemple('mes-longueurs', 'tableau');
 			if (ex.type !== 'tableauConversion') throw new Error('Galerie : type tableau attendu.');
 			// Markup pur PARTAGÉ avec le runner live (renderTableauBoardHTML) SANS
 			// wireInteraction : pas de listener `document`, aucun effet de bord.
 			const cells = buildCells(ex);
 			host.innerHTML = html`<div class="sprint sprint-lecon tc-runner">
     <div class="sprint-stage">
-      <div class="sprint-theme"><span class="sprint-lesson">${labelLecon(lesson, lesson.levels[0])}</span></div>
+      <div class="sprint-theme"><span class="sprint-lesson">${labelLecon(lesson, niveau)}</span></div>
+      ${renderTableauBoardHTML(ex, cells)}
+    </div>
+  </div>`.balisage;
+		},
+	},
+	{
+		gallery: 'runner-tableau-masses',
+		titre: 'Runner — tableau de conversion (masses, CM1 : le plus large)',
+		render(host) {
+			const { lesson, ex, niveau } = genExemple('mes-masses', 'tableau', 'cm1');
+			if (ex.type !== 'tableauConversion') throw new Error('Galerie : type tableau attendu.');
+			// Markup pur PARTAGÉ avec le runner live (renderTableauBoardHTML) SANS
+			// wireInteraction : pas de listener `document`, aucun effet de bord.
+			const cells = buildCells(ex);
+			host.innerHTML = html`<div class="sprint sprint-lecon tc-runner">
+    <div class="sprint-stage">
+      <div class="sprint-theme"><span class="sprint-lesson">${labelLecon(lesson, niveau)}</span></div>
       ${renderTableauBoardHTML(ex, cells)}
     </div>
   </div>`.balisage;

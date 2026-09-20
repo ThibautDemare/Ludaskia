@@ -442,3 +442,20 @@ du jour » AVANT « La dictée de la semaine », donc avant d'avoir expliqué co
 liste. Un parent qui suit la page dans l'ordre peut se heurter au refus d'ajout. On ne
 réordonne pas le guide pour autant : il est organisé par intention et non par ordre
 d'écran, et le message de refus nomme désormais lui-même l'endroit où créer une liste.
+
+## Énumération d'unités adressée à l'enfant : courte entre parenthèses, sinon détachée (#711)
+
+Une parenthèse qui énumère des noms d'unités reste lisible à **deux ou trois** noms ;
+au-delà, elle coupe la phrase à l'endroit même où l'enfant doit tenir le fil du
+raisonnement. Passer alors à un **deux-points en fin de phrase**, ou à deux phrases
+courtes. Cas posé par #711 : le tableau de conversion affichant désormais une tranche de
+colonnes fixe, le pas d'étayage qui groupe les colonnes restantes peut en nommer **cinq**
+d'un coup — terrain nouveau, là où la convention en place (`explicationRangVide`) n'en
+avait jamais plus de deux.
+
+Corollaire tiré du même cas : un pas d'un déroulé ne peut pas présumer de **ce qui le
+précède**. « Il n'y a rien **non plus** dans les colonnes qui restent » suppose un pas
+antérieur de même nature ; sur « 250 cm = ? m » la colonne cible est déjà dans l'ancrage,
+le chemin est vide, et ce pas est le PREMIER à parler de rangs vides. Le « non plus »
+renvoyait alors à un référent inexistant. Un déroulé se compose de pas **conditionnels** :
+chaque phrase doit se tenir seule.

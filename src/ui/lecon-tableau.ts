@@ -15,6 +15,13 @@
    l'en-tête, ordre spatial grande→petite stable, légende courte permanente, aria-label
    par case en toutes lettres, aide illustrative rappelable. La virgule (paires décimales)
    est POSÉE par l'app en v1 (`virguleApres`) — un seul geste inédit à la fois.
+
+   ÉCARTÉ, une fois pour toutes (relecture a11y #711) : ajouter un RANG numérique à
+   l'aria-label des cases (« case 4 sur 7 ») alors que la tranche fixe en affiche jusqu'à
+   huit. Le nom d'unité est plus informatif qu'un ordinal, l'ordre spatial grande→petite
+   est stable d'un exercice à l'autre, et `#tcStatus` répète déjà ce nom à chaque frappe :
+   le rang n'ajouterait qu'une redondance à écouter. Consigné ici pour que le prochain
+   audit ne le re-remonte pas.
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
@@ -305,6 +312,7 @@ function wireInteraction(): void {
 			// physique continue d'atterrir dans la bonne case. Invisible au tactile (pas de
 			// clavier natif, pas de défilement grâce à preventScroll).
 			cellBtn(active)?.focus({ preventScroll: true });
+			garderCaseActiveEnVue();
 		});
 	const verif = sheets().querySelector('#tcVerif') as HTMLButtonElement;
 	verif.addEventListener('click', () => verifier());
@@ -386,6 +394,19 @@ function paintAll(): void {
 	refreshVerif();
 }
 
+/* Ramène la case active dans le champ visible du tableau, sans JAMAIS bouger la page.
+   Depuis #711 la tranche de colonnes est fixe : un tableau de longueurs en fait sept, soit
+   plus large que la scène (`.sprint` plafonne à 600 px), si bien que `.tc-wrap` défile en
+   temps normal et non plus seulement sur très petit écran. Le chemin du PAVÉ focalise la
+   case avec `preventScroll` — nécessaire pour ne pas faire sauter la page — ce qui, sans ce
+   rattrapage, laissait l'enfant écrire à l'aveugle dans une case surlignée sortie du cadre
+   (constat relecteur-accessibilite). `block: 'nearest'` interdit tout mouvement vertical,
+   `inline: 'nearest'` ne fait défiler que l'ancêtre horizontal le plus proche, au minimum.
+   Pas de `behavior: 'smooth'` : aucun mouvement animé à accorder à `prefers-reduced-motion`. */
+function garderCaseActiveEnVue(): void {
+	cellBtn(active)?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+}
+
 /* Déplace la case active (surbrillance) ; `focus` = déplacer AUSSI le focus DOM (nav clavier
    sur les cases). Le focusin resynchronisera `active` — idempotent, pas de boucle. */
 function setActive(i: number, focus = false): void {
@@ -394,6 +415,7 @@ function setActive(i: number, focus = false): void {
 	paintCell(prev);
 	paintCell(active);
 	if (focus) cellBtn(active)?.focus();
+	garderCaseActiveEnVue();
 }
 
 function saisir(d: string): void {
@@ -406,6 +428,7 @@ function saisir(d: string): void {
 	if (focusSuit) cellBtn(active)?.focus();
 	// Retour vocal (surtout path pavé, focus hors case) : ce qu'on vient d'écrire, où.
 	announce(`${cells[prev].aria} : ${d}`);
+	garderCaseActiveEnVue();
 	refreshVerif();
 }
 
@@ -424,6 +447,7 @@ function effacer(): void {
 		if (focusSuit) cellBtn(active)?.focus();
 		announce(`${cells[active].aria} effacé`);
 	}
+	garderCaseActiveEnVue();
 	refreshVerif();
 }
 

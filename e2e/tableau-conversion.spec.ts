@@ -89,3 +89,54 @@ test('mes-masses (tableau) : une case fausse donne un ✗ et affiche la bonne r�
 	await expect(page.locator('#tcFeedback')).toContainText('La bonne réponse était');
 	expect(errors).toEqual([]);
 });
+
+/* Gate #711 (constat `relecteur-accessibilite`) : la tranche de colonnes étant fixe, le
+   tableau des longueurs en affiche sept — plus large que la scène, que `.sprint` plafonne à
+   600 px. Le débordement est donc la situation NORMALE, et non plus un cas limite de petit
+   écran. Le chemin du pavé focalise la case active avec `preventScroll` (pour ne pas faire
+   sauter la page), ce qui laissait l'enfant écrire à l'aveugle dans une case surlignée
+   sortie du cadre. Le test suit la case active jusqu'au bout d'une question et exige qu'elle
+   reste visible dans `.tc-wrap` à chaque frappe. */
+test('mes-longueurs (tableau) : la case active reste visible quand le tableau déborde', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'mode-mes-longueurs');
+	await page.locator('.mode-btn[data-mode="tableau"]').click();
+	await expect(page.locator('#tcTable')).toBeVisible();
+
+	const cellules = page.locator('.tc-cell');
+	const n = await cellules.count();
+	// Le cas n'a d'intérêt que si le tableau déborde vraiment de son cadre.
+	const deborde = await page
+		.locator('.tc-wrap')
+		.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+	expect(deborde, 'le tableau devrait déborder de .tc-wrap sur ce viewport').toBe(true);
+
+	for (let i = 0; i < n; i++) {
+		const chiffre = await cellules.nth(i).getAttribute('data-answer');
+		await page.locator(`.tc-pave-btn[data-chiffre="${chiffre ?? '0'}"]`).click();
+		// La dernière frappe n'avance plus : il n'y a pas de case suivante à suivre.
+		if (i === n - 1) break;
+		const dedans = await page.evaluate(() => {
+			const active = document.querySelector('.tc-cell--active');
+			const wrap = document.querySelector('.tc-wrap');
+			if (!active || !wrap) return null;
+			const a = active.getBoundingClientRect();
+			const w = wrap.getBoundingClientRect();
+			return {
+				visible: a.left >= w.left - 1 && a.right <= w.right + 1,
+				left: a.left,
+				wrapLeft: w.left,
+				right: a.right,
+				wrapRight: w.right,
+			};
+		});
+		expect(dedans, 'aucune case active trouvée').not.toBeNull();
+		expect(dedans!.visible, `case ${i + 1}/${n} hors du cadre : ${JSON.stringify(dedans)}`).toBe(
+			true,
+		);
+	}
+
+	expect(errors).toEqual([]);
+});

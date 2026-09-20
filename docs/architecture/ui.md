@@ -1763,6 +1763,23 @@ moteurs de rendu n'y coupent pas de ligne, et aucun nombre ne débordait au view
 constat de l'auteur des tests e2e) — une cohérence de style (`tabular-nums`, taille) restée à
 faire.
 
+### Un contenu qui déborde doit dire qu'il défile (#711)
+
+Règle de jugement, pas mécanisable : dès qu'un composant est plus large que la scène et
+s'en remet au défilement horizontal, il doit le **signaler** — texte discret ou indice
+visuel. On ne peut pas compter sur la seule avance automatique pour révéler le hors-champ
+colonne par colonne : elle couvre le remplissage séquentiel, pas la vue d'ensemble avant
+la première saisie, ni une navigation libre au clavier. Sur tablette et smartphone — la
+cible du produit — les barres de défilement sont en surimpression et invisibles tant
+qu'on n'a pas fait le geste : il n'y a donc **aucun** indice par défaut.
+
+Posé par le tableau de conversion (#711) : sa tranche de colonnes est désormais fixe, sept
+colonnes pour les longueurs, alors que `.sprint` plafonne la scène à 600 px. Le
+débordement y est la situation normale et non plus un cas limite de petit écran. La case
+active, elle, est ramenée dans le champ à chaque déplacement (`garderCaseActiveEnVue`,
+`ui/lecon-tableau.ts`) ; ce qui reste à traiter est le signalement lui-même, dont le
+traitement visuel (fondu de bord, chevron) revient au `designer-ux-enfant`.
+
 ### Sprint sans pression temporelle (#223)
 
 **Sprint sans pression temporelle (#223)** — 3ᵉ préférence de profil

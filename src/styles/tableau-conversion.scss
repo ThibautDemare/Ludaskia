@@ -80,6 +80,15 @@
 	   distinction de taille étudiée (gros) / transit (petit) voulue par #394. */
 	font-size: 1.2rem;
 }
+/* Les libellés d'en-tête ne se coupent JAMAIS : chaque colonne se dimensionne sur son
+   contenu et le tableau défile, il ne comprime pas. L'absence de retour à la ligne était
+   jusqu'ici un effet ÉMERGENT de la mise en page, pas une garantie déclarée — une future
+   contrainte de largeur sur `.tc-head` l'aurait réintroduite en silence (relecture a11y
+   #711). On la déclare donc. */
+.tc-head .tc-sym,
+.tc-head .tc-nom {
+	white-space: nowrap;
+}
 .tc-head .tc-nom {
 	font-family: var(--ui);
 	font-size: 0.66rem;

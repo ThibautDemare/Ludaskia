@@ -267,14 +267,19 @@ describe('#711 tableau — unités étudiées et colonnes de transit', () => {
 		}
 	});
 
-	it('critère 7 : au CE2, une colonne hors du programme reste marquée « pas encore vue »', () => {
+	it('critère 7 : au CE2, une colonne est démotée SI ET SEULEMENT SI elle est hors programme', () => {
 		for (const id of FAMILLES) {
 			const programme = PROGRAMME_CE2[id];
 			for (const ex of genTab(id, 'ce2', 200)) {
 				for (const col of ex.colonnes) {
-					if (!programme.includes(col.unite)) {
-						expect(col.transit, `${col.unite} présentée comme étudiée au CE2`).toBe(true);
-					}
+					const auProgramme = programme.includes(col.unite);
+					// Les DEUX sens. Le test ne tenait que le premier, et sa propre table savait
+					// pourtant que le décimètre est au programme CE2 : la colonne était démotée sur
+					// tous les items sans que rien ne le signale (constat relecteur-qualite).
+					expect(
+						col.transit,
+						`${col.unite} ${auProgramme ? 'au programme CE2 mais présentée comme pas encore vue' : 'présentée comme étudiée au CE2'}`,
+					).toBe(!auProgramme);
 				}
 			}
 		}
@@ -484,5 +489,47 @@ describe('#711 témoins des détecteurs', () => {
 			colonne('cm', '0'),
 		]);
 		expect(uneUniteEntouree(entouree)).toBe(true);
+	});
+});
+
+/* Gate #711 (constat `relecteur-qualite`) : ouvrir la chaîne de rangs au CM1 ne sert à rien
+   si l'enfant n'est jamais INTERROGÉ dessus. Les critères 5 et 6 ne vérifient que la
+   PRÉSENCE des colonnes, laquelle est garantie quoi qu'il arrive — la tranche et le marquage
+   se calculent sur toutes les relations configurées, tirées ou non. Un `tirerConversion` qui
+   ne sélectionnerait jamais le groupe « consolidation » laisserait donc tout vert, avec des
+   colonnes bien nommées sur lesquelles aucune question ne tomberait jamais : exactement le
+   défaut que ce lot dit corriger. */
+describe('#711 tirage — les rangs ouverts au CM1 sont réellement interrogés', () => {
+	// Unités que SEULES les relations de rang intermédiaire mettent en jeu.
+	const RANGS_CM1: Record<string, string[]> = {
+		'mes-longueurs': ['hm', 'dam'],
+		'mes-masses': ['hg', 'dag', 'dg', 'cg'],
+		'mes-contenances': ['hL', 'daL'],
+	};
+
+	it('chaque unité de rang apparaît comme unité connue ou cible sur un large échantillon', () => {
+		for (const [id, rangs] of Object.entries(RANGS_CM1)) {
+			const vues = new Set<string>();
+			for (const ex of genTab(id, 'cm1', 1200)) {
+				vues.add(ex.answerUnit);
+				vues.add(enonceConnu(ex.question).unite);
+			}
+			for (const unite of rangs) {
+				expect(vues.has(unite), `${id} CM1 : ${unite} affichée mais jamais interrogée`).toBe(true);
+			}
+		}
+	});
+
+	it('les relations d’ancrage restent majoritaires (elles resservent partout ailleurs)', () => {
+		// Pas un ratio exact — la pondération est un réglage, pas un contrat. Ce qui est tenu :
+		// le groupe de consolidation ne DOMINE pas. Sur les longueurs CM1, les items dont les
+		// DEUX unités sont des rangs intermédiaires doivent rester minoritaires.
+		const items = genTab('mes-longueurs', 'cm1', 1200);
+		const rangs = new Set(RANGS_CM1['mes-longueurs']);
+		const entreRangs = items.filter(
+			(ex) => rangs.has(ex.answerUnit) || rangs.has(enonceConnu(ex.question).unite),
+		).length;
+		expect(entreRangs).toBeGreaterThan(0);
+		expect(entreRangs).toBeLessThan(items.length / 2);
 	});
 });

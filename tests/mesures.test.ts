@@ -51,11 +51,21 @@ describe('Mesures — niveaux exposés (#287)', () => {
 });
 
 describe('Mesures — calibrage CE2 (programme 2025)', () => {
-	it('longueurs : le mm est au CE2 (cm↔mm, m↔mm) ; le dm est réservé au CM1', () => {
+	/* Le dm était exclu du CE2 — `expect(u.has('dm')).toBe(false)` — alors que la référence
+	   programme du dépôt nomme « les unités m, dm, cm, mm et km » et les « conversions
+	   m-dm-cm-mm » (docs/reference/programmes/ce2-maths.md:96-98). Le test verrouillait donc
+	   un défaut de calibrage. #711 l'a rendu voyant : la tranche de colonnes étant fixe, la
+	   colonne du décimètre s'affichait « pas encore vue en classe » sur TOUS les items de la
+	   leçon. Rétabli sur la référence, pas sur ce que le code faisait. */
+	it('longueurs : toute la chaîne m-dm-cm-mm du programme CE2 est exercée, plus km↔m', () => {
 		const u = unitsSeen('mes-longueurs', 'ce2');
-		expect(u.has('mm')).toBe(true); // mm de longueur = CE2
-		expect(u.has('cm')).toBe(true);
-		expect(u.has('dm')).toBe(false); // dm = CM1
+		for (const unite of ['km', 'm', 'dm', 'cm', 'mm']) {
+			expect(u.has(unite), `${unite} nommée au programme CE2 mais jamais exercée`).toBe(true);
+		}
+		// Rien AU-DELÀ de ce que le programme CE2 nomme : ni hm, ni dam.
+		for (const unite of ['hm', 'dam']) {
+			expect(u.has(unite), `${unite} exercée au CE2 alors qu'elle est hors programme`).toBe(false);
+		}
 	});
 
 	it('contenances : le dL est au CE2 ; le mL est réservé au CM1', () => {

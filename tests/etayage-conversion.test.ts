@@ -745,3 +745,41 @@ describe('INVARIANTS sur un large échantillon des vrais tableaux', () => {
 		});
 	});
 });
+
+/* Régression #711 (remontée du `redacteur-contenu-francais`) : un pas d'un déroulé ne peut
+   pas présumer de ce qui le précède. Le pas qui groupe les colonnes restantes disait « il
+   n'y a rien NON PLUS », ce qui suppose un pas antérieur de même nature — or sur
+   « 250 cm = ? m » la colonne cible est déjà dans l'ancrage, le chemin est vide, et ce pas
+   est le PREMIER à parler de rangs vides. Le renvoi pointait alors dans le vide. Le gate ne
+   vise pas la tournure pour elle-même : il tient la règle « chaque phrase se tient seule »,
+   consignée dans conventions-redaction.md. */
+describe('#711 déroulé — aucune phrase ne renvoie à un pas qui peut ne pas exister', () => {
+	it('« non plus » n’apparaît dans aucun pas, sur tous les tirages', () => {
+		const fautes: string[] = [];
+		for (const t of tableaux(150)) {
+			const spec = conversionDepuisTableau(t);
+			if (!spec) continue;
+			for (const [i, p] of derouleConversion(spec).pas.entries()) {
+				if (/non plus/i.test(p.phrase)) fautes.push(`${t.ou} — pas ${i + 1} : ${p.phrase}`);
+			}
+		}
+		expect({ nombre: fautes.length, premieres: fautes.slice(0, 3) }).toEqual({
+			nombre: 0,
+			premieres: [],
+		});
+	});
+
+	it('le cas qui a révélé la faute existe bien dans les tirages : un déroulé sans pas de chemin', () => {
+		// Sans ce témoin, le test ci-dessus resterait vert à vide le jour où plus aucun tirage
+		// ne produit un chemin vide — et ne garderait plus rien.
+		const sansChemin = tableaux(150).filter((t) => {
+			const spec = conversionDepuisTableau(t);
+			if (!spec) return false;
+			const pas = derouleConversion(spec).pas;
+			// Ancrage + pas groupé + lecture, sans aucun pas « une colonne à la fois ».
+			const nommesUneAUne = pas.filter((p) => (p.ecritures ?? []).length === 1).length;
+			return pas.length >= 3 && nommesUneAUne <= 1;
+		});
+		expect(sansChemin.length).toBeGreaterThan(0);
+	});
+});

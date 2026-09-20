@@ -201,6 +201,10 @@ export function derouleConversion(spec: ConversionSpec): DerouleEtayage {
 	//    empan de la paire, et l'enfant doit les remplir aussi. Groupées en UN pas — ce sont
 	//    des rangs où il n'y a rien, pas la notion qu'on démontre ; les détailler une à une
 	//    noierait les pas qui, eux, comptent.
+	//    Pas de « non plus » dans la phrase : ce pas n'est pas toujours précédé d'un pas de
+	//    même nature — sur « 250 cm = ? m » le chemin est vide, et il est alors le PREMIER à
+	//    parler de rangs vides. Deux phrases courtes plutôt qu'une parenthèse, aussi : elle
+	//    peut énumérer jusqu'à cinq unités (avis redacteur-contenu-francais).
 	const vues = new Set([...posees, ...chemin]);
 	const restantes = colonnes.map((_, i) => i).filter((i) => !vues.has(i));
 	if (restantes.length) {
@@ -209,7 +213,7 @@ export function derouleConversion(spec: ConversionSpec): DerouleEtayage {
 			phrase:
 				noms.length === 1
 					? `Rien à compter dans la colonne des ${noms[0]} : j'écris 0 pour qu'elle garde sa place.`
-					: `Il n'y a rien non plus dans les colonnes qui restent (${noms.join(', ')}) : j'écris 0 dans chacune pour qu'elles gardent leur place.`,
+					: `Il reste des colonnes vides : ${noms.join(', ')}. J'écris 0 dans chacune pour qu'elles gardent leur place.`,
 			ecritures: restantes.map(ecrit),
 			actifs: restantes.map(cibleColonne),
 		});

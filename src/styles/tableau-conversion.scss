@@ -30,9 +30,16 @@
 	color: var(--accent-dark);
 }
 
-/* Garde-fou petits écrans (320 px) : le tableau défile horizontalement plutôt que
-   de déborder ou d'écraser les colonnes. */
+/* Garde-fou petits écrans : le tableau DÉFILE horizontalement plutôt que de déborder ou
+   d'écraser les colonnes. `max-width` n'est pas décoratif — sans lui `overflow-x` ne mord
+   jamais : `.tc-table` est en `inline-flex`, donc sa largeur minimale est celle de toutes
+   les colonnes, et dans la colonne flex de `.sprint-stage` le conteneur se dimensionne sur
+   ce contenu au lieu de le contraindre. Mesuré à 640 px de tableau dans une scène de
+   341 px : le pavé de chiffres, centré sur cette largeur fantôme, recouvrait alors la zone
+   de décision et interceptait les clics. Invisible tant que le tableau tenait en 4 colonnes,
+   flagrant depuis que la tranche fixe en affiche 7 (#711). */
 .tc-wrap {
+	max-width: 100%;
 	overflow-x: auto;
 	padding: 2px;
 	margin-bottom: 8px;

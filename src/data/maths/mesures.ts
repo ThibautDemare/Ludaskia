@@ -17,9 +17,13 @@
    d'ajouter des unités DÉJÀ au programme du niveau.
 
    Calibrage pédagogique (avis pedagogue-primaire) :
-   - longueurs : CE2 m↔cm (×100), km↔m (×1000) ET cm↔mm (×10), m↔mm (×1000) —
-     le mm de LONGUEUR est au programme CE2 2025 (1 cm = 10 mm, 1 m = 1000 mm) ;
-     CM1 élargit à 1–20 et ajoute le dm.
+   - longueurs : CE2 m↔cm (×100), km↔m (×1000), cm↔mm (×10), m↔mm (×1000) ET la chaîne
+     m↔dm, dm↔cm (×10) — le mm comme le dm sont au programme CE2 2025, qui nomme « les
+     unités m, dm, cm, mm et km » et les « conversions m-dm-cm-mm et km-m »
+     (docs/reference/programmes/ce2-maths.md:96-98). Le dm y manquait, et #711 l'a rendu
+     visible : la tranche étant désormais fixe, sa colonne était démotée « pas encore vue
+     en classe » sur TOUS les items au lieu de quelques-uns. CM1 élargit à 1–20 et ouvre
+     ces paires au décimal.
    - masses : CE2 kg↔g (×1000) ; CM1 1–20 + g↔mg + le demi-kilo (500 g).
    - contenances : CE2 L↔cL (×100) ET L↔dL (×10) ; le mL (L↔mL, ×1000) relève du
      CM1 (franchir le millier), pas le dL.
@@ -298,6 +302,14 @@ function generateConversion(conversions: Conversion[]): Exercise {
 	};
 }
 
+/* Unités ÉTUDIÉES au niveau = celles qui figurent dans ses relations ; les autres colonnes
+   de la tranche sont « de transit » (en-tête démoté + case pointillés). Partagé par
+   l'exercice et par l'exemple d'étayage : les deux doivent démoter exactement les mêmes
+   colonnes, sinon le panneau montre un tableau qui ne ressemble pas à celui de la fiche. */
+function unitesEtudiees(conversions: Conversion[]): Set<string> {
+	return new Set(conversions.flatMap((c) => [c.big, c.small]));
+}
+
 /* Tranche de colonnes AFFICHÉE, FIXE pour un couple (leçon, niveau) — #711. Elle court de la
    plus grande à la plus petite unité qui apparaissent dans les `conversions` du niveau, et ne
    dépend donc PAS de la paire tirée.
@@ -347,18 +359,16 @@ function trancheFixe(echelle: EchelleUnite[], conversions: Conversion[]): Echell
 function generateTableau(config: MesureConfig): Exercise {
 	const echelle = config.echelle!;
 	const inst = pickConversionInstance(config.conversions);
-	// Unités ÉTUDIÉES au niveau = celles qui figurent dans ses conversions ; les autres colonnes
-	// sont « de transit » (en-tête démoté + case pointillés). L'équivalence reste exacte aux deux
-	// niveaux : au CE2 les relations configurées SONT les unités nommées par le programme, et au
-	// CM1 la chaîne de rangs est ouverte en entier. Le jour où une relation serait retirée pour
-	// doser la difficulté, sa colonne serait démotée À TORT ; il faudrait alors une liste
-	// d'unités « au programme » distincte des relations tirées — et surtout pas un troisième état
-	// visuel à faire comprendre à l'enfant (avis pedagogue-primaire).
-	const etudiees = new Set<string>();
-	for (const c of config.conversions) {
-		etudiees.add(c.big);
-		etudiees.add(c.small);
-	}
+	// Les colonnes non ÉTUDIÉES au niveau sont « de transit » (en-tête démoté + case
+	// pointillés). Ce calcul se fait sur les relations configurées, donc il ne dit la vérité
+	// que si celles-ci couvrent bien les unités nommées par le programme du niveau — ce
+	// n'était pas le cas du décimètre au CE2, absent de toute relation alors que le programme
+	// le nomme, et la tranche fixe le démotait sur TOUS les items (constat relecteur-qualite,
+	// corrigé en ajoutant m↔dm et dm↔cm). Si une relation devait un jour être retirée pour
+	// doser la difficulté, il faudrait une liste d'unités « au programme » distincte des
+	// relations tirées — et surtout pas un troisième état visuel à faire comprendre à
+	// l'enfant (avis pedagogue-primaire). Le test « critère 7 » tient les deux sens.
+	const etudiees = unitesEtudiees(config.conversions);
 	const span = trancheFixe(echelle, config.conversions);
 	const n = span.length;
 	// `sPetit` est la quantité dans la petite unité de la PAIRE, qui n'est plus forcément la
@@ -502,8 +512,11 @@ function exempleTableau(
 	cible: string,
 ): { colonnes: ColonneExemple[]; depart: string; cible: string } {
 	const span = trancheFixe(config.echelle!, config.conversions);
-	const etudiees = new Set(config.conversions.flatMap((c) => [c.big, c.small]));
+	const etudiees = unitesEtudiees(config.conversions);
 	const iDepart = span.findIndex((u) => u.unite === depart);
+	// Même parti que `trancheFixe` : une unité de départ hors tranche (typo au prochain
+	// exemple) donnerait un exemple à l'échelle fausse, en silence. Mieux vaut échouer net.
+	if (iDepart < 0) throw new Error(`Exemple d'étayage : unité de départ hors tranche (${depart})`);
 	const chiffres = chiffresParColonne(valeur * 10 ** (span.length - 1 - iDepart), span.length);
 	return {
 		colonnes: span.map((u, i) => ({
@@ -551,13 +564,15 @@ function etayageConversion(
    d'étayage (`exempleTableau`) : l'exemple montré à l'enfant est alors calculé sur la même
    tranche et les mêmes relations que ses exercices, et ne peut plus dériver. */
 const CONFIG_LONGUEURS: Record<'ce2' | 'cm1', MesureConfig> = {
-	// CE2 : m↔cm, km↔m, ET cm↔mm / m↔mm (mm de longueur = CE2).
+	// CE2 : toute la chaîne nommée par le programme — m↔cm, km↔m, et m-dm-cm-mm.
 	ce2: {
 		echelle: ECHELLE_LONGUEUR,
 		conversions: [
 			{ big: 'm', small: 'cm', factor: 100 },
 			{ big: 'km', small: 'm', factor: 1000 },
 			{ big: 'cm', small: 'mm', factor: 10 },
+			{ big: 'm', small: 'dm', factor: 10 },
+			{ big: 'dm', small: 'cm', factor: 10 },
 			{ big: 'm', small: 'mm', factor: 1000 },
 		],
 	},

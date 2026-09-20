@@ -1381,11 +1381,14 @@ niveau, sans DOM ni stockage :
   **`lireDansUnite(colonnes, i)`** porte la notion entière en une fonction (le même
   tableau donne « 3 » en kilomètres et « 3 000 » en mètres) et sert autant à retrouver le
   nombre donné qu'à énoncer la réponse ; **`conversionDepuisTableau(ex)`** tire la
-  spécification de l'exercice RATÉ en déduisant l'unité de départ d'un invariant du
-  générateur (le tableau couvre exactement l'empan de la paire convertie, l'unité
-  cherchée est l'une de ses deux extrémités). La narration nomme l'unité de chaque
-  colonne vide et ne dit JAMAIS « on ajoute des zéros » ni « on décale la virgule » —
-  raccourcis qui marchent sur les entiers et cassent au premier décimal.
+  spécification de l'exercice RATÉ. L'unité de départ y est **portée par l'exercice**
+  (`uniteConnue`, #711), non plus déduite de sa géométrie : la tranche fixe a supprimé
+  l'invariant « le tableau couvre l'empan de la paire, donc l'unité cherchée est l'une de
+  ses deux extrémités », et la déduction se serait alors trompée en SILENCE — soit plus
+  aucun étayage (cible à l'intérieur), soit un déroulé qui démontre la conversion d'un
+  autre exercice. La narration nomme l'unité de chaque colonne vide et ne dit JAMAIS
+  « on ajoute des zéros » ni « on décale la virgule » — raccourcis qui marchent sur les
+  entiers et cassent au premier décimal.
 - **`etayage-droite.ts`** — le placement sur la droite graduée. Trois pas, jamais plus :
   la tâche est une décision perceptive, pas une accumulation, et la découper davantage
   produirait du bavardage (avis `pedagogue-primaire`). L'ordre est celui du raisonnement

@@ -301,50 +301,55 @@ test('#501 (critère 1, révision) : révision CM1 « J’encadre et j’interca
 
 /* ---------- 7. Tableau de conversion (ui/lecon-tableau.ts + lecon-runner-shared.ts) ---------- */
 
-/* Cherche, dans une session de tableau (8 questions), la PREMIÈRE dont la réponse
-   franchit le seuil de groupement (≥ 10 000). Sur « mes-masses » CM1, les DEUX SEULES
-   conversions (kg→g, g→mg, factor 1000, maxBig 20 — mode tableau : ignore les `facts`,
-   cf. data/maths/mesures.ts) y arrivent dès que le tirage choisit le sens grande→petite
-   (~60 %) avec une valeur ≥ 10 (~50 %) : ~30 % par question, quasi sûr sur 8.
+/* Cherche, dans une session de tableau (8 questions), la PREMIÈRE dont la réponse franchit
+   le seuil de groupement (≥ 10 000) ET reste ENTIÈRE : c'est le seul cas où le nombre
+   affiché porte une espace fine et aucune virgule.
 
-   PIÈGE (constaté en local, flake ~40 % avant correction) : le tableau affiche TOUJOURS
-   la quantité `sPetit` en position, quel que soit le sens de la question — compter les
-   cases (`.tc-cell`) ne dit donc RIEN de la magnitude de `ex.answer`. Sur « 17000 g =
-   ? kg », les 5 cases affichent les chiffres de 17000 (la valeur CONNUE), alors que la
-   réponse attendue est « 17 kg », minuscule. Seul l'énoncé (`.tc-enonce`) dit le sens :
-   en grande→petite, la valeur CONNUE (juste avant le signe « = ») est elle-même petite
-   (1-20, c'est `v`) ; en petite→grande, elle vaut `v × 1000` (≥ 1000). Qualifie donc une
-   question dont le nombre EN TÊTE D'ÉNONCÉ tombe dans [10, 20] : grande→petite ET v ≥ 10.
+   Depuis #711 la tranche de colonnes est FIXE, et les chiffres des cases valent la quantité
+   dans la plus petite unité de la TRANCHE, pas dans l'unité cible. Sur « 20 kg = ? g » au
+   CM1, le tableau va du kilogramme au milligramme et affiche 20000000, quand la réponse est
+   20 000 g. La magnitude ne se lit donc plus sur le nombre de cases, et ne s'infère plus non
+   plus de l'énoncé : les relations de rang ajoutées au CM1 sont en ×10, si bien que
+   « 20 dg = ? g » met un nombre de tête dans [10, 20] au service d'une réponse de 2 g. On la
+   CALCULE : les chiffres jusqu'à la dernière case de la colonne cible, zéros de tête ôtés.
+   L'unité cible est celle collée au « ? » dans l'énoncé ; chaque colonne porte son symbole
+   dans `.tc-sym`.
 
-   Les questions qui ne qualifient pas sont répondues JUSTES pour avancer (chiffre lu sur
-   `data-answer` de chaque case, jamais recalculé). Relance une session neuve (jusqu'à 6)
-   si aucune des 8 questions ne convient — résidu négligeable (0,7^48 ≈ 0,06 %). Laisse la
-   page sur la question trouvée, cases NON remplies : à l'appelant de jouer la suite
-   (vérifier ou « Je ne sais pas »). */
+   Les questions qui ne qualifient pas sont PASSÉES (« Je ne sais pas », un clic) au lieu
+   d'être remplies case par case : à sept colonnes, remplir pour avancer coûtait à lui seul
+   le budget de 30 s du test. Laisse la page sur la question trouvée, cases NON remplies :
+   à l'appelant de jouer la suite (vérifier ou « Je ne sais pas »). */
 async function trouverTableauGroupe(
 	page: import('@playwright/test').Page,
-): Promise<string[] | null> {
-	for (let session = 0; session < 6; session++) {
+): Promise<{ chiffres: string[]; reponse: string } | null> {
+	for (let session = 0; session < 4; session++) {
 		await gotoHash(page, 'mode-mes-masses');
 		await page.locator('.mode-btn[data-mode="tableau"]').click();
 		await expect(page.locator('#tcTable')).toBeVisible();
 		for (let q = 0; q < 8; q++) {
-			const cellules = page.locator('.tc-cell');
-			await cellules.first().waitFor({ state: 'visible' });
+			await page.locator('.tc-cell').first().waitFor({ state: 'visible' });
+			const colonnes = await page.locator('.tc-col').evaluateAll((cols) =>
+				cols.map((c) => ({
+					sym: (c.querySelector('.tc-sym')?.textContent ?? '').trim(),
+					cases: Array.from(c.querySelectorAll('.tc-cell')).map(
+						(b) => b.getAttribute('data-answer') ?? '0',
+					),
+				})),
+			);
 			const enonce = await page.locator('.tc-enonce').innerText();
-			const connu = Number(enonce.match(/^\d+/)?.[0] ?? NaN);
-			const n = await cellules.count();
-			const chiffres: string[] = [];
-			for (let i = 0; i < n; i++) {
-				chiffres.push((await cellules.nth(i).getAttribute('data-answer')) ?? '0');
+			const cible = (enonce.split('=').find((membre) => membre.includes('?')) ?? '')
+				.replace('?', '')
+				.trim();
+			const iCible = colonnes.findIndex((c) => c.sym === cible);
+			if (iCible >= 0) {
+				const jusquACible = colonnes.slice(0, iCible + 1).flatMap((c) => c.cases);
+				const apresCible = colonnes.slice(iCible + 1).flatMap((c) => c.cases);
+				const reponse = jusquACible.join('').replace(/^0+(?=\d)/, '');
+				if (reponse.length >= 5 && apresCible.every((d) => d === '0')) {
+					return { chiffres: colonnes.flatMap((c) => c.cases), reponse };
+				}
 			}
-			if (connu >= 10 && connu <= 20) return chiffres; // franchit le seuil : laissé NON rempli
-			// Ignorée : répondue JUSTE pour avancer à la question suivante.
-			for (let i = 0; i < n; i++) {
-				await page.locator(`.tc-pave-btn[data-chiffre="${chiffres[i]}"]`).click();
-			}
-			await expect(page.locator('#tcVerif')).toBeEnabled();
-			await page.locator('#tcVerif').click();
+			await page.locator('#leconPasser').click();
 			if (q < 7) {
 				await expect(page.locator('#tcActions button')).toBeVisible();
 				await page.locator('#tcActions button').click();
@@ -361,11 +366,12 @@ test('#501 (critère 1, tableau de conversion) : une case fausse groupe le feedb
 	await page.addInitScript(SEED_CM1);
 	await seedAideVue(page); // le mode tableau déclenche l'aide au 1er lancement
 
-	const chiffres = await trouverTableauGroupe(page);
+	const trouve = await trouverTableauGroupe(page);
 	expect(
-		chiffres,
-		'une conversion ≥ 5 chiffres attendue sur 6 sessions de 8 questions',
+		trouve,
+		'une conversion à réponse entière ≥ 5 chiffres attendue sur 4 sessions de 8 questions',
 	).not.toBeNull();
+	const { chiffres, reponse } = trouve!;
 
 	// Répond FAUX à la première case (mod 10 + 1), juste aux autres.
 	const n = chiffres!.length;
@@ -384,9 +390,11 @@ test('#501 (critère 1, tableau de conversion) : une case fausse groupe le feedb
 	expect(texteVu).toContain(U202F);
 	expect(texteVu).not.toContain('.');
 	const texteRecolle = texteVu.split(U202F).join('');
-	// Valeur préservée : les chiffres (séparateurs et unité ôtés) sont EXACTEMENT ceux
-	// des cases du tableau — jamais recalculés depuis le DOM, lus tels quels.
-	expect(texteRecolle.replace(/\D/g, '')).toBe(chiffres!.join(''));
+	// Valeur préservée : le nombre affiché est EXACTEMENT la réponse que le tableau encode —
+	// ses chiffres relus en s'arrêtant à la colonne de l'unité cible, et non la juxtaposition
+	// de toutes les cases, qui vaut depuis #711 la quantité dans la plus petite unité de la
+	// tranche et non dans l'unité demandée.
+	expect(texteRecolle.replace(/\D/g, '')).toBe(reponse);
 
 	// Face OREILLE : la région annoncée (#tcVerdict, nommée par `statut:` dans
 	// lecon-tableau.ts) dit le MÊME nombre, jamais avec le séparateur de milliers —
@@ -407,11 +415,12 @@ test('#501 (tableau de conversion, « Je ne sais pas, montre-moi ») : la révé
 	await page.addInitScript(SEED_CM1);
 	await seedAideVue(page);
 
-	const chiffres = await trouverTableauGroupe(page);
+	const trouve = await trouverTableauGroupe(page);
 	expect(
-		chiffres,
-		'une conversion ≥ 5 chiffres attendue sur 6 sessions de 8 questions',
+		trouve,
+		'une conversion à réponse entière ≥ 5 chiffres attendue sur 4 sessions de 8 questions',
 	).not.toBeNull();
+	const { reponse } = trouve!;
 
 	// Sortie de secours (#467) : toujours actif, même « Vérifier » désactivé (aucune case
 	// remplie) — passe par `revelerSolution` (ui/lecon-passer.ts), un TROISIÈME point de
@@ -424,6 +433,7 @@ test('#501 (tableau de conversion, « Je ne sais pas, montre-moi ») : la révé
 	const texteVu = await revele.innerText();
 	expect(texteVu).toContain(U202F);
 	const texteRecolle = texteVu.split(U202F).join('');
+	expect(texteRecolle.replace(/\D/g, '')).toBe(reponse);
 
 	// Face OREILLE : balayage de TOUTES les régions live de l'écran — la révélation n'a pas
 	// de région fixe dédiée (`annoncerRevelation` cherche celle du widget, sinon la région

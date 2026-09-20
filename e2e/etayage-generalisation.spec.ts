@@ -101,12 +101,15 @@ test('tableau de conversion : le bouton persistant ouvre l’exemple canonique, 
 			.locator('#etayVisuel .tc-cell')
 			.evaluateAll((els) => els.filter((el) => (el.textContent ?? '').trim() !== '').length);
 
-	// 4 colonnes (km, hm, dam, m) : elles se remplissent une à une, sauf le dernier pas
-	// (relecture) qui n'écrit rien de plus.
-	const attendus = [1, 2, 3, 4, 4];
+	// 7 colonnes au CE2 (km…mm) depuis la tranche fixe de #711. Le déroulé pose le nombre
+	// donné (1 case), remplit une à une les colonnes jusqu'à l'unité cible (3 pas, jusqu'à la
+	// 4ᵉ case), groupe en UN pas les colonnes qui restent au-delà de la cible (dm, cm, mm →
+	// 7 cases), puis relit sans rien écrire de plus. Le total de cases remplies est donc
+	// cumulatif, et la dernière étape ne le fait pas bouger.
+	const attendus = [1, 2, 3, 4, 7, 7];
 	expect(await rempli()).toBe(attendus[0]);
 	let e = await etape(page);
-	expect(e).toEqual({ i: 1, n: 5 });
+	expect(e).toEqual({ i: 1, n: 6 });
 	await suivantAtteignable(page);
 
 	for (let i = 1; i < attendus.length; i++) {

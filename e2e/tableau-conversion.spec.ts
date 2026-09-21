@@ -140,3 +140,207 @@ test('mes-longueurs (tableau) : la case active reste visible quand le tableau d�
 
 	expect(errors).toEqual([]);
 });
+
+/* ============================================================
+   Lot 3 (#711) : rendu portrait / paysage du tableau. Les quatre tests
+   ci-dessous couvrent les critères 11 à 14 de l'issue.
+   ============================================================ */
+
+/* Critère 12 : en paysage sous une hauteur donnée, tableau et pavé côte à côte,
+   les 7 colonnes des longueurs tiennent sans défilement. Viewport 851×393
+   d'après les mesures relevées sur le profil Chromium mobile du projet (tableau
+   entièrement visible, pavé à droite). */
+test('mes-longueurs (tableau, #711 critère 12) : en paysage le tableau et le pavé sont côte à côte, sans défilement', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.setViewportSize({ width: 851, height: 393 });
+	await gotoHash(page, 'mode-mes-longueurs');
+	await page.locator('.mode-btn[data-mode="tableau"]').click();
+	await expect(page.locator('#tcTable')).toBeVisible();
+
+	// Aucun défilement horizontal du cadre : les 7 colonnes tiennent entières.
+	const deborde = await page
+		.locator('.tc-wrap')
+		.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+	expect(deborde, 'le tableau ne devrait pas déborder de .tc-wrap en paysage 851×393').toBe(false);
+
+	const rects = await page.evaluate(() => {
+		const table = document.querySelector('.tc-table')?.getBoundingClientRect();
+		const pave = document.querySelector('.tc-pave')?.getBoundingClientRect();
+		if (!table || !pave) return null;
+		return {
+			table: { left: table.left, right: table.right, top: table.top, bottom: table.bottom },
+			pave: { left: pave.left, right: pave.right, top: pave.top, bottom: pave.bottom },
+		};
+	});
+	expect(rects, 'tableau ou pavé introuvable').not.toBeNull();
+	const { table, pave } = rects!;
+
+	// Côte à côte : le tableau finit avant que le pavé ne commence…
+	expect(
+		table.right,
+		`tableau (right=${table.right}) devrait finir avant le pavé (left=${pave.left})`,
+	).toBeLessThanOrEqual(pave.left + 1);
+	// … et leurs plages verticales se recoupent (même rangée, pas une colonne empilée).
+	const seChevauchentVerticalement = table.top < pave.bottom && pave.top < table.bottom;
+	expect(
+		seChevauchentVerticalement,
+		`pas de recouvrement vertical : tableau=${JSON.stringify(table)} pavé=${JSON.stringify(pave)}`,
+	).toBe(true);
+
+	expect(errors).toEqual([]);
+});
+
+/* Critère 11 : le nom d'unité en toutes lettres reste ENTIER — ni tronqué (pas
+   de coupure CSS visible via scrollWidth > clientWidth), ni remplacé par son
+   seul symbole. On parcourt toutes les colonnes rendues, quelle que soit la
+   leçon de mesure. Viewport portrait 393×851 (le plus étroit des repères) :
+   c'est le cas le plus défavorable à la place disponible pour le nom. */
+test("mes-longueurs (tableau, #711 critère 11) : le nom d'unité reste entier, jamais tronqué ni réduit au symbole", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.setViewportSize({ width: 393, height: 851 });
+	await gotoHash(page, 'mode-mes-longueurs');
+	await page.locator('.mode-btn[data-mode="tableau"]').click();
+	await expect(page.locator('#tcTable')).toBeVisible();
+
+	const colonnes = page.locator('.tc-col');
+	const n = await colonnes.count();
+	expect(n).toBeGreaterThanOrEqual(2);
+
+	for (let i = 0; i < n; i++) {
+		const colonne = colonnes.nth(i);
+		const nom = colonne.locator('.tc-nom');
+		const sym = colonne.locator('.tc-sym');
+
+		const rogne = await nom.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+		const nomTexte = ((await nom.textContent()) ?? '').trim();
+		const symTexte = ((await sym.textContent()) ?? '').trim();
+
+		expect(rogne, `colonne ${i} : nom « ${nomTexte} » rogné (scrollWidth > clientWidth)`).toBe(
+			false,
+		);
+		expect(nomTexte.length, `colonne ${i} : nom vide`).toBeGreaterThan(0);
+		expect(
+			nomTexte.toLowerCase(),
+			`colonne ${i} : le nom « ${nomTexte} » a été réduit au symbole « ${symTexte} »`,
+		).not.toBe(symTexte.toLowerCase());
+		expect(
+			nomTexte.length,
+			`colonne ${i} : nom « ${nomTexte} » pas plus long que le symbole « ${symTexte} »`,
+		).toBeGreaterThan(symTexte.length);
+	}
+
+	expect(errors).toEqual([]);
+});
+
+/* Critère 13 : quand le tableau déborde en portrait, l'enfant est INVITÉ à
+   tourner l'appareil, et rien n'est VERROUILLÉ — aucun appel à
+   `screen.orientation.lock`. Le dispositif est en DEUX registres (arbitrage
+   mainteneur, cf. `AIDES.tableau.alternative` dans core/aide.ts) : le signal
+   dans l'écran d'exercice est purement visuel et PERMANENT (fondu de bord via
+   `tc-wrap--suite-d`, déjà couvert par le test de suivi de case active) ; la
+   phrase qui invite à tourner l'appareil vit, elle, dans l'aide contextuelle
+   ouverte par le bouton « ? » (`.aide-btn`) — on vérifie donc qu'elle y est
+   BIEN atteignable, pas seulement présente dans le code. On instrumente
+   `screen.orientation.lock` avant toute navigation pour enregistrer les
+   appels éventuels. */
+test("mes-longueurs (tableau, #711 critère 13) : en portrait, le débordement est signalé et l'aide invite à tourner l'écran sans verrou d'orientation", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(() => {
+		(window as unknown as { __tcLockCalls: unknown[] }).__tcLockCalls = [];
+		const orientation = window.screen && window.screen.orientation;
+		if (!orientation) return;
+		try {
+			Object.defineProperty(orientation, 'lock', {
+				configurable: true,
+				value: (...args: unknown[]) => {
+					(window as unknown as { __tcLockCalls: unknown[] }).__tcLockCalls.push(args);
+					return Promise.resolve();
+				},
+			});
+		} catch {
+			// `lock` non reconfigurable sur ce navigateur : un vrai appel lèverait alors une
+			// exception visible (donc détectée par watchErrors), le critère resterait tenu.
+		}
+	});
+	await page.setViewportSize({ width: 393, height: 851 });
+	await gotoHash(page, 'mode-mes-longueurs');
+	await page.locator('.mode-btn[data-mode="tableau"]').click();
+	await expect(page.locator('#tcTable')).toBeVisible();
+
+	// Le cas n'a d'intérêt que si le tableau déborde vraiment de son cadre.
+	const deborde = await page
+		.locator('.tc-wrap')
+		.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+	expect(deborde, 'le tableau devrait déborder de .tc-wrap en portrait 393×851').toBe(true);
+
+	// Signal permanent : le portrait ne tronque pas « sans rien dire ».
+	await expect(page.locator('.tc-wrap')).toHaveClass(/tc-wrap--suite-d/);
+
+	// L'invitation à tourner l'appareil est atteignable depuis l'écran d'exercice, via
+	// l'aide contextuelle (`seedAideVue` du beforeEach ne masque que l'AUTO-affichage au
+	// 1er lancement ; le bouton « ? » persistant reste, lui, toujours disponible).
+	const boutonAide = page.locator('button.aide-btn');
+	await expect(boutonAide).toBeVisible();
+	await boutonAide.click();
+	const overlay = page.locator('#aideOverlay');
+	await expect(overlay).toBeVisible();
+	await expect(overlay.locator('.aide-alt')).toContainText(
+		"Le tableau dépasse de l'écran ? Fais-le glisser, ou tourne l'appareil, pour voir plus de colonnes.",
+	);
+	await overlay.locator('.aide-ok').click();
+	await expect(overlay).toHaveCount(0);
+
+	const appelsVerrou = await page.evaluate(
+		() => (window as unknown as { __tcLockCalls: unknown[] }).__tcLockCalls,
+	);
+	expect(appelsVerrou, 'aucune tentative de verrouillage d’orientation ne doit avoir lieu').toEqual(
+		[],
+	);
+
+	expect(errors).toEqual([]);
+});
+
+/* Critère 14 : les cases conservent au moins leur taille tactile actuelle
+   (40 × 46 px, repère relevé sur le profil Chromium mobile du projet) dans les
+   deux orientations. Tolérance de 0,5 px pour l'arrondi sous-pixel du rendu. */
+test('mes-longueurs (tableau, #711 critère 14) : les cases gardent leur taille tactile dans les deux orientations', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	const orientations = [
+		{ width: 393, height: 851, label: 'portrait' },
+		{ width: 851, height: 393, label: 'paysage' },
+	];
+
+	for (const { width, height, label } of orientations) {
+		await page.setViewportSize({ width, height });
+		await gotoHash(page, 'mode-mes-longueurs');
+		await page.locator('.mode-btn[data-mode="tableau"]').click();
+		await expect(page.locator('#tcTable')).toBeVisible();
+
+		const dims = await page.locator('.tc-cell').evaluateAll((els) =>
+			els.map((el) => {
+				const r = el.getBoundingClientRect();
+				return { w: r.width, h: r.height };
+			}),
+		);
+		expect(dims.length, `aucune case trouvée en ${label}`).toBeGreaterThan(0);
+		for (const d of dims) {
+			expect(
+				d.w,
+				`case trop étroite en ${label} : ${d.w}px (attendu ≥ 40px)`,
+			).toBeGreaterThanOrEqual(39.5);
+			expect(d.h, `case trop basse en ${label} : ${d.h}px (attendu ≥ 46px)`).toBeGreaterThanOrEqual(
+				45.5,
+			);
+		}
+	}
+
+	expect(errors).toEqual([]);
+});

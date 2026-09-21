@@ -30,6 +30,17 @@
 	color: var(--accent-dark);
 }
 
+/* Enveloppes de mise en page (#711 lot 3). En PORTRAIT elles ne font rien : `display:
+   contents` laisse tableau, légende et pavé rester des enfants directs de `.sprint-stage`,
+   donc l'empilement vertical et les écarts sont EXACTEMENT ceux d'avant (aucune baseline
+   visuelle à regénérer). Elles n'existent que pour le paysage bas, où elles deviennent une
+   rangée « tableau | pavé » (cf. § Mise en page paysage en fin de feuille). Ce sont des
+   `div` sans rôle : `display: contents` ne retire donc aucune sémantique. */
+.tc-zone,
+.tc-colonne-tableau {
+	display: contents;
+}
+
 /* Garde-fou petits écrans : le tableau DÉFILE horizontalement plutôt que de déborder ou
    d'écraser les colonnes. `max-width` n'est pas décoratif — sans lui `overflow-x` ne mord
    jamais : `.tc-table` est en `inline-flex`, donc sa largeur minimale est celle de toutes
@@ -43,11 +54,57 @@
 	overflow-x: auto;
 	padding: 2px;
 	margin-bottom: 8px;
+	/* Réserve la largeur du fondu (ci-dessous) au calcul de `scrollIntoView({inline:'nearest'})` :
+	   la case active s'arrête AVANT la zone estompée, au lieu d'y être calée et d'y être à
+	   moitié effacée. C'est ce qui permet de garder `'nearest'` — donc le plus petit
+	   déplacement possible — plutôt que `'center'`, qui recadre l'écran à chaque frappe. */
+	scroll-padding-inline: 28px;
+}
+
+/* Fondu de bord : le tableau plus large que son cadre doit DIRE qu'il continue (#711
+   critère 13, doc `architecture/ui.md`). Signal visuel et non textuel, sur avis convergent
+   du designer et du spécialiste dys : un message répété à chaque question devient du bruit
+   dès la 3ᵉ lecture, prend de la hauteur là où elle manque, et cadre le défilement comme un
+   obstacle à surmonter plutôt que comme la suite du contenu. Sur tablette et téléphone les
+   barres de défilement sont en surimpression, donc invisibles tant qu'on n'a pas fait le
+   geste : sans ce fondu il n'y a AUCUN indice par défaut. Les classes sont posées par le
+   runner d'après la position de défilement réelle, jamais par une media query : un fondu
+   qui persiste au bout de la course mentirait. */
+.tc-wrap--suite-d {
+	-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+	mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+.tc-wrap--suite-g {
+	-webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+	mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+}
+.tc-wrap--suite-g.tc-wrap--suite-d {
+	-webkit-mask-image: linear-gradient(
+		to right,
+		transparent,
+		#000 28px,
+		#000 calc(100% - 28px),
+		transparent
+	);
+	mask-image: linear-gradient(
+		to right,
+		transparent,
+		#000 28px,
+		#000 calc(100% - 28px),
+		transparent
+	);
 }
 .tc-table {
 	display: inline-flex;
 	align-items: flex-end;
-	gap: 12px; /* écart INTER-colonnes (les 2 cases d'une tête restent, elles, resserrées) */
+	/* Écart INTER-colonnes (les 2 cases d'une tête restent, elles, resserrées à 4 px : deux
+	   niveaux de regroupement, 12 contre 4). REJET ÉCRIT (#711 lot 3) : le descendre à 8 px
+	   rendrait 24 px de largeur, et le designer le juge tenable tant que l'écart avec le 4 px
+	   intra-tête reste lisible. Écarté quand même : 24 px ne changent rien au verdict du
+	   portrait (il y manque 254 px) et ne sont plus nécessaires en paysage depuis que le
+	   plafond de scène est relevé. On ne rabote pas un groupement visuel acté en #394 pour un
+	   gain qui ne décide de rien. À rouvrir seulement si une leçon dépasse huit colonnes. */
+	gap: 12px;
 	padding: 4px;
 }
 
@@ -84,7 +141,18 @@
    contenu et le tableau défile, il ne comprime pas. L'absence de retour à la ligne était
    jusqu'ici un effet ÉMERGENT de la mise en page, pas une garantie déclarée — une future
    contrainte de largeur sur `.tc-head` l'aurait réintroduite en silence (relecture a11y
-   #711). On la déclare donc. */
+   #711). On la déclare donc.
+
+   REJET ÉCRIT (#711 lot 3, avis specialiste-troubles-apprentissage ET designer-ux-enfant) :
+   le nom sur deux lignes est le plus gros gain de largeur disponible — il ferait tomber une
+   colonne de 70 à ~58 px — et il est explicitement autorisé par le critère 11 de l'issue.
+   Il est écarté quand même. Un enfant dyslexique lit par reconnaissance de la FORME du mot ;
+   recoller « hecto- » et « mètres » est précisément l'effort que le trouble touche. Et ce
+   n'est pas un texte lu une fois : c'est une étiquette croisée des dizaines de fois par
+   leçon, sur des mots que le programme demande de savoir écrire. Une césure automatique du
+   navigateur est pire encore (« hec-to-mètres »), et le trait d'union rouvrirait la
+   confusion dam/dm que #394 avait fermée. Ne pas le rouvrir pour gagner de la place : la
+   place se prend sur les marges et le plafond de scène (cf. fin de feuille). */
 .tc-head .tc-sym,
 .tc-head .tc-nom {
 	white-space: nowrap;
@@ -302,6 +370,97 @@
 }
 .tc-demo-cell--transit b {
 	color: var(--grey);
+}
+
+/* ============================================================
+   Mise en page selon la place disponible (#711 lot 3)
+
+   Le tableau a une largeur IRRÉDUCTIBLE : sept colonnes dimensionnées par des noms
+   d'unité écrits en toutes lettres, qu'on ne tronque ni n'abrège jamais. Mesuré sur un
+   Chromium mobile : 543 px pour les longueurs. Or `.sprint` plafonne la scène à 600 px —
+   plafond calibré pour « une question + un champ », qui laisse 516 px utiles. Le tableau
+   débordait donc et défilait, y compris sur un écran large qui avait la place.
+   ============================================================ */
+
+/* Petit écran : on rend au tableau les marges du cadre. `.sprint-stage` porte
+   `padding: 40px 26px` pour TOUS les runners « sprint », calibré sur une question et un
+   champ ; on ne le réduit QUE pour celui-ci, et QUE sur l'axe horizontal. Gain mesuré :
+   +24 px de tableau visible. Ça ne supprime pas le défilement en portrait (il manque
+   254 px sur 543) et ça ne prétend pas le faire : c'est de la place rendue, pas une
+   solution — le portrait défile et le dit (cf. `.tc-wrap--suite-*`). */
+@media (max-width: 480px) {
+	.tc-runner .sprint-stage {
+		padding-inline: 14px;
+	}
+}
+
+/* Écran large : on relève le plafond POUR CE RUNNER SEULEMENT, assez pour que le tableau
+   tienne en entier. Un hors-champ imposé alors que l'écran a la place n'achète rien. */
+@media (min-width: 700px) {
+	.sprint.tc-runner {
+		max-width: 760px;
+	}
+}
+
+/* Paysage bas (tablette ou téléphone tenu à plat) : la hauteur manque, la largeur est en
+   excès. Deux traitements distincts, et surtout pas un seul : ils n'ont pas le même seuil.
+
+   (a) TOUTES largeurs — on rend la verticale. Les marges de scène coûtaient 80 px de haut
+   sur 393 px visibles, et le plafond de 600 px privait le tableau d'une largeur que
+   l'écran avait déjà. Même seuil de hauteur que les figures SVG (`figures.scss`), pour
+   que « paysage bas » veuille dire la même chose partout. */
+@media (orientation: landscape) and (max-height: 540px) {
+	.sprint.tc-runner {
+		max-width: 880px;
+		margin: 12px auto;
+	}
+	.tc-runner .sprint-stage {
+		padding: 16px 12px;
+		gap: 10px;
+	}
+}
+
+/* (b) Paysage bas ET assez large — le pavé passe À CÔTÉ du tableau : c'est lui, et non le
+   tableau, qui poussait la page à 1110 px de haut. Le seuil de largeur n'est pas décoratif :
+   une rangée complète demande 543 (tableau) + 16 (écart) + 184 (pavé) = 743 px utiles, soit
+   743 + 32 (marges de scène) + 32 (marges de `.sprint`) + 20 (marges de page) ≈ 830 px.
+   En dessous, la rangée AMPUTERAIT le tableau — 383 px de tableau visible sur un écran de
+   667 px, contre 543 en l'empilant, soit l'inverse du but recherché. Seuil MESURÉ, pas
+   choisi : la rangée demande 547 + 12 + 184 = 743 px utiles, et la chaîne de marges en
+   retire 76 (10 + 16 + 12 de chaque côté), donc 819 px de viewport. On prend 840 pour
+   n'être pas à la limite d'un arrondi de police. */
+@media (orientation: landscape) and (max-height: 540px) and (min-width: 840px) {
+	/* Le VRAI plafond n'est pas celui de `.sprint` : c'est `.sheets`, borné à 210 mm (≈ 794 px)
+	   parce que les feuilles d'exercices imitent une page A4. Une rangée tableau + pavé demande
+	   811 px avec les marges ; sans cette levée, la rangée est amputée de 37 px et le tableau
+	   défile alors même qu'on vient de lui faire de la place. Levée par `:has`, donc pour cette
+	   seule leçon et ce seul contexte (même procédé que `.sheets:has(.relecture)`,
+	   `orthographe.scss`) : les autres feuilles gardent leur largeur de page. */
+	.sheets:has(.tc-runner) {
+		max-width: none;
+	}
+	.tc-zone {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 12px;
+		width: 100%;
+	}
+	.tc-colonne-tableau {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		/* Sans ça, un item flex refuse de passer sous la largeur de son contenu : le tableau
+		   pousserait la rangée au lieu de défiler, et recouvrirait le pavé. */
+		min-width: 0;
+	}
+	.tc-pave {
+		margin: 0;
+		flex: 0 0 auto;
+	}
+	.tc-legende {
+		margin-bottom: 0;
+	}
 }
 
 /* Animations réduites : pas de mise à l'échelle au tap ni de transitions. */

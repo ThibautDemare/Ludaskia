@@ -4,7 +4,7 @@
    L'enfant remplit une colonne d'unité par case via un pavé de chiffres
    externe (jamais de clavier natif), avec avance automatique.
    ============================================================ */
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { watchErrors, gotoHash, seedAideVue } from './helpers';
 
 /* Le mode « tableau » déclenche l'aide contextuelle au 1er lancement (overlay
@@ -12,6 +12,23 @@ import { watchErrors, gotoHash, seedAideVue } from './helpers';
 test.beforeEach(async ({ page }) => {
 	await seedAideVue(page);
 });
+
+/* Profil CM1 (pattern repris tel quel de mesures-decimaux.spec.ts / clic-verbe.spec.ts) :
+   nécessaire pour le cas le plus défavorable du critère 11 (mes-masses au CM1, colonnes les
+   plus longues du catalogue — cf. plus bas). Navigation via `gotoHash` (gate
+   `tests/e2e-navigation-gate.test.ts` : `page.goto` direct est une dette exemptée UNIQUEMENT
+   sur les specs déjà listées avant le gate, jamais sur une spec neuve). La crainte d'origine
+   ne tient pas : `ENSURE_NIVEAU` (e2e/helpers.ts) ne force `niveauReference: 'ce2'` QUE sur un
+   profil où le champ est absent, et ne fabrique un profil que si la liste est vide — un profil
+   CM1 déjà semé par `addInitScript(SEED_CM1)` survit intact. L'ordre joue en notre faveur : les
+   scripts `addInitScript` s'exécutent dans l'ordre d'ajout, et `gotoHash` ajoute le sien
+   (ENSURE_NIVEAU) APRÈS celui-ci. */
+const SEED_CM1 = `localStorage.setItem('ludaskia_profiles', JSON.stringify({ list: [{ uuid: 'e2e', name: 'E2E', emoji: '\\uD83E\\uDD8A', updatedAt: 1, niveauReference: 'cm1' }], active: 'e2e' }));`;
+
+async function gotoCM1(page: Page, hash: string): Promise<void> {
+	await page.addInitScript(SEED_CM1);
+	await gotoHash(page, hash);
+}
 
 /* Remplit toutes les cases dans l'ordre de `data-i` croissant via le pavé, en
    utilisant le chiffre attendu (`data-answer`) de chaque case. L'avance auto
@@ -149,7 +166,16 @@ test('mes-longueurs (tableau) : la case active reste visible quand le tableau d�
 /* Critère 12 : en paysage sous une hauteur donnée, tableau et pavé côte à côte,
    les 7 colonnes des longueurs tiennent sans défilement. Viewport 851×393
    d'après les mesures relevées sur le profil Chromium mobile du projet (tableau
-   entièrement visible, pavé à droite). */
+   entièrement visible, pavé à droite).
+
+   REJET ÉCRIT (#711, évaluation de couverture) : mes-masses au CM1 (noms plus longs,
+   cf. critère 11 plus haut) a été mesuré sur CE MÊME viewport et NE tient PAS dans le
+   cadre — `.tc-wrap` : clientWidth 579px, scrollWidth 640px (déborde de 61px) ;
+   `.tc-table` fait ~636px de large et son bord droit (≈676px) chevauche le pavé, dont
+   le bord gauche est à ≈629px. Le critère 12 reste donc porté par mes-longueurs SEUL :
+   l'étendre aux masses/CM1 sur ce viewport ferait un test rouge en permanence (ou
+   forcerait un contournement complaisant), pas un gain de couverture. Si le rendu du
+   tableau change (plafond de colonne, largeur de scène), remesurer avant de rouvrir. */
 test('mes-longueurs (tableau, #711 critère 12) : en paysage le tableau et le pavé sont côte à côte, sans défilement', async ({
 	page,
 }) => {
@@ -196,57 +222,86 @@ test('mes-longueurs (tableau, #711 critère 12) : en paysage le tableau et le pa
    de coupure CSS visible via scrollWidth > clientWidth), ni remplacé par son
    seul symbole. On parcourt toutes les colonnes rendues, quelle que soit la
    leçon de mesure. Viewport portrait 393×851 (le plus étroit des repères) :
-   c'est le cas le plus défavorable à la place disponible pour le nom. */
-test("mes-longueurs (tableau, #711 critère 11) : le nom d'unité reste entier, jamais tronqué ni réduit au symbole", async ({
-	page,
-}) => {
-	const errors = watchErrors(page);
-	await page.setViewportSize({ width: 393, height: 851 });
-	await gotoHash(page, 'mode-mes-longueurs');
-	await page.locator('.mode-btn[data-mode="tableau"]').click();
-	await expect(page.locator('#tcTable')).toBeVisible();
+   c'est le cas le plus défavorable à la place disponible pour le nom.
 
-	const colonnes = page.locator('.tc-col');
-	const n = await colonnes.count();
-	expect(n).toBeGreaterThanOrEqual(2);
+   Deux cas, PAS un seul : mes-longueurs (CE2, la leçon la plus commune) ET
+   mes-masses au CM1, qui affiche la même chaîne de 7 colonnes mais avec les
+   noms les plus longs de l'application (« kilogrammes », « hectogrammes »,
+   « décagrammes », « décigrammes », « centigrammes », « milligrammes » — la
+   racine « -gramme » est plus longue que « -mètre »). Avant cet ajout, ce cas
+   n'était vérifié que par une capture d'écran (`galerie.spec.ts`, baselines
+   Linux, sans valeur hors CI) : un nom rogné spécifiquement sur les masses au
+   CM1 n'aurait fait rougir aucune assertion. */
+const CAS_COLONNES_CRITERE_11: { label: string; hash: string; cm1: boolean }[] = [
+	{ label: 'mes-longueurs (CE2 par défaut)', hash: 'mode-mes-longueurs', cm1: false },
+	{
+		label: 'mes-masses (CM1, noms de colonnes les plus longs du catalogue)',
+		hash: 'mode-mes-masses',
+		cm1: true,
+	},
+];
 
-	for (let i = 0; i < n; i++) {
-		const colonne = colonnes.nth(i);
-		const nom = colonne.locator('.tc-nom');
-		const sym = colonne.locator('.tc-sym');
+for (const { label, hash, cm1 } of CAS_COLONNES_CRITERE_11) {
+	test(`${label} (tableau, #711 critère 11) : le nom d'unité reste entier, jamais tronqué ni réduit au symbole`, async ({
+		page,
+	}) => {
+		const errors = watchErrors(page);
+		await page.setViewportSize({ width: 393, height: 851 });
+		if (cm1) {
+			await gotoCM1(page, hash);
+		} else {
+			await gotoHash(page, hash);
+		}
+		await page.locator('.mode-btn[data-mode="tableau"]').click();
+		await expect(page.locator('#tcTable')).toBeVisible();
 
-		const rogne = await nom.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
-		const nomTexte = ((await nom.textContent()) ?? '').trim();
-		const symTexte = ((await sym.textContent()) ?? '').trim();
+		const colonnes = page.locator('.tc-col');
+		const n = await colonnes.count();
+		expect(n).toBeGreaterThanOrEqual(2);
 
-		expect(rogne, `colonne ${i} : nom « ${nomTexte} » rogné (scrollWidth > clientWidth)`).toBe(
-			false,
-		);
-		expect(nomTexte.length, `colonne ${i} : nom vide`).toBeGreaterThan(0);
-		expect(
-			nomTexte.toLowerCase(),
-			`colonne ${i} : le nom « ${nomTexte} » a été réduit au symbole « ${symTexte} »`,
-		).not.toBe(symTexte.toLowerCase());
-		expect(
-			nomTexte.length,
-			`colonne ${i} : nom « ${nomTexte} » pas plus long que le symbole « ${symTexte} »`,
-		).toBeGreaterThan(symTexte.length);
-	}
+		for (let i = 0; i < n; i++) {
+			const colonne = colonnes.nth(i);
+			const nom = colonne.locator('.tc-nom');
+			const sym = colonne.locator('.tc-sym');
 
-	expect(errors).toEqual([]);
-});
+			const rogne = await nom.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+			const nomTexte = ((await nom.textContent()) ?? '').trim();
+			const symTexte = ((await sym.textContent()) ?? '').trim();
+
+			expect(rogne, `colonne ${i} : nom « ${nomTexte} » rogné (scrollWidth > clientWidth)`).toBe(
+				false,
+			);
+			expect(nomTexte.length, `colonne ${i} : nom vide`).toBeGreaterThan(0);
+			expect(
+				nomTexte.toLowerCase(),
+				`colonne ${i} : le nom « ${nomTexte} » a été réduit au symbole « ${symTexte} »`,
+			).not.toBe(symTexte.toLowerCase());
+			expect(
+				nomTexte.length,
+				`colonne ${i} : nom « ${nomTexte} » pas plus long que le symbole « ${symTexte} »`,
+			).toBeGreaterThan(symTexte.length);
+		}
+
+		expect(errors).toEqual([]);
+	});
+}
 
 /* Critère 13 : quand le tableau déborde en portrait, l'enfant est INVITÉ à
    tourner l'appareil, et rien n'est VERROUILLÉ — aucun appel à
    `screen.orientation.lock`. Le dispositif est en DEUX registres (arbitrage
    mainteneur, cf. `AIDES.tableau.alternative` dans core/aide.ts) : le signal
-   dans l'écran d'exercice est purement visuel et PERMANENT (fondu de bord via
-   `tc-wrap--suite-d`, déjà couvert par le test de suivi de case active) ; la
-   phrase qui invite à tourner l'appareil vit, elle, dans l'aide contextuelle
-   ouverte par le bouton « ? » (`.aide-btn`) — on vérifie donc qu'elle y est
-   BIEN atteignable, pas seulement présente dans le code. On instrumente
-   `screen.orientation.lock` avant toute navigation pour enregistrer les
-   appels éventuels. */
+   dans l'écran d'exercice est désormais une JAUGE DE DÉFILEMENT posée sous le
+   cadre (`#tcJauge` / `.tc-jauge-curseur`, pilotée par le défilement réel —
+   voir le test dédié plus bas pour le détail de son comportement), et non
+   plus le fondu de bord `tc-wrap--suite-d` d'origine : un `mask-image` baisse
+   l'alpha de TOUT le contenu sous la bande, y compris des chiffres et noms
+   d'unité entièrement visibles, ce qui faisait tomber le contraste sous le
+   seuil WCAG AA. Ici on vérifie juste qu'elle EST visible et qu'elle ne ment
+   pas (curseur partiel, jamais plein) ; la phrase qui invite à tourner
+   l'appareil vit, elle, dans l'aide contextuelle ouverte par le bouton « ? »
+   (`.aide-btn`) — on vérifie donc qu'elle y est BIEN atteignable, pas
+   seulement présente dans le code. On instrumente `screen.orientation.lock`
+   avant toute navigation pour enregistrer les appels éventuels. */
 test("mes-longueurs (tableau, #711 critère 13) : en portrait, le débordement est signalé et l'aide invite à tourner l'écran sans verrou d'orientation", async ({
 	page,
 }) => {
@@ -279,8 +334,21 @@ test("mes-longueurs (tableau, #711 critère 13) : en portrait, le débordement e
 		.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
 	expect(deborde, 'le tableau devrait déborder de .tc-wrap en portrait 393×851').toBe(true);
 
-	// Signal permanent : le portrait ne tronque pas « sans rien dire ».
-	await expect(page.locator('.tc-wrap')).toHaveClass(/tc-wrap--suite-d/);
+	// Signal permanent : le portrait ne tronque pas « sans rien dire ». La jauge est
+	// visible, et son curseur n'occupe qu'une FRACTION de la piste — jamais pleine,
+	// sinon elle prétendrait que tout le tableau est déjà là.
+	const jaugeCritere13 = page.locator('#tcJauge');
+	await expect(jaugeCritere13).toBeVisible();
+	await expect(jaugeCritere13).not.toHaveClass(/tc-jauge--inactive/);
+	const fractionCritere13 = await page.evaluate(() => {
+		const j = document.querySelector('#tcJauge') as HTMLElement;
+		const c = document.querySelector('.tc-jauge-curseur') as HTMLElement;
+		return c.getBoundingClientRect().width / j.getBoundingClientRect().width;
+	});
+	expect(
+		fractionCritere13,
+		`le curseur (ratio=${fractionCritere13}) devrait n'occuper qu'une fraction de la piste`,
+	).toBeLessThan(1);
 
 	// L'invitation à tourner l'appareil est atteignable depuis l'écran d'exercice, via
 	// l'aide contextuelle (`seedAideVue` du beforeEach ne masque que l'AUTO-affichage au
@@ -341,6 +409,117 @@ test('mes-longueurs (tableau, #711 critère 14) : les cases gardent leur taille 
 			);
 		}
 	}
+
+	expect(errors).toEqual([]);
+});
+
+/* Jauge de défilement (#711, remplace le fondu de bord `tc-wrap--suite-d` écarté pour
+   contraste insuffisant, cf. commentaire du critère 13 plus haut) : elle ne touche à aucun
+   contenu, et dit EN PLUS quelle part du tableau est visible. Portrait 393×851 : le viewport
+   où mes-longueurs déborde (mêmes mesures que les critères 11 et 13). Trois observables :
+   - au repos (avant toute interaction), le curseur est collé au bord gauche de la piste et
+     n'en occupe qu'une partie ;
+   - sa largeur reflète le ratio `clientWidth / scrollWidth` de `.tc-wrap`, au plancher de
+     32 px près (`min-width` SCSS) ;
+   - après un défilement complet (`scrollLeft = scrollWidth`), son bord droit rejoint le bord
+     droit de la piste à quelques pixels près — ce qui dit à l'enfant qu'il n'y a plus rien
+     après. */
+test('mes-longueurs (tableau, #711 jauge) : le curseur reflète la part visible du tableau, au repos et après défilement complet', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.setViewportSize({ width: 393, height: 851 });
+	await gotoHash(page, 'mode-mes-longueurs');
+	await page.locator('.mode-btn[data-mode="tableau"]').click();
+	await expect(page.locator('#tcTable')).toBeVisible();
+
+	// Le cas n'a d'intérêt que si le tableau déborde vraiment de son cadre.
+	const deborde = await page
+		.locator('.tc-wrap')
+		.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+	expect(deborde, 'le tableau devrait déborder de .tc-wrap en portrait 393×851').toBe(true);
+
+	const releve = () =>
+		page.evaluate(() => {
+			const wrap = document.querySelector('.tc-wrap') as HTMLElement;
+			const jauge = document.querySelector('#tcJauge') as HTMLElement;
+			const curseur = document.querySelector('.tc-jauge-curseur') as HTMLElement;
+			const j = jauge.getBoundingClientRect();
+			const c = curseur.getBoundingClientRect();
+			return {
+				pisteLeft: j.left,
+				pisteRight: j.right,
+				pisteWidth: j.width,
+				curseurLeft: c.left,
+				curseurRight: c.right,
+				curseurWidth: c.width,
+				wrapClientWidth: wrap.clientWidth,
+				wrapScrollWidth: wrap.scrollWidth,
+			};
+		});
+
+	// Au repos : collé à gauche de la piste, et partiel (pas plein).
+	const repos = await releve();
+	expect(
+		repos.curseurLeft - repos.pisteLeft,
+		`curseur pas collé à gauche au repos : ${JSON.stringify(repos)}`,
+	).toBeLessThanOrEqual(2);
+	expect(repos.curseurWidth, `curseur plein dès le repos : ${JSON.stringify(repos)}`).toBeLessThan(
+		repos.pisteWidth,
+	);
+
+	// Sa largeur reflète la part visible du cadre, au plancher de 32 px près.
+	const attendu = Math.max(32, (repos.pisteWidth * repos.wrapClientWidth) / repos.wrapScrollWidth);
+	expect(
+		Math.abs(repos.curseurWidth - attendu),
+		`largeur du curseur (${repos.curseurWidth}px) éloignée de l'attendu (${attendu}px) : ${JSON.stringify(repos)}`,
+	).toBeLessThanOrEqual(3);
+
+	// Défilement complet du cadre : le curseur rejoint le bord droit de la piste.
+	await page.evaluate(() => {
+		const el = document.querySelector('.tc-wrap') as HTMLElement;
+		el.scrollLeft = el.scrollWidth;
+	});
+	await expect
+		.poll(
+			async () => {
+				const fin = await releve();
+				return fin.pisteRight - fin.curseurRight;
+			},
+			{
+				message: 'le curseur devrait rejoindre le bord droit de la piste après défilement complet',
+			},
+		)
+		.toBeLessThanOrEqual(3);
+
+	expect(errors).toEqual([]);
+});
+
+/* Cas « rien à signaler » (#711) : en paysage sans débordement (mêmes mesures que le
+   critère 12 : mes-longueurs, 851×393), une jauge qui resterait affichée pleine mentirait —
+   il n'y a rien à faire défiler. `tc-jauge--inactive` retire tout via `display: none`
+   (cf. SCSS), donc la jauge n'occupe AUCUNE hauteur. */
+test('mes-longueurs (tableau, #711 jauge) : en paysage sans débordement, la jauge est inactive et invisible', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.setViewportSize({ width: 851, height: 393 });
+	await gotoHash(page, 'mode-mes-longueurs');
+	await page.locator('.mode-btn[data-mode="tableau"]').click();
+	await expect(page.locator('#tcTable')).toBeVisible();
+
+	const deborde = await page
+		.locator('.tc-wrap')
+		.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+	expect(deborde, 'le tableau ne devrait pas déborder de .tc-wrap en paysage 851×393').toBe(false);
+
+	const jauge = page.locator('#tcJauge');
+	await expect(jauge).toHaveClass(/tc-jauge--inactive/);
+	const hauteur = await jauge.evaluate((el) => el.getBoundingClientRect().height);
+	expect(
+		hauteur,
+		`la jauge occupe ${hauteur}px de hauteur alors qu'elle devrait être masquée`,
+	).toBe(0);
 
 	expect(errors).toEqual([]);
 });

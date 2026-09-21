@@ -43,7 +43,12 @@ export interface AideContenu {
 	titre: string;
 	/** Étapes du geste : une action observable par phrase, ≤ 3 (mémoire de travail). */
 	etapes: string[];
-	/** Voie alternative présentée à ÉGALITÉ (atelier : tap lettre par lettre, clé dys-praxie). */
+	/** Second registre de la bulle, présenté à ÉGALITÉ avec les étapes. Deux natures de contenu
+	    y cohabitent, et c'est voulu : une VOIE alternative pour le même geste (atelier : tap lettre
+	    par lettre, clé dys-praxie ; droite graduée : les flèches du clavier), ou une information
+	    d'AFFICHAGE qui n'a pas sa place dans l'écran d'exercice (tableau : que faire quand le
+	    tableau dépasse de l'écran, #711). Le point commun est la portée, pas la nature : ce qui
+	    aide sans être nécessaire à chaque question. */
 	alternative?: string;
 	/** Filet anti-erreur dédramatisant (retour au bac, effacer/recommencer). */
 	reparation?: string;

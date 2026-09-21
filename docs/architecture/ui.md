@@ -1802,17 +1802,27 @@ active, elle, est ramenée dans le champ à chaque déplacement (`garderCaseActi
 Le signalement a été traité par le lot 3 de #711, en **deux registres distincts**, et c'est
 la partie réutilisable de la règle :
 
-- un **signal permanent et muet** — un fondu sur le bord du cadre côté colonnes cachées
-  (`.tc-wrap--suite-d` / `--suite-g`, `styles/tableau-conversion.scss`), posé par le runner
-  d'après la position de défilement **réelle** et non par une media query. Un fondu qui
-  survivrait au bout de la course affirmerait une suite inexistante, et l'enfant
-  continuerait de chercher. Le cadre porte aussi `scroll-padding-inline`, sans quoi la case
-  ramenée en vue se calerait pile sous le fondu et s'y afficherait à moitié effacée ;
+- un **signal permanent et muet** — une **jauge de défilement** sous le cadre (`.tc-jauge`,
+  `styles/tableau-conversion.scss`), dont le curseur est piloté par le runner d'après la
+  position de défilement **réelle** et non par une media query. Une jauge figée affirmerait
+  une suite inexistante, et plus catégoriquement qu'un signal discret ne le ferait ;
 - une **phrase à la demande** — l'invitation à tourner l'appareil, rangée dans l'**aide
   contextuelle** du mode (`core/aide.ts`, entrée `tableau`, champ `alternative`), donc
   ouverte au 1er lancement puis rejouable par le bouton « ? ». Elle promet « plus de
   colonnes » et non « tout le tableau » : la rotation suffit sur un téléphone ou une
   tablette courants, pas sur les très petits écrans.
+
+**REJET ÉCRIT, chiffré — le fondu de bord (`mask-image`) ne peut pas servir de signal.**
+C'était la première piste, et elle paraît évidente. Un masque ne découpe pas : il multiplie
+l'alpha de **tout** le contenu sous la bande — y compris d'un chiffre ou d'un nom d'unité
+entièrement visibles, pas seulement de ce qui est déjà coupé — et compose le résultat sur le
+fond de scène. Mesuré avec `tools/contrast/wcag.js` sur les six thèmes et les huit couples
+présents dans le tableau : le couple contraignant est le nom d'une unité non étudiée
+(`--grey` sur `--paper`), qui n'a que **4,54:1** de marge à pleine opacité. Un fondu conforme
+à AA doit donc s'arrêter à **0,80** d'opacité au bord, c'est-à-dire ne presque rien estomper.
+Il n'y a pas de réglage qui marche : le signal est soit illisible, soit invisible. La règle
+se généralise à tout composant qui défile — **un signal de hors-champ ne se prend pas sur
+l'opacité du contenu, il se pose à côté.**
 
 **Règle qui en sort, et c'est elle qui se réutilise : le signalement d'un débordement se
 fait dans l'écran, l'explication se fait dans l'aide.** Un texte posé dans l'écran

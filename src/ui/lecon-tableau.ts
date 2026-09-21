@@ -71,7 +71,7 @@ const CONSIGNE = "Écris un chiffre par case. Mets 0 quand il n'y a rien à comp
 const LEGENDE =
 	'Les unités en petit ne sont pas encore vues en classe : tu peux quand même y écrire des 0.';
 /* Débordement du tableau (#711 critère 13) : AUCUN texte dans l'écran d'exercice. Le
-   signalement s'y fait par le fondu de bord, muet et permanent (`.tc-wrap--suite-*`,
+   signalement s'y fait par la jauge de défilement, muette et permanente (`.tc-jauge`,
    `styles/tableau-conversion.scss`) ; l'invitation à tourner l'appareil vit dans l'aide
    contextuelle (`core/aide.ts`, entrée `tableau`, champ `alternative`), donc à la demande
    derrière le bouton « ? » et au 1er lancement du mode. Raison : un message posé sous le
@@ -252,6 +252,7 @@ export function renderTableauBoardHTML(ex: Tableau, cellsArg: Cellule[]): SafeHt
             <div class="tc-wrap">
               <div class="tc-table" id="tcTable" role="group" aria-describedby="tcLegende" aria-label="Tableau de conversion">${colonnes}</div>
             </div>
+            <div class="tc-jauge tc-jauge--inactive" id="tcJauge" aria-hidden="true"><span class="tc-jauge-curseur"></span></div>
             <p class="tc-legende" id="tcLegende">${LEGENDE}</p>
           </div>
           ${paveHTML()}
@@ -278,7 +279,7 @@ function renderQuestion(): void {
     </div>`.balisage;
 	wireInteraction();
 	paintAll();
-	majFonduDefilement();
+	majJaugeDefilement();
 	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
 	monterBoutonAide(sheets().querySelector('.sprint-stage'), 'tableau'); // bouton « ? » persistant
 }
@@ -329,13 +330,13 @@ function wireInteraction(): void {
 			cellBtn(active)?.focus({ preventScroll: true });
 			garderCaseActiveEnVue();
 		});
-	// Fondu de bord : suit le défilement du cadre, et la largeur disponible (rotation de
-	// l'appareil, redimensionnement de fenêtre → la tranche visible change).
+	// Jauge : suit le défilement du cadre, et la largeur disponible (rotation de l'appareil,
+	// redimensionnement de fenêtre → la tranche visible change, donc le curseur aussi).
 	sheets()
 		.querySelector('.tc-wrap')!
-		.addEventListener('scroll', majFonduDefilement, { passive: true });
+		.addEventListener('scroll', majJaugeDefilement, { passive: true });
 	detachResize();
-	resizeHandler = () => majFonduDefilement();
+	resizeHandler = () => majJaugeDefilement();
 	window.addEventListener('resize', resizeHandler);
 	const verif = sheets().querySelector('#tcVerif') as HTMLButtonElement;
 	verif.addEventListener('click', () => verifier());
@@ -438,17 +439,30 @@ function garderCaseActiveEnVue(): void {
 	cellBtn(active)?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
 }
 
-/* Fondu des bords du cadre (#711 lot 3) : dit qu'il reste des colonnes hors champ, sans un
-   mot. Piloté par la position de défilement RÉELLE et non par une media query — un fondu
-   qui resterait affiché au bout de la course affirmerait une suite qui n'existe pas, et
-   l'enfant continuerait de chercher. Tolérance de 2 px : `scrollWidth` et `clientWidth`
-   sont arrondis à l'entier, un écart de 1 px n'est pas un hors-champ. */
-function majFonduDefilement(): void {
+/* Jauge de défilement (#711 lot 3) : dit qu'il reste des colonnes hors champ, et combien,
+   sans un mot. Pilotée par la position de défilement RÉELLE et non par une media query —
+   une jauge figée affirmerait une suite qui n'existe pas, et plus catégoriquement qu'un
+   signal discret ne le ferait. Tolérance de 2 px : `scrollWidth` et `clientWidth` sont
+   arrondis à l'entier, un écart de 1 px n'est pas un hors-champ.
+
+   Calcul en PIXELS et non en pourcentages : le curseur a une largeur plancher (32 px, pour
+   rester perceptible quand la part visible est faible), donc sa course utile n'est pas la
+   piste entière. En pourcentages il dépasserait à droite au lieu de s'arrêter pile en
+   butée — or « le curseur touche le bord » est exactement ce qui doit dire à l'enfant
+   qu'il n'y a plus rien après. */
+function majJaugeDefilement(): void {
 	const wrap = sheets().querySelector<HTMLElement>('.tc-wrap');
-	if (!wrap) return;
-	const restant = wrap.scrollWidth - wrap.clientWidth - Math.round(wrap.scrollLeft);
-	wrap.classList.toggle('tc-wrap--suite-g', Math.round(wrap.scrollLeft) > 2);
-	wrap.classList.toggle('tc-wrap--suite-d', restant > 2);
+	const jauge = sheets().querySelector<HTMLElement>('#tcJauge');
+	const curseur = jauge?.querySelector<HTMLElement>('.tc-jauge-curseur');
+	if (!wrap || !jauge || !curseur) return;
+	const cache = wrap.scrollWidth - wrap.clientWidth;
+	jauge.classList.toggle('tc-jauge--inactive', cache <= 2);
+	if (cache <= 2) return;
+	const piste = jauge.clientWidth;
+	const largeur = Math.max(32, Math.round((piste * wrap.clientWidth) / wrap.scrollWidth));
+	const course = Math.max(0, piste - largeur);
+	curseur.style.width = `${largeur}px`;
+	curseur.style.left = `${Math.round((Math.min(wrap.scrollLeft, cache) / cache) * course)}px`;
 }
 
 /* Déplace la case active (surbrillance) ; `focus` = déplacer AUSSI le focus DOM (nav clavier

@@ -54,45 +54,67 @@
 	overflow-x: auto;
 	padding: 2px;
 	margin-bottom: 8px;
-	/* Réserve la largeur du fondu (ci-dessous) au calcul de `scrollIntoView({inline:'nearest'})` :
-	   la case active s'arrête AVANT la zone estompée, au lieu d'y être calée et d'y être à
-	   moitié effacée. C'est ce qui permet de garder `'nearest'` — donc le plus petit
-	   déplacement possible — plutôt que `'center'`, qui recadre l'écran à chaque frappe. */
-	scroll-padding-inline: 28px;
+	/* Marge de confort au calcul de `scrollIntoView({inline:'nearest'})` : la case ramenée en
+	   vue s'arrête un peu avant le bord au lieu d'y être collée, ce qui laisse voir qu'une
+	   colonne suit. Petite valeur exprès — c'est ce qui permet de garder `'nearest'`, donc le
+	   plus petit déplacement possible, plutôt que `'center'` et son recadrage à chaque frappe. */
+	scroll-padding-inline: 10px;
 }
 
-/* Fondu de bord : le tableau plus large que son cadre doit DIRE qu'il continue (#711
-   critère 13, doc `architecture/ui.md`). Signal visuel et non textuel, sur avis convergent
-   du designer et du spécialiste dys : un message répété à chaque question devient du bruit
-   dès la 3ᵉ lecture, prend de la hauteur là où elle manque, et cadre le défilement comme un
-   obstacle à surmonter plutôt que comme la suite du contenu. Sur tablette et téléphone les
-   barres de défilement sont en surimpression, donc invisibles tant qu'on n'a pas fait le
-   geste : sans ce fondu il n'y a AUCUN indice par défaut. Les classes sont posées par le
-   runner d'après la position de défilement réelle, jamais par une media query : un fondu
-   qui persiste au bout de la course mentirait. */
-.tc-wrap--suite-d {
-	-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
-	mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+/* Jauge de défilement (#711 lot 3, critère 13) : le tableau plus large que son cadre doit
+   DIRE qu'il continue (doc `architecture/ui.md`). Signal visuel et non textuel, sur avis
+   convergent du designer et du spécialiste dys : un message répété à chaque question devient
+   du bruit dès la 3ᵉ lecture, prend de la hauteur là où elle manque, et cadre le défilement
+   comme un obstacle plutôt que comme la suite du contenu. Sur tablette et téléphone les
+   barres de défilement natives sont en surimpression, donc invisibles tant qu'on n'a pas
+   fait le geste : sans jauge il n'y a AUCUN indice par défaut.
+
+   ÉCARTÉ, mesuré, pour que personne ne le repropose : le FONDU de bord (`mask-image`), qui
+   était la première piste du designer. Un masque ne découpe pas, il multiplie l'alpha de
+   TOUT le contenu sous la bande — y compris d'un chiffre ou d'un nom entièrement visibles —
+   et le compose sur le fond de scène. Contraste calculé avec `tools/contrast/wcag.js` sur les
+   six thèmes et les huit couples présents dans ce tableau : le couple contraignant est le nom
+   d'une unité non étudiée (--grey sur --paper), qui n'a que 4,54:1 de marge à pleine opacité.
+   Un fondu conforme à AA doit donc s'arrêter à 0,80 d'opacité, c'est-à-dire ne presque rien
+   estomper. Tout signal qui atténue le contenu est illisible ou invisible : il n'y a pas de
+   réglage qui marche.
+
+   La jauge, elle, ne touche à rien — c'est un élément à part, sous le cadre —, et elle en dit
+   PLUS : elle montre quelle part du tableau est visible et où on en est, pas seulement qu'il
+   reste quelque chose. Gabarit repris de `.lz-bar` (lessons.scss) : 6 px, coins à 3 px, piste
+   --track. Volontairement DIFFÉRENT de la barre de progression de leçon (`.lqcm-bar` :
+   10 px, coins en pilule, piste --accent-soft) — deux barres au même gabarit sur un même
+   écran se liraient comme la même information, et l'enfant croirait compter ses bonnes
+   réponses. Le curseur est piloté par le runner d'après la position de défilement RÉELLE :
+   une jauge figée mentirait plus fort qu'un fondu figé, parce qu'elle est plus catégorique. */
+.tc-jauge {
+	/* `width: 100%` est juste PRÉCISÉMENT dans le cas où la jauge s'affiche : quand le tableau
+	   déborde, `.tc-wrap` est à son `max-width: 100%`, donc large comme son conteneur. Quand
+	   il ne déborde pas, `.tc-wrap` se réduit à son contenu — et la jauge est masquée. */
+	position: relative;
+	width: 100%;
+	height: 6px;
+	margin: 0 auto 8px;
+	border-radius: 3px;
+	background: var(--track);
+	overflow: hidden;
 }
-.tc-wrap--suite-g {
-	-webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
-	mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+/* Masquée quand tout le tableau tient : `display: none` et pas `visibility`, pour ne pas
+   garder 14 px de hauteur en paysage, là où on vient justement de la regagner. */
+.tc-jauge--inactive {
+	display: none;
 }
-.tc-wrap--suite-g.tc-wrap--suite-d {
-	-webkit-mask-image: linear-gradient(
-		to right,
-		transparent,
-		#000 28px,
-		#000 calc(100% - 28px),
-		transparent
-	);
-	mask-image: linear-gradient(
-		to right,
-		transparent,
-		#000 28px,
-		#000 calc(100% - 28px),
-		transparent
-	);
+.tc-jauge-curseur {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	/* Plancher de visibilité : sur une leçon à beaucoup de colonnes, la part visible peut
+	   tomber assez bas pour que le curseur devienne un trait imperceptible — visible sans
+	   plus rien dire, ce qui est pire qu'absent. */
+	min-width: 32px;
+	border-radius: 3px;
+	background: var(--accent);
 }
 .tc-table {
 	display: inline-flex;
@@ -387,7 +409,7 @@
    champ ; on ne le réduit QUE pour celui-ci, et QUE sur l'axe horizontal. Gain mesuré :
    +24 px de tableau visible. Ça ne supprime pas le défilement en portrait (il manque
    254 px sur 543) et ça ne prétend pas le faire : c'est de la place rendue, pas une
-   solution — le portrait défile et le dit (cf. `.tc-wrap--suite-*`). */
+   solution — le portrait défile et le dit (cf. `.tc-jauge`). */
 @media (max-width: 480px) {
 	.tc-runner .sprint-stage {
 		padding-inline: 14px;

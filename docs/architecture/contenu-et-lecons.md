@@ -1049,6 +1049,20 @@ pointillés, mais saisissables) — elles ne vivent plus qu'au **CE2**. **Invari
 zéro de transit et virgule ne coexistent **jamais** dans un même exercice ; il tient
 désormais parce que le CM1 n'a plus aucune colonne démotée et que le CE2 n'a aucun
 décimal.
+
+**REJET ÉCRIT — masquer `hm` et `dam` au CE2 (#711 lot 3).** L'avis revient
+régulièrement, et il a de bons arguments : le programme CE2 ne nomme que km, m, dm, cm,
+mm ; deux symboles jamais manipulés au milieu de la tâche coûtent de l'attention ; et ce
+sont ces deux colonnes qui poussent les colonnes utiles hors du champ de vision sur un
+téléphone en portrait. Il est écarté, pour deux raisons qui ne se compensent pas.
+D'abord, c'est **impossible sans casser le tableau** : le tableau de conversion EST le
+tableau de numération, chaque colonne vaut sa voisine ×10, et `chiffresParColonne`
+répartit un chiffre par rang. Retirer hm et dam rendrait « 3 km = 3 000 m » inécrivable,
+et laisserait un trou dans la logique même que l'enfant essaie de comprendre. Ensuite,
+c'est un **choix acté du mainteneur** : ces rangs s'affichent, mais avec une mise en
+valeur différenciée (en-tête démoté, case en pointillés) qui dit « il y a quelque chose
+ici, et on ne te demande pas de le connaître ». Consigné une fois ici pour que le
+prochain audit pédagogique ne le re-remonte pas une troisième fois.
 Rendu et interaction (pavé de chiffres externe, avance automatique) dans
 [Rendu & interactions](ui.md)).
 

@@ -1166,6 +1166,19 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   `.sheets` via `:has`), assez pour que les sept colonnes tiennent sans défilement dès qu'un
   écran a la place. Le hors-champ restant, en portrait, est signalé — voir « Un contenu qui
   déborde doit dire qu'il défile » plus bas.
+  **À vérifier sur appareil réel, non mécanisable** : `display: contents` a longtemps fait
+  disparaître les descendants interactifs de l'arbre d'accessibilité sous WebKit (avant
+  Safari 15.4). Les deux enveloppes enrobent des boutons (cases, pavé), et la seule
+  configuration où elles cessent d'être neutres est le paysage bas et large — qu'aucune
+  spec Playwright (Chromium) ne couvre. À passer au lecteur d'écran sur un iPad ou un
+  iPhone tenu à plat avant de considérer le rendu paysage acquis.
+  **REJET ÉCRIT — la taille des cases (40 × 46 px).** Elle est sous le repère de confort de
+  44 px pour un doigt d'enfant, et un relecteur le remonte à chaque passage sur cet écran.
+  Ce n'est ni causé ni aggravé par #711 (le critère 14 de l'issue ne demande que de ne pas
+  les rétrécir, et l'e2e le tient) ; c'est au-dessus du plancher normatif de SC 2.5.8
+  (24 px) ; et l'agrandir coûterait de la largeur au seul écran du dépôt qui en manque déjà.
+  Le constat est consigné dans le « hors périmètre » de #711 depuis le cadrage. À rouvrir
+  comme un sujet à soi, pas au détour d'une PR de rendu.
 - **`lecon-appariement.ts`** (#392) — runner **« appariement »** d'une leçon de
   vocabulaire, « une manche à la fois » (5 manches). `genManches` privilégie
   **`ExerciseType.generateSession`** quand la fabrique l'implémente (session entière

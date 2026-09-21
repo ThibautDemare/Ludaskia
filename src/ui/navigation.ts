@@ -428,7 +428,7 @@ function resetSessionUI() {
 	resetChrono();
 	sprintCleanup(); // stoppe un éventuel sprint en cours (compte à rebours)
 	revisionCleanup(); // remet à zéro le drapeau « révision en cours » (#63)
-	leconTableauCleanup(); // retire le listener clavier du runner tableau (#394) si actif
+	leconTableauCleanup(); // retire les listeners hors #sheets du runner tableau (clavier #394, redimensionnement #711)
 	currentMode = null;
 	currentLessonId = null;
 	document.getElementById('sheets')!.innerHTML = '';

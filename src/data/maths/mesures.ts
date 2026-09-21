@@ -589,9 +589,10 @@ const CONFIG_LONGUEURS: Record<'ce2' | 'cm1', MesureConfig> = {
 			{ big: 'm', small: 'mm', factor: 1000, maxBig: 20 },
 			{ big: 'dm', small: 'cm', factor: 10, maxBig: 20, decimal: 'deux-sens' },
 			{ big: 'm', small: 'dm', factor: 10, maxBig: 20, decimal: 'deux-sens' },
-			// Pas de rang ouverts par #711 pour que hm et dam cessent d'être « pas encore vus »
-			// alors que le programme CM1 nomme les unités « du millimètre au kilomètre ».
-			// Entiers : une longueur décimale en hectomètres n'a aucun référent réel.
+			// Chaîne de rangs ouverte par #711 : le programme CM1 nomme les unités « du
+			// millimètre au kilomètre », alors que hm et dam ne figuraient dans aucune relation
+			// et restaient donc affichés « pas encore vus en classe ». Entiers : une longueur
+			// décimale en hectomètres n'a aucun référent réel.
 			{ big: 'km', small: 'hm', factor: 10, maxBig: 20, consolidation: true },
 			{ big: 'hm', small: 'dam', factor: 10, maxBig: 20, consolidation: true },
 			{ big: 'dam', small: 'm', factor: 10, maxBig: 20, consolidation: true },

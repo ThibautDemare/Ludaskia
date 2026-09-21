@@ -193,6 +193,17 @@ Scinder en deux phrases courtes, **révélation d'abord**. Cas corrigé (#618) :
 demandé du travail, et maintenant tu sais l'écrire : bateau. » est devenu « Ce mot t'a
 demandé du travail : bateau. Maintenant, tu sais l'écrire ! ».
 
+## Deux gestes possibles : la finalité se dit une fois, à la fin (#711)
+
+Un message qui propose **deux actions alternatives** pour le même but ne les enchaîne pas
+d'un trait. Scinder le constat de la proposition, et placer la finalité **après les deux
+gestes**, séparée par une virgule : sinon elle se lit comme ne portant que sur le dernier
+cité, et l'enfant croit que l'autre geste ne sert à rien. Cas posé par #711 (aide du tableau
+de conversion) : « Le tableau est plus large que l'écran : fais-le glisser, ou tourne
+l'écran pour voir plus de colonnes. » est devenu « Le tableau dépasse de l'écran ? Fais-le
+glisser, ou tourne l'appareil, pour voir plus de colonnes. » — la répétition d'« écran »
+tombe au passage, et « appareil » couvre le téléphone comme la tablette.
+
 ## Le suivi parental se dit « le suivi », au singulier (#618)
 
 Le terme établi dans tout l'espace encadrant est **« le suivi »** (bouton « Voir le

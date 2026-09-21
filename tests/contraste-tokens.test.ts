@@ -362,6 +362,16 @@ const PAIRES_NON_TEXTE: Paire[] = [
 		arriere: '--paper',
 		ou: 'bordure des mêmes boutons une fois survolés/pressés, remplissage de jauge',
 	},
+	// Curseur SUR sa piste, et non sur le papier : c'est le couple qu'on voit réellement dès
+	// qu'une jauge est partiellement remplie. Posé par #711 (jauge de défilement du tableau de
+	// conversion, `tableau-conversion.scss .tc-jauge-curseur`), mais il existait déjà sans être
+	// mesuré — `.lz-bar-fill` sur `.lz-bar` (lessons.scss) est exactement le même empilement.
+	// Il porte du SENS ici : c'est le seul indice qu'il reste des colonnes hors du cadre.
+	{
+		avant: '--accent',
+		arriere: '--track',
+		ou: 'tableau-conversion.scss .tc-jauge-curseur sur .tc-jauge ; lessons.scss .lz-bar-fill sur .lz-bar',
+	},
 	{
 		avant: '--warn',
 		arriere: '--paper',

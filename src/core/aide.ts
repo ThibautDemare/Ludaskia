@@ -103,6 +103,15 @@ export const AIDES: Record<TypeAide, AideContenu> = {
 			"Écris 0 quand il n'y a rien à compter dans cette unité.",
 			'Les cases en pointillés se remplissent aussi.',
 		],
+		// Débordement du tableau (#711 critère 13) : l'invitation vit ICI, et pas sous le
+		// tableau. Un message posé dans l'écran d'exercice se relit à chaque question, donc
+		// devient du bruit ignoré, et il prend de la hauteur là où elle manque (avis
+		// designer-ux-enfant, arbitrage du mainteneur). Le signal PERMANENT est le fondu de
+		// bord, muet ; la phrase reste disponible à la demande, derrière le bouton « ? ».
+		// Elle promet « plus de colonnes » et non « tout le tableau » : la rotation suffit sur
+		// un téléphone ou une tablette courants, pas sur les très petits écrans.
+		alternative:
+			"Le tableau dépasse de l'écran ? Fais-le glisser, ou tourne l'appareil, pour voir plus de colonnes.",
 		reparation: "Tu t'es trompé ? Touche la case à corriger pour y revenir.",
 	},
 	appariement: {

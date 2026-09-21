@@ -70,6 +70,15 @@ const CONSIGNE = "Écris un chiffre par case. Mets 0 quand il n'y a rien à comp
    affichage, pas seulement au 1er lancement). */
 const LEGENDE =
 	'Les unités en petit ne sont pas encore vues en classe : tu peux quand même y écrire des 0.';
+/* Débordement du tableau (#711 critère 13) : AUCUN texte dans l'écran d'exercice. Le
+   signalement s'y fait par le fondu de bord, muet et permanent (`.tc-wrap--suite-*`,
+   `styles/tableau-conversion.scss`) ; l'invitation à tourner l'appareil vit dans l'aide
+   contextuelle (`core/aide.ts`, entrée `tableau`, champ `alternative`), donc à la demande
+   derrière le bouton « ? » et au 1er lancement du mode. Raison : un message posé sous le
+   tableau se relit à chaque question et devient du bruit ignoré, tout en mangeant de la
+   hauteur là où elle manque (avis designer-ux-enfant, arbitrage du mainteneur, écart au
+   critère 13 tracé par un commentaire daté sur l'issue). Rien n'est verrouillé non plus :
+   `screen.orientation.lock()` exige le plein écran et n'existe pas sur Safari iOS. */
 
 /* Une case saisissable = un chiffre attendu, rattachée à sa colonne. La colonne de tête
    à 2 chiffres se déploie en 2 cases (dizaine puis unité), regroupées visuellement (avis
@@ -91,6 +100,7 @@ let cells: Cellule[] = [];
 let active = 0;
 let frozen = false; // après validation : plus de saisie
 let keyHandler: ((e: KeyboardEvent) => void) | null = null;
+let resizeHandler: (() => void) | null = null;
 
 function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
@@ -237,11 +247,15 @@ export function renderTableauBoardHTML(ex: Tableau, cellsArg: Cellule[]): SafeHt
 	const ttsTexte = `${CONSIGNE} ${ex.parle ?? ex.question}`.trim();
 	return html`<p class="tc-consigne"${ttsAttr(ttsTexte)}>${CONSIGNE}</p>
         <p class="tc-enonce">${enonce}</p>
-        <div class="tc-wrap">
-          <div class="tc-table" id="tcTable" role="group" aria-describedby="tcLegende" aria-label="Tableau de conversion">${colonnes}</div>
-        </div>
-        <p class="tc-legende" id="tcLegende">${LEGENDE}</p>
-        ${paveHTML()}`;
+        <div class="tc-zone">
+          <div class="tc-colonne-tableau">
+            <div class="tc-wrap">
+              <div class="tc-table" id="tcTable" role="group" aria-describedby="tcLegende" aria-label="Tableau de conversion">${colonnes}</div>
+            </div>
+            <p class="tc-legende" id="tcLegende">${LEGENDE}</p>
+          </div>
+          ${paveHTML()}
+        </div>`;
 }
 
 function renderQuestion(): void {
@@ -264,6 +278,7 @@ function renderQuestion(): void {
     </div>`.balisage;
 	wireInteraction();
 	paintAll();
+	majFonduDefilement();
 	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
 	monterBoutonAide(sheets().querySelector('.sprint-stage'), 'tableau'); // bouton « ? » persistant
 }
@@ -314,6 +329,14 @@ function wireInteraction(): void {
 			cellBtn(active)?.focus({ preventScroll: true });
 			garderCaseActiveEnVue();
 		});
+	// Fondu de bord : suit le défilement du cadre, et la largeur disponible (rotation de
+	// l'appareil, redimensionnement de fenêtre → la tranche visible change).
+	sheets()
+		.querySelector('.tc-wrap')!
+		.addEventListener('scroll', majFonduDefilement, { passive: true });
+	detachResize();
+	resizeHandler = () => majFonduDefilement();
+	window.addEventListener('resize', resizeHandler);
 	const verif = sheets().querySelector('#tcVerif') as HTMLButtonElement;
 	verif.addEventListener('click', () => verifier());
 	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
@@ -351,14 +374,22 @@ function wireInteraction(): void {
 }
 
 /** Nettoyage à la sortie du runner (quitter via Accueil sans passer par `finish`) : retire
-    le listener clavier document-level. Branché dans resetSessionUI, comme sprintCleanup. */
+    les listeners posés HORS de `#sheets` — clavier sur `document`, redimensionnement sur
+    `window`. Ceux posés dans `#sheets` partent avec le markup au re-rendu. Branché dans
+    resetSessionUI, comme sprintCleanup. */
 export function leconTableauCleanup(): void {
 	detachKeys();
+	detachResize();
 }
 
 function detachKeys(): void {
 	if (keyHandler) document.removeEventListener('keydown', keyHandler);
 	keyHandler = null;
+}
+
+function detachResize(): void {
+	if (resizeHandler) window.removeEventListener('resize', resizeHandler);
+	resizeHandler = null;
 }
 
 const cellBtn = (i: number) => sheets().querySelector<HTMLButtonElement>(`.tc-cell[data-i="${i}"]`);
@@ -405,6 +436,19 @@ function paintAll(): void {
    Pas de `behavior: 'smooth'` : aucun mouvement animé à accorder à `prefers-reduced-motion`. */
 function garderCaseActiveEnVue(): void {
 	cellBtn(active)?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+}
+
+/* Fondu des bords du cadre (#711 lot 3) : dit qu'il reste des colonnes hors champ, sans un
+   mot. Piloté par la position de défilement RÉELLE et non par une media query — un fondu
+   qui resterait affiché au bout de la course affirmerait une suite qui n'existe pas, et
+   l'enfant continuerait de chercher. Tolérance de 2 px : `scrollWidth` et `clientWidth`
+   sont arrondis à l'entier, un écart de 1 px n'est pas un hors-champ. */
+function majFonduDefilement(): void {
+	const wrap = sheets().querySelector<HTMLElement>('.tc-wrap');
+	if (!wrap) return;
+	const restant = wrap.scrollWidth - wrap.clientWidth - Math.round(wrap.scrollLeft);
+	wrap.classList.toggle('tc-wrap--suite-g', Math.round(wrap.scrollLeft) > 2);
+	wrap.classList.toggle('tc-wrap--suite-d', restant > 2);
 }
 
 /* Déplace la case active (surbrillance) ; `focus` = déplacer AUSSI le focus DOM (nav clavier

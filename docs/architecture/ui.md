@@ -1159,6 +1159,13 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   construction**, contrairement à `lecon-qcm.ts` ci-dessus : les paires CM1 km→m / m→mm / L→mL
   (`maxBig: 20` × facteur 1000) produisent 11 000 à 20 000 — avant le correctif, « 20000 mL »
   s'affichait brut à l'écran et dans le journal encadrant.
+  **Mise en page selon la place (#711 lot 3)** : deux enveloppes neutres (`.tc-zone`,
+  `.tc-colonne-tableau`) en `display: contents` — donc sans effet en portrait — deviennent en
+  **paysage bas et large** une rangée « tableau | pavé », ce qui sort les 248 px du pavé de
+  l'axe vertical. Les plafonds de largeur sont relevés **pour ce seul runner** (`.sprint`, et
+  `.sheets` via `:has`), assez pour que les sept colonnes tiennent sans défilement dès qu'un
+  écran a la place. Le hors-champ restant, en portrait, est signalé — voir « Un contenu qui
+  déborde doit dire qu'il défile » plus bas.
 - **`lecon-appariement.ts`** (#392) — runner **« appariement »** d'une leçon de
   vocabulaire, « une manche à la fois » (5 manches). `genManches` privilégie
   **`ExerciseType.generateSession`** quand la fabrique l'implémente (session entière
@@ -1777,8 +1784,39 @@ Posé par le tableau de conversion (#711) : sa tranche de colonnes est désormai
 colonnes pour les longueurs, alors que `.sprint` plafonne la scène à 600 px. Le
 débordement y est la situation normale et non plus un cas limite de petit écran. La case
 active, elle, est ramenée dans le champ à chaque déplacement (`garderCaseActiveEnVue`,
-`ui/lecon-tableau.ts`) ; ce qui reste à traiter est le signalement lui-même, dont le
-traitement visuel (fondu de bord, chevron) revient au `designer-ux-enfant`.
+`ui/lecon-tableau.ts`).
+
+Le signalement a été traité par le lot 3 de #711, en **deux registres distincts**, et c'est
+la partie réutilisable de la règle :
+
+- un **signal permanent et muet** — un fondu sur le bord du cadre côté colonnes cachées
+  (`.tc-wrap--suite-d` / `--suite-g`, `styles/tableau-conversion.scss`), posé par le runner
+  d'après la position de défilement **réelle** et non par une media query. Un fondu qui
+  survivrait au bout de la course affirmerait une suite inexistante, et l'enfant
+  continuerait de chercher. Le cadre porte aussi `scroll-padding-inline`, sans quoi la case
+  ramenée en vue se calerait pile sous le fondu et s'y afficherait à moitié effacée ;
+- une **phrase à la demande** — l'invitation à tourner l'appareil, rangée dans l'**aide
+  contextuelle** du mode (`core/aide.ts`, entrée `tableau`, champ `alternative`), donc
+  ouverte au 1er lancement puis rejouable par le bouton « ? ». Elle promet « plus de
+  colonnes » et non « tout le tableau » : la rotation suffit sur un téléphone ou une
+  tablette courants, pas sur les très petits écrans.
+
+**Règle qui en sort, et c'est elle qui se réutilise : le signalement d'un débordement se
+fait dans l'écran, l'explication se fait dans l'aide.** Un texte posé dans l'écran
+d'exercice se relit à chaque question : le `designer-ux-enfant` relève qu'il devient du
+bruit ignoré dès la 3ᵉ lecture, prend de la hauteur là où elle manque, et cadre le
+défilement comme un obstacle plutôt que comme la suite du contenu. Le
+`specialiste-troubles-apprentissage` ajoute qu'un conseil qui ne tient pas sa promesse coûte
+plus qu'il ne rapporte à un enfant qui s'appuie sur des consignes fiables. L'écran garde
+donc le signal, muet et toujours vrai ; l'aide garde la phrase, disponible sans être
+imposée. Arbitrage du mainteneur sur #711, écart au critère 13 de l'issue tracé par un
+commentaire daté.
+
+Corollaire de largeur, valable au-delà de cette leçon : **avant de rétrécir le contenu,
+regarder ce que les cadres retiennent**. Ici le vrai plafond n'était pas `.sprint` (600 px)
+mais `.sheets` (210 mm ≈ 794 px, la largeur « page A4 » des feuilles d'exercices). Les deux
+sont relevés pour ce seul runner (`.sprint.tc-runner`, `.sheets:has(.tc-runner)`), ce qui a
+suffi : aucune colonne n'a eu à maigrir, aucun nom d'unité à se couper.
 
 ### Sprint sans pression temporelle (#223)
 

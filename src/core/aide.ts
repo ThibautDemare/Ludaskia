@@ -111,8 +111,8 @@ export const AIDES: Record<TypeAide, AideContenu> = {
 		// Débordement du tableau (#711 critère 13) : l'invitation vit ICI, et pas sous le
 		// tableau. Un message posé dans l'écran d'exercice se relit à chaque question, donc
 		// devient du bruit ignoré, et il prend de la hauteur là où elle manque (avis
-		// designer-ux-enfant, arbitrage du mainteneur). Le signal PERMANENT est le fondu de
-		// bord, muet ; la phrase reste disponible à la demande, derrière le bouton « ? ».
+		// designer-ux-enfant, arbitrage du mainteneur). Le signal PERMANENT est la jauge de
+		// défilement, muette ; la phrase reste disponible à la demande, derrière le bouton « ? ».
 		// Elle promet « plus de colonnes » et non « tout le tableau » : la rotation suffit sur
 		// un téléphone ou une tablette courants, pas sur les très petits écrans.
 		alternative:

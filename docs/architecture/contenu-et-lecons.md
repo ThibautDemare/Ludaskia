@@ -1064,7 +1064,7 @@ valeur différenciée (en-tête démoté, case en pointillés) qui dit « il y a
 ici, et on ne te demande pas de le connaître ». Consigné une fois ici pour que le
 prochain audit pédagogique ne le re-remonte pas une troisième fois.
 Rendu et interaction (pavé de chiffres externe, avance automatique) dans
-[Rendu & interactions](ui.md)).
+[Rendu & interactions](ui.md).
 
 Le CM1 élargit les plages (1–20) et ajoute des unités déjà au programme (dm, g↔mg,
 min↔s…) et, depuis #248 (programme 2025 §1.3, au plus 2 chiffres après la virgule),

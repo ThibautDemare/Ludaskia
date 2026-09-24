@@ -23,6 +23,7 @@ import './styles/mots-difficiles.scss';
 import './styles/print.scss';
 import './styles/bilan.scss';
 import './styles/catalog.scss';
+import './styles/recherche-lecon.scss';
 import './styles/francais.scss';
 import './styles/orthographe.scss';
 import './styles/version-update.scss';
@@ -82,7 +83,13 @@ import { isSprintRunning } from './ui/sprint';
 import { isRevisionRunning } from './ui/revision';
 import { hideCelebration, hideLevelUp } from './ui/effects';
 import { openRecompenses, openTrophees, hideUnlockModals } from './ui/unlocks-view';
-import { closeProfileMenu, toggleProfileMenu, toggleDrawer, closeDrawer } from './ui/menu';
+import {
+	closeProfileMenu,
+	toggleProfileMenu,
+	toggleDrawer,
+	closeDrawer,
+	surveillerHauteurBarre,
+} from './ui/menu';
 import { initTts } from './ui/tts';
 import { maybeShowClassChoice } from './ui/onboarding';
 import { lancerTour, maybeOnboarding } from './ui/tour';
@@ -386,6 +393,9 @@ function wireDOM() {
 			e.returnValue = '';
 		}
 	});
+	// Hauteur réelle de la barre en variable CSS, tenue à jour (#718 : le champ de recherche
+	// s'y colle ; avant, seul le tiroir la mesurait, à son ouverture).
+	surveillerHauteurBarre();
 	// Au chargement : on affiche la vue désignée par le hash (accueil par défaut)
 	route();
 

@@ -20,7 +20,10 @@ import { loadStars, loadLessonStats, etoileAuxNiveaux } from '../core/progress';
 import { loadOrtho } from '../core/orthographe/store';
 import { listOrthoLecons, motsApercu, type LeconOrthoRef } from '../core/orthographe/lessons';
 import { escapeHTML } from '../core/utils';
+import { libelleAffiche } from '../core/libelle-affiche';
+import { grouperParRubrique } from '../core/rubriques';
 import { lessonCardHTML } from './render';
+import { rechercheHTML, brancherRecherche } from './recherche-lecon';
 import { startCategorySprint } from './sprint';
 import { startBilan, categoryBilanCtx, renderFavoris } from './bilan';
 import { renderReprises } from './resume';
@@ -48,7 +51,9 @@ const lastExpressByCat: Record<string, string[]> = {};
 
 /* ---------- Écran : liste des matières ---------- */
 export function renderSubjects(el: HTMLElement): void {
-	el.innerHTML = html`<div class="nav-cards">
+	// Recherche de leçon (#718) AVANT les cartes : un raccourci, jamais le seul chemin — les
+	// deux cartes restent le parcours par défaut (critère 16).
+	el.innerHTML = html`${rechercheHTML()}<div class="nav-cards">
     ${joindre(
 			SUBJECTS.map((s) => {
 				const n = getLessonsBySubject(s.id, niveauActifMatiere(s.id)).length;
@@ -63,6 +68,7 @@ export function renderSubjects(el: HTMLElement): void {
 	el.querySelectorAll<HTMLButtonElement>('[data-subject]').forEach((btn) => {
 		btn.addEventListener('click', () => goCategories(btn.dataset.subject!));
 	});
+	brancherRecherche(el);
 }
 
 /* ---------- Écran : catégories d'une matière ---------- */
@@ -133,7 +139,9 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 	const ai = LEVEL_ORDER.indexOf(niveau);
 	const cardRow = (def: LessonDef, i: number) => {
 		const rich = LESSONS_CALCUL_MENTAL.find((l) => l.id === def.id);
-		const entry = rich ?? { id: def.id, num: i + 1, title: labelLecon(def, niveau) };
+		// Titre via `libelleAffiche` (#718) : la recherche indexe la MÊME fonction, donc ce
+		// que l'enfant lit ici est exactement ce qu'il peut retrouver en tapant.
+		const entry = { id: def.id, num: rich?.num ?? i + 1, title: libelleAffiche(def, niveau) };
 		// Badge « déjà maîtrisée en <classe inférieure> » : même leçon étoilée à un
 		// niveau plus bas que le niveau actif de la matière (#225). On nomme la classe
 		// inférieure maîtrisée la plus haute.
@@ -144,24 +152,16 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 		return html`<div class="lesson-row">${lessonCardHTML(entry, stars, lstats, def.repere, badge)}<button class="lz-print" data-print="${def.id}" title="Imprimer la fiche" aria-label="Imprimer la fiche : ${labelLecon(def, niveau)}">${icon('printer')}</button></div>`;
 	};
 
-	// Regroupement par rubrique (#109), dans l'ordre d'apparition. Une leçon sans
-	// rubrique forme un groupe « sans titre » (rendu à plat, rétro-compatible).
-	const groupes: { rubrique: string; defs: LessonDef[] }[] = [];
-	lessonDefs.forEach((def) => {
-		const r = def.rubrique ?? '';
-		let g = groupes.find((x) => x.rubrique === r);
-		if (!g) {
-			g = { rubrique: r, defs: [] };
-			groupes.push(g);
-		}
-		g.defs.push(def);
-	});
+	// Regroupement par rubrique (#109), dans l'ordre d'apparition — fonction pure partagée
+	// avec la recherche (#718), qui doit reproduire cet ordre. Une leçon sans rubrique
+	// forme un groupe « sans titre » (rendu à plat, rétro-compatible).
+	const groupes = grouperParRubrique(lessonDefs);
 	const aRubriques = groupes.some((g) => g.rubrique !== '');
 	const listHTML = joindre(
 		groupes.map((g) => {
 			const head =
 				g.rubrique && aRubriques ? html`<h3 class="cat-rubrique">${g.rubrique}</h3>` : VIDE;
-			const rows = joindre(g.defs.map((def) => cardRow(def, lessonDefs.indexOf(def))));
+			const rows = joindre(g.lecons.map((def) => cardRow(def, lessonDefs.indexOf(def))));
 			return html`${head}<div class="lesson-list">${rows}</div>`;
 		}),
 	);
@@ -320,21 +320,13 @@ function renderOrthoCategorie(el: HTMLElement): void {
     </button>`;
 	};
 
-	// Regroupement des leçons moteur par rubrique, dans l'ordre d'apparition.
-	const rubriques: { nom: string; lecons: LessonDef[] }[] = [];
-	moteurLecons.forEach((l) => {
-		const nom = l.rubrique ?? 'Exercices';
-		let g = rubriques.find((r) => r.nom === nom);
-		if (!g) {
-			g = { nom, lecons: [] };
-			rubriques.push(g);
-		}
-		g.lecons.push(l);
-	});
+	// Regroupement des leçons moteur par rubrique, dans l'ordre d'apparition (même
+	// fonction pure que l'écran de catégorie et la recherche, #718).
+	const rubriques = grouperParRubrique(moteurLecons, 'Exercices');
 	const moteurSections = joindre(
 		rubriques.map(
 			(r) => html`<section class="ortho-rubrique">
-        <h3 class="cat-rubrique">${r.nom}</h3>
+        <h3 class="cat-rubrique">${r.rubrique}</h3>
         <div class="nav-cards ortho-cards">${joindre(r.lecons.map(moteurCard))}</div>
       </section>`,
 		),

@@ -46,6 +46,9 @@ export type IconName =
 	| 'timer'
 	| 'exam'
 	| 'bookmark'
+	// Recherche de leçon côté enfant (#718) : la loupe, seul picto que l'enfant associe
+	// déjà à « chercher » (barres de recherche, tablettes).
+	| 'magnifying-glass'
 	// Quantité croissante (sélecteur « questions par leçon » du bilan)
 	| 'quantity-1'
 	| 'quantity-2'

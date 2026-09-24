@@ -377,6 +377,15 @@ const PAIRES_NON_TEXTE: Paire[] = [
 		arriere: '--paper',
 		ou: 'encadrant.scss .enc-revoir-signal (liseré « ça bloque »)',
 	},
+	// Anneau de focus du champ de recherche enfant (#718) : il se dessine HORS du cadre du
+	// champ, donc sur le fond de page, pas sur le papier. Posé en `--accent-dark` après que
+	// la relecture a11y a mesuré `--accent-soft` à 1,04:1 au même endroit — la variante
+	// « box-shadow » du motif que #385 avait retiré comme bordure.
+	{
+		avant: '--accent-dark',
+		arriere: '--page-bg',
+		ou: 'recherche-lecon.scss .recherche-champ:focus-within (anneau de focus)',
+	},
 	// Décompte gelé pendant l'écoute d'un énoncé (#630) : un liseré pointillé cerne le
 	// minuteur, en `currentColor` — donc `--accent` au repos, `--ko` dans les 30
 	// dernières secondes. `outline-offset` le pose HORS de la carte du minuteur, donc

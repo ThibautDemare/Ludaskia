@@ -207,3 +207,9 @@ encadrant](espace-encadrant.md)) ne filtre PAS par défaut sur le niveau — il 
 catalogue, la classe devenant un filtre parmi d'autres (barre de jetons) plutôt qu'une
 frontière. Ce renversement reste réservé à l'adulte qui DÉSIGNE une leçon précise : les
 pools de tirage de l'enfant ci-dessus (sprint/révision) restent scopés à sa classe.
+
+**La recherche de leçon côté ENFANT (#718, `core/recherche-lecon.ts`) n'entre pas dans
+cette exception** : le niveau y reste une FRONTIÈRE, exactement comme le catalogue
+parcouru à la main — une leçon hors du niveau actif de SA matière reste introuvable,
+même par son libellé exact ou un de ses mots-clés (cf. [Modes &
+navigation](modes-et-navigation.md)).

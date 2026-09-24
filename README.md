@@ -42,7 +42,8 @@ de progression.
 ## Ce qu'on peut faire
 - **Leçon du jour** — le prochain pas à travailler, mis en avant sur l'accueil
   (la progression avance par la **maîtrise**, pas par le calendrier).
-- **Une leçon à la fois** — cibler un thème et viser le sans-faute.
+- **Une leçon à la fois** — cibler un thème et viser le sans-faute ; un champ de recherche
+  retrouve une leçon par son nom ou par un mot que l'enfant emploie (« fois », « les euros »).
 - **Sprint 5 min** — enchaîner un maximum de bonnes réponses, questions tirées au
   hasard à la volée (maths et français), **filtrable par matière et par catégorie**.
 - **Révision** — un rappel régulier de ce qui a déjà été vu, **espacé dans le

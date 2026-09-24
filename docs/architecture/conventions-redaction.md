@@ -470,3 +470,20 @@ antérieur de même nature ; sur « 250 cm = ? m » la colonne cible est déjà 
 le chemin est vide, et ce pas est le PREMIER à parler de rangs vides. Le « non plus »
 renvoyait alors à un référent inexistant. Un déroulé se compose de pas **conditionnels** :
 chaque phrase doit se tenir seule.
+
+## Mots-clés de recherche : le vocabulaire de l'enfant, pas celui du programme (#718)
+
+Un `motsCles` (`LessonDef`/`Category`, cf. [Contenu & leçons](contenu-et-lecons.md)) ne
+recopie pas le vocabulaire du programme, ni le libellé déjà affiché — le gate
+(`tests/mots-cles-gate.test.ts`) ne vérifie que la PRÉSENCE d'un mot-clé, jamais son
+utilité. Il porte le mot qu'un CE2 emploierait pour désigner la notion sans en connaître
+le nom savant : « fois » plutôt que « multiplication », « a ou à » plutôt que
+« homophones grammaticaux », « les tables » plutôt que « calcul mental ». En minuscules
+(la recherche est déjà insensible à la casse) et absent du libellé affiché — sinon il ne
+rend rien trouvable de plus qu'une recherche sur le seul titre.
+
+**Rejet écrit** : deux leçons voisines peuvent légitimement partager les mêmes mots-clés
+(« Ordre alphabétique — 1re lettre » / « 2e lettre » ; « Les contraires » CE2 / CM1 ;
+« Les mots de sens proche » CE2 / CM1) — même notion à deux paliers jamais visibles au
+même niveau, que le libellé affiché distingue déjà. Le gate n'exige donc **pas**
+l'unicité des mots-clés, et ce n'est pas à re-remonter.

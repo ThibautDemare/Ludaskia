@@ -31,12 +31,15 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   ([Rendu & échappement](rendu-et-echappement.md)), qui choisit l'échappement selon la
   position d'insertion. Reste le **seul** échappement du projet —, `fmt` (mm:ss), et
   `normalizeText` (normalisation **partagée** des réponses texte : trim + espaces
-  internes réduits + NFC). **`cleRecherche(s)`** (#496, partagée #556) — clé de recherche
-  d'un texte libre **insensible casse/accents** (minuscules, ligatures dépliées,
-  diacritiques retirés) — DISTINCTE de `normalizeText`, qui sert la **correction** et doit,
-  elle, exiger les accents : partagée par la banque de mots d'orthographe
-  (`core/orthographe/banque.ts`, cf. [Espace encadrant](espace-encadrant.md)) et par l'arbre
-  de sélection de leçon de l'espace encadrant (`core/catalogue-arbre.ts`, #556, ci-dessous).
+  internes réduits + NFC). **`cleRecherche(s)`** (#496, partagée #556, #718) — clé de
+  recherche d'un texte libre **insensible casse/accents/apostrophes** (minuscules,
+  ligatures dépliées, diacritiques retirés, apostrophe typographique `’`/`‘` repliée sur
+  l'apostrophe droite depuis #718) — DISTINCTE de `normalizeText`, qui sert la
+  **correction** et doit, elle, exiger les accents : partagée par la banque de mots
+  d'orthographe (`core/orthographe/banque.ts`, cf. [Espace encadrant](espace-encadrant.md)),
+  par l'arbre de sélection de leçon de l'espace encadrant (`core/catalogue-arbre.ts`, #556,
+  ci-dessous) et par la recherche de leçon côté enfant (`recherche-lecon.ts`, #718,
+  ci-dessous).
   **`startOfDay(ts)`** — début du jour LOCAL (via `setHours`,
   robuste au changement d'heure) — est le socle **unique** de tout raisonnement en
   jours calendaires de l'app : consommé par `progress.ts` (`startOfWeek`),
@@ -680,7 +683,11 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   omis. **`etayage?: EtayageEntree[]`** (#490) est remonté TEL QUEL depuis
   `LessonInput` — aucune résolution fixe/fonction comme les champs ci-dessus, juste le
   contenu d'étayage rédigé au plus près de la leçon (cf. « Étayage de la notion »
-  plus bas) ; absent = pas de panneau pour cette leçon. **`labelNiveau?: Partial<Record<SchoolLevel, string>>`** (#436) est le **surcroît
+  plus bas) ; absent = pas de panneau pour cette leçon. **`motsCles?: string[]`** (#718,
+  même régime que `etayage` : remonté TEL QUEL) — mots-clés de recherche côté enfant,
+  portés aussi par `CATEGORIES` ; optionnel dans le TYPE mais **exigé en pratique** sur
+  tout le catalogue réel par `tests/mots-cles-gate.test.ts` (cf. [Tests](tests.md)), qui
+  échoue en nommant la leçon ou la catégorie sans mot-clé. **`labelNiveau?: Partial<Record<SchoolLevel, string>>`** (#436) est le **surcroît
   optionnel** qui permet à une leçon multi-niveaux de se **nommer** différemment selon la
   classe (« Clique sur le nom » au CE2, « Clique sur le nom noyau » au CM1, « noyau » étant
   du vocabulaire CM1) : `label` reste le libellé par défaut et **doit rester juste à tous les
@@ -839,6 +846,41 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   de sprint, pour que `tests/sprint-tts-gate.test.ts` (cf. [Tests](tests.md))
   interroge EXACTEMENT la question vue par l'enfant plutôt qu'une reconstitution
   qui aurait divergé au premier format ajouté.
+- **`rubriques.ts`** (#109, extrait #718, pur) — regroupement par **rubrique** :
+  `grouperParRubrique(lessons, sansTitre?)` groupe dans l'ordre d'apparition (chaque
+  rubrique à la place de sa PREMIÈRE leçon), `ordreEcran(lessons)` aplatit le même
+  résultat — l'ordre que l'écran de catégorie affiche (`ui/catalog-nav.ts`) et que la
+  recherche (`recherche-lecon.ts` ci-dessous) doit reproduire À L'IDENTIQUE (critère 9,
+  #718 : deux copies du même regroupement auraient fini par diverger sans que rien ne
+  rougisse). Ne trie pas : l'appelant fournit déjà la liste dans l'ordre pédagogique
+  (`trierParOrdre`/`getLessonsByCategory`). Stable, sans mutation.
+- **`libelle-affiche.ts`** (#718, pur) — **`libelleAffiche(lesson, niveau)`** : le
+  libellé qu'un enfant lit RÉELLEMENT sur sa carte — le `title` de `core/lessons.ts`
+  pour les 17 leçons de calcul mental du moteur historique (l'écran de catégorie
+  l'affiche à la place du `label` du catalogue, ex. « Multiplier par 4, par 8 » contre
+  « × 4, × 8 »), sinon `labelLecon` (#436, résolu au niveau). Seul point qui répond à
+  « voilà ce que l'enfant lit » : `ui/catalog-nav.ts` (titre de carte) ET
+  `recherche-lecon.ts` l'appellent tous deux, pour que ce que la recherche indexe soit,
+  par construction, ce que l'enfant a sous les yeux. **Rejet écrit** : `renderCategorie`
+  (`catalog-nav.ts`) cherche déjà `LESSONS_CALCUL_MENTAL.find(id)` pour le numéro de la
+  carte, et `libelleAffiche` refait la même recherche linéaire sur les 17 entrées —
+  doublon assumé (coût négligeable sur 17 entrées), pas de raison de complexifier l'API
+  pure pour le partager.
+- **`recherche-lecon.ts`** (#718, pur) — **`rechercherLecons(requete, source)`** : la
+  recherche de leçon côté ENFANT de l'écran des matières (cf. [Modes &
+  navigation](modes-et-navigation.md), [Rendu & interactions](ui.md)). Sous-chaîne sur
+  `cleRecherche` (ci-dessus), inactive sous **`RECHERCHE_MIN`** (2) caractères. Quatre
+  partis pris DIFFÉRENTS du sélecteur adulte (`catalogue-arbre.ts`, #556, ci-dessous),
+  qui reste inchangé : le niveau est une FRONTIÈRE et non un filtre
+  (`source.niveau(subject)`, cf. [Niveaux scolaires](niveaux-scolaires.md)) ; le texte
+  cherché est le libellé AFFICHÉ (`libelleAffiche` ci-dessus) plus les **mots-clés** de
+  la leçon, jamais le seul `label` ; une catégorie qui correspond (nom ou mot-clé) est un
+  RÉSULTAT à part entière qui ouvre son écran, sans entraîner ses leçons ; les dictées de
+  mots (pas des `LessonDef`) sont cherchées par leur nom, déjà filtrées au niveau par
+  l'appelant. Les leçons trouvées sont groupées par catégorie, dans l'ordre de l'ÉCRAN de
+  la catégorie (`ordreEcran` ci-dessus). Pur : ni DOM ni stockage — le texte tapé et le
+  débounce d'annonce vivent côté UI (`ui/recherche-lecon.ts`, cf. [Rendu &
+  interactions](ui.md)).
 
 ## Contenu maths & génération de fiches/bilans
 

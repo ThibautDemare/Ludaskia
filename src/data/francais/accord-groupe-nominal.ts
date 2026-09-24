@@ -365,6 +365,7 @@ export const ACCORD_GN_LESSONS: AccordGNLessonDef[] = [
 	{
 		id: 'fr-accords-groupe-nominal',
 		label: 'Accorder tout le groupe',
+		motsCles: ['groupe nominal', 'déterminant, adjectif et nom', 'accorder plusieurs mots'],
 		rubrique: 'Les accords',
 		exerciseType: accordGNType(),
 		etayage: [ETAYAGE_ACCORD_GN],

@@ -259,6 +259,7 @@ export const CLASSES_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-gram-classes',
 		label: 'Classes de mots, articles, adverbes',
+		motsCles: ['nom', 'verbe', 'adjectif', 'déterminant', 'le la les'],
 		exerciseType: classesMotsType(),
 		etayage: [ETAYAGE_CLASSES],
 	},

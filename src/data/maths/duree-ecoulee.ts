@@ -282,6 +282,7 @@ export const DUREE_ECOULEE_LESSONS: DureeEcouleeLessonDef[] = [
 	{
 		id: 'mes-duree-ecoulee',
 		label: 'Je calcule une durée',
+		motsCles: ['calculer', 'temps écoulé', 'heure de début', 'heure de fin'],
 		exerciseType: deuxSousQuestionsType({
 			levels: ['cm1'],
 			labelSaisie: "J'écris les heures et les minutes",

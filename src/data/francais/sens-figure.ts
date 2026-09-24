@@ -359,6 +359,7 @@ export const SENS_FIGURE_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-vocab-sens',
 		label: 'Sens propre / sens figuré',
+		motsCles: ['expression', 'sens caché', 'image'],
 		exerciseType: sensFigureType(),
 		etayage: [ETAYAGE_SENS_FIGURE],
 	},

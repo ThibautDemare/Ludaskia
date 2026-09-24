@@ -300,12 +300,14 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 	{
 		id: 'fr-gram-clic-verbe',
 		label: 'Clique sur le verbe',
+		motsCles: ['verbe conjugué', 'trouver le verbe', 'action'],
 		exerciseType: clicVerbeType(),
 		etayage: [ETAYAGE_VERBE_CE2, ETAYAGE_VERBE_CM1],
 	},
 	{
 		id: 'fr-gram-clic-det',
 		label: 'Clique sur le déterminant',
+		motsCles: ['article', 'le la les', 'mon ton son', 'ce cette ces', 'possessif', 'démonstratif'],
 		exerciseType: clicMotType({
 			banque: PHRASES_DET,
 			consigne: CONSIGNE_DET,
@@ -323,6 +325,7 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 		// distracteur du nom noyau et dans l'accord du groupe nominal.
 		id: 'fr-gram-clic-adj',
 		label: "Clique sur l'adjectif",
+		motsCles: ['adjectif qualificatif', 'qui décrit', 'comment est'],
 		exerciseType: clicMotType({
 			banque: PHRASES_ADJ_CE2,
 			consigne: CONSIGNE_ADJ_CE2,
@@ -334,6 +337,7 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 	{
 		id: 'fr-gram-clic-conj',
 		label: 'Clique sur la conjonction',
+		motsCles: ['mais ou et donc or ni car', 'conjonction de coordination', 'mot de liaison'],
 		exerciseType: clicMotType({
 			banque: PHRASES_CONJ,
 			consigne: CONSIGNE_CONJ,
@@ -344,6 +348,7 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 	{
 		id: 'fr-gram-clic-pron',
 		label: 'Clique sur le pronom',
+		motsCles: ['pronom personnel', 'je tu il elle', 'me te le la lui', 'sujet ou complément'],
 		exerciseType: clicMotType({
 			banque: PHRASES_PRON,
 			consigne: CONSIGNE_PRON,
@@ -363,6 +368,7 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 		// niveau sous la main) et `labelNiveau` précise chaque classe.
 		id: 'fr-gram-clic-noyau',
 		label: 'Clique sur le nom',
+		motsCles: ['nom commun', 'nom propre', 'groupe nominal', 'noyau du groupe nominal'],
 		labelNiveau: { ce2: 'Clique sur le nom', cm1: 'Clique sur le nom noyau' },
 		exerciseType: clicMotType({
 			banque: PHRASES_NOYAU,
@@ -380,6 +386,7 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 	{
 		id: 'fr-gram-clic-sujet',
 		label: 'Clique sur le sujet',
+		motsCles: ['groupe sujet', "qui fait l'action", 'sujet du verbe'],
 		exerciseType: clicMotType({
 			banque: PHRASES_SUJET,
 			consigne: CONSIGNE_SUJET,

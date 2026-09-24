@@ -231,18 +231,21 @@ export const CONJ_META_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-conj-simple-compose',
 		label: 'Temps simple ou composé ?',
+		motsCles: ['avoir ou être', 'un mot ou deux mots', 'auxiliaire devant le verbe'],
 		exerciseType: simpleComposeType(),
 		etayage: [ETAYAGE_SIMPLE_COMPOSE],
 	},
 	{
 		id: 'fr-conj-groupe',
 		label: '1er, 2e ou 3e groupe ?',
+		motsCles: ['premier groupe', 'deuxième groupe', 'troisième groupe'],
 		exerciseType: groupeType(),
 		etayage: [ETAYAGE_GROUPE],
 	},
 	{
 		id: 'fr-conj-infinitif',
 		label: "Quel est l'infinitif ?",
+		motsCles: ['il faut', 'verbe du dictionnaire', 'retrouver le verbe'],
 		exerciseType: infinitifType(),
 		etayage: [ETAYAGE_INFINITIF],
 	},

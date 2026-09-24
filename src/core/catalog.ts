@@ -85,6 +85,10 @@ export interface Category {
 	label: string;
 	subject: SubjectId;
 	icon?: IconName; // pictogramme de la carte de catégorie (rendu par ui/icon.ts)
+	// Mots-clés de recherche (#718) : ce qui doit mener l'enfant à l'ÉCRAN de la
+	// catégorie (« dictée » → Orthographe, « tables » → Calcul mental). Même gate que les
+	// leçons : chaque catégorie en porte au moins un.
+	motsCles?: string[];
 }
 
 export interface LessonDef {
@@ -125,6 +129,13 @@ export interface LessonDef {
 	// Absent = pas de panneau du tout pour cette leçon (dégradation propre voulue :
 	// jamais de repli sur un exemple générique de la famille de moteur).
 	etayage?: EtayageEntree[];
+	// Mots-clés de RECHERCHE côté enfant (#718) : ce que l'enfant, le parent ou
+	// l'enseignant DIT pour désigner la leçon (« fois », « les euros », « a ou à »), là où
+	// le libellé porte le vocabulaire de la notion. Portés par la DONNÉE de la leçon et
+	// remontés tels quels par `toLessonDefs`, comme `etayage`. Optionnel dans le TYPE
+	// (fixtures de tests, leçons injectées), mais OBLIGATOIRE dans le catalogue réel :
+	// `tests/mots-cles-gate.test.ts` fait échouer `npm test` sur une leçon sans mot-clé.
+	motsCles?: string[];
 }
 
 export interface BilanConfig {
@@ -204,6 +215,8 @@ function toLessonDefs<I extends LessonInput>(inputs: I[], opts: LessonDefOptions
 		// Étayage (#490) : recopié de l'ENTRÉE, comme id/label/exerciseType — il décrit la
 		// notion d'UNE leçon, donc jamais une valeur commune à toute une famille.
 		if (input.etayage !== undefined) def.etayage = input.etayage;
+		// Mots-clés de recherche (#718) : même régime que l'étayage, propres à UNE leçon.
+		if (input.motsCles !== undefined) def.motsCles = input.motsCles;
 		return def;
 	});
 }
@@ -266,12 +279,65 @@ export const CATEGORIES: Category[] = [
 	// complété par le « Calcul mental » historique. ⚠ « Calcul » (math-calcul,
 	// opérations posées) est distinct du « Calcul mental » (math-calcul-mental).
 	// Les nouvelles catégories arrivent vides : leurs leçons suivront par issue.
-	{ id: 'math-numeration', label: 'Numération', subject: 'math', icon: 'list-numbers' },
-	{ id: 'math-calcul', label: 'Calcul', subject: 'math', icon: 'plus-minus' },
-	{ id: 'math-calcul-mental', label: 'Calcul mental', subject: 'math', icon: 'brain' },
-	{ id: 'math-grandeurs-mesures', label: 'Grandeurs et mesures', subject: 'math', icon: 'ruler' },
-	{ id: 'math-geometrie', label: 'Géométrie', subject: 'math', icon: 'shapes' },
-	{ id: 'math-problemes', label: 'Résolution de problèmes', subject: 'math', icon: 'lightbulb' },
+	// `motsCles` (#718) : ce que l'enfant tape pour arriver à l'ÉCRAN de la catégorie.
+	{
+		id: 'math-numeration',
+		label: 'Numération',
+		subject: 'math',
+		icon: 'list-numbers',
+		motsCles: ['nombres', 'grands nombres', 'fractions', 'décimaux', 'virgule', 'compter'],
+	},
+	{
+		id: 'math-calcul',
+		label: 'Calcul',
+		subject: 'math',
+		icon: 'plus-minus',
+		motsCles: [
+			'poser une opération',
+			'addition posée',
+			'soustraction posée',
+			'multiplication posée',
+			'en colonne',
+			'opérations',
+		],
+	},
+	{
+		id: 'math-calcul-mental',
+		label: 'Calcul mental',
+		subject: 'math',
+		icon: 'brain',
+		motsCles: ['calcul de tête', 'tables', 'de tête', 'astuces', 'calcul rapide'],
+	},
+	{
+		id: 'math-grandeurs-mesures',
+		label: 'Grandeurs et mesures',
+		subject: 'math',
+		icon: 'ruler',
+		motsCles: [
+			'mesures',
+			'conversions',
+			'unités',
+			'euros',
+			'monnaie',
+			'heure',
+			'litres',
+			'périmètre',
+		],
+	},
+	{
+		id: 'math-geometrie',
+		label: 'Géométrie',
+		subject: 'math',
+		icon: 'shapes',
+		motsCles: ['formes', 'figures', 'solides', 'triangle', 'carré', 'cercle', 'angles'],
+	},
+	{
+		id: 'math-problemes',
+		label: 'Résolution de problèmes',
+		subject: 'math',
+		icon: 'lightbulb',
+		motsCles: ['problème', 'problèmes', 'énoncé', 'texte', 'exercice avec texte'],
+	},
 	// Organisation et gestion de données (#257) : lecture de tableaux / diagrammes en
 	// barres. N'a de leçons qu'en CM1 → affiche « Bientôt disponible » sous un profil CE2
 	// (automatique, catalogue vide). Icône `table` (pas de picto « graphique » dans la
@@ -281,15 +347,70 @@ export const CATEGORIES: Category[] = [
 		label: 'Organisation et gestion de données',
 		subject: 'math',
 		icon: 'table',
+		motsCles: ['tableau', 'graphique', 'diagramme', 'données'],
 	},
 	// Français — 4 catégories du manuel CE2, dans l'ordre canonique. Grammaire et
 	// Vocabulaire (FR-A, #107) sont le prérequis structurel des futures leçons de
 	// contenu : elles arrivent VIDES (la navigation affiche « Bientôt disponible »,
 	// aucun trophée ni bilan n'est généré tant qu'elles n'ont pas de leçon).
-	{ id: 'fr-grammaire', label: 'Grammaire', subject: 'francais', icon: 'text' },
-	{ id: 'fr-conjugaison', label: 'Conjugaison', subject: 'francais', icon: 'clock-clockwise' },
-	{ id: ORTHO_CATEGORY_ID, label: 'Orthographe', subject: 'francais', icon: 'pencil' },
-	{ id: 'fr-vocabulaire', label: 'Vocabulaire', subject: 'francais', icon: 'translate' },
+	{
+		id: 'fr-grammaire',
+		label: 'Grammaire',
+		subject: 'francais',
+		icon: 'text',
+		motsCles: [
+			'les phrases',
+			'les mots',
+			'nature des mots',
+			'le sujet du verbe',
+			'classes de mots',
+		],
+	},
+	{
+		id: 'fr-conjugaison',
+		label: 'Conjugaison',
+		subject: 'francais',
+		icon: 'clock-clockwise',
+		motsCles: [
+			'les verbes',
+			'conjuguer',
+			'les temps',
+			'présent',
+			'futur',
+			'imparfait',
+			'passé composé',
+		],
+	},
+	// « dictée » mène ici : les dictées de mots (prédéfinies et listes du parent) vivent
+	// dans cette catégorie sans être des LessonDef (#718, critère 5).
+	{
+		id: ORTHO_CATEGORY_ID,
+		label: 'Orthographe',
+		subject: 'francais',
+		icon: 'pencil',
+		motsCles: [
+			'dictée',
+			'dictées',
+			'les mots',
+			'mots de la semaine',
+			'écrire sans faute',
+			'accords',
+			'homophones',
+		],
+	},
+	{
+		id: 'fr-vocabulaire',
+		label: 'Vocabulaire',
+		subject: 'francais',
+		icon: 'translate',
+		motsCles: [
+			'les mots',
+			'le sens des mots',
+			'synonymes et contraires',
+			"l'alphabet",
+			'familles de mots',
+		],
+	},
 ];
 
 /* ---------- Catalogue des leçons math ---------- */
@@ -310,6 +431,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-tables-addition',
 		label: "Tables d'addition",
+		motsCles: ['plus', 'de tête', 'additionner'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -318,6 +440,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-complements',
 		label: 'Complément à 10/100/1000',
+		motsCles: ['compléter à 10', 'compléter à 100', 'il manque combien'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -326,6 +449,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-doubles',
 		label: 'Doubles',
+		motsCles: ['double de', 'fois 2'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -334,6 +458,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-moities',
 		label: 'Moitiés',
+		motsCles: ['moitié de', 'diviser par 2'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -342,6 +467,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-ajouter-9-19-29',
 		label: 'Ajouter 9, 19...',
+		motsCles: ['plus 9', 'plus 8', 'astuce', 'de tête'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -350,6 +476,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-soustraire-9-19-29',
 		label: 'Soustraire 9, 19...',
+		motsCles: ['moins 9', 'moins 8', 'astuce', 'de tête'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -358,6 +485,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-tables-multiplication',
 		label: 'Table de ×',
+		motsCles: ['fois', 'de tête', 'table de 2', 'table de 7'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -366,6 +494,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-moitie-pair',
 		label: 'Moitié (pair)',
+		motsCles: ['diviser par 2', 'de tête'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -374,6 +503,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-multiples-25',
 		label: 'Multiples de 25',
+		motsCles: ['table de 25', 'fois 25'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -382,6 +512,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-decompo-60',
 		label: 'Décompo. de 60',
+		motsCles: ['fois', 'table', 'diviseurs de 60'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -390,6 +521,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-dizaines-centaines',
 		label: 'Dizaines/centaines',
+		motsCles: ['plus', 'moins', 'de tête', 'calcul rapide'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -398,6 +530,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-multiplier-10-100',
 		label: '× 10, × 100',
+		motsCles: ['fois 10', 'fois 100', 'zéro'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -406,6 +539,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-multiplier-4-8',
 		label: '× 4, × 8',
+		motsCles: ['fois 4', 'fois 8', 'doubler'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -414,6 +548,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-multiplier-20-30-40',
 		label: '× 20, 30, 40',
+		motsCles: ['fois 20', 'fois 30', 'fois 40'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -422,6 +557,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-decomposer-multiplication',
 		label: 'Décomposer',
+		motsCles: ['fois', 'astuce', 'table'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
@@ -438,6 +574,7 @@ const MATH_LESSONS_CM1: LessonDef[] = avecEtayage([
 	{
 		id: 'math-multiples-50',
 		label: 'Multiples de 50',
+		motsCles: ['table de 50', 'fois 50'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['cm1'],
@@ -446,6 +583,7 @@ const MATH_LESSONS_CM1: LessonDef[] = avecEtayage([
 	{
 		id: 'math-diviser-10-100',
 		label: '÷ 10, ÷ 100',
+		motsCles: ['divisé par', 'zéro'],
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['cm1'],
@@ -636,6 +774,8 @@ const FRENCH_LESSONS: LessonDef[] = CONJ_LESSONS.map((d) => ({
 	rubrique: d.rubrique, // regroupement par temps (#109)
 	// Étayage (#490) : dérivé du corpus verbe par verbe, absent là où le déroulé mentirait.
 	...(d.etayage ? { etayage: d.etayage } : {}),
+	// Mots-clés de recherche (#718) : dérivés du verbe et du temps (cf. conjugaison.ts).
+	...(d.motsCles ? { motsCles: d.motsCles } : {}),
 }));
 
 /* ---------- Conjugaison CE2/CM1 — trois QCM « méta » (#239) ----------

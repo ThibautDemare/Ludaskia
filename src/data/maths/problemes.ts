@@ -682,6 +682,7 @@ export const PROBLEMES_LESSONS: LessonInput[] = [
 	{
 		id: 'math-prob-composition',
 		label: 'Parties et tout',
+		motsCles: ['problème', 'addition', 'soustraction', 'énoncé'],
 		exerciseType: monoMode(genComposition, CE2_CM1),
 		etayage: etayageProbleme(
 			'Parties et tout',
@@ -691,6 +692,7 @@ export const PROBLEMES_LESSONS: LessonInput[] = [
 	{
 		id: 'math-prob-transformation',
 		label: 'Gagner ou perdre',
+		motsCles: ['problème', 'addition', 'soustraction', 'énoncé', 'argent'],
 		exerciseType: monoMode(genTransformation, CE2_CM1),
 		etayage: etayageProbleme(
 			'Gagner ou perdre',
@@ -700,6 +702,7 @@ export const PROBLEMES_LESSONS: LessonInput[] = [
 	{
 		id: 'math-prob-multiplication',
 		label: 'Des groupes égaux',
+		motsCles: ['problème', 'multiplication', 'fois', 'énoncé'],
 		exerciseType: monoMode(genMultiplication, CE2_CM1),
 		etayage: etayageProbleme(
 			'Des groupes égaux',
@@ -709,6 +712,7 @@ export const PROBLEMES_LESSONS: LessonInput[] = [
 	{
 		id: 'math-prob-partage',
 		label: 'Partager et grouper',
+		motsCles: ['problème', 'division', 'énoncé'],
 		exerciseType: monoMode(genPartage),
 		etayage: etayageProbleme(
 			'Partager et grouper',
@@ -718,6 +722,7 @@ export const PROBLEMES_LESSONS: LessonInput[] = [
 	{
 		id: 'math-prob-comparaison',
 		label: 'Comparer (plus ou moins)',
+		motsCles: ['problème', 'énoncé', 'différence', 'de plus', 'de moins'],
 		exerciseType: monoMode(genComparaison, CE2_CM1),
 		etayage: etayageProbleme(
 			'Comparer (plus ou moins)',
@@ -727,6 +732,7 @@ export const PROBLEMES_LESSONS: LessonInput[] = [
 	{
 		id: 'math-prob-deux-etapes',
 		label: 'Problèmes en deux étapes',
+		motsCles: ['énoncé', 'exercice avec texte'],
 		exerciseType: monoMode(genDeuxEtapes),
 		etayage: etayageProbleme(
 			'Problèmes en deux étapes',

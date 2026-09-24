@@ -163,6 +163,7 @@ export const DONNEES_LESSONS: LessonInput[] = [
 	{
 		id: 'donnees-barres-lire',
 		label: 'Je lis un diagramme en barres',
+		motsCles: ['lire', 'graphique', 'histogramme'],
 		exerciseType: donneesType(
 			genererBarres,
 			'Lis le diagramme en barres et réponds à la question.',
@@ -185,6 +186,7 @@ export const DONNEES_LESSONS: LessonInput[] = [
 	{
 		id: 'donnees-tableau-lire',
 		label: 'Je lis un tableau à double entrée',
+		motsCles: ['lire', 'tableau', 'ligne', 'colonne'],
 		exerciseType: donneesType(genererTableau, 'Lis le tableau et réponds à la question.'),
 		etayage: [
 			etayageRedige(

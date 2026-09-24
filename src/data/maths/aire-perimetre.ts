@@ -223,6 +223,7 @@ export const AIRE_PERIMETRE_LESSONS: AirePerimetreLessonDef[] = [
 	{
 		id: 'mes-aire-perimetre',
 		label: 'Aire et périmètre',
+		motsCles: ['surface', 'carreaux', 'formule'],
 		exerciseType: airePerimetreType(),
 		// Toute la leçon tient dans la distinction des deux mots : le 1ᵉʳ pas est donc un pas
 		// de LECTURE de la question. La règle reste courte (c'est le repère affiché en

@@ -212,6 +212,7 @@ export const DROITE_GRADUEE_LESSONS: DroiteLessonInput[] = [
 	{
 		id: 'num-droite-entiers',
 		label: 'Je place un nombre sur la droite graduée',
+		motsCles: ['placer', 'droite numérique', 'graduation'],
 		// Multi-niveaux « calibré » (#225, #447) : MÊME leçon, même id, même geste — seules les
 		// échelles de fenêtre changent (CE2 : 10 et 100, sous 10 000 ; CM1 : 100, 1 000 et
 		// 10 000). Aligné sur les leçons de numération voisines (num-comparer,
@@ -279,6 +280,7 @@ export const DROITE_GRADUEE_LESSONS: DroiteLessonInput[] = [
 	{
 		id: 'num-droite-decimaux',
 		label: 'Je place un nombre décimal sur la droite graduée',
+		motsCles: ['placer', 'droite numérique', 'virgule', 'graduation'],
 		// Décimaux : CM1 seul (borne dure du programme, le CE2 reste aux entiers).
 		exerciseType: droiteType(faitDecimaux, afficheDecimal, ['cm1']),
 		rubrique: 'Nombres décimaux',

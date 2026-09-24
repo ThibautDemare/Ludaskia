@@ -192,6 +192,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 	{
 		id: 'num-valeur-position',
 		label: 'La valeur des chiffres',
+		motsCles: ['unités', 'dizaines', 'centaines', 'milliers', 'chiffre des dizaines'],
 		// CE2 : rangs jusqu'aux centaines/milliers ; CM1 (#240) : jusqu'au million.
 		levels: ['ce2', 'cm1'],
 		exerciseType: calibrated<number>({ ce2: 3, cm1: 6 }, (maxRang) =>
@@ -208,6 +209,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 	{
 		id: 'num-decompose-100',
 		label: "Je décompose jusqu'à 100",
+		motsCles: ['décomposer', 'dizaines et unités'],
 		exerciseType: positionType(() => decomposeFact(1)),
 		etayage: [
 			etayagePosition('Décomposer un nombre à deux chiffres', REGLE_RANGS, {
@@ -220,6 +222,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 	{
 		id: 'num-decompose-1000',
 		label: "Je décompose jusqu'à 1 000",
+		motsCles: ['décomposer', 'centaines', 'dizaines et unités'],
 		exerciseType: positionType(() => decomposeFact(2)),
 		// 305 : le zéro intercalaire, point dur de la décomposition (« il n'y a rien » n'est
 		// pas « il n'y a pas de rang »).
@@ -234,6 +237,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 	{
 		id: 'num-decompose-10000',
 		label: "Je décompose jusqu'à 10 000",
+		motsCles: ['décomposer', 'milliers', 'centaines'],
 		// CE2 : décomposition « en rangs » jusqu'à 10 000 ; CM1 (#240) : jusqu'au million.
 		levels: ['ce2', 'cm1'],
 		exerciseType: calibrated<number>({ ce2: 3, cm1: 6 }, (maxIdx) =>
@@ -261,6 +265,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		// de rang ». Distincte de la décompo « en rangs » (CE2). CM1 uniquement.
 		id: 'num-decompose-multiplicative',
 		label: 'Je décompose avec les multiplications',
+		motsCles: ['décomposer', 'fois', 'milliers', 'centaines'],
 		levels: ['cm1'],
 		exerciseType: positionType(decomposeMultiplicativeFact),
 		etayage: [

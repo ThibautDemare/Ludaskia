@@ -162,6 +162,7 @@ export const CERCLE_LESSONS: LessonInput[] = [
 	{
 		id: 'geom-cercle',
 		label: 'Le cercle',
+		motsCles: ['rayon', 'diamètre', 'centre', 'rond'],
 		exerciseType: calibrated<CercleConfig>(
 			{
 				ce2: { rayonMax: 20 }, // rayon 2–20

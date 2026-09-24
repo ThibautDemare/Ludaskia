@@ -1037,6 +1037,7 @@ export const SENS_LESSONS: SensLessonDef[] = [
 	{
 		id: 'fr-vocab-contraires',
 		label: 'Les contraires',
+		motsCles: ['antonymes', 'le contraire de', 'mot opposé'],
 		levels: ['ce2'],
 		exerciseType: sensType(ITEMS_CONTRAIRES),
 		etayage: [ETAYAGE_CONTRAIRES],
@@ -1044,6 +1045,7 @@ export const SENS_LESSONS: SensLessonDef[] = [
 	{
 		id: 'fr-vocab-sens-proche',
 		label: 'Les mots de sens proche',
+		motsCles: ['synonymes', 'même sens', 'mots qui veulent dire pareil'],
 		levels: ['ce2'],
 		exerciseType: sensType(ITEMS_SENS_PROCHE),
 		etayage: [ETAYAGE_SENS_PROCHE],
@@ -1051,6 +1053,7 @@ export const SENS_LESSONS: SensLessonDef[] = [
 	{
 		id: 'fr-vocab-contraires-cm1',
 		label: 'Les contraires (CM1)',
+		motsCles: ['antonymes', 'le contraire de', 'mot opposé'],
 		levels: ['cm1'],
 		exerciseType: sensType(ITEMS_CONTRAIRES_CM1),
 		etayage: [ETAYAGE_CONTRAIRES],
@@ -1058,6 +1061,7 @@ export const SENS_LESSONS: SensLessonDef[] = [
 	{
 		id: 'fr-vocab-sens-proche-cm1',
 		label: 'Les mots de sens proche (CM1)',
+		motsCles: ['synonymes', 'même sens', 'mots qui veulent dire pareil'],
 		levels: ['cm1'],
 		exerciseType: sensType(ITEMS_SENS_PROCHE_CM1),
 		etayage: [ETAYAGE_SENS_PROCHE],

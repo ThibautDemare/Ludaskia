@@ -687,10 +687,23 @@ function etayageHomophone(p: PaireHomophone): EtayageEntree[] {
 	];
 }
 
+/* Mots-clés de recherche (#718). Le libellé « « a » ou « à » » est entouré de guillemets :
+   la sous-chaîne « a ou à » qu'un enfant tape ne s'y trouve PAS, d'où la forme nue en
+   premier. Ensuite le test de substitution que l'enseignant nomme (« remplacer par
+   avait ») et le verbe en jeu — c'est ainsi que la leçon s'annonce dans le cahier. */
+const MOTS_CLES_HOMOPHONES: Record<string, string[]> = {
+	'fr-homophones-a': ['remplacer par avait', 'verbe avoir'],
+	'fr-homophones-et': ['remplacer par était', 'verbe être'],
+	'fr-homophones-on': ['remplacer par avaient', 'verbe avoir'],
+	'fr-homophones-son': ['remplacer par étaient', 'verbe être'],
+	'fr-homophones-ou': ['remplacer par ou bien', 'le lieu'],
+};
+
 export const HOMOPHONE_LESSONS: HomophoneLessonDef[] = HOMOPHONE_PAIRS.map((p) => ({
 	id: p.id,
 	label: p.label,
 	rubrique: RUBRIQUE,
 	exerciseType: homophoneType(p),
 	etayage: etayageHomophone(p),
+	motsCles: [`${p.options[0]} ou ${p.options[1]}`, ...(MOTS_CLES_HOMOPHONES[p.id] ?? [])],
 }));

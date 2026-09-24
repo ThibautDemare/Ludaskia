@@ -362,6 +362,7 @@ export const DECIMAUX_LESSONS: LessonInput[] = [
 	{
 		id: 'num-dec-position',
 		label: 'Le chiffre des dixièmes et des centièmes',
+		motsCles: ['décimaux', 'virgule', 'après la virgule'],
 		exerciseType: positionType(),
 		etayage: [
 			etayageRedige(
@@ -378,6 +379,7 @@ export const DECIMAUX_LESSONS: LessonInput[] = [
 	{
 		id: 'num-dec-egales',
 		label: 'Le même nombre ?',
+		motsCles: ['décimaux', 'virgule', 'égalité', 'zéro'],
 		exerciseType: qcmDecType(egalesFact, 'Je choisis oui ou non'),
 		// Les deux pièges sont montrés CÔTE À CÔTE, et c'est le point : pris isolément, « le
 		// zéro final ne compte pas » se généralise aussitôt en « les zéros ne comptent pas »,
@@ -397,6 +399,7 @@ export const DECIMAUX_LESSONS: LessonInput[] = [
 	{
 		id: 'num-dec-comparer',
 		label: 'Je compare les nombres décimaux',
+		motsCles: ['comparer', 'virgule', 'plus grand', 'plus petit'],
 		exerciseType: situerDecType(compareDecFact),
 		// La règle nomme l'erreur au lieu de la contourner : comparer 8 et 67 comme deux
 		// entiers est le réflexe de tous les enfants, et il donne juste assez souvent
@@ -416,6 +419,7 @@ export const DECIMAUX_LESSONS: LessonInput[] = [
 	{
 		id: 'num-dec-encadrer',
 		label: "J'encadre entre deux entiers",
+		motsCles: ['encadrer', 'décimaux', 'virgule', 'nombre entier'],
 		exerciseType: situerDecType(encadreDecFact),
 		etayage: [
 			etayageRedige(
@@ -432,6 +436,7 @@ export const DECIMAUX_LESSONS: LessonInput[] = [
 	{
 		id: 'num-dec-ranger',
 		label: 'Je range les nombres décimaux',
+		motsCles: ['ranger', 'virgule', 'ordre croissant', 'ordre décroissant'],
 		exerciseType: qcmDecType(rangerFact, 'Je choisis la bonne suite'),
 		// Le 3ᵉ pas est propre au QCM : les distracteurs ne sont faux que par UNE paire mal
 		// placée, donc une suite jugée sur ses deux premiers nombres se choisit au hasard.

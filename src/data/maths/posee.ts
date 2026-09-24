@@ -91,6 +91,7 @@ export const POSEE_LESSONS: LessonInput[] = [
 	{
 		id: 'calc-addition-posee',
 		label: "L'addition posée",
+		motsCles: ['plus', 'en colonne', 'retenue'],
 		exerciseType: posedType(additionGen, "Pose l'addition et calcule."),
 		etayage: [
 			{
@@ -107,6 +108,7 @@ export const POSEE_LESSONS: LessonInput[] = [
 	{
 		id: 'calc-soustraction-posee',
 		label: 'La soustraction posée',
+		motsCles: ['moins', 'en colonne', 'retenue', 'emprunt'],
 		exerciseType: posedType(soustractionGen, 'Pose la soustraction et calcule.'),
 		etayage: [
 			{
@@ -123,6 +125,7 @@ export const POSEE_LESSONS: LessonInput[] = [
 	{
 		id: 'calc-multiplication-posee',
 		label: 'La multiplication posée',
+		motsCles: ['fois', 'en colonne', 'retenue'],
 		exerciseType: posedType(multiplicationGen, 'Pose la multiplication et calcule.'),
 		etayage: [
 			{

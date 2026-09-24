@@ -129,6 +129,7 @@ export const MONNAIE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-monnaie-calcul',
 		label: 'Je calcule avec les euros',
+		motsCles: ['calculer', 'argent', 'pièces', 'billets', 'centimes'],
 		exerciseType: monnaieType([euroTotal, euroReste, centTotal, centReste]),
 		// La difficulté n'est pas le calcul (des additions et soustractions déjà sues) mais
 		// le CHOIX de l'opération à partir de l'énoncé : les deux pas centraux donnent donc
@@ -148,6 +149,7 @@ export const MONNAIE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-monnaie-rendu',
 		label: 'Je rends la monnaie',
+		motsCles: ['rendre', 'argent', 'pièces', 'billets', 'caisse'],
 		exerciseType: calibrated<RenduConfig>(
 			{
 				// CE2 : prix entier, billets réels 5/10/20 € + le 50 € (#287). Jamais de décimal.

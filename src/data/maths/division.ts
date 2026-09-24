@@ -371,6 +371,7 @@ export const DIVISION_LESSONS: DivisionLessonDef[] = [
 	{
 		id: 'math-div-moitie-quart',
 		label: "Moitié et quart d'une collection",
+		motsCles: ['partager en 2', 'partager en 4', 'diviser'],
 		exerciseType: calibrated<MoitieQuartConfig>(
 			{
 				// CE2 : moitié X ≤ 50 (quotient 2–25), quart X ≤ 48 (quotient 2–12).
@@ -398,6 +399,7 @@ export const DIVISION_LESSONS: DivisionLessonDef[] = [
 	{
 		id: 'math-div-partage',
 		label: 'Je partage',
+		motsCles: ['partager', 'diviser', 'division'],
 		exerciseType: partageType(),
 		// Le 1ᵉʳ pas est un pas de LECTURE, pas de calcul : la leçon alterne « combien dans
 		// chaque part » et « combien de parts », deux questions que le même 6 ÷ 3 sépare.
@@ -419,6 +421,7 @@ export const DIVISION_LESSONS: DivisionLessonDef[] = [
 	{
 		id: 'math-div-reste',
 		label: 'Je découvre le reste',
+		motsCles: ['division', 'reste', 'divisé par'],
 		exerciseType: resteType(),
 		// ⚠ La leçon tire DEUX sens (partage en paniers ET groupement par paquets, cf.
 		// `genResteProbleme`). Le contrôle du reste se dit donc par le nombre qui SERT à
@@ -448,6 +451,7 @@ export const DIVISION_EUCLIDIENNE_LESSONS: DivisionLessonDef[] = [
 	{
 		id: 'math-division-euclidienne',
 		label: 'Quotient et reste',
+		motsCles: ['divisé par', 'division', 'reste'],
 		exerciseType: euclidienneType(),
 		// Version CM1, abstraite, de `math-div-reste` : mêmes deux champs, mais on nomme les
 		// deux résultats (quotient, reste) et on s'appuie sur la table de multiplication au

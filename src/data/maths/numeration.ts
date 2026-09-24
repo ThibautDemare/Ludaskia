@@ -528,6 +528,7 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 	{
 		id: 'num-comparer',
 		label: 'Je compare les nombres',
+		motsCles: ['comparer', 'plus grand', 'plus petit', 'signe'],
 		// Multi-niveaux « calibré » (#225) : CE2 compare jusqu'à 999 (3 chiffres),
 		// CM1 jusqu'au million (#240). Même leçon, même id, génération recalibrée.
 		levels: ['ce2', 'cm1'],
@@ -553,6 +554,7 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 	{
 		id: 'num-encadrer-intercaler',
 		label: "J'encadre et j'intercale",
+		motsCles: ['encadrer', 'intercaler', 'entre deux nombres', 'nombre manquant'],
 		// CE2 : encadrement dizaine/centaine + intercalation à écarts variés, corrigée par
 		// intervalle ouvert (#446). CM1 (#240) : grandes plages — encadrement au rang adapté,
 		// intercalation entre deux multiples ronds consécutifs.
@@ -592,6 +594,7 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 		// est la SUITE des deux précédentes (mêmes gestes, nombres plus grands). 1ʳᵉ personne
 		// comme ses voisines : une série homogène se survole plus vite.
 		label: "Je compare, j'encadre, j'intercale jusqu'à 10 000",
+		motsCles: ['10000', 'dix mille', 'comparer', 'encadrer', 'intercaler'],
 		// CE2 : 4 chiffres réservés à cette leçon ; encadrement aussi au millier.
 		// CM1 (#240) : grandes plages (comparer/encadrer jusqu'au million).
 		levels: ['ce2', 'cm1'],

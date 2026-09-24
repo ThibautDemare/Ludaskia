@@ -189,6 +189,7 @@ export const HEURE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-lecture-heure',
 		label: "Je lis l'heure",
+		motsCles: ['lire', 'horloge', 'pendule', 'aiguilles'],
 		exerciseType: heureType(),
 		// « Le chiffre qu'elle vient de DÉPASSER » : la petite aiguille est presque toujours
 		// entre deux chiffres, et lire le plus proche donne une heure de trop dès la demie.

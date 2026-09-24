@@ -169,6 +169,7 @@ export const PERIMETRE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-perimetre-cotes',
 		label: 'Je calcule le périmètre',
+		motsCles: ['calculer', "tour d'une figure", 'addition des côtés'],
 		exerciseType: perimetreType(cotesFact),
 		// Les trois leçons de périmètre partagent la même idée-force (le TOUR) et diffèrent
 		// par le geste : additionner les côtés notés, compter des côtés de carreaux, ou
@@ -189,6 +190,7 @@ export const PERIMETRE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-perimetre-quadrillage',
 		label: 'Le périmètre sur quadrillage',
+		motsCles: ['carreaux', 'tour de la figure'],
 		exerciseType: perimetreType(quadrillageFact),
 		etayage: [
 			etayageRedige(
@@ -205,6 +207,7 @@ export const PERIMETRE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-perimetre-formule',
 		label: 'Périmètre du carré et du rectangle',
+		motsCles: ['formule', 'côtés', 'longueur', 'largeur'],
 		exerciseType: perimetreType(formuleFact),
 		etayage: [
 			etayageRedige(

@@ -388,6 +388,7 @@ export const ANGLES_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-angles',
 		label: 'Les angles',
+		motsCles: ['angle droit', 'aigu', 'obtus', 'équerre'],
 		// Calibré par niveau (#225/#252) : le CE2 reste inchangé ; le CM1 ajoute la
 		// comparaison de deux angles. `levels` (dérivé par le catalogue) devient CE2+CM1.
 		exerciseType: calibrated<AngleConfig>(

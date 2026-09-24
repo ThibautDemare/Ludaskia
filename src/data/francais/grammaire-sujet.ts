@@ -173,12 +173,14 @@ export const GRAMMAIRE_SUJET_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-gram-pronom-sujet',
 		label: 'Le pronom sujet',
+		motsCles: ['je tu il elle', 'nous vous ils elles', 'remplacer le sujet'],
 		exerciseType: pronomSujetType(),
 		etayage: [ETAYAGE_PRONOM_SUJET],
 	},
 	{
 		id: 'fr-gram-accord-sujet-verbe',
 		label: 'L’accord du verbe avec le sujet',
+		motsCles: ["qui fait l'action", 'terminaison du verbe', 'conjuguer avec le sujet'],
 		exerciseType: accordSujetVerbeType(),
 		etayage: [ETAYAGE_ACCORD_SUJET_VERBE],
 	},

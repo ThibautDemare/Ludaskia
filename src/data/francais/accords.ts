@@ -327,6 +327,7 @@ export const ACCORD_LESSONS: AccordLessonDef[] = [
 	{
 		id: 'fr-accords-reguliers',
 		label: 'Pluriel et féminin — réguliers',
+		motsCles: ['mettre au pluriel', 'mettre au féminin', 'ajouter un s', 'ajouter un e'],
 		rubrique: RUBRIQUE_ACCORDS,
 		exerciseType: accordType({ banque: ACCORDS_REGULIERS, inclureFlechies: true }),
 		etayage: [ETAYAGE_REGULIERS],
@@ -334,6 +335,7 @@ export const ACCORD_LESSONS: AccordLessonDef[] = [
 	{
 		id: 'fr-accords-irreguliers',
 		label: 'Pluriel et féminin — irréguliers',
+		motsCles: ['exceptions du pluriel', 'pluriel en x', 'cas particuliers'],
 		rubrique: RUBRIQUE_ACCORDS,
 		exerciseType: accordType({ banque: ACCORDS_IRREGULIERS }),
 		etayage: [ETAYAGE_IRREGULIERS],
@@ -348,6 +350,7 @@ export const ACCORD_CM1_LESSONS: AccordLessonDef[] = [
 	{
 		id: 'fr-accords-cm1',
 		label: 'Pluriel et féminin — au CM1',
+		motsCles: ['adjectifs en -al -eur -f', 'féminin des adjectifs', 'pluriel en -aux'],
 		rubrique: RUBRIQUE_ACCORDS,
 		exerciseType: accordType({ banque: ACCORDS_CM1 }),
 		etayage: [ETAYAGE_ACCORDS_CM1],

@@ -185,6 +185,7 @@ export const DIVISIBILITE_LESSONS: DivisibiliteLessonDef[] = [
 	{
 		id: 'math-divisibilite-2-5-10',
 		label: 'Divisible par 2, 5 et 10',
+		motsCles: ['multiple', 'division exacte'],
 		exerciseType: divisibiliteType(),
 		// Les trois critères tiennent en trois pas et ne se démontrent pas au CM1 : on les
 		// donne comme des règles à connaître, pas comme un raisonnement à reconstruire.

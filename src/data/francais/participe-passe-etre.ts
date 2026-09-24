@@ -251,6 +251,7 @@ export const PARTICIPE_LESSONS: ParticipeLessonDef[] = [
 	{
 		id: 'fr-accords-participe-etre',
 		label: 'Le participe passé avec être',
+		motsCles: ['accorder avec être', 'participe passé', 'il est parti, elle est partie'],
 		rubrique: 'Les accords',
 		exerciseType: participeType(),
 		etayage: [ETAYAGE_PARTICIPE_ETRE],

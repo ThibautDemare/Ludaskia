@@ -425,6 +425,7 @@ export const HOMONYMIE_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-vocab-homonymes-cm1',
 		label: 'Les homonymes',
+		motsCles: ['mots qui se prononcent pareil', 'écriture différente', 'sens différent'],
 		exerciseType: homonymieType(),
 		etayage: [ETAYAGE_HOMONYMES],
 	},

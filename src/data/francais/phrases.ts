@@ -866,12 +866,20 @@ export const PHRASES_LESSONS: PhraseLessonDef[] = [
 	{
 		id: 'fr-gram-ponctuation',
 		label: 'Quel point à la fin ?',
+		motsCles: ['ponctuation', "point d'interrogation", "point d'exclamation", 'point final'],
 		exerciseType: ponctuationType(),
 		etayage: [ETAYAGE_PONCTUATION],
 	},
 	{
 		id: 'fr-gram-type-phrase',
 		label: 'Quel type de phrase ?',
+		motsCles: [
+			'déclarative',
+			'interrogative',
+			'impérative',
+			'poser une question',
+			'donner un ordre',
+		],
 		exerciseType: typePhraseType(),
 		levels: ['ce2', 'cm1'],
 		etayage: [ETAYAGE_TYPE_PHRASE],
@@ -879,6 +887,7 @@ export const PHRASES_LESSONS: PhraseLessonDef[] = [
 	{
 		id: 'fr-gram-forme',
 		label: 'Affirmative ou négative ?',
+		motsCles: ['phrase négative', 'phrase affirmative', 'ne pas', 'dire oui ou non'],
 		exerciseType: formePhraseType(),
 		levels: ['cm1'],
 		etayage: [ETAYAGE_FORME],
@@ -886,6 +895,7 @@ export const PHRASES_LESSONS: PhraseLessonDef[] = [
 	{
 		id: 'fr-gram-transfo-negative',
 		label: 'Mets à la forme négative',
+		motsCles: ['ne pas', 'transformer une phrase', 'phrase négative'],
 		exerciseType: transfoNegativeType(),
 		levels: ['cm1'],
 		etayage: [ETAYAGE_TRANSFO_NEGATIVE],

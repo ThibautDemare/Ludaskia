@@ -664,6 +664,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-longueurs',
 		label: 'Je convertis les longueurs',
+		motsCles: ['convertir', 'mètre', 'kilomètre', 'centimètre'],
 		exerciseType: calibrated<MesureConfig>(CONFIG_LONGUEURS, conversionType),
 		// Exemple 3 km = 3 000 m, CONSTRUIT par le moteur pour chaque niveau : le CE2 le voit avec
 		// ses colonnes démotées, le CM1 avec la chaîne de rangs complète. Même géométrie que
@@ -689,6 +690,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-masses',
 		label: 'Je convertis les masses',
+		motsCles: ['convertir', 'kilogramme', 'gramme', 'poids'],
 		exerciseType: calibrated<MesureConfig>(CONFIG_MASSES, conversionType),
 		// Exemple 2 kg = 2 000 g, CONSTRUIT par le moteur pour chaque niveau : le CE2 le voit avec
 		// ses colonnes démotées, le CM1 avec la chaîne de rangs complète. Même géométrie que
@@ -714,6 +716,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-contenances',
 		label: 'Je convertis les contenances',
+		motsCles: ['convertir', 'litre', 'centilitre', 'volume'],
 		exerciseType: calibrated<MesureConfig>(CONFIG_CONTENANCES, conversionType),
 		// 5 L = 500 cL : deux colonnes vides, toutes deux ÉTUDIÉES (aucune de transit dans
 		// cet empan) — l'exemple montre donc le 0 de rang sans le mêler au code « unité pas
@@ -741,6 +744,7 @@ export const MESURE_LESSONS: LessonInput[] = [
 	{
 		id: 'mes-durees',
 		label: 'Je convertis les durées',
+		motsCles: ['convertir', 'heures', 'minutes', 'secondes'],
 		exerciseType: calibrated<MesureConfig>(
 			{
 				// CE2 : h↔min jusqu'à 4 h + repères culturels. JAMAIS min↔s.

@@ -79,4 +79,9 @@ export interface LessonInput {
 	// plus près de la leçon qu'il décrit. Remonté tel quel en `LessonDef` par
 	// `toLessonDefs`. Absent = pas de panneau d'étayage pour cette leçon.
 	etayage?: EtayageEntree[];
+	// Mots-clés de recherche côté enfant (#718) : vocabulaire CONCRET (« fois », « les
+	// euros », « adverbe »), en complément du libellé. Remonté tel quel en `LessonDef`
+	// par `toLessonDefs` ; exigé sur chaque leçon du catalogue réel par
+	// `tests/mots-cles-gate.test.ts`.
+	motsCles?: string[];
 }

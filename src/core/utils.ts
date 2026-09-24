@@ -182,10 +182,15 @@ export const normalizeText = (s: string) => s.trim().replace(/\s+/g, ' ').normal
 
    À NE PAS confondre avec `normalizeText`, qui sert la CORRECTION des réponses et doit, elle,
    exiger les accents — ni avec `formeNormalisee` (orthographe), clé de DÉDUP de la banque :
-   y replier les accents fusionnerait « cote » et « côté » en une seule entrée. Pur. */
+   y replier les accents fusionnerait « cote » et « côté » en une seule entrée.
+
+   Apostrophes (#718) : la typographique « ’ » (posée par le clavier d'iOS, ou présente
+   dans un libellé) et la droite « ' » (convention des données) sont repliées sur la
+   droite — taper « l'heure » doit trouver « l’heure » et réciproquement. Pur. */
 export function cleRecherche(s: string): string {
 	return normalizeText(s)
 		.toLocaleLowerCase('fr')
+		.replace(/[’‘]/g, "'")
 		.replace(/œ/g, 'oe')
 		.replace(/æ/g, 'ae')
 		.normalize('NFD')

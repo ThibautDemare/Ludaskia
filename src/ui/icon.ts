@@ -61,6 +61,7 @@ import faders from '@phosphor-icons/core/assets/bold/faders-bold.svg?raw';
 import timer from '@phosphor-icons/core/assets/bold/timer-bold.svg?raw';
 import exam from '@phosphor-icons/core/assets/bold/exam-bold.svg?raw';
 import bookmark from '@phosphor-icons/core/assets/bold/bookmark-simple-bold.svg?raw';
+import magnifyingGlass from '@phosphor-icons/core/assets/bold/magnifying-glass-bold.svg?raw';
 import calculator from '@phosphor-icons/core/assets/bold/calculator-bold.svg?raw';
 import listNumbers from '@phosphor-icons/core/assets/bold/list-numbers-bold.svg?raw';
 import plusMinus from '@phosphor-icons/core/assets/bold/plus-minus-bold.svg?raw';
@@ -120,6 +121,7 @@ const SVGS: Record<IconName, string> = {
 	timer,
 	exam,
 	bookmark,
+	'magnifying-glass': magnifyingGlass,
 	calculator,
 	'list-numbers': listNumbers,
 	'plus-minus': plusMinus,

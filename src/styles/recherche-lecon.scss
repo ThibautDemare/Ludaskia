@@ -1,0 +1,182 @@
+/* Recherche de leçon côté enfant (#718) — écran des matières.
+
+   Un champ COLLÉ sous la barre d'outils (le clavier virtuel d'un smartphone mange la
+   moitié de l'écran : si le champ défile hors de vue, l'enfant ne voit plus ce qu'il
+   tape), un résumé à hauteur RÉSERVÉE (le texte apparaît sans pousser la liste : pas de
+   saut de mise en page pendant la frappe), puis les résultats groupés par catégorie.
+   Registre visuel des cartes de navigation (`catalog.scss`) : mêmes coins, mêmes ombres,
+   même pastille d'icône — l'enfant reconnaît « une leçon » sans apprendre un nouveau code.
+   Couleurs : des couples tenus par tests/contraste-tokens.test.ts (--accent, --ink, --grey
+   sur --paper ; --accent-dark sur --page-bg pour l'anneau de focus). */
+
+.recherche-lecon {
+	position: sticky;
+	top: var(--toolbar-h, 60px);
+	z-index: 5;
+	background: var(--page-bg);
+	padding: 6px 0 8px;
+}
+.recherche-champ {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	background: var(--paper);
+	border: 2px solid var(--accent);
+	border-radius: 14px;
+	padding: 0 14px;
+	min-height: 52px;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+/* Anneau de focus en `--accent-dark`, PAS `--accent-soft` : cette teinte de surface fait
+   1,04:1 sur `--page-bg` — un anneau invisible (SC 1.4.11 / 2.4.7, relecture a11y #718).
+   Couple tenu par tests/contraste-tokens.test.ts (PAIRES_NON_TEXTE). */
+.recherche-champ:focus-within {
+	box-shadow:
+		0 0 0 3px var(--accent-dark),
+		0 4px 14px rgba(0, 0, 0, 0.08);
+}
+.recherche-champ .ph-icon {
+	width: 24px;
+	height: 24px;
+	flex: none;
+	color: var(--accent);
+	vertical-align: 0;
+}
+/* Le champ lui-même : cible ≥ 44 px (critère 1), pas de bordure propre — c'est le
+   conteneur qui porte le cadre et l'anneau de focus (focus-within), pour que l'icône
+   fasse partie de la zone tapable. */
+#rechercheLecon {
+	flex: 1;
+	min-width: 0;
+	min-height: 48px;
+	border: 0;
+	background: transparent;
+	font: inherit;
+	font-family: var(--ui);
+	font-size: 18px;
+	color: var(--ink);
+	outline: none;
+}
+#rechercheLecon::placeholder {
+	color: var(--grey);
+	opacity: 1;
+}
+/* Résumé (région live) : hauteur réservée même vide, sinon son apparition à la
+   première lettre décale tout l'écran sous le doigt de l'enfant. */
+.recherche-resume {
+	font-family: var(--ui);
+	font-size: 14px;
+	color: var(--grey);
+	margin: 6px 6px 0;
+	min-height: 1.3em;
+}
+
+/* ---- Résultats ---- */
+.recherche-resultats {
+	display: grid;
+	gap: 16px;
+	margin-top: 8px;
+}
+/* `hidden` est posé par le script ; un `display` d'auteur l'emporterait sinon sur la
+   règle `[hidden]` du navigateur, et le conteneur vide resterait dans le flux. Même
+   garde pour les cartes de matière, effacées pendant qu'une recherche a des résultats. */
+.recherche-resultats[hidden],
+.nav-cards[hidden] {
+	display: none;
+}
+.rech-categories {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+/* Trois boutons de résultat, un seul registre : ligne horizontale, coins et ombre des
+   cartes de navigation, bordure qui s'allume au survol/focus comme `.nav-card`. */
+.rech-categorie,
+.rech-lecon,
+.rech-dictee {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	min-height: 52px;
+	padding: 10px 14px;
+	font: inherit;
+	font-family: var(--ui);
+	font-size: 16px;
+	font-weight: 700;
+	color: var(--ink);
+	text-align: left;
+	cursor: pointer;
+	background: var(--paper);
+	border: 2px solid transparent;
+	border-radius: 12px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+	transition:
+		border-color 0.15s ease,
+		transform 0.12s ease;
+}
+.rech-categorie:hover,
+.rech-lecon:hover,
+.rech-dictee:hover,
+.rech-categorie:focus-visible,
+.rech-lecon:focus-visible,
+.rech-dictee:focus-visible {
+	border-color: var(--accent);
+	transform: translateY(-2px);
+}
+.rech-categorie {
+	width: auto;
+	flex: 1 1 240px;
+	color: var(--accent);
+}
+.rech-categorie .cat-ico {
+	width: 40px;
+	height: 40px;
+	margin: 0;
+	flex: none;
+}
+.rech-categorie .cat-ico .ph-icon {
+	width: 22px;
+	height: 22px;
+}
+.rech-cat-texte {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.rech-cat-sub {
+	font-size: 13px;
+	font-weight: 400;
+	color: var(--grey);
+}
+/* Titre d'un groupe : matière ET catégorie en texte (critère 8), registre de
+   `.cat-rubrique` mais plus serré (les groupes s'enchaînent). */
+.rech-groupe-titre {
+	font-family: var(--ui);
+	font-size: 1rem;
+	font-weight: 800;
+	color: var(--accent);
+	margin: 0 0 8px;
+}
+.rech-liste {
+	display: grid;
+	gap: 8px;
+}
+.rech-lecon .ph-icon,
+.rech-dictee .ph-icon {
+	width: 22px;
+	height: 22px;
+	flex: none;
+	color: var(--accent);
+	vertical-align: 0;
+}
+/* Aucune correspondance (critère 11) : un constat neutre, pas un écran vide ; les cartes
+   de matière restent affichées dessous. */
+.rech-vide {
+	text-align: center;
+	font-family: var(--ui);
+	font-size: 16px;
+	color: var(--grey);
+	margin: 4px 0 0;
+	padding: 14px 12px;
+}

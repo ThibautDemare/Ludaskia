@@ -42,6 +42,7 @@ import { runSprint, sprintCleanup, renderSprintConfigScreen } from './sprint';
 import { runRevisionEspacee, revisionCleanup } from './revision';
 import { renderBilanConfigScreen } from './bilan';
 import { renderSubjects, renderCategories, renderCategorie } from './catalog-nav';
+import { reinitialiserRecherche } from './recherche-lecon';
 import { SUBJECTS, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
 import { loadOrtho } from '../core/orthographe/store';
 import { countDusSeance } from '../core/progress';
@@ -142,6 +143,9 @@ export function goHome() {
 	}
 }
 export function startMatieres() {
+	// Depuis la carte d'accueil, l'enfant attend les deux matières, pas la recherche
+	// laissée sur l'écran tantôt (#718) ; le retour arrière, lui, la conserve.
+	reinitialiserRecherche();
 	location.hash = 'matieres';
 }
 export function goCategories(subjectId: string) {

@@ -1171,3 +1171,22 @@ preuve que `resume: ''` ne double pas son annonce plutôt que de l'écraser. Un
 dernier test verrouille une régression trouvée en relecture : une fraction annoncée
 en valeur brute (« 3/4 », prononcée « trois slash quatre ») plutôt qu'en toutes
 lettres.
+
+### Gate des mots-clés de recherche (#718)
+
+`tests/mots-cles-gate.test.ts` fait respecter « toute leçon et toute catégorie porte au
+moins un mot-clé de recherche » (`LessonDef.motsCles`/`Category.motsCles`, consommés par
+la recherche enfant `core/recherche-lecon.ts`, cf. [Logique pure](core.md)). Le défaut est
+**invisible au développement** : une leçon sans mot-clé se lance, se corrige et se trouve
+encore par son libellé exact — elle ne devient introuvable qu'à l'usage, pour l'enfant qui
+tape le mot qu'il connaît et n'obtient rien, sans que personne ne remarque une absence
+dans une liste de résultats. Le gate balaie `getAllLessons()` (tous niveaux confondus) et
+`CATEGORIES`, et prouve au passage que `toLessonDefs` recopie bien le champ vers
+`LessonDef`.
+
+**Ce qu'il ne prouve pas** : que le mot-clé est rédigé dans le vocabulaire de l'ENFANT
+plutôt que celui du programme (jugement `pedagogue-primaire`, cf. [Conventions
+rédactionnelles](conventions-redaction.md), pas mécanisable) ; qu'il apporte quelque
+chose (un mot-clé qui recopie le libellé passe le gate sans rendre rien de plus
+trouvable) ; rien sur les dictées de mots, qui ne sont pas des leçons du catalogue et
+sont cherchées par leur nom.

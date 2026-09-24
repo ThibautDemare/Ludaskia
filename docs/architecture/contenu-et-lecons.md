@@ -39,16 +39,25 @@ réglage part de la constante et surcharge par diffusion :
 La règle maths / français est historique ; l'unifier serait une décision UX distincte.
 Le contrat des deux constantes est verrouillé par `tests/data-shared.test.ts`.
 
-**Type source d'une leçon** — **`LessonInput { id; label; exerciseType; etayage? }`** : forme
-minimale d'un descripteur de leçon dans `src/data/`, **avant** que `core/catalog.ts`
+**Type source d'une leçon** — **`LessonInput { id; label; exerciseType; etayage?; motsCles? }`** :
+forme minimale d'un descripteur de leçon dans `src/data/`, **avant** que `core/catalog.ts`
 ne la mappe en `LessonDef` complet — mapping fait, pour la plupart des familles, par
 la fabrique **`toLessonDefs(inputs, opts)`** (#373, cf. [Logique pure](core.md)). Les
 listes `XXX_LESSONS` sont typées `LessonInput[]`. Un fichier qui porte des champs
 propres (rubrique, niveaux, exclusion du sprint) **étend** ce type plutôt que de le
 redéclarer : `extends LessonInput`. `ConjLessonDesc` (`conjugaison.ts`, sans
-`exerciseType`) reste hors de ce type — et hors de `toLessonDefs`, en conséquence.
+`exerciseType`) reste hors de ce type — et hors de `toLessonDefs`, en conséquence, mais
+porte quand même son propre `motsCles?` (recopié à la main, dérivé du verbe et du temps
+via `motsClesConjugaison`).
 `etayage?` (#490) porte le contenu qui explique la NOTION et remonte tel quel en
 `LessonDef` ; absent = pas de panneau pour cette leçon (cf. « Étayage de la notion »).
+**`motsCles?: string[]`** (#718) — vocabulaire concret de l'enfant pour la recherche de
+leçon (cf. [Modes & navigation](modes-et-navigation.md)), remonté tel quel en `LessonDef`
+comme `etayage` ; **`CATEGORIES`** (`core/catalog.ts`) porte le même champ pour ses
+propres entrées. Optionnel dans le TYPE, mais toute leçon et toute catégorie du
+catalogue réel en porte un en pratique — tenu par `tests/mots-cles-gate.test.ts` (cf.
+[Tests](tests.md)). Voir [Conventions rédactionnelles](conventions-redaction.md) pour ce
+qui fait un bon mot-clé.
 
 ### `src/data/maths/_shared.ts` (#347, #372)
 

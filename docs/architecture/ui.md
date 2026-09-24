@@ -826,6 +826,38 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   par `motsApercu` (`core/orthographe/lessons.ts`, #441) — **même règle** que celle
   consultée dans l'espace encadrant (cf. [Espace encadrant](espace-encadrant.md), bloc
   « Listes de dictée »), pour que les deux aperçus ne divergent jamais.
+- **`recherche-lecon.ts`** (#718) — **recherche de leçon côté enfant**, greffée sur
+  `renderSubjects` (`catalog-nav.ts` ci-dessus) : `rechercheHTML()` rend le champ (au-dessus
+  des cartes de matière) + une région live (`#rechercheResume`, `role="status"`,
+  `aria-live="polite"`) + un conteneur de résultats ; `brancherRecherche(root)` pose l'état
+  initial, la frappe (`input`, jamais `change`) et les clics délégués vers une leçon, une
+  catégorie ou une dictée. Logique dans `core/recherche-lecon.ts` (cf. [Logique
+  pure](core.md)). Le **texte tapé** vit en **état de module**, ni DOM ni stockage :
+  l'écran est re-rendu à chaque passage de route (retour d'une leçon), et le module le
+  restitue pour que l'enfant retrouve sa recherche ; `reinitialiserRecherche()` le remet à
+  zéro, appelée par la carte d'accueil « Une leçon à la fois » et à chaque changement de
+  profil actif (`surveillerProfil`), jamais par un retour arrière. À la frappe, **seul le
+  corps des résultats** est re-rendu (recréer le champ perdrait focus et curseur) ; la
+  région live est mutée avec un **délai** (350 ms, même motif que le sélecteur adulte
+  #556) pour ne pas interrompre une synthèse vocale à chaque lettre. Sous `RECHERCHE_MIN`
+  caractères l'écran ne bouge pas ; sans résultat, un message reste affiché et les cartes
+  de matière restent le chemin de repli ; avec des résultats, les cartes passent en
+  `hidden`. Styles : `styles/recherche-lecon.scss`.
+
+  **Rejets écrits (relecture a11y, à ne pas re-remonter)** : le fond de carte des
+  boutons de résultat (`--paper` sur `--page-bg`, ≈1,12:1) n'est pas un manquement SC
+  1.4.11 — l'affordance de bouton ne repose pas sur cette frontière de couleur (icône,
+  texte en gras, bouton pleine largeur) ; l'espacement de 8 px entre boutons de 52 px
+  n'appelle pas de compensation — SC 2.5.8 ne l'exige que sous 44 px de cible ; le
+  séparateur « · » des titres de groupe (`${g.subjectLabel} · ${g.label}`), lu de façon
+  inégale selon le lecteur d'écran, n'est pas une perte d'information — même rejet déjà
+  posé pour ce séparateur ailleurs dans le dépôt (cf. « Récap éphémère de fin de
+  séance » plus haut).
+
+  **Recette MANUELLE, non automatisable** : focus du champ avec le clavier virtuel
+  ouvert (iOS Safari, Android Chrome) sous un titre de barre long qui force deux
+  lignes ; retour sur l'écran des matières avec une recherche active sous NVDA/
+  VoiceOver — l'annonce initiale ne doit ni rester muette ni doubler.
 - **`bilan.ts`** — **bilan personnalisé** : `renderBilanConfigScreen(el, categoryId?)`.
   En **global**, les leçons sont organisées **Matière → Catégorie → Rubrique** (#195) :
   matières en **volets repliables** (`<details>`), catégories à pastille/gouttière
@@ -1606,15 +1638,41 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   (`wireDOM()`, exécuté au bootstrap), donc une dépendance circulaire aurait fait lire un
   export **avant** qu'il n'existe.
 
+  **Hauteur réelle de la barre, tenue à jour EN CONTINU (#718).** `poserHauteurBarre()`
+  pose `--toolbar-h` (hauteur mesurée de `.toolbar`) ; **`surveillerHauteurBarre()`**
+  (appelée une fois au démarrage, `main.ts`) y attache un `ResizeObserver` qui la
+  rappelle à chaque changement de hauteur, premier appel synchrone compris (valeur
+  juste dès la première mise en page). Avant #718, la variable n'était posée qu'à
+  l'ouverture du tiroir (`openDrawer`) : tout autre consommateur vivait sur le repli CSS
+  de 60 px, faux dès que la barre passe sur deux lignes (zoom texte 200 %, confort de
+  lecture, titre de leçon long) — la barre, au `z-index` supérieur, recouvrait alors ce
+  qui se croyait collé dessous, dont depuis #718 le champ de recherche de l'écran des
+  matières (`position: sticky; top: var(--toolbar-h)`, cf. `recherche-lecon.ts`
+  ci-dessus). Constat `relecteur-accessibilite` (SC 2.4.11 / 1.4.10) : l'observer
+  corrige la cause pour tous les consommateurs présents et à venir, plutôt que de
+  relever le repli chez chacun.
+
   **Critère qui décide si un cycle d'imports doit être cassé par extraction, ou peut
   rester tel quel** (à appliquer avant de proposer une extraction, cf. `seance.ts` ↔
   `recap-seance.ts` ci-dessus, dans « Récap éphémère de fin de séance », pour le second
-  cas) : un cycle **casse** dès qu'un des deux
+  cas, et `navigation.ts` ↔ `catalog-nav.ts` ↔ `recherche-lecon.ts` ci-dessus pour le
+  troisième) : un cycle **casse** dès qu'un des deux
   modules **utilise l'import au chargement** — effet de bord de niveau module, comme ici
   (`wireDOM()`), ou constante dérivée d'un export de l'autre module évaluée en haut de
   fichier. Un cycle où l'import n'est **utilisé qu'à l'intérieur d'une fonction** (appelée
   après que les deux modules ont fini de s'évaluer) est **sans risque** : à l'exécution,
   les deux exports existent déjà, peu importe l'ordre d'évaluation initial des modules.
+
+  **Troisième cycle d'imports TOLÉRÉ, `navigation.ts` ↔ `catalog-nav.ts` ↔
+  `recherche-lecon.ts` (#718, même critère)** : `navigation.ts` importe
+  `renderSubjects`/`renderCategories`/`renderCategorie` de `catalog-nav.ts` (routage) et
+  `reinitialiserRecherche` DIRECTEMENT de `recherche-lecon.ts` (dans `startMatieres`) ;
+  `catalog-nav.ts` importe `rechercheHTML`/`brancherRecherche` de `recherche-lecon.ts`
+  (dans `renderSubjects`) ; `recherche-lecon.ts` importe `startLecon`/`goCategorie`/
+  `startOrthoLecon` de `navigation.ts` (dans le handler de clic délégué de
+  `brancherRecherche`). Les trois imports ne sont utilisés qu'à l'intérieur d'une
+  fonction — `startMatieres`, `renderSubjects`, ce handler — jamais au chargement du
+  module : rien à extraire ici.
 - **`preferences.ts`** — préférences cosmétiques **par profil** (issue #28) : thème
   d'affichage/couleur (`getTheme`/`setTheme`, gating par niveau) et réduction des animations
   (`animationsReduites`/`setAnimationsReduites`). `applyPreferences()` pose

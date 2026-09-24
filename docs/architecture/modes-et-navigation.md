@@ -58,6 +58,25 @@ sur la carte + bulle au 1er geste de ce type jamais vu, comme en leçon — c'es
 souvent ici, longtemps après la leçon, que l'enfant a besoin de retrouver comment se
 rectifier.
 
+## Recherche de leçon côté enfant (#718)
+
+Sur l'écran des matières (`#matieres`), un champ de recherche au-dessus des deux cartes
+de matière retrouve, dès **2 caractères**, une leçon, une catégorie ou une dictée de
+mots par le libellé que l'enfant voit **ou** par un mot-clé de son vocabulaire à lui
+(« fois », « a ou à » — champ `motsCles` de `LessonDef`/`Category`, cf. [Contenu &
+leçons](contenu-et-lecons.md)). Une catégorie trouvée est un résultat qui ouvre son
+écran sans entraîner ses leçons ; sans correspondance, un message reste affiché sans
+faire disparaître les deux cartes. Logique pure dans `core/recherche-lecon.ts`, rendu
+dans `ui/recherche-lecon.ts` (cf. [Logique pure](core.md) et [Rendu &
+interactions](ui.md)).
+
+**Raccourci additif, jamais le seul chemin** (avis convergent `pedagogue-primaire` /
+`designer-ux-enfant` / `gamification-enfant`) : le parcours Matière → Catégorie → Leçon
+reste inchangé, la recherche n'ouvre qu'une seconde porte d'entrée. **Écarté du
+périmètre** (avis `specialiste-troubles-apprentissage`) : la tolérance aux fautes /
+une correspondance phonétique — une phonétique française bricolée ferait pire que
+rien — et l'entrée vocale.
+
 ## Programme du jour composé par l'encadrant (#440)
 
 Le **programme du jour** (`#seance`, `startSeance`/`showSeanceView` dans

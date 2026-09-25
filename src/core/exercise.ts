@@ -129,6 +129,13 @@ export type Exercise =
 	// Propagé jusqu'à l'`Item` par `genLessonItem` (fiche, sprint, révision) et honoré par
 	// `checkItemAnswer` ; les écrans de correction s'en servent aussi pour parler au
 	// singulier INDÉFINI (« une réponse possible était X ») au lieu d'affirmer l'unicité.
+	// `champRomain` (#717) : la réponse attendue est une ÉCRITURE ROMAINE (« XLVII »).
+	// Drapeau porté par la donnée, pas deviné à la forme de la réponse — « DIX » est une
+	// écriture romaine canonique parfaitement valide (509), et une leçon de français qui
+	// répondrait « DIX » se verrait alors traitée comme de la numération romaine. Il
+	// commande trois choses, toutes propagées jusqu'à l'`Item` : la mise en MAJUSCULES
+	// de la saisie à la frappe, la correction insensible à la casse (arbitrage
+	// mainteneur), et le feedback qui NOMME la règle enfreinte après une erreur.
 	| {
 			type: 'text';
 			question: string;
@@ -136,6 +143,7 @@ export type Exercise =
 			answers?: string[];
 			figure?: SafeHtml;
 			champHeure?: boolean;
+			champRomain?: boolean;
 			parle?: string;
 			intervalle?: [number, number];
 	  }

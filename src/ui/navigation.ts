@@ -721,7 +721,11 @@ export function runLecon(id: string) {
 	});
 	const ctx = createRenderContext();
 	setRenderCtx(ctx);
-	const fiche = buildLessonFiche(id, undefined, ctx); // aiguille math (rendu riche) / autres matières (texte)
+	// Aiguille math (rendu riche) / autres matières (texte). Le MODE retenu est transmis
+	// (#717) : une leçon peut proposer deux modes tenus par ce même rendu de fiche (écrire
+	// un nombre en chiffres romains / le lire), et la fiche les ignorait jusqu'ici — les
+	// modes alternatifs avaient tous un runner d'écran à eux, qui recevait déjà le mode.
+	const fiche = buildLessonFiche(id, undefined, ctx, mode);
 	document.getElementById('sheets')!.innerHTML =
 		html`<div class="page">${fiche}<p class="foot print-only">Ludaskia</p></div>`.balisage;
 	afterStart();

@@ -14,6 +14,7 @@ import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
 import type { Recompense } from '../core/unlocks';
 import { itemEstNumerique } from '../core/items';
+import type { Item } from '../core/items';
 import { formatReponseRevelee, saisieEstNombre } from '../core/nombres';
 import { stopChrono } from './chrono';
 import { finishResume } from './resume';
@@ -45,7 +46,24 @@ import {
 	attendueItem,
 	type CellulePosee,
 } from '../core/erreur-representation';
-import { html, brut } from '../core/html';
+import { html, brut, VIDE, type SafeHtml } from '../core/html';
+import { enNombre, libelleRegleRomaine, regleEnfreinte } from '../core/chiffres-romains';
+
+/* Règle enfreinte par une écriture romaine fausse (#717, critère 5). Révéler la bonne
+   écriture ne suffit pas : l'enfant qui a écrit `XXXXIIII` lit « → XLIV » sans savoir
+   POURQUOI sa forme ne va pas, et la réécrira. On nomme donc la règle.
+
+   Piloté par la DONNÉE de l'item (`saisieRomaine`), pas par l'identifiant de leçon : la
+   fiche corrige toutes les matières, elle n'a pas à connaître le catalogue. Rien ne
+   s'affiche pour les autres items ni pour un champ laissé vide (`regleEnfreinte` rend
+   `undefined`) — on ne fait pas la leçon à qui n'a pas répondu. */
+function regleRomaineHTML(item: Item | undefined, saisie: string): SafeHtml {
+	if (!item?.saisieRomaine) return VIDE;
+	const cible = enNombre(String(item.answer));
+	if (cible === undefined) return VIDE;
+	const regle = regleEnfreinte(saisie, cible);
+	return regle ? html`<span class="regle-romaine">${libelleRegleRomaine(regle)}</span>` : VIDE;
+}
 
 /* ---------- Vérification (arrête le chrono) ---------- */
 export function verify() {
@@ -122,7 +140,8 @@ export function verify() {
 				// Mise en forme partagée (#501) : le nombre révélé s'écrit comme dans les énoncés
 				// (groupé, virgule française) ; une bande déjà rédigée en ressort intacte.
 				const revelee = formatReponseRevelee(inp.dataset.attendue ?? inp.dataset.answer ?? '');
-				mark.innerHTML = html`✗ <span class="sol">→ ${revelee}</span>`.balisage;
+				mark.innerHTML =
+					html`✗ <span class="sol">→ ${revelee}</span>${regleRomaineHTML(sessionItems[inp.id], inp.value)}`.balisage;
 			}
 		}
 	});
@@ -445,6 +464,21 @@ export function initSession() {
 	// champ des minutes (.heure-min) efface la marque du champ des heures qui lui est lié.
 	document.addEventListener('input', (e: Event) => {
 		const t = e.target as HTMLElement | null;
+		// Écriture romaine (#717) : la saisie passe en MAJUSCULES à la frappe. Un
+		// `text-transform: uppercase` ne changerait que l'affichage — la valeur soumise
+		// resterait « xlvii », et c'est elle qui est corrigée, journalisée et comparée. La
+		// correction replie la casse de son côté (`checkItemAnswer`), mais ça reste un filet :
+		// ici on veut que l'enfant VOIE la forme attendue pendant qu'il écrit.
+		// Position du curseur restaurée : sans ça, corriger une lettre au milieu d'un mot
+		// renverrait le curseur en fin de champ à chaque frappe.
+		if (t instanceof HTMLInputElement && t.classList.contains('ans-romain')) {
+			const majuscules = t.value.toUpperCase();
+			if (majuscules !== t.value) {
+				const curseur = t.selectionStart;
+				t.value = majuscules;
+				if (curseur !== null) t.setSelectionRange(curseur, curseur);
+			}
+		}
 		// Champ signalé comme illisible (saisie non numérique) : le retoucher lève le
 		// signalement, comme une saisie efface son marquage ✓/✗ juste en dessous.
 		if (t?.classList.contains('a-corriger')) leverSignalementIllisible(t);

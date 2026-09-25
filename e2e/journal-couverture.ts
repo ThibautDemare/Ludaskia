@@ -173,6 +173,23 @@ async function ouvrirLecon(page: Page, lecon: string): Promise<void> {
 	await fermerAideSiPresente(page);
 }
 
+/* Remplit chaque champ `.ans` d'une fiche à partir de sa bonne réponse (`data-answer`),
+   puis vérifie et attend au moins une marque fausse. `fausse` fabrique la saisie erronée
+   de chaque champ — la bonne réponse est LUE dans le DOM, jamais devinée. */
+async function ficheRemplie(page: Page, fausse: (bon: string) => string): Promise<void> {
+	const champs = page.locator('#sheets input.ans');
+	// Attendre le 1er champ AVANT le `.count()` one-shot (navigation par hash asynchrone,
+	// #511, e2e/README.md) : sinon il lit 0 au hasard du timing de la machine.
+	await champs.first().waitFor();
+	const n = await champs.count();
+	for (let i = 0; i < n; i++) {
+		const champ = champs.nth(i);
+		await champ.fill(fausse((await champ.getAttribute('data-answer')) ?? ''));
+	}
+	await page.locator('#btnVerify').click();
+	await page.locator('.mark.wrong').first().waitFor();
+}
+
 /* Remplit chaque champ `.ans` d'une fiche avec un signe de comparaison FAUX. */
 async function ficheComparerFausse(page: Page): Promise<void> {
 	const champs = page.locator('#sheets input.ans');
@@ -235,8 +252,52 @@ export const COUVERTURE_JOURNAL: Record<Exercise['type'], CouvertureFormat> = {
 					await ficheComparerFausse(page);
 				},
 			},
+			{
+				titre: 'chiffres romains, mode « écrire »',
+				geste:
+					'écrire IIII dans chaque champ — quatre fois le même signe n’est l’écriture canonique d’aucun nombre, donc la réponse est fausse à coup sûr',
+				source: {
+					origine: 'catalogue',
+					lecon: 'num-chiffres-romains',
+					mode: 'ecrire',
+					niveau: 'cm1',
+				},
+				amorce: async (page) => {
+					await page.addInitScript(SEED_CM1);
+				},
+				jouer: async (page) => {
+					await ouvrirMode(page, 'num-chiffres-romains', 'ecrire');
+					await ficheRemplie(page, () => 'IIII');
+				},
+			},
+			{
+				titre: 'chiffres romains, mode « lire »',
+				geste:
+					'écrire dans chaque champ le nombre attendu augmenté de 1 — la réponse reste un nombre lisible, mais elle est fausse',
+				source: {
+					origine: 'catalogue',
+					lecon: 'num-chiffres-romains',
+					mode: 'lire',
+					niveau: 'cm1',
+				},
+				amorce: async (page) => {
+					await page.addInitScript(SEED_CM1);
+				},
+				jouer: async (page) => {
+					await ouvrirMode(page, 'num-chiffres-romains', 'lire');
+					// Une saisie NON numérique serait refusée comme illisible (session.verify) au
+					// lieu d'être comptée fausse : rien ne serait journalisé.
+					await ficheRemplie(page, (bon) => String(Number(bon) + 1));
+				},
+			},
 		],
 	},
+
+	// Les DEUX entrées ci-dessous (#717) partagent le format `text` avec la fiche
+	// « comparer », et ce n’est pas une redite : elles couvrent les deux MODES d'une même
+	// leçon, chacun avec son chemin de correction (comparaison de chaîne insensible à la
+	// casse en « ecrire », comparaison numérique en « lire »). C'est aussi ce qui satisfait
+	// le gate des modes (#598) : un mode non joué par une spec fait échouer `npm test`.
 
 	qcm: {
 		couvert: true,

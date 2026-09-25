@@ -1766,6 +1766,7 @@ export const FAMILLES_LESSONS: FamillesLessonDef[] = [
 	{
 		id: 'fr-vocab-familles',
 		label: 'Familles, préfixes et suffixes',
+		motsCles: ['même famille de mots', 'mot de base', 'préfixe', 'suffixe'],
 		levels: ['ce2'],
 		exerciseType: famillesType(ITEMS_FAMILLES),
 		etayage: [ETAYAGE_FAMILLES_CE2],
@@ -1777,6 +1778,7 @@ export const FAMILLES_LESSONS: FamillesLessonDef[] = [
 		// dérivé, faux-ami en décoy).
 		id: 'fr-vocab-familles-relier',
 		label: 'Familles de mots à relier',
+		motsCles: ['associer les mots', 'préfixe et mot de base', 'même famille'],
 		levels: ['ce2'],
 		exerciseType: appariementType(FAMILLES),
 		etayage: [ETAYAGE_FAMILLES_RELIER],
@@ -1784,6 +1786,7 @@ export const FAMILLES_LESSONS: FamillesLessonDef[] = [
 	{
 		id: 'fr-vocab-familles-cm1',
 		label: 'Familles de mots (CM1)',
+		motsCles: ['même famille de mots', 'préfixes et suffixes', 'mot de base'],
 		levels: ['cm1'],
 		exerciseType: famillesType(ITEMS_FAMILLES_CM1),
 		etayage: [ETAYAGE_FAMILLES_CM1],
@@ -1791,6 +1794,7 @@ export const FAMILLES_LESSONS: FamillesLessonDef[] = [
 	{
 		id: 'fr-vocab-affixes-cm1',
 		label: 'Préfixes et suffixes (CM1)',
+		motsCles: ['début du mot', 'fin du mot', 'sens du préfixe ou du suffixe'],
 		levels: ['cm1'],
 		exerciseType: famillesType(ITEMS_AFFIXES_CM1),
 		etayage: [ETAYAGE_AFFIXES_CM1],

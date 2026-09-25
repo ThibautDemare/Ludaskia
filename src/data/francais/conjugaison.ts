@@ -302,6 +302,7 @@ export interface ConjLessonDesc {
 	levels: SchoolLevel[];
 	rubrique: string;
 	etayage?: EtayageEntree[];
+	motsCles?: string[]; // recherche côté enfant (#718), dérivés du verbe et du temps
 }
 
 /* ---------- Étayage de la notion (#490) ----------
@@ -440,6 +441,28 @@ function verbeLabel(v: VerbDef): string {
 	return `${cap} (${VERB_GROUPE[v.id]})`;
 }
 
+/* Mots-clés de recherche (#718) d'une leçon verbe × temps — règle validée avec le
+   pédagogue : le libellé porte déjà l'infinitif, le groupe et le nom du temps, donc on
+   ajoute ce que l'enfant ou le parent TAPE sans connaître ce nom : « conjuguer »
+   (identité de la famille, absent du libellé) et deux formes réellement conjuguées à ce
+   temps, écrites comme on les dit (« j'ai été », « nous allons ») — 1re personne du
+   singulier et 1re du pluriel, les deux plus reconnaissables. Au futur, « futur simple »
+   (le terme du cahier de textes) ; pour être/avoir, « être et avoir » (les deux vont
+   ensemble dans la tête de l'adulte). */
+function motsClesConjugaison(v: VerbDef, tense: Tense): string[] {
+	const forme = (person: number): string => {
+		const f = v.forms[tense][person];
+		return displayPronoun(person, f) + f;
+	};
+	return [
+		'conjuguer',
+		forme(0),
+		forme(3),
+		...(tense === 'futur' ? ['futur simple'] : []),
+		...(AUXILIAIRE_LABEL[v.id] ? ['être et avoir'] : []),
+	];
+}
+
 /* Périmètre conjugaison CM1 (#239) : TOUT le corpus est ouvert au CM1 — les 13
    verbes (être, avoir, 1er/2e groupe, irréguliers fréquents du 3e + naître) × les
    4 temps présents dans le corpus (présent, futur, imparfait, passé composé). Tag
@@ -458,6 +481,7 @@ export const CONJ_LESSONS: ConjLessonDesc[] = VERBS.flatMap((v) =>
 			tense,
 			levels: ['ce2', 'cm1'] as SchoolLevel[],
 			rubrique: TENSE_RUBRIQUE[tense],
+			motsCles: motsClesConjugaison(v, tense),
 			...(etayage ? { etayage } : {}),
 		};
 	}),

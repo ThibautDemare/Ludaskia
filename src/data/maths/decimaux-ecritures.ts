@@ -300,6 +300,7 @@ export const DECIMAUX_ECRITURES_LESSONS: LessonInput[] = [
 	{
 		id: 'num-dec-grille',
 		label: 'Une fraction, une écriture à virgule',
+		motsCles: ['dixième', 'centième', 'virgule', 'tableau de conversion'],
 		exerciseType: qcmType(grilleFact),
 		// Compter le TOTAL des cases avant les cases coloriées, et pas l'inverse : les
 		// distracteurs opposent 4/10 à 4/100 (et 0,4 à 0,04), donc c'est le dénominateur qui
@@ -319,6 +320,7 @@ export const DECIMAUX_ECRITURES_LESSONS: LessonInput[] = [
 	{
 		id: 'num-dec-frac-superieure',
 		label: 'Une fraction décimale plus grande que 1',
+		motsCles: ['dixième', 'centième', 'virgule', 'supérieur à 1'],
 		exerciseType: qcmType(fracSuperieureFact),
 		etayage: [
 			etayageRedige(
@@ -335,6 +337,7 @@ export const DECIMAUX_ECRITURES_LESSONS: LessonInput[] = [
 	{
 		id: 'num-dec-decomposer',
 		label: 'Je décompose un nombre décimal',
+		motsCles: ['décomposer', 'virgule', 'unités', 'dixièmes', 'centièmes'],
 		// Mono-mode saisie (rendu fiche/bilan/sprint via le chemin « math moderne » :
 		// item numérique). Réponse = un entier → checkNumerique.
 		exerciseType: { generate: () => decomposeDecFact(), check: checkNumerique },
@@ -353,6 +356,7 @@ export const DECIMAUX_ECRITURES_LESSONS: LessonInput[] = [
 	{
 		id: 'num-dec-recomposer',
 		label: 'Je recompose un nombre décimal',
+		motsCles: ['recomposer', 'virgule', 'unités', 'dixièmes', 'centièmes'],
 		exerciseType: qcmType(recomposeDecFact),
 		// Le zéro des dixièmes est le point dur (seul écart entre 33,08 et 33,8, et les
 		// distracteurs du QCM proposent précisément les deux) : il est donc DÉMONTRÉ au

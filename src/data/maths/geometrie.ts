@@ -250,6 +250,7 @@ export const GEOMETRIE_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-figures-reconnaitre',
 		label: 'Je reconnais les figures',
+		motsCles: ['reconnaître', 'carré', 'rectangle', 'triangle', 'cercle'],
 		exerciseType: reconnaitreType(),
 		// La règle vise l'erreur propre au CE2 : un carré posé sur la pointe n'est plus
 		// reconnu comme un carré. Les figures de cette leçon ne sont PAS codées (le codage
@@ -272,6 +273,7 @@ export const GEOMETRIE_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-figures-proprietes',
 		label: 'Les propriétés des figures',
+		motsCles: ['côtés', 'angles droits', 'carré', 'triangle'],
 		exerciseType: propQType(PROPRIETES),
 		// Une carte d'identité par figure, une par pas : c'est exactement ce que le QCM
 		// interroge (nombre de côtés, côtés égaux, angles droits).

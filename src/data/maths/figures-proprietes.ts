@@ -341,6 +341,7 @@ export const FIGURES_PROPRIETES_LESSONS: FigureLessonDef[] = [
 	{
 		id: 'geo-cm1-figures-proprietes',
 		label: 'Reconnaître une figure par ses propriétés',
+		motsCles: ['côtés', 'angles', 'deviner la figure'],
 		exerciseType: figuresProprietesType(),
 		// Les trois marques du codage #326, une par pas, dans l'ordre où on les cherche.
 		// La leçon ne demande que des faits DIRECTEMENT lisibles sur ce codage : l'étayage

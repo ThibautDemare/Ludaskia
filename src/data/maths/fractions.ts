@@ -615,6 +615,7 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 	{
 		id: 'num-frac-sens',
 		label: 'Lire une fraction',
+		motsCles: ['numérateur', 'dénominateur', 'demi', 'tiers', 'quart'],
 		exerciseType: qcmType(genSens),
 		etayage: [
 			etayageRedige(
@@ -631,6 +632,7 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 	{
 		id: 'num-frac-collection',
 		label: "Fraction d'une collection",
+		motsCles: ["partie d'un groupe", 'objets'],
 		exerciseType: calibrated<CollectionConfig>(
 			{ ce2: COLLECTION_CE2, cm1: COLLECTION_CM1 },
 			(config) => saisieNumType(() => genCollection(config)),
@@ -653,6 +655,7 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 	{
 		id: 'num-frac-bande',
 		label: 'Fraction sur une bande',
+		motsCles: ['bande unité', 'segment', 'partager une bande'],
 		exerciseType: calibrated<number[]>({ ce2: DENS_BANDE_CE2, cm1: DENS_BANDE_CM1 }, (dens) =>
 			qcmType(() => genBande(dens)),
 		),
@@ -674,6 +677,7 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 	{
 		id: 'num-frac-egalites',
 		label: 'Fractions égales',
+		motsCles: ['fractions équivalentes', 'même valeur'],
 		exerciseType: qcmType(genEgalites),
 		etayage: [
 			etayageRedige(
@@ -690,6 +694,7 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 	{
 		id: 'num-frac-comparaison',
 		label: 'Comparer des fractions',
+		motsCles: ['plus grande', 'plus petite fraction'],
 		exerciseType: qcmType(genComparaison),
 		etayage: [
 			etayageRedige(
@@ -706,6 +711,7 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 	{
 		id: 'num-frac-addition',
 		label: 'Additionner des fractions',
+		motsCles: ['plus', 'somme', 'même dénominateur'],
 		exerciseType: calibrated<number[]>({ ce2: DENS_SOMME_CE2, cm1: DENS_SOMME_CM1 }, (dens) =>
 			qcmType(() => genSomme(dens)),
 		),
@@ -728,6 +734,7 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 	{
 		id: 'num-frac-superieure',
 		label: 'Une fraction plus grande que 1',
+		motsCles: ['numérateur plus grand', 'partie entière'],
 		exerciseType: cm1Only(qcmType(genSuperieure)),
 		etayage: [
 			etayageRedige(
@@ -744,6 +751,7 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 	{
 		id: 'num-frac-decomposer',
 		label: 'Je décompose une fraction',
+		motsCles: ['décomposer', 'partie entière', 'addition de fractions'],
 		exerciseType: cm1Only(saisieNumType(genDecomposer)),
 		etayage: [
 			etayageRedige(
@@ -760,6 +768,7 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 	{
 		id: 'num-frac-encadrer',
 		label: 'Encadrer une fraction',
+		motsCles: ['entre deux entiers', 'partie entière'],
 		exerciseType: cm1Only(qcmType(genEncadrer)),
 		etayage: [
 			etayageRedige(

@@ -519,6 +519,7 @@ export const GEOMETRIE_CM1_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-cm1-triangles',
 		label: 'Je reconnais les triangles',
+		motsCles: ['reconnaître', 'isocèle', 'équilatéral', 'rectangle'],
 		exerciseType: trianglesRecoType(),
 		// Ces figures-là sont CODÉES (`codage: true`, #326) : les pas renvoient donc aux
 		// marques (petits traits, petit carré) plutôt qu'à l'œil, qui se trompe sur un
@@ -538,6 +539,7 @@ export const GEOMETRIE_CM1_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-cm1-triangles-prop',
 		label: 'Les propriétés des triangles',
+		motsCles: ['côtés', 'angles', 'isocèle', 'équilatéral'],
 		exerciseType: propQType(TRI_PROPRIETES, MODE_QCM_SEUL),
 		etayage: [
 			etayageRedige(
@@ -554,6 +556,7 @@ export const GEOMETRIE_CM1_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-cm1-quadrilateres',
 		label: 'Je reconnais les quadrilatères',
+		motsCles: ['reconnaître', 'carré', 'rectangle', 'losange', 'parallélogramme'],
 		exerciseType: quadrilateresRecoType(),
 		etayage: [
 			etayageRedige(
@@ -570,6 +573,7 @@ export const GEOMETRIE_CM1_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-cm1-solides',
 		label: 'Je reconnais les solides',
+		motsCles: ['reconnaître', 'cube', 'pavé', 'cylindre', 'cône'],
 		exerciseType: solidesRecoType(),
 		// La perspective est la difficulté propre à cette leçon (un carré vu de biais n'a
 		// plus l'air d'un carré), d'où une règle qui porte sur le DESSIN et non sur le solide.
@@ -592,6 +596,7 @@ export const GEOMETRIE_CM1_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-cm1-polyedre',
 		label: 'Polyèdre ou non ?',
+		motsCles: ['solide', 'faces planes', 'cube', 'cylindre', 'sphère'],
 		exerciseType: polyedreType(),
 		etayage: [
 			etayageRedige(
@@ -608,6 +613,7 @@ export const GEOMETRIE_CM1_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-cm1-solides-comptage',
 		label: 'Compter faces, arêtes et sommets',
+		motsCles: ['cube', 'pavé', 'pyramide'],
 		exerciseType: comptageType(),
 		// Compter « par familles » plutôt qu'en tournant autour du dessin : sur un schéma en
 		// perspective, la moitié des arêtes est cachée, et un comptage à l'œil en oublie

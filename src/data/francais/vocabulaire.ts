@@ -192,12 +192,14 @@ export const VOCAB_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-vocab-alpha-initiale',
 		label: 'Ordre alphabétique — la 1re lettre',
+		motsCles: ['alphabet', "ranger dans l'ordre", 'dictionnaire'],
 		exerciseType: ordreType(genNiveau1),
 		etayage: [ETAYAGE_ALPHA_INITIALE],
 	},
 	{
 		id: 'fr-vocab-alpha-deuxieme',
 		label: 'Ordre alphabétique — la 2e lettre',
+		motsCles: ['alphabet', "ranger dans l'ordre", 'dictionnaire'],
 		exerciseType: ordreType(genNiveau2),
 		etayage: [ETAYAGE_ALPHA_DEUXIEME],
 	},

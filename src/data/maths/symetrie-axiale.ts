@@ -208,6 +208,7 @@ export const SYMETRIE_LESSONS: SymetrieLessonDef[] = [
 	{
 		id: 'geo-symetrie-axiale',
 		label: 'Le miroir magique (symétrie)',
+		motsCles: ['axe de symétrie', 'symétrique', 'miroir', 'pliage'],
 		exerciseType: symetrieType(),
 		excludeFromSprint: true,
 		// Les deux questions de la leçon (« est-ce un axe ? », « quel est le vrai reflet ? »)

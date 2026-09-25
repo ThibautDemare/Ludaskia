@@ -195,6 +195,7 @@ export const ORDRE_GRANDEUR_LESSONS: LessonInput[] = [
 	{
 		id: 'math-ordre-grandeur-produit',
 		label: "Ordre de grandeur d'un produit",
+		motsCles: ['estimer', 'arrondir', 'résultat approché', 'fois'],
 		exerciseType: ordreGrandeurType(),
 		// Le 1ᵉʳ pas dit ce que la leçon demande VRAIMENT (une taille, pas un résultat) :
 		// l'enfant qui pose l'opération en entier ne se trompe pas de calcul, il se trompe

@@ -211,6 +211,7 @@ export const RANGER_LESSONS: NumerationLessonDef[] = [
 	{
 		id: 'num-ranger',
 		label: 'Je range les nombres',
+		motsCles: ['ranger', 'ordre croissant', 'ordre décroissant'],
 		exerciseType: rangerType(),
 		// Ranger n'est pas une notion de plus : c'est comparer, répété. Les deux premiers pas
 		// reprennent donc mot pour mot ceux de `num-comparer` (l'enfant doit reconnaître qu'il

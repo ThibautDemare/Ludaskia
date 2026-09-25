@@ -314,12 +314,14 @@ export const CHAMPS_LESSONS: LessonInput[] = [
 	{
 		id: 'fr-vocab-champs-mots',
 		label: 'Le mot juste',
+		motsCles: ['définition', 'quel mot', 'intrus', 'vocabulaire précis'],
 		exerciseType: motJusteType(),
 		etayage: [ETAYAGE_MOT_JUSTE],
 	},
 	{
 		id: 'fr-vocab-champs-tri',
 		label: 'Ranger par thème',
+		motsCles: ['trier les mots', 'par thème', 'catégories de mots'],
 		exerciseType: triType(),
 		etayage: [ETAYAGE_TRI_THEME],
 	},

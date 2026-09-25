@@ -175,6 +175,7 @@ export const SOLIDE_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-solides-reconnaitre',
 		label: 'Je reconnais les solides',
+		motsCles: ['reconnaître', 'cube', 'pavé', 'boule', 'pyramide'],
 		exerciseType: reconnaitreType(),
 		// Un tri en deux temps (faces rondes d'abord, faces plates ensuite) plutôt qu'une
 		// liste de six noms à reconnaître d'un coup : c'est ce qui rend la question décidable
@@ -194,6 +195,7 @@ export const SOLIDE_LESSONS: LessonInput[] = [
 	{
 		id: 'geo-solides-proprietes',
 		label: 'Les propriétés des solides',
+		motsCles: ['faces', 'arêtes', 'sommets', 'cube', 'pavé'],
 		exerciseType: propQType(PROPRIETES),
 		// Les questions passent par des objets du quotidien (le dé, la boîte de conserve) :
 		// l'étayage reprend ces mêmes objets plutôt que d'en inventer d'autres.

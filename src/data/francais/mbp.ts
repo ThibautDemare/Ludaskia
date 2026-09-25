@@ -216,6 +216,7 @@ export const MBP_LESSONS: MbpLessonDef[] = [
 	{
 		id: 'fr-mbp',
 		label: 'm devant m, b, p',
+		motsCles: ['m ou n', 'la règle du m', 'bonbon', 'lettre m'],
 		rubrique: 'Les règles',
 		exerciseType: mbpType(),
 		etayage: [ETAYAGE_MBP],

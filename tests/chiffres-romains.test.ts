@@ -16,9 +16,16 @@
    trois fois. Il est lui-même éprouvé plus bas (bloc « Référentiel du test ») avant
    de servir d'attendu.
 
+   SECONDE PASSE — critères 4 et 5, écrits APRÈS le code. Ils n'avaient aucune prise à
+   la première (le tirage n'exposait aucun palier, la règle enfreinte aucune fonction
+   pure). Un test écrit après coup passe du premier coup, ce qui ne prouve que sa propre
+   complaisance : chacun de ceux-là a donc été éprouvé par une MUTATION du module, nommée
+   en tête de son bloc. Les attendus restent dérivés de l'énoncé du critère — la partition
+   des paliers, notamment, est recalculée ici depuis la FORME de l'écriture (commence par
+   M / contient une des six paires soustractives), pas depuis les chiffres 4 et 9 sur
+   lesquels le module la déduit.
+
    Critères NON traduits ici, faute d'API arrêtée — voir le compte rendu :
-   4 (tirage gradué : aucun palier n'est observable depuis l'extérieur),
-   5 (règle enfreinte nommée dans le feedback : demanderait une fonction pure exportée),
    6 (« c'est un autre système » : relève du rendu / d'une formulation, pas d'un
    mécanisme observable — l'asserter reviendrait à figer une phrase),
    7 (journalisation : déjà tenue par les gates `tests/erreurs-journal-gate.test.ts`,
@@ -28,9 +35,28 @@ import { describe, it, expect } from 'vitest';
 import { getLessonById, getLessonsByCategory, genLessonItem } from '../src/core/catalog';
 import type { LessonDef, SchoolLevel } from '../src/core/catalog';
 import { checkItemAnswer } from '../src/core/items';
+import type { Item } from '../src/core/items';
 import { defaultMode, hasMode } from '../src/core/exercise';
 import type { Exercise, ExerciseMode, ExerciseType } from '../src/core/exercise';
 import { withSeed } from '../src/core/utils';
+/* Seconde passe (critères 4 et 5) : les prises exposées par le module. `enRomain` n'est
+   VOLONTAIREMENT pas importé — le référentiel du test reste le sien, sans quoi les deux
+   se confirmeraient l'un l'autre. */
+import {
+	PALIERS_ROMAINS,
+	libelleRegleRomaine,
+	nombresDuPalier,
+	palierDe,
+	progressionPaliers,
+	regleEnfreinte,
+	tirerNombreRomain,
+	type PalierRomain,
+	type RegleRomaine,
+} from '../src/core/chiffres-romains';
+/* La fiche réellement servie à l'enfant (`buildLessonFiche` lui demande ses questions) :
+   c'est là que la progression du critère 4 doit se voir, pas seulement dans une fonction
+   de paliers qui pourrait n'être appelée nulle part. */
+import { genItems } from '../src/core/build';
 
 const ID = 'num-chiffres-romains';
 const NIVEAU: SchoolLevel = 'cm1';
@@ -43,6 +69,11 @@ const MODE_LIRE = 'lire';
    --------------------------------------------------------------- */
 
 const VALEURS: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+
+/* Les six formes soustractives, et six seulement (règle énoncée par l'issue). Elles
+   servent deux fois : à éprouver le référentiel, et à reconnaître le palier d'un nombre
+   à la seule vue de son écriture (critère 4). */
+const SOUSTRACTIONS = ['IV', 'IX', 'XL', 'XC', 'CD', 'CM'];
 
 /* Écriture d'UN chiffre à un rang donné, à partir de ses trois symboles (unité, cinq,
    dix). Les deux seules formes soustractives d'un rang sont 4 (`un` devant `cinq`) et
@@ -108,7 +139,6 @@ describe('Référentiel du test — les règles de l’écriture romaine', () =>
 	});
 
 	it('aucune écriture ne viole les règles (répétitions, soustractions)', () => {
-		const SOUSTRACTIONS = ['IV', 'IX', 'XL', 'XC', 'CD', 'CM'];
 		for (const n of PLAGE) {
 			const r = enRomain(n);
 			// Jamais quatre fois le même signe.
@@ -573,6 +603,440 @@ describe('Critère 11 — aucune leçon de numération existante ne tire de nomb
 					}
 				}
 			}
+		}
+	});
+});
+
+/* ---------------------------------------------------------------
+   Critère 4 — le tirage est GRADUÉ, pas uniforme sur 1 à 3999
+   ---------------------------------------------------------------
+
+   Écrit APRÈS le code : aucun palier n'était observable à la première passe. Mutations
+   jouées contre `src/` pour vérifier que ces tests gardent quelque chose —
+   - `progressionPaliers` rendant une série d'un seul palier tiré au hasard
+     (`Array(count).fill(tirerPalierRomain())`) → « la fiche sert la progression » rougit ;
+   - `generate()` tirant uniformément sur 1-3999, ce que le critère proscrit → « un item
+     isolé reste gradué » rougit ;
+   - `aUneSoustraction` rendant toujours `false` (le palier 2 se vide) → « les trois
+     paliers partitionnent » et « palier 1 = purement additif » rougissent. */
+
+/* Palier d'un nombre, DÉRIVÉ de son écriture comme le critère l'énonce : les MILLIERS
+   (l'écriture commence par M), sinon les formes SOUSTRACTIVES (elle contient une des six
+   paires), sinon l'écriture est purement ADDITIVE. Le module, lui, le déduit des chiffres
+   4 et 9 du nombre : deux dérivations indépendantes, dont le test exige plus bas qu'elles
+   coïncident sur toute l'étendue. */
+function palierAttendu(n: number): PalierRomain {
+	const r = enRomain(n);
+	if (r.startsWith('M')) return 3;
+	return SOUSTRACTIONS.some((f) => r.includes(f)) ? 2 : 1;
+}
+
+/* Valeur portée par un item de fiche, quel que soit le sens : la réponse attendue est
+   l'écriture romaine (mode « écrire ») ou le nombre (mode « lire »). */
+function valeurDeItem(item: Item): number {
+	const rep = String(item.answer).trim();
+	return estLettresRomaines(rep) ? lectureNaive(rep) : Number(rep.replace(/\s/g, ''));
+}
+
+/* Tirages DANS un palier, graines fixes : un échec se rejoue à l'identique. */
+function tiragesDuPalier(palier: PalierRomain, parGraine = 300): number[] {
+	const out: number[] = [];
+	for (const graine of GRAINES) {
+		withSeed(graine, () => {
+			for (let i = 0; i < parGraine; i++) out.push(tirerNombreRomain(palier));
+		});
+	}
+	return out;
+}
+
+describe('Critère 4 — le tirage est gradué, pas uniforme sur 1 à 3999', () => {
+	it('les trois paliers partitionnent 1-3999 : non vides, disjoints, sans trou', () => {
+		expect(PALIERS_ROMAINS.length, 'la progression ne compte pas trois paliers').toBe(3);
+		const vus = new Map<number, PalierRomain>();
+		for (const palier of PALIERS_ROMAINS) {
+			const nombres = nombresDuPalier(palier);
+			expect(nombres.length, `le palier ${palier} est vide`).toBeGreaterThan(0);
+			for (const n of nombres) {
+				expect(vus.has(n), `${n} appartient aux paliers ${vus.get(n)} ET ${palier}`).toBe(false);
+				vus.set(n, palier);
+			}
+		}
+		for (const n of PLAGE) {
+			expect(vus.has(n), `${n} (${enRomain(n)}) n'est dans aucun palier`).toBe(true);
+		}
+		expect(vus.size, 'les paliers débordent de 1-3999').toBe(PLAGE.length);
+	});
+
+	it('palier 1 = purement additif ; palier 2 = les formes soustractives ; palier 3 = les milliers', () => {
+		// Le classement du module confronté à celui que le critère décrit, sur les 3 999
+		// nombres. Les deux se calculent autrement : l'un lit les chiffres du nombre, l'autre
+		// regarde l'écriture. S'ils divergent, « purement additif » n'a pas le même sens des
+		// deux côtés.
+		for (const n of PLAGE) {
+			expect(palierDe(n), `${n} → ${enRomain(n)}`).toBe(palierAttendu(n));
+		}
+		for (const palier of PALIERS_ROMAINS) {
+			for (const n of nombresDuPalier(palier)) {
+				expect(palierDe(n), `${n} → ${enRomain(n)} rangé au palier ${palier}`).toBe(palier);
+			}
+		}
+	});
+
+	it('un échantillon du PREMIER palier ne contient ni MMMCMXCIX ni XLIV', () => {
+		// Le cas d'échec écrit dans l'issue, mot pour mot. Tiré et non énuméré : c'est le
+		// TIRAGE qui doit rester dans son palier, pas seulement la table qui le décrit.
+		const tirages = tiragesDuPalier(1);
+		for (const n of tirages) {
+			const r = enRomain(n);
+			expect(n, `${r} = ${n} : un millier au premier palier`).toBeLessThan(1000);
+			expect(r.includes('M'), `${r} = ${n} : le signe M au premier palier`).toBe(false);
+			for (const f of SOUSTRACTIONS) {
+				expect(r.includes(f), `${r} = ${n} : la forme soustractive ${f} au premier palier`).toBe(
+					false,
+				);
+			}
+		}
+		// Sans les deux lignes ci-dessous, un tirage figé sur « I » passerait le test sans
+		// rien apprendre à personne : le palier doit être DENSE sur toute son étendue.
+		expect(
+			new Set(tirages).size,
+			'le premier palier ne tire qu’une poignée de nombres',
+		).toBeGreaterThan(100);
+		expect(Math.max(...tirages), 'le premier palier plafonne sous 100').toBeGreaterThan(100);
+	});
+
+	it('le deuxième palier mobilise vraiment une forme soustractive, et reste sous le millier', () => {
+		const tirages = tiragesDuPalier(2);
+		for (const n of tirages) {
+			const r = enRomain(n);
+			expect(n, `${r} = ${n} : un millier au deuxième palier`).toBeLessThan(1000);
+			expect(
+				SOUSTRACTIONS.some((f) => r.includes(f)),
+				`${r} = ${n} : aucune forme soustractive au palier qui les travaille`,
+			).toBe(true);
+		}
+		expect(
+			new Set(tirages).size,
+			'le deuxième palier ne tire qu’une poignée de nombres',
+		).toBeGreaterThan(100);
+	});
+
+	it('le troisième palier est celui des milliers, et monte jusqu’aux MMM', () => {
+		const tirages = tiragesDuPalier(3);
+		for (const n of tirages) {
+			expect(n, `${enRomain(n)} = ${n} : pas un millier`).toBeGreaterThanOrEqual(1000);
+			expect(n, `${enRomain(n)} = ${n} : au-delà de l'étendue`).toBeLessThanOrEqual(3999);
+		}
+		expect(Math.max(...tirages), 'le palier des milliers ne dépasse jamais 3000').toBeGreaterThan(
+			3000,
+		);
+	});
+
+	it('la FICHE sert la progression : les paliers arrivent dans l’ordre, et les trois y sont', () => {
+		// Le point qui compte. Des paliers exposés mais jamais SERVIS passeraient tous les
+		// tests précédents, et la fiche de l'enfant resterait un tirage uniforme : on passe
+		// donc par `genItems`, exactement ce que `buildLessonFiche` appelle pour la remplir.
+		const l = lecon();
+		for (const mode of [MODE_ECRIRE, MODE_LIRE]) {
+			for (const graine of GRAINES) {
+				for (const combien of [8, 10, 12]) {
+					const items = withSeed(graine, () => genItems(l, combien, NIVEAU, mode));
+					const trace = `${mode}/graine ${graine}/${combien} questions : ${items
+						.map((x) => String(x.answer))
+						.join(' ')}`;
+					expect(
+						items.length,
+						`série trop courte pour montrer une progression — ${trace}`,
+					).toBeGreaterThanOrEqual(3);
+					const paliers = items.map((x) => palierAttendu(valeurDeItem(x)));
+					for (let i = 1; i < paliers.length; i++) {
+						expect(
+							paliers[i] >= paliers[i - 1],
+							`retour en arrière à la question ${i + 1} (palier ${paliers[i]} après ${paliers[i - 1]}) — ${trace}`,
+						).toBe(true);
+					}
+					expect(
+						[...new Set(paliers)].sort((a, b) => a - b),
+						`un palier manque à la série — ${trace}`,
+					).toEqual([1, 2, 3]);
+				}
+			}
+		}
+	});
+
+	it('la suite des paliers est ordonnée quelle que soit la longueur de la série', () => {
+		// Bords : une série vide ne demande rien, une question isolée commence par le plus
+		// facile, et aucune longueur ne perd de question en route (une fiche de 8 questions
+		// en pose 8).
+		expect(progressionPaliers(0), 'une série vide ne demande aucun palier').toEqual([]);
+		expect(progressionPaliers(1), 'une question isolée doit être la plus simple').toEqual([1]);
+		for (let combien = 1; combien <= 30; combien++) {
+			const suite = progressionPaliers(combien);
+			expect(suite.length, `série de ${combien} questions`).toBe(combien);
+			for (let i = 1; i < suite.length; i++) {
+				expect(suite[i] >= suite[i - 1], `série de ${combien} : ${suite.join('')}`).toBe(true);
+			}
+			if (combien >= 3) {
+				expect(
+					[...new Set(suite)].sort((a, b) => a - b),
+					`série de ${combien} : ${suite.join('')}`,
+				).toEqual([1, 2, 3]);
+			}
+		}
+	});
+
+	it('un item tiré ISOLÉMENT (bilan, révision) reste gradué au lieu d’être uniforme', () => {
+		// Hors série, il n'y a plus d'ordre à tenir : la graduation ne peut être qu'une
+		// fréquence. Repère du tirage uniforme sur 1-3999, celui que le critère proscrit :
+		// 3 000/3 999 = 75 % de milliers, 511/3 999 = 13 % d'écritures purement additives.
+		// Les seuils ci-dessous s'en écartent franchement sans figer les poids du module.
+		const type = moteur();
+		const paliers: PalierRomain[] = [];
+		for (const graine of GRAINES) {
+			withSeed(graine, () => {
+				for (let i = 0; i < 400; i++) {
+					const ex = type.generate({ mode: MODE_ECRIRE, level: NIVEAU });
+					paliers.push(palierAttendu(convertir(ex, MODE_ECRIRE).valeur));
+				}
+			});
+		}
+		const part = (p: PalierRomain): number =>
+			paliers.filter((x) => x === p).length / paliers.length;
+		expect(
+			part(1),
+			`écritures additives : ${(part(1) * 100).toFixed(1)} % — pas plus qu'un tirage uniforme (13 %)`,
+		).toBeGreaterThan(0.25);
+		expect(
+			part(3),
+			`milliers : ${(part(3) * 100).toFixed(1)} % — ils écrasent la série comme dans un tirage uniforme (75 %)`,
+		).toBeLessThan(0.5);
+		expect(part(2), 'les formes soustractives ne sortent jamais d’un tirage isolé').toBeGreaterThan(
+			0.05,
+		);
+	});
+});
+
+/* ---------------------------------------------------------------
+   Critère 5 — après une erreur, la RÈGLE enfreinte est nommée
+   ---------------------------------------------------------------
+
+   Écrit APRÈS le code, comme le critère 4. Mutations jouées contre `src/` —
+   - `regleEnfreinte` rendant `undefined` dès que la saisie n'est pas canonique (le
+     silence : la réponse est révélée, la règle non) → tous les tests de ce bloc rougissent ;
+   - la branche `repetition-quadruple` retirée (une faute de répétition tombe alors sur
+     `ordre-des-signes`) → « la règle diagnostiquée est celle qui est enfreinte » rougit ;
+   - `libelleRegleRomaine` rendant la même phrase pour toutes les classes → « chaque
+     classe a SA phrase » rougit ;
+   - `champRomain: true` retiré de la leçon (le feedback n'est plus déclenché nulle part)
+     → « le drapeau est posé là où l'enfant écrit du romain » rougit.
+
+   Ce qui n'est PAS ici : que la phrase s'affiche à l'écran, à côté de l'écriture
+   attendue. Sans DOM, on ne peut en tenir que la moitié logique — l'autre relève de la
+   spec Playwright. */
+
+/* Les classes de faute, ÉNUMÉRÉES exhaustivement. Le `Record` typé par l'union fait
+   échouer `tsc` le jour où une classe s'ajoute sans phrase ni cas de test : la table ne
+   peut pas se désynchroniser en silence. La valeur est la faute telle que le TEST la
+   décrit (elle sert aux messages d'échec), pas la phrase montrée à l'enfant. */
+const CLASSES_DE_REGLE: Record<RegleRomaine, string> = {
+	'signe-inconnu': 'une lettre hors des sept signes',
+	'repetition-quadruple': 'quatre fois le même signe',
+	'repetition-interdite': 'V, L ou D écrit deux fois',
+	'soustraction-interdite': 'une soustraction hors des six formes autorisées',
+	'ordre-des-signes': 'des signes mal rangés',
+	'autre-nombre': 'une écriture correcte, mais celle d’un autre nombre',
+};
+
+/* Les fautes de la première passe (celles que la correction refuse, critère 3) plus les
+   deux exemples de l'issue, avec la règle qu'elles enfreignent. La règle est DÉRIVÉE de
+   la faute elle-même — « XXXXIIII » écrit quatre fois le même signe, « IC » soustrait
+   hors des six formes — et non de l'ordre dans lequel le module fait ses contrôles.
+   Une saisie qui cumule deux fautes reçoit la plus VISIBLE : `DCCCC` répète C quatre
+   fois, ce qui se compte, là où « D et CCCC ne se combinent pas » demande de connaître
+   la forme canonique — d'où `repetition-quadruple` et non `ordre-des-signes`. */
+const CAS_REGLE: { saisie: string; cible: number; regle: RegleRomaine }[] = [
+	{ saisie: 'IIII', cible: 4, regle: 'repetition-quadruple' },
+	{ saisie: 'VIIII', cible: 9, regle: 'repetition-quadruple' },
+	{ saisie: 'XXXX', cible: 40, regle: 'repetition-quadruple' },
+	{ saisie: 'CCCC', cible: 400, regle: 'repetition-quadruple' },
+	{ saisie: 'DCCCC', cible: 900, regle: 'repetition-quadruple' },
+	// L'exemple littéral de l'issue : « XXXXIIII » pour 44, dont l'enfant doit apprendre
+	// pourquoi il ne va pas, et pas seulement que la réponse était XLIV.
+	{ saisie: 'XXXXIIII', cible: 44, regle: 'repetition-quadruple' },
+	{ saisie: 'IC', cible: 99, regle: 'soustraction-interdite' },
+	{ saisie: 'VX', cible: 5, regle: 'soustraction-interdite' },
+	// V, L et D ne se répètent pas : 10, ce n'est pas « cinq et cinq ».
+	{ saisie: 'VV', cible: 10, regle: 'repetition-interdite' },
+	// Chaque morceau est licite, l'assemblage ne l'est pas : le I traîne des deux côtés.
+	{ saisie: 'IXI', cible: 11, regle: 'ordre-des-signes' },
+	// Le chiffre arabe tapé dans le champ romain, et une lettre qui n'est pas un signe.
+	{ saisie: '4', cible: 4, regle: 'signe-inconnu' },
+	{ saisie: 'ABC', cible: 3, regle: 'signe-inconnu' },
+	// Écriture irréprochable… d'un autre nombre (la confusion XIV / XL, classique).
+	{ saisie: 'XIV', cible: 40, regle: 'autre-nombre' },
+];
+
+/* Corruptions DÉTERMINISTES d'une écriture : ce qu'un enfant tape en se trompant — un
+   signe oublié, un signe doublé, deux signes intervertis, une lettre étrangère. Sert à
+   éprouver le critère sur ce que l'enfant écrit VRAIMENT, et pas seulement sur les
+   quelques fautes de manuel listées au-dessus. */
+function corruptions(r: string): string[] {
+	const out: string[] = [];
+	for (let i = 0; i < r.length; i++) {
+		out.push(r.slice(0, i) + r.slice(i + 1)); // signe oublié
+		out.push(r.slice(0, i) + r[i] + r.slice(i)); // signe doublé
+		out.push(`${r.slice(0, i)}Z${r.slice(i)}`); // lettre étrangère
+		if (i + 1 < r.length) out.push(r.slice(0, i) + r[i + 1] + r[i] + r.slice(i + 2)); // interversion
+	}
+	return out.filter((s) => s !== '' && s !== r);
+}
+
+describe('Critère 5 — après une erreur, la règle enfreinte est nommée', () => {
+	it('chaque classe de faute est éprouvée par au moins un cas', () => {
+		// Sans ce décompte, ajouter une classe sans la soumettre à `regleEnfreinte` laisserait
+		// le test suivant vert en ne l'ayant jamais jouée.
+		const couvertes = new Set(CAS_REGLE.map((c) => c.regle));
+		for (const regle of Object.keys(CLASSES_DE_REGLE) as RegleRomaine[]) {
+			expect(
+				couvertes.has(regle),
+				`aucun cas n'éprouve « ${regle} » (${CLASSES_DE_REGLE[regle]})`,
+			).toBe(true);
+		}
+	});
+
+	it('la règle diagnostiquée est celle que la saisie enfreint vraiment', () => {
+		for (const { saisie, cible, regle } of CAS_REGLE) {
+			expect(
+				regleEnfreinte(saisie, cible),
+				`« ${saisie} » pour ${cible} (${enRomain(cible)}) : ${CLASSES_DE_REGLE[regle]}`,
+			).toBe(regle);
+		}
+	});
+
+	it('chaque classe a SA phrase : non vide, rédigée, et distincte des autres', () => {
+		// Une même phrase pour deux fautes différentes ne dit plus ce qui a été enfreint :
+		// l'enfant relit « ça ne va pas » sans savoir quoi regarder dans son écriture.
+		const vues = new Map<string, RegleRomaine>();
+		for (const regle of Object.keys(CLASSES_DE_REGLE) as RegleRomaine[]) {
+			const phrase = libelleRegleRomaine(regle).trim();
+			expect(phrase, `« ${regle} » n'a aucune phrase`).not.toBe('');
+			expect(phrase, `« ${regle} » : l'identifiant technique n'est pas une phrase`).not.toBe(regle);
+			// Une règle énoncée, pas un mot-clé : l'enfant doit pouvoir la LIRE.
+			expect(
+				phrase.split(/\s+/).length,
+				`« ${regle} » : « ${phrase} » n'énonce pas une règle`,
+			).toBeGreaterThan(4);
+			const deja = vues.get(phrase);
+			expect(
+				deja,
+				`« ${regle} » dit exactement la même chose que « ${deja} » : « ${phrase} »`,
+			).toBeUndefined();
+			vues.set(phrase, regle);
+		}
+	});
+
+	it('une saisie JUSTE, ou VIDE, ne reçoit aucune leçon de règle', () => {
+		// Les deux bords. On ne fait pas la leçon à qui a eu juste, ni à qui n'a pas répondu :
+		// un champ laissé vide n'est pas une faute d'écriture, et lui servir la règle
+		// transformerait un blanc en reproche.
+		for (const n of [1, 4, 9, 40, 44, 99, 400, 900, 1987, 3999]) {
+			const r = enRomain(n);
+			expect(regleEnfreinte(r, n), `« ${r} » est la bonne réponse pour ${n}`).toBeUndefined();
+		}
+		for (const vide of ['', ' ', '\t', '   ']) {
+			expect(
+				regleEnfreinte(vide, 44),
+				`champ vide (${JSON.stringify(vide)}) : rien à reprocher`,
+			).toBeUndefined();
+		}
+	});
+
+	it('toute saisie REFUSÉE reçoit une règle nommée, toute saisie ACCEPTÉE n’en reçoit aucune', () => {
+		// Les deux chemins doivent dire la même chose de la même saisie : compter faux sans
+		// nommer la règle laisse l'enfant recommencer la même faute ; nommer une règle sur
+		// une réponse acceptée serait un reproche gratuit.
+		const type = moteur();
+		let refusees = 0;
+		let acceptees = 0;
+		for (const { ex, romain, valeur, enonce } of echantillon(MODE_ECRIRE)) {
+			for (const variante of [romain, ` ${romain} `, romain.toLowerCase()]) {
+				if (!type.check(ex, variante)) continue;
+				acceptees++;
+				expect(
+					regleEnfreinte(variante, valeur),
+					`« ${variante} » est acceptée et reçoit pourtant une leçon de règle (${enonce})`,
+				).toBeUndefined();
+			}
+			for (const faute of FAUTES) {
+				const saisie = faute.fabrique(romain);
+				if (!saisie || saisie === romain) continue;
+				refusees++;
+				const regle = regleEnfreinte(saisie, valeur);
+				expect(
+					regle,
+					`« ${saisie} » est comptée fausse pour ${valeur} sans qu'aucune règle soit nommée — ${faute.nom}`,
+				).toBeDefined();
+				if (!regle) continue;
+				expect(
+					libelleRegleRomaine(regle).trim(),
+					`règle « ${regle} » diagnostiquée sans phrase à montrer`,
+				).not.toBe('');
+			}
+		}
+		expect(acceptees, 'aucune saisie acceptée éprouvée').toBeGreaterThan(0);
+		expect(refusees, 'aucune saisie refusée éprouvée').toBeGreaterThan(0);
+	});
+
+	it('n’importe quelle écriture fausse reçoit une règle, jamais le silence', () => {
+		// Le vrai contenu du critère : ce ne sont pas « les sept fautes du manuel » qu'il faut
+		// diagnostiquer, c'est CE QUE L'ENFANT TAPE. On corrompt donc des écritures canoniques
+		// comme il se trompe, sur toute l'étendue, et l'on exige une règle à chaque fois.
+		let casEprouves = 0;
+		for (let i = 0; i < PLAGE.length; i += 37) {
+			const n = PLAGE[i];
+			const r = enRomain(n);
+			for (const faux of corruptions(r)) {
+				casEprouves++;
+				const regle = regleEnfreinte(faux, n);
+				expect(regle, `« ${faux} » pour ${n} (${r}) : aucune règle nommée`).toBeDefined();
+				if (!regle) continue;
+				expect(
+					CLASSES_DE_REGLE[regle],
+					`« ${faux} » pour ${n} : règle « ${regle} » inconnue du test`,
+				).toBeDefined();
+				expect(
+					libelleRegleRomaine(regle).trim(),
+					`« ${faux} » pour ${n} : règle « ${regle} » sans phrase`,
+				).not.toBe('');
+			}
+		}
+		expect(casEprouves, 'aucune corruption éprouvée').toBeGreaterThan(2000);
+	});
+
+	it('le drapeau qui déclenche le feedback est posé là où l’enfant écrit du romain', () => {
+		// `regleEnfreinte` pourrait être irréprochable et n'être appelée nulle part : le
+		// feedback est piloté par la DONNÉE de l'item (`saisieRomaine`), pas par l'identifiant
+		// de la leçon. C'est la seule moitié du critère observable sans DOM.
+		const l = lecon();
+		const enEcrire = withSeed(7, () => genItems(l, 8, NIVEAU, MODE_ECRIRE));
+		const enLire = withSeed(7, () => genItems(l, 8, NIVEAU, MODE_LIRE));
+		expect(enEcrire.length, 'aucun item en mode « écrire »').toBeGreaterThan(0);
+		expect(enLire.length, 'aucun item en mode « lire »').toBeGreaterThan(0);
+		for (const item of enEcrire) {
+			expect(
+				item.saisieRomaine,
+				`« ${item.text} » : réponse romaine sans le drapeau, aucune règle ne sera nommée`,
+			).toBe(true);
+			expect(
+				estLettresRomaines(String(item.answer)),
+				`« ${item.text} » : le drapeau annonce une écriture romaine, la réponse n'en est pas une`,
+			).toBe(true);
+		}
+		for (const item of enLire) {
+			expect(
+				item.saisieRomaine,
+				`« ${item.text} » : la réponse attendue est un nombre, le drapeau n'a rien à y faire`,
+			).toBeFalsy();
 		}
 	});
 });

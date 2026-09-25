@@ -4,7 +4,7 @@
    Chaque LessonDef porte un ExerciseType qui encapsule la
    génération et la vérification d'un exercice.
    ============================================================ */
-import type { ExerciseType, Exercise } from './exercise';
+import type { ExerciseType, Exercise, ExerciseMode } from './exercise';
 import { separateurSuite } from './exercise';
 import type { IconName } from './icon-names';
 import type { Item } from './items';
@@ -46,6 +46,7 @@ import { POSITION_LESSONS } from '../data/maths/position';
 import { RANGER_LESSONS } from '../data/maths/ranger-entiers';
 import { DECIMAUX_LESSONS } from '../data/maths/decimaux';
 import { DROITE_GRADUEE_LESSONS } from '../data/maths/droite-graduee';
+import { CHIFFRES_ROMAINS_LESSONS } from '../data/maths/chiffres-romains';
 import { DONNEES_LESSONS } from '../data/maths/donnees';
 import { renderFigure } from './figures';
 import { DECIMAUX_ECRITURES_LESSONS } from '../data/maths/decimaux-ecritures';
@@ -684,6 +685,23 @@ const DROITE_GRADUEE_LESSONS_DEFS: LessonDef[] = toLessonDefs(DROITE_GRADUEE_LES
 	rubrique: (d) => d.rubrique,
 });
 
+/* ---------- Numération — les chiffres romains (#717, CM1) ----------
+   Un SECOND système de numération, non positionnel, sur toute l'étendue 1-3999. À plat
+   dans la catégorie (pas de rubrique : c'est une leçon isolée, pas un fil comme les
+   décimaux ou les fractions). CM1-only, niveaux dérivés du moteur.
+
+   EXCLUE du sprint, comme aire-perimetre et la lecture de données : écrire MMMCMXCIX
+   suppose de décomposer le nombre rang par rang puis de choisir ses signes — une
+   transposition à plusieurs pas, pas l'automatisme « une réponse à la fois » que le
+   chrono récompense. La leçon reste jouée en fiche, bilan et révision, où la correction
+   nomme la règle enfreinte (ce que l'écran de sprint ne sait pas montrer). */
+const CHIFFRES_ROMAINS_LESSONS_DEFS: LessonDef[] = toLessonDefs(CHIFFRES_ROMAINS_LESSONS, {
+	subject: 'math',
+	category: 'math-numeration',
+	levels: (d) => d.exerciseType.levels ?? ['cm1'],
+	excludeFromSprint: true,
+});
+
 /* ---------- Organisation et gestion de données (#257, CM1) ----------
    Deux leçons CM1-only de LECTURE de données, en saisie chiffrée : lire une barre sur un axe
    gradué, lire une cellule d'un tableau à double entrée. Ce sont de simples exercices `text`
@@ -1044,6 +1062,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...DECIMAUX_LESSONS_DEFS,
 	...DECIMAUX_ECRITURES_LESSONS_DEFS,
 	...DROITE_GRADUEE_LESSONS_DEFS,
+	...CHIFFRES_ROMAINS_LESSONS_DEFS,
 	...DONNEES_LESSONS_DEFS,
 	...FRACTIONS_LESSONS_DEFS,
 	...CALCUL_LESSONS_DEFS,
@@ -1189,14 +1208,48 @@ const SEPARATEURS_SUITE = [', ', ' , ', ',', ' ; ', '; ', ' ;', ';'];
    - math moderne (conversions #89, monnaie #96, numération #98…) : item depuis
      l'ExerciseType (le `@` de la question marque l'emplacement du champ) ; le
      `kind` suit la réponse — numérique (nombre) ou texte (signe <, =, >) ;
-   - autres matières : item TEXTE (corrigé par comparaison de chaîne). */
-export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
+   - autres matières : item TEXTE (corrigé par comparaison de chaîne).
+
+   `mode` (#717) : le mode RETENU par l'enfant (#69), quand il change ce que la fiche
+   demande. Optionnel et absent partout où il n'a pas de sens (bilan multi-leçons,
+   révision, impression) → mode par défaut du type, comportement d'origine. Il est devenu
+   nécessaire le jour où une leçon a proposé DEUX modes tenus par le même rendu de fiche
+   (écrire un nombre en chiffres romains / le lire) : jusque-là, les modes alternatifs
+   avaient tous un runner d'écran à eux, qui recevait déjà le mode, et la fiche pouvait
+   l'ignorer sans que rien ne s'en aperçoive. */
+export function genLessonItem(lesson: LessonDef, level?: SchoolLevel, mode?: ExerciseMode): Item {
 	if (isLegacyMathLesson(lesson)) {
 		const item = bilanQ(MATH_LESSON_NUM[lesson.id])!;
 		item._lesson = lesson.id;
 		return item;
 	}
-	const ex = lesson.exerciseType.generate({ level });
+	return itemDepuisExercice(lesson, lesson.exerciseType.generate({ level, mode }));
+}
+
+/* Série ENTIÈRE d'items d'une leçon, quand sa fabrique sait tirer une session d'un coup
+   (`generateSession`) : la garantie est alors GLOBALE et portée par la fabrique — pas de
+   répétition d'une manche à l'autre (#392), progression graduée des paliers (#717). Rend
+   `null` quand la leçon n'en propose pas (le cas courant) ou qu'elle est sur le moteur
+   hérité : l'appelant retombe alors sur des tirages indépendants.
+
+   Le tri des doublons reste à l'appelant (`core/build.ts`) : une fabrique qui sait tirer
+   une session sait déjà ce qu'elle y met. */
+export function genLessonSession(
+	lesson: LessonDef,
+	count: number,
+	level?: SchoolLevel,
+	mode?: ExerciseMode,
+): Item[] | null {
+	if (isLegacyMathLesson(lesson)) return null;
+	const session = lesson.exerciseType.generateSession?.(count, { level, mode });
+	return session ? session.map((ex) => itemDepuisExercice(lesson, ex)) : null;
+}
+
+/* Conversion `Exercise` → `Item` : le point où chaque format se replie en une question à
+   champ unique (fiche, bilan, impression, révision). Extrait de `genLessonItem` (#717)
+   pour que la génération PAR SESSION passe exactement par le même repli — un second
+   chemin de conversion aurait divergé au premier champ ajouté. */
+function itemDepuisExercice(lesson: LessonDef, ex: Exercise): Item {
 	// Rangement d'une suite (ordre alphabétique #108, ordre des nombres #448) :
 	// l'interaction tuiles vit dans son runner d'écran. Ici (fiche/bilan), repli TEXTE
 	// non interactif : on liste les éléments mélangés et on attend la suite rangée. La
@@ -1370,6 +1423,12 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 	// perdrait la bande EN SILENCE si on restreignait la propagation au cas maths — l'oubli ne
 	// se verrait ni à la lecture ni en test. Ne pas « simplifier » en le retirant d'un des deux.
 	const intervalle = ex.type === 'text' ? ex.intervalle : undefined;
+	// Écriture romaine (#717) : même raison de propager dans les DEUX retours que
+	// `intervalle` ci-dessus — le drapeau vit sur le type `Exercise` général. Il commande la
+	// correction (casse repliée), le champ de saisie et le feedback qui nomme la règle
+	// enfreinte ; le perdre en route ne casserait rien de visible, il ferait juste compter
+	// faux un « xlvii » juste, en silence.
+	const saisieRomaine = ex.type === 'text' ? ex.champRomain : undefined;
 	if (lesson.subject === 'math') {
 		// Saisie de l'heure en 2 champs (#88) ; sinon numérique (calcul) ou texte (signe).
 		const kind =
@@ -1391,6 +1450,7 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 			choices,
 			choicesView,
 			intervalle,
+			saisieRomaine,
 			_lesson: lesson.id,
 		};
 	}
@@ -1404,6 +1464,7 @@ export function genLessonItem(lesson: LessonDef, level?: SchoolLevel): Item {
 		choices,
 		choicesView,
 		intervalle,
+		saisieRomaine,
 		_lesson: lesson.id,
 	};
 }

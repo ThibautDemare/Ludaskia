@@ -147,6 +147,22 @@
 	font-size: clamp(1.1rem, 4vw, var(--num-fs));
 	font-variant-numeric: tabular-nums;
 }
+/* Champ d'écriture romaine (#717) : les sept signes, en capitales. Chiffres tabulaires
+   et interlettrage aéré — « MMMCMXCIX » se relit signe par signe, et c'est justement ce
+   que l'enfant doit pouvoir faire pour se corriger. Plus étroit qu'un champ de
+   conjugaison (9 signes au maximum). La mise en majuscules est faite sur la VALEUR par
+   ui/session.ts ; `text-transform` n'est pas posé ici, il ferait croire que c'est réglé
+   alors qu'il ne change que l'affiché. */
+.ans-romain {
+	width: 120px;
+	text-align: center;
+	font-family: var(--ui);
+	font-size: 17px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	font-variant-numeric: tabular-nums;
+}
+
 .ans:focus {
 	outline: none;
 	border-bottom-color: var(--accent);
@@ -317,6 +333,21 @@ html.anim-reduced .mark.correct {
 	font-weight: 700;
 	margin-left: 1px;
 } /* bonne réponse révélée */
+
+/* Règle enfreinte par une écriture romaine fausse (#717) : la bonne écriture seule ne
+   dit pas POURQUOI la forme donnée ne va pas. Posée sous la révélation, sur sa propre
+   ligne (une phrase à côté d'un « ✗ → XLIV » serait illisible), en gris de rampe et en
+   graisse normale — c'est une explication, pas un second verdict. */
+.mark.wrong .regle-romaine {
+	display: block;
+	margin-top: 2px;
+	color: var(--grey);
+	font-weight: 400;
+	font-size: 13px;
+	line-height: 1.35;
+	max-width: 34ch;
+	white-space: normal;
+}
 
 .fiche + .fiche {
 	margin-top: 18px;

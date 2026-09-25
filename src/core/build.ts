@@ -5,9 +5,16 @@
    autres matières (texte) passent par genLessonItem + un rendu
    en liste. C'est le pont qui rend le pipeline multi-matières.
    ============================================================ */
-import { getAllLessons, getLessonById, genLessonItem, isLegacyMathLesson } from './catalog';
+import {
+	getAllLessons,
+	getLessonById,
+	genLessonItem,
+	genLessonSession,
+	isLegacyMathLesson,
+} from './catalog';
 import type { LessonDef, SchoolLevel } from './catalog';
 import { consignePourNiveau } from './exercise';
+import type { ExerciseMode } from './exercise';
 import { labelLecon } from './levels';
 import { niveauLecon } from './niveau-actif';
 import { LESSONS_CALCUL_MENTAL } from './lessons';
@@ -29,16 +36,41 @@ import { html, joindre, VIDE, type SafeHtml } from './html';
    série de tirages sans nouveauté (la pioche est aléatoire). La clé inclut la
    RÉPONSE et la FIGURE, pas seulement le texte : sinon une leçon à énoncé
    constant mais visuel variable (« Quel est ce solide ? ») n'aurait qu'UN item. */
-export function genItems(lesson: LessonDef, n: number, level?: SchoolLevel): Item[] {
+/* Clé de DÉDUPLICATION d'un item : la question, sa réponse et sa figure. Source unique
+   des deux chemins de génération ci-dessous (tirage un par un / session entière), pour
+   qu'ils ne se mettent pas à considérer deux items « différents » différemment. */
+const cleItem = (it: Item): string =>
+	`${commKey(it.text)}¦${it.answer}¦${it.figure?.balisage ?? ''}`;
+
+export function genItems(
+	lesson: LessonDef,
+	n: number,
+	level?: SchoolLevel,
+	mode?: ExerciseMode,
+): Item[] {
 	const items: Item[] = [];
 	const seen = new Set<string>();
 	// Calibrage au niveau effectif (#225), surchargeable (#234) : impression d'une fiche
 	// au niveau d'un profil CONSULTÉ par l'encadrant, sans changer le profil/niveau actif.
 	const lvl = level ?? niveauLecon(lesson);
+	// Série tirée D'UN COUP quand la fabrique sait le faire (#392, #717) : elle seule peut
+	// garantir une propriété GLOBALE de la série — aucune répétition d'une manche à l'autre,
+	// paliers de difficulté dans l'ordre. L'ordre rendu est le SIEN et n'est pas retrié ici ;
+	// on se contente d'écarter d'éventuels doublons, comme sur l'autre chemin.
+	const session = genLessonSession(lesson, n, lvl, mode);
+	if (session) {
+		for (const it of session) {
+			const key = cleItem(it);
+			if (seen.has(key)) continue;
+			seen.add(key);
+			items.push(it);
+		}
+		return items;
+	}
 	let misses = 0;
 	while (items.length < n && misses < 80) {
-		const it = genLessonItem(lesson, lvl);
-		const key = `${commKey(it.text)}¦${it.answer}¦${it.figure?.balisage ?? ''}`;
+		const it = genLessonItem(lesson, lvl, mode);
+		const key = cleItem(it);
 		if (seen.has(key)) {
 			misses++;
 			continue;
@@ -59,6 +91,7 @@ export function buildLessonFiche(
 	lessonId: string,
 	level?: SchoolLevel,
 	ctx: RenderContext = createRenderContext(),
+	mode?: ExerciseMode,
 ): SafeHtml {
 	const lesson = getLessonById(lessonId);
 	if (!lesson) return VIDE;
@@ -74,7 +107,10 @@ export function buildLessonFiche(
 	// MÊME résolution que `genItems`, pour que le titre, la consigne et le contenu de la
 	// fiche parlent tous du même niveau (#436).
 	const lvl = level ?? niveauLecon(lesson);
-	const items = genItems(lesson, 8, lvl);
+	// `mode` (#717) : le mode retenu par l'enfant, quand il change ce que la fiche demande
+	// (écrire un nombre en chiffres romains / le lire). Absent partout ailleurs → mode par
+	// défaut du type, comportement d'origine.
+	const items = genItems(lesson, 8, lvl, mode);
 	const inner = withLessonId(ctx, lessonId, () => {
 		const lignes = joindre(
 			items.map((it) => html`<div class="conj-op">${renderItem(it, ctx)}</div>`),

@@ -139,6 +139,14 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			// donnant à lire l'ordre de grandeur sur une droite. Clôt le cluster numération des
 			// grands nombres, avant la géométrie.
 			'num-droite-entiers',
+			// Les chiffres romains (#717) : un SECOND système, non positionnel, placé APRÈS tout
+			// le cluster de numération décimale (valeur de position, comparaison, droite graduée)
+			// et jamais au milieu. C'est la contrainte pédagogique de cette leçon, pas une
+			// préférence d'affichage : le CM1 est l'année où la valeur de position se consolide,
+			// et un système où la place d'un signe ne donne PAS sa valeur ne se lit comme un
+			// contraste éclairant qu'une fois le premier système stabilisé. Avant, il brouille.
+			// Placé avant la lecture de données (autre bloc, sans dépendance à celui-ci).
+			'num-chiffres-romains',
 			// Organisation et gestion de données (#257) : LIRE un diagramme en barres puis un
 			// tableau à double entrée. La lecture d'une hauteur de barre sur un axe gradué
 			// enchaîne directement la compétence « lire une valeur sur une graduation » tout juste

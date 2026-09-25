@@ -9,6 +9,7 @@ import { stackFractions } from './fraction-text';
 import { wrapGrandsNombres, parseNombreFr, formatReponseRevelee } from './nombres';
 import { estSigneComparaison, paveSignesHTML } from './signes';
 import { attendueItem, corrigeIntercalation } from './erreur-representation';
+import { normaliserRomain } from './chiffres-romains';
 import type { ChoiceView } from './exercise';
 
 /* Opération posée (#97) : décrite par ses opérandes et son opérateur ; le rendu
@@ -42,6 +43,15 @@ export interface Item {
 	// (cf. `memeListeDeMots`) ; `answer` garde la forme LISIBLE (« chien et gamelle »), seule
 	// affichée/journalisée/imprimée. Absent ⇒ correction par égalité de chaîne, inchangée.
 	motsAttendus?: string[];
+	// Réponse = une ÉCRITURE ROMAINE (#717), propagé depuis `champRomain` de l'exercice.
+	// Même parti pris que `intervalle` et `motsAttendus` ci-dessus : la règle de correction
+	// est portée par la DONNÉE de l'item, jamais devinée à la forme de la réponse (« DIX »
+	// est une écriture romaine valide, et ce n'en est pourtant pas une dans une leçon de
+	// français). Présent ⇒ `checkItemAnswer` replie la CASSE (arbitrage mainteneur : la
+	// saisie est mise en majuscules à la frappe, mais la révision, le bilan et un collage
+	// dans le champ atteignent la même réponse par d'autres chemins), `renderItem` rend un
+	// champ `.ans-romain`, et `ui/session.ts` nomme la règle enfreinte après une erreur.
+	saisieRomaine?: boolean;
 	// QCM (#289) : choix conservés pour le rendu PAPIER en cases à cocher. À l'écran, le
 	// QCM est joué par son runner interactif (qui lit l'Exercise, pas l'Item) ; ces champs
 	// ne servent qu'au chemin fiche/bilan IMPRIMÉ. `choicesView` (vue riche) est aligné
@@ -180,6 +190,11 @@ export function checkItemAnswer(it: Item, raw: string): boolean {
 	// Liste de mots (#436) : même parti pris que `intervalle` juste au-dessus — la règle de
 	// correction est portée par la DONNÉE de l'item, pas par le `kind` ni par la matière.
 	if (it.motsAttendus) return memeListeDeMots(raw, it.motsAttendus);
+	// Écriture romaine (#717) : comparaison à la forme canonique STOCKÉE, jamais un décodage
+	// de la saisie (qui accepterait `IIII` pour 4). Seule la casse est repliée — la saisie est
+	// déjà forcée en majuscules à la frappe, mais la révision, le bilan et un collage dans le
+	// champ atteignent la même réponse par d'autres chemins, où une minuscule compterait faux.
+	if (it.saisieRomaine) return normaliserRomain(raw) === normaliserRomain(String(it.answer));
 	// 'heure' (#88) : saisie en 2 champs, déjà fusionnée en « H h MM » par l'appelant
 	// (session.verify) ; on la compare comme du texte (forme canonique + variantes).
 	if (!itemEstNumerique(it)) {
@@ -459,6 +474,13 @@ export function renderItem(it: Item, ctx: RenderContext, extra = ''): SafeHtml {
 	// pas de virgule sur mobile). N'affecte que les champs numériques dont la réponse a une
 	// virgule ; les entiers gardent `numeric`.
 	const inputMode = String(it.answer).includes(',') ? 'decimal' : 'numeric';
+	// Écriture romaine (#717) : champ texte à part (`.ans-romain`, capitales tabulaires,
+	// plus étroit qu'un champ de conjugaison). La mise en MAJUSCULES de la valeur saisie
+	// est faite en JS (`ui/session.ts`) : un `text-transform` CSS ne change que l'affiché,
+	// la valeur soumise resterait en minuscules. L'`aria-label` annonce le FORMAT attendu,
+	// comme le champ « signe de comparaison » — sans le voir, rien ne dit qu'on attend des
+	// lettres romaines plutôt qu'un nombre.
+	const romain = it.kind === 'text' && !!it.saisieRomaine;
 	// Corrigé imprimé d'une intercalation (#446) : « 457 ou tout nombre entre 450 et 465 ».
 	// L'exemple seul faisait BARRER des réponses justes par l'adulte qui corrige sur papier,
 	// alors que la fiche annonce « (plusieurs réponses possibles) ». Les autres corrigés (et
@@ -471,9 +493,11 @@ export function renderItem(it: Item, ctx: RenderContext, extra = ''): SafeHtml {
 		? html`<span class="ans-corrige ${extra}">${revelee}</span>`
 		: signe
 			? html`<input class="ans ans-signe ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)} type="text" inputmode="none" autocomplete="off" spellcheck="false" maxlength="1"${ariaChamp(it, 'signe de comparaison')}><span class="mark" data-for="${id}"></span>`
-			: it.kind === 'text'
-				? html`<input class="ans ans-text ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)}${ariaChamp(it)} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
-				: html`<input class="ans${grand} ${extra}" id="${id}"${ansAttr}${attendueAttr}${lessonAttr(ctx)}${ariaChamp(it)} inputmode="${inputMode}" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
+			: romain
+				? html`<input class="ans ans-text ans-romain ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)}${ariaChamp(it, 'en chiffres romains')} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
+				: it.kind === 'text'
+					? html`<input class="ans ans-text ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)}${ariaChamp(it)} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
+					: html`<input class="ans${grand} ${extra}" id="${id}"${ansAttr}${attendueAttr}${lessonAttr(ctx)}${ariaChamp(it)} inputmode="${inputMode}" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
 	// ne doit jamais s'imprimer « en l'air » → on ajoute une ligne d'écriture finale.
 	const place = texte.balisage.includes('@') ? texte : ctx.printMode ? html`${texte} @` : texte;

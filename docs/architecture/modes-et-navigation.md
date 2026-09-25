@@ -191,6 +191,21 @@ la liste est découverte avant le moindre entraînement, et le choix de mode n'e
 proposé qu'ensuite. Fin d'exercice : **Recommencer / Quitter** (la pause ortho et
 le runner QCM offrent le même choix).
 
+**Le mode atteint désormais aussi la FICHE (#717).** Jusque-là, tout mode alternatif
+avait son **runner d'écran** (QCM, tuiles, tableau, appariement…), qui recevait le mode
+en argument ; le rendu de fiche, lui, l'ignorait — sans conséquence, puisqu'aucune leçon
+n'avait deux modes tenus par la fiche. Les **chiffres romains** (écrire / lire) sont le
+premier cas. `runLecon` passe donc le mode retenu à **`buildLessonFiche(id, level, ctx,
+mode)`**, qui le relaie à **`genItems`** puis à **`genLessonItem(lesson, level, mode)`**.
+Le paramètre est **optionnel** et reste absent partout où il n'a pas de sens (bilan
+multi-leçons, révision, impression) → mode par défaut du type, comportement d'origine.
+
+`genItems` privilégie par ailleurs **`generateSession`** quand la fabrique en propose une
+(**`genLessonSession`**, `core/catalog.ts`) : la fabrique tire alors la série **entière**
+et en porte les garanties globales — aucune répétition d'une manche à l'autre (#392),
+paliers de difficulté dans l'ordre (#717). L'ordre rendu est le sien et n'est pas retrié ;
+seuls les doublons éventuels sont écartés, comme sur l'autre chemin.
+
 ## Reprise d'un exercice en cours (#63, étendue aux runners #498)
 
 Deux **natures** d'exercice sont **sauvegardées automatiquement** quand on les

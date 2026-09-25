@@ -550,6 +550,24 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   choix** (tap direct) plutôt qu'en champ texte — le clavier virtuel n'expose pas ces
   signes, et sous chrono un QCM valide plus vite qu'une saisie. Le comportement du pavé
   (clic → remplissage, synchro `aria-pressed`) vit dans `ui/pave-signes.ts`.
+- **`chiffres-romains.ts`** (#717) — module **pur** : le système de numération romain,
+  borné à **1-3999**. Conversion dans les deux sens (**`enRomain(n)`**, **`enNombre(s)`**
+  qui ne rend une valeur que pour la **forme canonique** — `IIII`, `VX`, `IC`, `MMMM`
+  renvoient `undefined`), **`normaliserRomain`** (espaces retirés, MAJUSCULES — la seule
+  tolérance du moteur, cf. ci-dessous), **`lireRomainNaif`** (décodage permissif, qui sert
+  au seul diagnostic d'erreur), les **paliers** de difficulté (`palierDe`,
+  `tirerNombreRomain`, `tirerPalierRomain`, **`progressionPaliers(count)`** = la suite
+  ORDONNÉE additif → soustractif → milliers d'une série) et la **règle enfreinte**
+  (**`regleEnfreinte(saisie, cible)`** → identifiant stable `RegleRomaine`,
+  **`libelleRegleRomaine`** → la phrase montrée). Trois surfaces en dépendent, d'où le
+  module à part plutôt qu'une fonction dans le fichier de données : la génération
+  (`data/maths/chiffres-romains.ts`), la **correction** (`items.ts` : un item porteur de
+  `saisieRomaine` est corrigé par comparaison à la forme canonique **casse repliée** —
+  arbitrage mainteneur, parce que la révision, le bilan et un collage dans le champ
+  atteignent la même réponse hors de la frappe) et le **feedback** (`ui/session.ts`, qui
+  nomme la règle après une erreur). `items.ts` (`renderItem`) pose un champ dédié
+  **`.ans-romain`** ; la mise en MAJUSCULES de la **valeur** saisie est faite en JS
+  (`ui/session.ts`) — un `text-transform` CSS ne changerait que l'affiché.
 - **`aide.ts`** (#272) — **aide contextuelle** des runners à interaction non intuitive,
   module **pur** : porte le **contenu** des aides (`AIDES` : titre + étapes courtes ≤ 3 +
   voie alternative + filet anti-erreur) pour 10 types (`tuiles`, `ordre`, `ordreNombres`

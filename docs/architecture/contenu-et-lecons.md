@@ -753,6 +753,41 @@ pour ne pas « avaler » le zéro médian (« 3,04 » → « trois virgule zéro
 les montants en euros (`monnaie.ts`) restent lus nativement, exclus par ce même
 moteur. Branché au catalogue via `DECIMAUX_LESSONS_DEFS` (`core/catalog.ts`).
 
+#### `maths/chiffres-romains.ts` (#717, CM1) — lire et écrire en chiffres romains
+
+1 leçon **CM1 only**, à plat dans la catégorie Numération : **« Les chiffres romains »**
+(`num-chiffres-romains`), sur toute l'étendue **1-3999**. Le SYSTÈME (conversion, forme
+canonique, paliers, règle enfreinte) vit dans `core/chiffres-romains.ts` ; ce fichier
+porte les énoncés, les modes et l'étayage.
+
+**Deux modes, tous deux en SAISIE** (#69) — c'est la production qui prouve que la règle
+est comprise, là où un QCM se réussit en reconnaissant une forme déjà vue :
+`ecrire` (« J'écris en chiffres romains », **par défaut** : nombre donné → écriture
+romaine, réponse `text` portant `champRomain`) et `lire` (écriture romaine donnée →
+nombre, réponse numérique). Les deux se jouent sur le **rendu de fiche** — premier cas
+du dépôt où deux modes partagent ce rendu, d'où le `mode` désormais transmis à
+`buildLessonFiche`/`genItems`/`genLessonItem` (cf. [Modes & navigation](modes-et-navigation.md)).
+
+**Tirage GRADUÉ** : `generateSession` tire la série entière et en ordonne les paliers
+(écritures purement additives → formes soustractives → milliers, `progressionPaliers`) ;
+`generate()` isolé tire un palier selon les mêmes poids, pour qu'un item pris seul
+(bilan, révision) couvre quand même l'étendue annoncée.
+
+**Correction** : seule la forme **canonique** passe — on compare à la réponse stockée au
+lieu de décoder la saisie, sinon `IIII` serait accepté pour 4. La **casse** est repliée
+(arbitrage mainteneur) et la saisie est mise en majuscules à la frappe. Après une erreur,
+la marque révèle l'écriture attendue **et nomme la règle enfreinte**
+(`regleEnfreinte`/`libelleRegleRomaine`, `ui/session.ts`).
+
+**Hors périmètre, assumé** : aucun calcul en chiffres romains, rien au-delà de 3999 (pas
+de barre de multiplication), ni siècles ni frise chronologique — c'est une leçon de
+numération. **Exclue du sprint** (`excludeFromSprint`) : écrire `MMMCMXCIX` est une
+transposition à plusieurs pas, pas un automatisme à chronométrer, et l'écran de sprint ne
+sait pas montrer la règle enfreinte. Branchée via `CHIFFRES_ROMAINS_LESSONS_DEFS` ;
+insérée dans `ORDRE_LECONS.math.cm1` **après** tout le cluster de numération décimale
+(`num-droite-entiers`) : un second système NON POSITIONNEL n'éclaire que si le premier
+est stabilisé.
+
 #### `maths/droite-graduee.ts` (#256 CM1, #447 CE2) — placer un nombre sur la droite graduée
 
 2 leçons sur la **brique interactive** « droite graduée » (renderer

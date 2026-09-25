@@ -18,7 +18,7 @@ programme. On choisit sa **classe** (CE2 ou CM1) au démarrage pour n'avoir que 
 exercices adaptés.
 
 - **Mathématiques** — **Numération** (comparer, encadrer, valeur des chiffres,
-  décompositions, fractions), **Calcul** (additions, soustractions et
+  décompositions, fractions, chiffres romains), **Calcul** (additions, soustractions et
   multiplications posées), **Calcul mental** (tables, compléments, doubles et
   moitiés, multiples, multiplier par 10/100…, partages), **Grandeurs et mesures**
   (longueurs, masses, contenances, durées, monnaie, lire l'heure, périmètre),

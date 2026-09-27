@@ -948,7 +948,17 @@ Catégorie `math-calcul-mental`. Quatre origines :
 
 - **15 leçons CE2 historiques** (`core/lessons.ts`, `LESSONS`/`bilanQ` — tables d'addition,
   compléments à 10/100/1000, doubles, moitiés, ajouter/soustraire 9·19, tables de ×,
-  multiples de 25, décompo. de 60, ×10·×100, ×4·×8, ×20·30·40, décomposer…). Système
+  multiples de 25, décompo. de 60, ×10·×100, ×4·×8, ×20·30·40, décomposer…). **Un seul
+  nom par leçon (#722)** : le `label` de chacune, dans `core/catalog.ts`, EST le `title`
+  correspondant de `core/lessons.ts` — les deux ont divergé jusqu'à #722 (l'écran de
+  catégorie affichait le second, tout le reste de l'appli le premier), `tests/libelle-
+  affiche.test.ts` tient désormais l'égalité comme un **gate** (cf. [Tests](tests.md)) :
+  renommer l'un sans l'autre fait échouer `npm test`. **Deux rejets écrits** sur des
+  libellés remontés en relecture puis gardés tels quels : « Soustraire 9, 19, 29, 39 et
+  un petit nombre » décrit le contenu réel du générateur (8 soustractions de 9/19/29/39
+  plus 4 d'un petit nombre), pas une formule à raccourcir ; « Décompositions
+  multiplicatives de 60 » garde son vocabulaire mathématique voulu (à revoir avec le
+  pédagogue si un jour contesté). Système
   fiche/`bilanQ` **sans paramètre `level`** : le **calibrage** d'une leçon donnée est
   figé (pas de recalibrage par niveau) — étendre au CM1 se fait par une **leçon
   distincte** (cf. ci-dessous), pas en surchargeant une plage CE2.

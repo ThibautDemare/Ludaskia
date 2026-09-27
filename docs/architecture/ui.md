@@ -275,7 +275,42 @@ ci-dessous.
   réservée à une infobulle qu'une tablette n'ouvre pas au doigt. Une cible qui n'est plus au
   catalogue (leçon retirée d'une version à l'autre) reste
   signalée telle quelle plutôt que muette — seul motif restant de ce repli, une cible hors
-  de la classe suivie étant désormais légale. Une étape **« à revoir » (#464)** ne se
+  de la classe suivie étant désormais légale.
+
+  **Choisir une dictée dans ce même sélecteur TRANSFORME l'étape (#722)** : le sélecteur
+  déployé sous une étape « une leçon précise » porte aussi les dictées de mots
+  (`data-kind`, cf. `ui/selecteur-lecon.ts` ci-dessus) ; cliquer sur l'une d'elles fait
+  passer l'étape en « Une dictée » (`etape.kind = 'dictee'`, `refs = [id]`, l'ancien
+  `ref` de leçon effacé) plutôt que de rejeter le choix — l'adulte a cherché, trouvé,
+  cliqué, il n'a pas à recommencer dans le bon menu. Rien d'autre ne bouge (nombre de
+  fois, place dans le programme). Le focus va à la case cochée du pool de dictées qui
+  vient d'apparaître : c'est là que continue le geste (ajouter d'autres cibles au pool).
+  Une région live PAR ÉTAPE (`.enc-seance-etape-statut`, `role="status"`) annonce ce
+  changement de NATURE après le re-rendu (« Cette activité devient « Une dictée » :
+  « nom » cochée. », `annoncerEtape`, différé comme le résumé du sélecteur, #556) : le
+  focus posé sur la case ne dit rien, à la voix, de ce qui vient d'arriver à l'ÉTAPE
+  elle-même (SC 4.1.3 / 3.2.2 — un changement de contexte non annoncé).
+
+  **Filtre à la frappe du pool de dictées (#722)** — module dédié
+  `encadrant-seance-dictees.ts` (groupes de dictées, état du filtre, rendu du corps de la
+  liste, handler ; extrait de `encadrant-seance.ts`, qui compose seulement le fieldset) :
+  un champ `seance-dictee-filtre` au-dessus de la liste à cocher (état de module
+  `filtresDictees`, clé `uuid|defId|etapeId` — l'espace recrée tout son DOM à la moindre
+  action, sans état le filtre tomberait à chaque case cochée) filtre les lignes par leur
+  libellé (`dicteeVisible`, même normalisation `cleRecherche` que la recherche du
+  sélecteur). **Convention reprise du pool #463** : « la recherche masque, la sélection
+  reste » — une case COCHÉE reste toujours visible et cochable sous un filtre, jamais
+  cachée (même règle que les cibles indisponibles du pool, ci-dessus). À la frappe,
+  `seanceInput` **re-rend le seul corps** de la liste (`.enc-seance-dictees-corps`) avec
+  la MÊME fonction que le rendu initial (`corpsDicteesHTML`) — même patron que
+  `rafraichirCorps` du sélecteur : le champ, hors du corps, garde focus et curseur, les
+  cases repartent de la définition stockée, et il n'y a qu'un seul algorithme de
+  visibilité à maintenir (un second, qui aurait basculé `hidden` en place, a été écarté
+  par la relecture qualité). Une région live DÉDIÉE au filtre
+  (`.enc-seance-dictees-filtre-statut`, différée 350 ms comme le résumé du sélecteur)
+  annonce combien de dictées restent affichées — **distincte** du repère `hintId` qui
+  compte les cibles COCHÉES, les deux mesurant des choses différentes. Une étape
+  **« à revoir » (#464)** ne se
   configure pas — sa cible est la file épinglée du profil (`epingleesProfil`) — mais
   affiche un repère (`hintARevoir`) pour que l'adulte sache si elle apparaîtra dans le
   programme (« rien n'est épinglé » / une seule → « ce sera celle-ci » / plusieurs →
@@ -399,6 +434,28 @@ Deux consommateurs :
 la cible d'une étape « une leçon précise » du programme (`encadrant-seance.ts`) et
 l'épinglage « à revoir » (`encadrant-progression.ts`, bloc « Épingler une leçon », cf.
 [Espace encadrant](espace-encadrant.md) pour le détail fonctionnel des deux).
+
+**Dictées de mots dans l'arbre (#722)** : `vueCourante` fournit toujours
+`opts.dictees` (`dicteesDe(consulte)`, prédéfinies + listes du parent du profil
+CONSULTÉ, via `listOrthoLecons`/`loadOrthoFor` — jamais filtrées ici, c'est
+`core/catalogue-arbre.ts` qui applique le jeton actif) : le groupe « Dictées de mots »
+apparaît donc dans les DEUX consommateurs sans code spécifique de leur côté. Chaque
+`<li>` et son bouton portent `data-kind` (`lecon` ou `dictee`, en plus de
+`data-lesson`) : c'est ce que le consommateur lit pour aiguiller son geste (épingler
+sous `ortho:` + id, transformer une étape en « dictée ») — le sélecteur, lui, l'ignore.
+**Rejet écrit (a11y)** : le groupe « Dictées de mots » partage l'ARIA de
+`categorieHTML` avec les catégories de leçons (même `<details>`, même
+`.enc-cat-sum`) — assumé, sans rôle ni `aria-label` dédié : le libellé visible du
+groupe suffit à distinguer sa nature, une leçon et une dictée de mots n'étant de
+toute façon jamais confondues une fois lues.
+
+**Compte distingué par nature (#722)** : l'arbre mélangeant désormais leçons et
+dictées, `compteLabel(n, nature)` (`nature: 'lecon' | 'dictee' | 'mixte'`) rend
+« N leçons », « N dictées » ou « N leçons et dictées » selon ce que couvre le
+groupe, la catégorie ou la matière comptée (`natureCategorie`/`natureDe`) — un badge
+« 12 leçons » sur le groupe « Dictées de mots » lui-même, ou sur une matière mêlant
+les deux, tromperait qui l'entend sans voir l'arbre. Le résumé vide côté « aucun
+résultat » suit la même règle (« Aucune leçon ni dictée … »).
 
 **Journal des erreurs (#391)** — deux modules distincts, hors des modules de section
 ci-dessus, plus `core/erreur-representation.ts` (logique pure, cf. [Logique

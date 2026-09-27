@@ -46,7 +46,12 @@
 import { beforeEach, describe, it, expect } from 'vitest';
 import { CATEGORIES, SUBJECTS, getAllLessons } from '../src/core/catalog';
 import type { LessonDef, SchoolLevel } from '../src/core/catalog';
-import { consignePourNiveau } from '../src/core/exercise';
+import { checkAnswer, consignePourNiveau } from '../src/core/exercise';
+import { ORTHO_PREDEF } from '../src/data/francais/orthographe';
+import { emptyOrthoState } from '../src/core/orthographe/store';
+import { motsDeLecon } from '../src/core/orthographe/lessons';
+import { genExerciseOrtho } from '../src/core/orthographe/exercise';
+import { MODES_ORTHO } from '../src/core/orthographe/types';
 import { AIDES } from '../src/core/aide';
 import type { TypeAide } from '../src/core/aide';
 import { libelleRegleRomaine } from '../src/core/chiffres-romains';
@@ -327,17 +332,136 @@ describe('Inventaire — le filet couvre bien ce qu’il prétend couvrir', () =
 	});
 });
 
-describe('Ce que l’enfant lit s’écrit avec l’apostrophe droite du projet', () => {
+/* ============================================================
+   L'APOSTROPHE — deux règles qui se ressemblent et ne pèsent pas pareil
+   ------------------------------------------------------------
+   Le même caractère, deux surfaces, deux enjeux d'ordres différents. La confusion est
+   facile et coûteuse, d'où cette note : sans elle, le prochain lecteur croira que les
+   deux ont le même poids, et sacrifiera la mauvaise le jour où l'une le gênera.
+
+   1. SUR UN TEXTE LU (le describe ci-dessous) — enjeu COSMÉTIQUE. Un libellé, une
+      consigne, une phrase d'aide : l'enfant les lit, il ne les retape pas. La forme du
+      caractère n'a aucune conséquence, ni sur la correction, ni sur le TTS. Ce qui se
+      voit, c'est le MÉLANGE : deux apostrophes différentes dans un même écran. La règle
+      vaut d'être tenue — elle a déjà rattrapé un libellé de leçon et deux cadres
+      d'énoncé — mais elle est négociable, et c'est celle-ci qu'on lâcherait.
+
+   2. SUR UNE RÉPONSE ATTENDUE (le describe suivant) — enjeu de CORRECTION. Là, la règle
+      n'est pas une préférence : la correction en dépend. `normalizeText`
+      (`src/core/utils.ts`) trime, réduit les blancs et compose en NFC — il ne replie PAS
+      `’` (U+2019) vers `'`. Une réponse attendue écrite avec l'apostrophe typographique
+      est donc INCORRIGIBLE : l'enfant tape celle de son clavier — la droite, la seule
+      qu'il ait — sa réponse est JUSTE, elle est comptée FAUSSE, et rien à l'écran ne lui
+      permet de comprendre pourquoi. C'est un défaut qu'on ne diagnostique pas depuis la
+      chaise de l'enfant.
+
+   L'ordre de sacrifice est donc écrit : la 1 est négociable, la 2 ne l'est pas. Le
+   premier test du second describe ne l'énonce d'ailleurs pas, il le MESURE sur le moteur
+   de correction — le jour où `normalizeText` replierait les deux formes, il rougirait, et
+   ce serait le signal que la règle 2 peut être relâchée.
+   ============================================================ */
+describe('Ce que l’enfant LIT s’écrit avec l’apostrophe droite (cohérence de forme)', () => {
 	it('aucun « ’ » dans le vocabulaire d’interface, les aides, les retours d’erreur', () => {
 		const fautes = releve(apostrophesCourbes);
 		expect(
 			fautes,
 			`L'apostrophe du projet est la droite « ' », celle du clavier de l'enfant ` +
-				`(CLAUDE.md ; normalizeText ne replie pas U+2019).\n` +
+				`(CLAUDE.md).\n` +
 				`Ces textes portent l'apostrophe typographique « ’ » :\n${fautes.join('\n')}\n` +
 				`Le caractère est invisible en relecture — c'est pour ça qu'il se teste.\n` +
+				`Enjeu : la COHÉRENCE DE FORME, pas la correction (ces textes se lisent, ils ne ` +
+				`se retapent pas) — à ne pas confondre avec la règle des réponses attendues, ` +
+				`plus bas, dont dépend la correction.\n` +
 				`Hors périmètre volontaire : le CONTENU des exercices (énoncés, phrases, ` +
 				`définitions, explications), où #578 les déclare légitimes.`,
+		).toEqual([]);
+	});
+});
+
+/* ------------------------------------------------------------------
+   Ce que l'enfant TAPE — la moitié que le catalogue ne couvre pas
+   ------------------------------------------------------------------
+   Réparti sur deux gates, et il faut savoir lequel tient quoi.
+
+   - Les leçons du CATALOGUE sont déjà tenues par #578
+     (`catalogue-invariants.test.ts`, `REGLES_TYPO`) : `Exercise.answer`/`answers` et
+     `Item.answer`/`answers`, à chaque niveau, dans chaque mode déclaré, sur 100 graines
+     par leçon. Ce fichier ne le REFAIT PAS — un même contrôle écrit deux fois finit par
+     diverger, et on se retrouverait à corriger un faux positif d'un côté pendant que
+     l'autre continue de signaler.
+   - L'ORTHOGRAPHE échappe à #578 par construction, pas par oubli : ses leçons sont
+     dynamiques (leçons prédéfinies + listes du profil) et « ne passent pas par le
+     pipeline LessonDef/generate » (`core/catalog.ts`, `ORTHO_CATEGORY_ID`). Or c'est,
+     de toutes les surfaces de l'appli, celle où l'enfant tape le plus : un mot de dictée
+     se reproduit lettre à lettre, apostrophe comprise (« aujourd'hui », « jusqu'à »,
+     « s'enfuir »). C'est cette moitié-là qui n'était tenue par rien.
+
+   La prise est le PIPELINE lui-même, de bout en bout — `ORTHO_PREDEF` → `motsDeLecon`
+   → `genExerciseOrtho(mot, mode)` → `answer` — et non la donnée lue en direct : c'est
+   ce qui garantit qu'on examine la chaîne réellement comparée à la saisie, dans les
+   trois modes, y compris si un mode se met un jour à transformer le mot.
+
+   Hors périmètre, et c'est motivé : `commeDans` (phrase d'exemple LUE en dictée, jamais
+   tapée), les formes fléchies `FormesAccord` et les cibles verbe — voir le compte rendu. */
+function reponsesTapees(): Texte[] {
+	const state = emptyOrthoState();
+	const out: Texte[] = [];
+	for (const lecon of ORTHO_PREDEF)
+		for (const mot of motsDeLecon(state, lecon.id))
+			for (const mode of MODES_ORTHO) {
+				const ex = genExerciseOrtho(mot, mode);
+				const ou = `${lecon.id}/${mode} — mot « ${mot.mot} »`;
+				if ('answer' in ex) ajouter(out, ou, String(ex.answer));
+				if ('answers' in ex)
+					(ex.answers ?? []).forEach((a, i) => ajouter(out, `${ou} (forme acceptée ${i})`, a));
+			}
+	return out;
+}
+
+describe('Ce que l’enfant TAPE : l’apostrophe droite y décide de la correction', () => {
+	it('le moteur de correction ne replie PAS les deux apostrophes', () => {
+		/* La prémisse de tout le describe, MESURÉE et non affirmée. On ne recopie pas la
+		   règle depuis `normalizeText` : on constate sa conséquence par la porte que le
+		   runner emprunte vraiment (`checkAnswer` sur un exercice de dictée). Le jour où le
+		   moteur replierait les deux formes, ce test rougit — et c'est le signal, pas une
+		   régression : la règle ci-dessous n'aurait alors plus lieu d'être. */
+		const attendu = (mot: string) => ({ type: 'dictee' as const, answer: mot });
+		expect(checkAnswer(attendu('aujourd’hui'), "aujourd'hui")).toBe(false);
+		// Et le sens inverse, pour prouver que l'échec ci-dessus tient bien à l'apostrophe
+		// et non à autre chose dans la comparaison.
+		expect(checkAnswer(attendu("aujourd'hui"), "aujourd'hui")).toBe(true);
+		expect(checkAnswer(attendu('aujourd’hui'), 'aujourd’hui')).toBe(true);
+	});
+
+	it('le balayage voit bien chaque leçon prédéfinie, dans les trois modes', () => {
+		/* Anti-gate-à-vide, en COUVERTURE plutôt qu'en compte : une leçon qui cesserait de
+		   rendre ses mots (id renommé, `motsDeLecon` qui retombe sur []) laisserait le test
+		   suivant vert en n'ayant rien examiné, et le nommer est la seule façon de le voir. */
+		const attendues = reponsesTapees();
+		const muettes = ORTHO_PREDEF.filter(
+			(l) => !attendues.some((t) => t.ou.startsWith(`${l.id}/`)),
+		).map((l) => l.id);
+		expect(muettes, 'ces leçons prédéfinies ne rendent plus aucun mot à taper').toEqual([]);
+		const modesVus = new Set(
+			attendues.map((t) => t.ou.split(' — ')[0].split('/')[1]).filter(Boolean),
+		);
+		expect([...modesVus].sort()).toEqual([...MODES_ORTHO].sort());
+	});
+
+	it('aucune réponse attendue du parcours orthographe ne porte « ’ »', () => {
+		const fautes = reponsesTapees().flatMap(({ ou, texte }) =>
+			apostrophesCourbes(texte).map(() => `${ou} → réponse attendue « ${texte} »`),
+		);
+		expect(
+			fautes,
+			`Ces mots sont ce que l'enfant doit TAPER, et ils portent l'apostrophe ` +
+				`typographique « ’ » :\n${fautes.join('\n')}\n` +
+				`Conséquence, et elle est grave : normalizeText (src/core/utils.ts) ne replie pas ` +
+				`« ’ » vers « ' ». L'enfant tape l'apostrophe de son clavier — la droite, la seule ` +
+				`qu'il ait —, sa réponse est JUSTE, elle est comptée FAUSSE, et rien à l'écran ne ` +
+				`lui dit pourquoi. Il ne peut ni le voir ni le corriger.\n` +
+				`Convention rappelée en tête de src/data/francais/orthographe.ts : « Apostrophe ` +
+				`DROITE (') = celle tapée au clavier ».`,
 		).toEqual([]);
 	});
 });

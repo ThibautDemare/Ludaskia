@@ -1169,6 +1169,45 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   de la réponse : les noms ») au lieu d'accorder la phrase avec `cibleLabel` — celui-ci
   est au pluriel dès que la cible l'est (tous les noms / déterminants d'une phrase au
   CE2), et la cible peut compter **plus de deux** mots.
+- **`segment-mot-interaction.ts`** (#716) — **4ᵉ widget d'interaction mutualisé** :
+  délimiter dans une phrase un **segment de mots contigus** par ses **deux bornes**.
+  Même contrat que le précédent (`bindSegmentMot(root, spec, opts) →
+  SegmentMotController`, `verify()` + `selected()` + `onState`), donc le runner
+  `lecon-clic-mot.ts` et la révision montent l'un ou l'autre selon le drapeau
+  `segment` de l'exercice, sans rien changer à leur après-coup (journal, score,
+  révélation, XP). Classes préfixées `lseg` ; `#lsegReset` (« Recommencer ») et le
+  bouton « Écouter » sont placés **avant** les mots dans le DOM, donc avant eux au
+  Tab. Taper un mot pose une borne ; taper un second **ferme le bloc**, bornes et
+  intermédiaires compris ; taper encore **repart** d'une nouvelle borne ; retaper sa
+  propre borne l'annule. `selected()` exclut la ponctuation que le bloc enjambe.
+  - **Le geste n'est pas un glissement**, et c'est le point de conception. Le
+    glissement existe pourtant (`ortho-atelier.ts`) : il ne tient que parce qu'un mot
+    est sur **une** ligne en `nowrap`, avec un calcul à une dimension (`clientX`). Une
+    phrase passe à la ligne ; le doigt suivrait un trajet en L au-dessus d'une zone
+    vide, et un décrochage (`pointercancel`) annulerait tout sans explication. Deux
+    frappes se calculent sur des **indices de tokens** : le retour à la ligne n'existe
+    pas pour elles. Conclusion posée séparément par `designer-ux-enfant` et
+    `specialiste-troubles-apprentissage`.
+  - **Écarté : ajuster la borne la plus proche** quand l'enfant retape un mot. Règle
+    invisible, fondée sur une distance que rien à l'écran n'explique.
+  - **Le ruban continu ne vient pas de `box-decoration-break: clone`** — proposé, mais
+    inapplicable : cette propriété ne concerne qu'un élément **fragmenté** sur
+    plusieurs lignes, or chaque mot est un `<button>` distinct. La continuité vient de
+    `column-gap: 0`, l'espace inter-mots étant porté par le **padding** ; deux fonds
+    voisins se touchent alors, et le retour à la ligne produit une bande par ligne.
+    Effet de bord voulu : ce padding agrandit la cible tactile, là où un mistap ne
+    coûte pas un mot coché en trop mais une **borne** déplacée, bien moins visible.
+- **`phrase-mots.ts`** (#716) — le **substrat commun** aux deux widgets ci-dessus :
+  découper la phrase en boutons-mots + ponctuation inerte (`phraseMotsHTML`) et poser
+  un verdict sur un mot (`marquerMot` : classe d'état + pastille ✓/✗ + `aria-label`).
+  Ce qui reste chez chaque widget, délibérément : la **formulation** des libellés — un
+  mot faux se dit « ce n'est pas le verbe conjugué » chez l'un et « ce mot ne fait pas
+  partie du groupe » chez l'autre.
+  - **Rejet écrit** : la ligne d'**égalité d'ensembles exacte** est dupliquée entre les
+    deux `verify()`, et elle y reste. Deux lignes triviales, dans deux fonctions dont
+    tout le reste diverge (l'état source n'est pas le même : un `Set` coché à la main
+    d'un côté, un intervalle de l'autre) — l'extraire ajouterait une indirection pour
+    un gain nul. Ne pas le re-remonter.
 - **`lecon-qcm.ts`** — runner **QCM d'une leçon** (#69) : « une question à la
   fois », **feedback immédiat**, barre de progression, **sans chrono** ; enregistre
   via `recordLessonRun` (parité avec la saisie). Réutilise les composants `.sprint-*`.
@@ -1334,9 +1373,11 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   phrase à la fois, **agnostique de la notation grammaticale ciblée** : il consomme
   `consigne`, `explication`, `cibleIndices` et le `cibleLabel?` optionnel de
   l'`Exercise` `type: 'clicMot'` (`data/francais/grammaire-clic-mot.ts`), sans rien
-  savoir du verbe/déterminant/pronom/etc. visé — 7 leçons le partagent (verbe #259 +
+  savoir du verbe/déterminant/pronom/etc. visé — 8 leçons le partagent (verbe #259 +
   natures CM1 #437 : déterminant, conjonction, pronom, nom noyau, sujet + natures CE2
-  #436 : déterminant, nom, adjectif, pronom sujet). L'`Exercise`
+  #436 : déterminant, nom, adjectif, pronom sujet + groupe nominal CM1 #716, seule à
+  cibler un SEGMENT plutôt qu'un ensemble de mots, cf. [Contenu &
+  leçons](contenu-et-lecons.md)). L'`Exercise`
   porte `tokens[]` (la phrase mot à mot), `cibleIndices[]` (l'ensemble EXACT des
   indices-cibles, **stocké** à la génération, **adjacents ou non**), `consigne`,
   `explication`, `parle`. Chaque MOT est un `<button>` cliquable, la **ponctuation** un
@@ -1359,11 +1400,14 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   Consigne **persistante** + **TTS** (`bindConsigneTts`) sur la consigne ET la phrase
   entière, journal via `capterErreur`. **Exclu du sprint** (`isClicMotLesson`), **repli
   texte** en bilan/fiche (`genLessonItem` : phrase → « Recopie ${cibleLabel} : … »,
-  consigne neutre valable pour les 7 leçons) — **en révision**, c'est désormais le **vrai
+  consigne neutre valable pour les 8 leçons) — **en révision**, c'est désormais le **vrai
   widget** de sélection qui est monté, via `clic-mot-interaction.ts` (#466, extrait de ce
-  runner pour être partagé). Structure calquée sur
+  runner pour être partagé) ou, depuis #716, son homologue `segment-mot-interaction.ts`
+  selon `Exercise.segment` (cf. bullet ci-dessus). Structure calquée sur
   `lecon-appariement.ts`/`lecon-probleme.ts` (état de module + `lecon-runner-shared.ts`).
-  Aide contextuelle dédiée (`monterBoutonAide`/`maybeAutoAide`, type `'clicMot'` #272).
+  Aide contextuelle dédiée (`monterBoutonAide`/`maybeAutoAide`, type `'clicMot'` ou
+  `'segmentMot'` selon le geste — `aideDuGeste()`, choisi sur la 1re question de la
+  série, #716 — #272).
 - **`lecon-droite-graduee.ts`** (#256) — runner **« Droite graduée »** (placer un
   nombre), une droite à la fois. Consomme l'`Exercise` `type: 'droiteGraduee'`
   (`data/maths/droite-graduee.ts`) : la droite est une **coquille SVG
@@ -1951,6 +1995,26 @@ et de `.ans-corrige`. Ce n'est **pas** un blocage WCAG (U+202F est une espace «
 moteurs de rendu n'y coupent pas de ligne, et aucun nombre ne débordait au viewport Pixel 5,
 constat de l'auteur des tests e2e) — une cohérence de style (`tabular-nums`, taille) restée à
 faire.
+
+### Un geste à bornes discrètes n'appelle pas le motif `listbox` (#716)
+
+Règle de jugement, issue de la relecture a11y du widget à deux bornes. Quand un widget
+fait choisir un **intervalle** d'éléments, le réflexe est d'adopter
+`role="listbox" aria-multiselectable="true"` + `aria-selected`, motif standard de la
+sélection multiple. Il ne convient que si la sélection **s'étend pas à pas**
+(Maj+flèches) : c'est ce qu'il sert, et c'est tout ce qu'il sert. Un geste qui ferme son
+intervalle en un nombre **fixe et petit** d'activations n'en a aucun usage — l'adopter
+importerait un mode de navigation (tabindex roving, conventions clavier) pour un besoin
+inexistant, et casserait le Tab+Entrée que l'enfant a appris sur toutes les autres
+leçons. Garder le `<button>` par élément.
+
+Corollaire, et c'est le vrai défaut du bouton simple : **`aria-pressed` porte un contrat
+d'activation**, pas seulement un état. Qu'un élément soit « appuyé » sans avoir été
+touché n'est pas un mensonge (l'état est calculé, comme après un « tout sélectionner ») ;
+ce qui ment, c'est la promesse implicite que le réactiver le décochera. Quand ce n'est pas
+le cas, **la règle du geste s'énonce dans la consigne** — affichée *et* lue par la synthèse
+vocale — parce que l'ARIA ne peut pas la porter. D'où la consigne de #716 : « Montre le
+groupe nominal de la phrase : touche son premier mot, puis son dernier mot. »
 
 ### Un contenu qui déborde doit dire qu'il défile (#711)
 

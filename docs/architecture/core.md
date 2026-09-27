@@ -570,11 +570,12 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (`ui/session.ts`) — un `text-transform` CSS ne changerait que l'affiché.
 - **`aide.ts`** (#272) — **aide contextuelle** des runners à interaction non intuitive,
   module **pur** : porte le **contenu** des aides (`AIDES` : titre + étapes courtes ≤ 3 +
-  voie alternative + filet anti-erreur) pour 10 types (`tuiles`, `ordre`, `ordreNombres`
+  voie alternative + filet anti-erreur) pour 11 types (`tuiles`, `ordre`, `ordreNombres`
   #448 — même geste que `ordre`, formulation accordée aux nombres —, `tri`, `atelier`,
-  `lettres`, `tableau` #394, `appariement` #392, `clicMot`, `droiteGraduee` #256) et la **mémoire « aide déjà
-  vue »** par profil (`ludaskia_aide_vue`, via `lsGet/lsSet`). Le rendu vit dans
-  `ui/aide-exercice.ts`.
+  `lettres`, `tableau` #394, `appariement` #392, `clicMot`, `segmentMot` #716 — délimiter
+  un segment par ses deux bornes plutôt que cocher des mots —, `droiteGraduee` #256) et la
+  **mémoire « aide déjà vue »** par profil (`ludaskia_aide_vue`, via `lsGet/lsSet`). Le
+  rendu vit dans `ui/aide-exercice.ts`.
 - **`tour.ts`** (#330) — **guide de première visite**, module **pur** (aucun accès DOM) :
   porte le **contenu** du tour enfant (`TOUR_ETAPES` : 3 grands repères de l'accueil —
   `.cards` / `#progression` / `#rewardNav` — chacun `{cible, titre, texte}`, ton
@@ -669,6 +670,19 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   qu'une TRACE calme : la célébration (modale + confettis) a déjà eu lieu au moment où
   le tour s'est achevé, via le trophée de tour (`rewards.ts`, cf. « Enregistrement,
   catalogue & ordre pédagogique » ci-dessous, et [Gamification](gamification.md)).
+- **`segment-bornes.ts`** (#716, pur) — diagnostic d'un **segment mal délimité** (widget
+  « Repère le groupe nominal », cf. [Rendu & interactions](ui.md)) : un enfant qui
+  délimite un bloc par deux bornes se trompe presque toujours sur un **bord**, jamais
+  au milieu. **`intervalleDe(indices)`** réduit un ensemble d'indices à ses deux
+  extrêmes (`null` si vide) ; **`ecartBornes(choisi, attendu)`** compare l'intervalle
+  choisi à l'intervalle attendu et rend la phrase qui nomme l'écart — « pas de
+  recouvrement » (chercher ailleurs), **un** bord qui a glissé, ou les **deux**
+  (propositions jointes par « et », chacune AUTOSUFFISANTE plutôt que factorisée :
+  un enfant reprend ses bornes une à une). `null` quand les deux segments coïncident
+  (rien à dire) ou quand rien n'a été choisi. Ne nomme jamais la notion travaillée
+  (« le groupe nominal ») : c'est le widget appelant qui porte ce vocabulaire, pour que
+  la fonction reste valable au jour où un autre exercice fera délimiter un segment
+  d'une autre nature.
 
 ## Enregistrement, catalogue & ordre pédagogique
 

@@ -504,6 +504,22 @@ rend rien trouvable de plus qu'une recherche sur le seul titre.
 même niveau, que le libellé affiché distingue déjà. Le gate n'exige donc **pas**
 l'unicité des mots-clés, et ce n'est pas à re-remonter.
 
+## Densité lexicale d'une banque de phrases : pas de plafond chiffré (#716)
+
+**Rejet écrit.** La relecture langue de la banque « Repère le groupe nominal » a compté
+un même nom commun jusqu'à **quatre fois sur 49 phrases** (« chien »), avec le risque
+réel qu'un enfant finisse par reconnaître le mot au lieu d'analyser la phrase. Les cas
+les plus denses ont été corrigés dans la PR — mais la règle générale qui s'en déduisait
+(« pas plus de deux occurrences d'un même nom dans une banque ») est **écartée**.
+
+Raison : le lexique dont on dispose est déjà borné par le niveau. Une banque CM1 doit
+rester dans les mots qu'un enfant de 9-10 ans lit sans buter, et les contraintes
+grammaticales propres à chaque leçon (ici : trois patrons de groupe, aucune préposition,
+un seul adjectif) réduisent encore le champ. Un plafond chiffré pousserait à aller
+chercher des mots plus rares uniquement pour le satisfaire — ce qui déplacerait la
+difficulté de la notion vers le décodage, exactement l'inverse du but. La densité reste
+un **jugement de relecture**, item par item, pas un seuil.
+
 ## Une reprise anaphorique doit couvrir TOUTES les natures introduites par « ou » (#722)
 
 Quand une phrase introduit deux natures coordonnées par « ou » (« une leçon **ou** une

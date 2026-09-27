@@ -90,18 +90,6 @@ const ID_VERDICT_SR = 'verdictAnnonce';
    réel, donc la cohérence est le seul argument disponible. */
 const DELAI_ANNONCE = 350;
 
-/* Enchaînement APRÈS l'annonce. `verify()` continue en synchrone jusqu'à `announceRewards`,
-   qui ouvre une modale — et `lockBackground` (`ui/modal-a11y.ts`) rend alors `inert` tous
-   les frères de l'overlay, `#sheets` compris. Le commentaire de ce fichier l'écrit
-   déjà : une région vivante présente à l'ouverture est inertée, donc rendue MUETTE. Sans
-   ce chaînage, la synthèse disparaîtrait exactement dans le cas le plus flatteur — un
-   sans-faute qui déclenche une étoile ou un niveau (constat relecteur-accessibilite). */
-let annonceVerdictFaite: Promise<void> = Promise.resolve();
-
-function apresAnnonceVerdict(suite: () => void): void {
-	void annonceVerdictFaite.then(suite);
-}
-
 /* Annonce du VERDICT au lecteur d'écran (relecture a11y #717).
 
    Jusqu'ici, valider une fiche ne produisait aucune annonce : ni juste/faux, ni score, ni
@@ -141,7 +129,13 @@ function annoncerVerdict(
 		region.setAttribute('role', 'status');
 		region.setAttribute('aria-live', 'polite');
 		region.setAttribute('aria-atomic', 'true');
-		document.getElementById('sheets')?.prepend(region);
+		// Enfant DIRECT de <body>, et marquée pour échapper à l'inertage des modales
+		// (`ui/modal-a11y.ts`). Dans `#sheets`, elle était rendue muette dès qu'une modale de
+		// récompense s'ouvrait — c'est-à-dire précisément quand l'enfant venait de tout
+		// réussir. Retarder la modale a été essayé et rejeté : pendant le sursis, un lien de
+		// la fiche restait cliquable et la modale surgissait par-dessus.
+		region.setAttribute('data-annonce-persistante', '');
+		document.body.appendChild(region);
 	}
 	const cible = region;
 	const s = (n: number) => (n > 1 ? 's' : '');
@@ -155,13 +149,9 @@ function annoncerVerdict(
 	// Vidée d'abord : deux fiches de suite au même score produiraient sinon un texte
 	// identique, et un contenu inchangé n'est pas re-annoncé.
 	cible.textContent = '';
-	annonceVerdictFaite = new Promise<void>((resolve) => {
-		setTimeout(() => {
-			cible.textContent = phrase;
-			// La suite (modales de récompense) attend un tour de plus : elle inerte `#sheets`.
-			setTimeout(resolve, DELAI_ANNONCE);
-		}, DELAI_ANNONCE);
-	});
+	setTimeout(() => {
+		cible.textContent = phrase;
+	}, DELAI_ANNONCE);
 }
 
 /* ---------- Vérification (arrête le chrono) ---------- */
@@ -454,7 +444,7 @@ export function verify() {
 	// Récompenses : modale explicite (+ confettis) pour qu'on sache ce qu'on a gagné.
 	// Le passage de niveau a sa modale dédiée ; s'il y a aussi d'autres récompenses,
 	// on les enchaîne à la fermeture de la modale de niveau.
-	apresAnnonceVerdict(() => announceRewards(niveauGagne, recompensesNiv, celeb));
+	announceRewards(niveauGagne, recompensesNiv, celeb);
 	// petit rappel dans la barre
 	const sc = document.getElementById('score')!;
 	sc.classList.remove('hidden');

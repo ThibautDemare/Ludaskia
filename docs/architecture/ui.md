@@ -1461,12 +1461,12 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
     [Accessibilité](../reference/accessibilite.md)), la présence de réponses révélées
     et l'avertissement des 60 %. Le détail reste atteignable champ par champ :
     chaque champ corrigé porte `aria-invalid`, et un champ faux relie sa marque
-    (`✗ → réponse`) par `aria-describedby`. La suite (modales de récompense,
-    `announceRewards`) est **chaînée après** l'annonce (`apresAnnonceVerdict`) plutôt
-    que simplement postposée dans l'ordre du code : `lockBackground`
-    (`ui/modal-a11y.ts`) rend `#sheets` `inert` dès l'ouverture d'une modale, ce qui
-    couperait la région vivante si l'annonce n'était pas déjà résolue — cf. la
-    checklist a11y correspondante dans [Accessibilité](../reference/accessibilite.md).
+    (`✗ → réponse`) par `aria-describedby`. La région est un enfant **direct de
+    `<body>`**, marquée `data-annonce-persistante` : `lockBackground`
+    (`ui/modal-a11y.ts`) l'épargne alors qu'il inerte tout le reste à l'ouverture d'une
+    modale de récompense — sans quoi l'annonce serait muette précisément quand l'enfant
+    vient de tout réussir. Cf. la checklist a11y correspondante dans
+    [Accessibilité](../reference/accessibilite.md).
   - **`afficherAstuceReponseVide()`** (#467) — pose en tête de `#sheets` un message
     **découvrabilité** du droit de laisser une réponse vide (« Tu ne sais pas quoi
     répondre ? Tu peux laisser la réponse vide et continuer. ») : la fiche/le bilan en

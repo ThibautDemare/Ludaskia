@@ -208,12 +208,21 @@ et du moment exact où `inert` est posé) — d'où une checklist et non un gate
 Second cas concret, même piège : la synthèse de verdict d'une fiche (`annoncerVerdict`,
 `src/ui/session.ts`, #717) enchaîne, elle aussi, sur une modale de récompense
 (`announceRewards`) quand le résultat déclenche un palier ou un trophée — précisément le
-cas le plus flatteur, un sans-faute. Le correctif retenu **attend explicitement la fin
-de l'annonce** avant d'ouvrir quoi que ce soit (`apresAnnonceVerdict`, une promesse résolue
-après le délai de remplissage de la région + un tour de plus) plutôt que de compter sur un
-ordre de rendu qui se serait avéré suffisant par hasard. Généralisable : tout écran qui
-pose une région `role="status"` puis peut enchaîner sur une modale doit **chaîner
-explicitement**, pas seulement rendre les deux dans le bon ordre visuel.
+cas le plus flatteur, un sans-faute.
+
+**Le premier correctif était le mauvais, et son échec est la leçon à retenir.** On avait
+d'abord RETARDÉ la modale, en la chaînant après l'annonce. Une spec e2e l'a attrapé
+(`e2e/etayage.spec.ts`) : pendant le sursis, la fiche restait interactive, l'enfant pouvait
+cliquer « Comprendre la méthode » et voir la modale lui sauter dessus — on avait
+transformé un défaut d'annonce en défaut d'interface. **Ne pas décaler l'interface pour
+protéger une annonce.**
+
+Le correctif retenu lève l'inertage au lieu de retarder quoi que ce soit : la région est un
+enfant direct de `<body>` marqué `data-annonce-persistante`, que `lockBackground` épargne
+(`ui/modal-a11y.ts`). Les modales s'ouvrent comme avant. L'exemption ne s'accorde qu'à un
+texte `sr-only` NON focusable — jamais à un conteneur portant des contrôles, qui ferait
+fuir le piège à focus. Généralisable : tout écran qui pose une région `role="status"` et
+peut enchaîner sur une modale doit **exempter sa région**, pas ralentir son interface.
 
 **Même checklist, cas plus général : région écrite puis `focus()` dans le même tick.**
 La modale n'est qu'une façon parmi d'autres d'avaler une annonce ; en déplacer le focus

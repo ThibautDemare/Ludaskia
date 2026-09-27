@@ -63,6 +63,7 @@ const LIBELLES: Record<string, string> = {
 	"J'ai oublié mon code": 'lien de récupération, sur la demande de code',
 	'À revoir ensemble': 'bloc de suggestions de l’espace encadrants',
 	'À revoir': 'carte sur l’accueil de l’enfant, pour une leçon épinglée',
+	'Ta prochaine leçon': 'titre de la carte de la leçon du jour, sur l’accueil de l’enfant',
 	'Choisis pour moi': 'bouton de l’écran de séance, quand l’enfant hésite',
 	'Les dictées de mots': 'entrée de navigation (Français → Orthographe)',
 	'Mes listes': 'colonne de l’écran des dictées',

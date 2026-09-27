@@ -305,3 +305,56 @@ describe("critère 8 : l'appoint n'entre pas dans l'avancement de la matière", 
 		});
 	});
 });
+
+describe("CE2 d'appoint mise de côté : elle suit le report ordinaire (#485)", () => {
+	const id = CANDIDATS[0];
+	/** Seule fragile (25 %) ; l'enfant franchit les têtes jusqu'à ce qu'elle soit proposée
+	    (≤ 4 propositions). Renvoie l'instant où elle est en tête. */
+	function jusquALaFragile(): number {
+		travailler(id, 5, 20);
+		expect(idsFragiles()).toEqual([id]);
+		let t = T;
+		const avant: string[] = [];
+		for (let i = 0; i < 4; i++) {
+			const l = leconDuJour(undefined, undefined, t);
+			if (!l || l.id === id) break;
+			avant.push(l.id);
+			recordEssaiLecon(l.id, 100, t);
+			t += 60_000;
+		}
+		expect(leconDuJour(undefined, undefined, t)?.id, avant.join(', ')).toBe(id);
+		expect(avant.filter(estCe2Seule)).toEqual([]);
+		return t;
+	}
+
+	it("pendant le report, que des CM1 ; à l'échéance, elle revient en tête aussitôt", () => {
+		let t = jusquALaFragile();
+		// Elle bute dessus deux jours civils distincts → mise de côté.
+		recordEssaiLecon(id, 20, t);
+		t += 86_400_000;
+		recordEssaiLecon(id, 20, t);
+		const reprendreLe = loadCartesBrutes().reports[`${id}@ce2`]?.reprendreLe ?? 0;
+		expect(reprendreLe, 'prémisse : report en cours').toBeGreaterThan(t);
+
+		// Pendant le report : rythme suspendu, 4 têtes successives, toutes CM1.
+		const t0 = t + 60_000;
+		expect(t0 + 4 * 60_000, 'prémisse : déroulé tenu dans le report').toBeLessThan(reprendreLe);
+		const pendant = derouler(4, t0);
+		expect(pendant).toHaveLength(4);
+		expect(pendant.filter(estCe2Seule), pendant.join(', ')).toEqual([]);
+		// Borne : juste avant l'échéance, toujours pas proposée.
+		expect(leconDuJour(undefined, undefined, reprendreLe - 1)?.id).not.toBe(id);
+
+		// Échéance passée : ≥ 3 CM1 acquittées depuis la dernière CE2 franchie → en tête.
+		expect(leconDuJour(undefined, undefined, reprendreLe + 60_000)?.id, pendant.join(', ')).toBe(
+			id,
+		);
+	});
+
+	it('témoin : sans les échecs, au même instant, elle est toujours en tête', () => {
+		const t = jusquALaFragile();
+		// Même horloge que le cas nominal (J+1, une minute après), seul le report manque :
+		// c'est lui, et non le temps écoulé, qui écarte la fragile.
+		expect(leconDuJour(undefined, undefined, t + 86_400_000 + 60_000)?.id).toBe(id);
+	});
+});

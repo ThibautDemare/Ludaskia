@@ -162,20 +162,29 @@ export function apresEssaiLecon(
 			reprendreLe: 0,
 		};
 		// Date du PREMIER franchissement (#724), jamais réécrite : le fil y lit l'ORDRE des
-		// franchissements pour doser la classe précédente. Une leçon déjà franchie avant que ce
-		// champ existe reste sans date plutôt que d'être datée du jour où on la rejoue.
-		if (base.franchieLe !== undefined || base.meilleurPct >= SEUIL_FRANCHIE) return franchi;
+		// franchissements pour doser la classe précédente. Seul un essai qui franchit PAR
+		// LUI-MÊME la date : score au seuil, et pas une étoile déjà là. L'essai qui GAGNE l'étoile
+		// est un sans-faute, donc une étoile avec un essai sous 100 % est ancienne : la leçon
+		// était déjà franchie. Une leçon franchie avant que ce champ existe reste ainsi sans date
+		// plutôt que d'être datée du jour où on la rejoue. Seul reste indiscernable une étoile
+		// ancienne rejouée sans faute (datée ce jour-là) : effet borné à un décalage de phase.
+		const dejaFranchie =
+			base.franchieLe !== undefined || base.meilleurPct >= SEUIL_FRANCHIE || (etoilee && pct < 100);
+		if (dejaFranchie || pct < SEUIL_FRANCHIE) return franchi;
 		return { ...franchi, franchieLe: now };
 	}
 	const jour = jourDe(now);
 	if (jour === base.dernierJour) return { ...base, meilleurPct };
 	const jours = base.jours + 1;
 	const delai = delaiReport(jours, pct);
-	return {
+	const bloque: EtatReport = {
 		jours,
 		dernierJour: jour,
 		meilleurPct,
 		reporteLe: delai > 0 ? now : 0,
 		reprendreLe: delai > 0 ? now + delai : 0,
 	};
+	// Une date de franchissement ne se perd pas sur un échec (cas d'une étoile retirée par un
+	// import partiel : l'état n'est plus franchi, mais le passé reste daté).
+	return base.franchieLe === undefined ? bloque : { ...bloque, franchieLe: base.franchieLe };
 }

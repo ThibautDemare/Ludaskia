@@ -1736,6 +1736,22 @@ $frise-neutre: #7c8494;
 	text-align: right;
 	white-space: nowrap;
 }
+/* Prérequis de la classe précédente (#724) : signal dans le résumé, puis une ligne par
+   prérequis dans le corps. Aucun nouveau couple de couleurs : texte `--grey` sur la
+   surface, comme le compteur ; le badge et le bouton gardent leurs propres règles. */
+.enc-err-prerequis-sig {
+	font-size: 0.78rem;
+	color: var(--grey);
+	grid-column: 1;
+}
+.enc-err-prerequis {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem 0.6rem;
+	margin: 0.5rem 0 0;
+	font-size: 0.85rem;
+}
 .enc-err-list {
 	list-style: none;
 	margin: 0.5rem 0 0.2rem;

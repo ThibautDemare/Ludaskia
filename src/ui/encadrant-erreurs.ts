@@ -21,10 +21,10 @@
    ============================================================ */
 
 import { icon } from './icon';
-import { getLessonById, type LessonDef } from '../core/catalog';
+import { getLessonById } from '../core/catalog';
 import type { Profile } from '../core/profiles';
 import type { CartesBrutes } from '../core/consolidation-bas-niveau';
-import { prerequisOuverts } from '../core/prerequis';
+import { prerequisOuverts, type PrerequisOuvert } from '../core/prerequis';
 import { loadCartesBrutesFor } from '../core/progress';
 import {
 	chargerErreursFor,
@@ -141,25 +141,34 @@ function anciennesHTML(anciennes: ErreurAffichee[], now: number, label: string):
    les MAX_PAR_LECON erreurs les plus récentes, un repli « + N plus anciennes », et
    l'action « Épingler » (l'action est DANS le corps, jamais dans le <summary> :
    un bouton dans un summary basculerait le pli au clic). */
-/* Infobulle du badge de classe d'un prérequis, vraie dans les deux états du bouton voisin. */
+/* Infobulle du badge de classe d'un prérequis, vraie dans les deux états du bouton voisin.
+   « épinglée volontairement » : même qualificatif que l'infobulle d'une épingle hors classe
+   suivie (encadrant-progression.ts), pour que le même état se dise de la même façon. */
 const INFOBULLE_PREREQUIS = {
 	libre:
 		"Leçon d'une classe précédente. Épinglez-la pour qu'elle revienne sur l'accueil de l'enfant.",
-	epingle: "Leçon d'une classe précédente, épinglée : elle revient sur l'accueil de l'enfant.",
+	epingle:
+		"Leçon d'une classe précédente, épinglée volontairement : elle revient sur l'accueil de l'enfant.",
 };
 
-/* Prérequis de la classe précédente encore ouverts pour cette leçon (#724), travaillés ou
-   non : une cause probable d'une partie des erreurs du groupe. Un prérequis jamais
-   travaillé n'est jamais inséré d'office dans le fil de l'enfant, c'est donc ici (et dans
-   l'étayage) qu'il se propose. Le bouton épingle le PRÉREQUIS, pas la leçon du groupe, et
-   son nom dit la classe : deux leçons de classes différentes peuvent être homonymes. */
-function prerequisGroupeHTML(
-	lesson: LessonDef,
+/* Prérequis de la classe précédente encore ouverts pour la leçon d'un groupe (#724),
+   travaillés ou non, lus au niveau suivi par le profil CONSULTÉ. */
+function prerequisDuGroupe(
+	lessonId: string,
 	consulte: Profile,
 	cartes: CartesBrutes,
-	epinglees: Set<string>,
-): SafeHtml {
-	const ouverts = prerequisOuverts(lesson, niveauProfilMatiere(consulte, lesson.subject), cartes);
+): PrerequisOuvert[] {
+	const lesson = getLessonById(lessonId);
+	if (!lesson) return [];
+	return prerequisOuverts(lesson, niveauProfilMatiere(consulte, lesson.subject), cartes);
+}
+
+/* Lignes « Prérequis : X » d'un groupe : une cause probable d'une partie de ses erreurs. Un
+   prérequis jamais travaillé n'est jamais inséré d'office dans le fil de l'enfant, c'est
+   donc ici (et dans l'étayage) qu'il se propose. Le bouton épingle le PRÉREQUIS, pas la
+   leçon du groupe, et son nom dit la classe : deux leçons de classes différentes peuvent
+   être homonymes. */
+function prerequisGroupeHTML(ouverts: PrerequisOuvert[], epinglees: Set<string>): SafeHtml {
 	return joindre(
 		ouverts.map((p) => {
 			const label = labelLecon(p.lesson, p.niveau);
@@ -180,7 +189,7 @@ function groupeHTML(
 	orthoListes: readonly { id: string; label: string }[],
 	now: number,
 	consulte: Profile,
-	cartes: CartesBrutes,
+	prerequis: PrerequisOuvert[],
 ): SafeHtml {
 	// Résolution du libellé : leçon du catalogue, sinon liste d'orthographe (prédéfinie
 	// ou du profil consulté), sinon l'id brut en dernier recours. Le libellé de leçon est
@@ -210,8 +219,15 @@ function groupeHTML(
         <span class="enc-err-lecon-lab">${label}</span>
         <span class="enc-err-count">${g.total} erreur${g.total > 1 ? 's' : ''}</span>
         ${quand ? html`<span class="enc-err-quand">dernière fois ${quand}</span>` : ''}
+        ${
+					// Signalé dès le résumé : le groupe est replié par défaut, et un parent qui
+					// parcourt les résumés ne doit pas avoir à tout déplier pour le découvrir.
+					prerequis.length
+						? html`<span class="enc-err-prerequis-sig">${prerequis.length} prérequis à revoir</span>`
+						: ''
+				}
       </summary>
-      ${lesson ? prerequisGroupeHTML(lesson, consulte, cartes, epinglees) : VIDE}
+      ${prerequisGroupeHTML(prerequis, epinglees)}
       <ul class="enc-err-list">${joindre(visibles.map((e) => erreurLigneHTML(e, now)))}</ul>
       ${anciennesHTML(anciennes, now, label)}
       ${actions}
@@ -276,19 +292,27 @@ export function erreursHTML(consulte: Profile, now: number): SafeHtml {
 	const epinglees = new Set(loadRevoirFor(consulte.uuid));
 	const orthoListes = orthoListesFor(consulte.uuid);
 	const cartes = loadCartesBrutesFor(consulte.uuid);
+	const prerequis = new Map(
+		groupes.map((g) => [g, prerequisDuGroupe(g.lessonId, consulte, cartes)]),
+	);
+	// L'explication du mot « Prérequis » est dite UNE fois, en tête de bloc, et seulement quand
+	// une ligne en porte : répétée sur chaque groupe, elle noierait les erreurs.
+	const aide = [...prerequis.values()].some((p) => p.length)
+		? " Un « Prérequis » signale une leçon d'une classe précédente, pas encore réussie, qui peut expliquer une partie de ces erreurs."
+		: '';
 	// Deux vides distincts : journal entièrement vide (rien à filtrer → pas de
 	// sélecteur, message rassurant) vs période sans erreur alors qu'il en existe
 	// ailleurs (on invite à élargir plutôt que de laisser croire qu'il n'y a rien).
 	// Même idiome « Rien à signaler » dans les deux cas : c'est la 2e phrase qui
 	// distingue, pas un changement de ton (relecture langue).
 	const corps = groupes.length
-		? html`<div class="enc-err-lecons">${joindre(groupes.map((g) => groupeHTML(g, epinglees, orthoListes, now, consulte, cartes)))}</div>`
+		? html`<div class="enc-err-lecons">${joindre(groupes.map((g) => groupeHTML(g, epinglees, orthoListes, now, consulte, prerequis.get(g) ?? [])))}</div>`
 		: toutes.length
 			? html`<p class="enc-hint enc-err-vide">Rien à signaler sur cette période. Élargissez-la pour voir les erreurs plus anciennes.</p>`
 			: html`<p class="enc-hint">Rien à signaler récemment.</p>`;
 	return html`<div class="enc-block">
       <h3 class="enc-h3">${icon('clock-clockwise')} Ce qui a été difficile récemment</h3>
-      <p class="enc-hint">Voici les leçons où ${consulte.name} a rencontré des difficultés, en commençant par celles qui comptent le plus d'erreurs. Dépliez une leçon pour voir le détail, ou épinglez-la pour qu'elle revienne sur l'accueil de ${consulte.name}.</p>
+      <p class="enc-hint">Voici les leçons où ${consulte.name} a rencontré des difficultés, en commençant par celles qui comptent le plus d'erreurs. Dépliez une leçon pour voir le détail, ou épinglez-la pour qu'elle revienne sur l'accueil de ${consulte.name}.${aide}</p>
       ${toutes.length ? periodesHTML(periode, groupes) : ''}
       ${corps}
     </div>`;

@@ -235,6 +235,13 @@ describe('critère 2 : le gate de la table', () => {
 		expect(a.length).toBeGreaterThanOrEqual(2);
 	});
 
+	it("critère 2 : refuse une exigence vide (groupe [] jamais satisfiable), même à côté d'une exigence saine", () => {
+		refuse({ [DIV_EUCL]: [[]] }, DIV_EUCL);
+		refuse({ [DIV_EUCL]: [DIV_RESTE, []] }, DIV_EUCL);
+		// Témoin : le même groupe avec un seul membre valide passe.
+		expect(anomaliesPrerequis({ [DIV_EUCL]: [[DIV_RESTE]] })).toEqual([]);
+	});
+
 	it('critère 16 : refuse une dépendante qui existe à deux niveaux', () => {
 		refuse({ [COMPARER]: [DIV_RESTE] }, COMPARER);
 	});

@@ -15,6 +15,7 @@
    - un sprint ne compte que s'il va au bout des 5 minutes
    ============================================================ */
 import { choice, commKey, fmt, rnd } from '../core/utils';
+import { focaliserChamp } from './anti-suggestion';
 import {
 	getAllLessons,
 	getLessonsBySubject,
@@ -681,7 +682,7 @@ function renderSprintTyped(stage: HTMLElement, def: LessonDef, q: Item) {
 		sprintCacheHint();
 		sprintEchoFrappe(champ);
 	});
-	stage.querySelector('input')?.focus();
+	focaliserChamp(stage.querySelector('input'));
 }
 
 /* Écho de frappe (cf. `.sprint-input.frappe`) : relance le rebond à CHAQUE caractère.
@@ -707,7 +708,7 @@ function sprintRefuse(inp: HTMLInputElement, message: string): void {
 		hint.hidden = false;
 	}
 	sprintAnnonce(message);
-	inp.focus();
+	focaliserChamp(inp);
 	inp.setSelectionRange(inp.value.length, inp.value.length);
 }
 

@@ -12,6 +12,7 @@
    ============================================================ */
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
+import { focaliserChamp } from './anti-suggestion';
 import { dicter, dicteeDisponible, stopTts } from './tts';
 import { renderAtelier } from './ortho-atelier';
 import { enonceJournalOrtho } from '../core/orthographe/exercise';
@@ -733,7 +734,7 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
     ${decideHTML()}`.balisage;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inp = document.getElementById('revInput') as HTMLInputElement;
-		if (inp.value.trim() === '') return inp.focus();
+		if (inp.value.trim() === '') return focaliserChamp(inp);
 		const reussi = checkItemAnswer(it.item, inp.value);
 		if (!reussi)
 			capterRev({
@@ -762,7 +763,7 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 			parIntervalle: !!it.item.intervalle,
 		});
 	});
-	(document.getElementById('revInput') as HTMLInputElement).focus();
+	focaliserChamp(document.getElementById('revInput') as HTMLInputElement);
 }
 
 function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {

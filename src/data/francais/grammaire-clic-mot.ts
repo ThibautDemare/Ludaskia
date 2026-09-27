@@ -56,7 +56,8 @@
    ============================================================ */
 import type { SchoolLevel } from '../../core/catalog';
 import { etayageRedige, type LessonInput } from '../_shared';
-import { clicMotType } from './grammaire-clic-mot-moteur';
+import { clicMotType, MODE_SEGMENT } from './grammaire-clic-mot-moteur';
+import { CONSIGNE_GN, CIBLE_GN, PHRASES_GN } from './grammaire-groupe-nominal';
 import { clicVerbeType } from './grammaire-clic-mot-verbe';
 import {
 	CONSIGNE_CONJ,
@@ -105,12 +106,14 @@ export {
 	libelleCible,
 	phrase,
 	phraseMots,
+	phraseSegment,
 	type PhraseClicMot,
 	type RolePron,
 	type SousCatDet,
 	type VarianteClicMot,
 } from './grammaire-clic-mot-moteur';
 export { PHRASES_CE2, PHRASES_CM1, clicVerbeType } from './grammaire-clic-mot-verbe';
+export { gn, CONSIGNE_GN, CIBLE_GN, PHRASES_GN, type PatronGN } from './grammaire-groupe-nominal';
 export {
 	det,
 	pron,
@@ -279,6 +282,28 @@ const ETAYAGE_NOYAU_CM1 = etayageRedige(
 	'cm1',
 );
 
+const ETAYAGE_GN = etayageRedige(
+	'Comment trouver le groupe nominal ?',
+	'Le groupe nominal est un bloc de mots qui parlent tous de la même chose.',
+	[
+		'Trouve le déterminant : le petit mot qui ouvre le groupe.',
+		'Continue tant que les mots parlent encore de la même chose.',
+		// La 3ᵉ étape a d'abord proposé le remplacement par « il / elle / ils / elles ».
+		// Écarté : le test ne vaut que si le groupe est SUJET. Sur la moitié de la banque il
+		// est complément, et le pronom change alors de forme ET de place (« Tu prends ton
+		// cartable » → « Tu LE prends »). Restreindre l'astuce au cas sujet ne répare rien :
+		// pour savoir qu'elle s'applique, l'enfant devrait déjà connaître la fonction du
+		// groupe — soit exactement le savoir que la vérification devait lui épargner. Il
+		// l'appliquerait donc à tort sur une bonne réponse, la croirait fausse, et cesserait
+		// de se fier au panneau. C'est la règle énoncée en tête de ce fichier (un test vaut
+		// pour TOUTE la banque), qui avait déjà écarté le changement de temps et la
+		// suppression de l'adjectif. Le repère d'adverbe, lui, ne dépend jamais de la
+		// fonction : un adverbe n'appartient JAMAIS à un groupe Dét + Nom (+ Adj).
+		'Vérifie les bords : un mot qui dit comment, quand ou combien de fois reste dehors.',
+	],
+	'cm1',
+);
+
 const ETAYAGE_SUJET = etayageRedige(
 	'Comment trouver le sujet ?',
 	"Le sujet, c'est qui fait l'action du verbe.",
@@ -382,6 +407,26 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 			},
 		}),
 		etayage: [ETAYAGE_NOM_CE2, ETAYAGE_NOYAU_CM1],
+	},
+	{
+		// Le GESTE distingue cette leçon des cinq natures voisines : l'enfant délimite un
+		// bloc par ses deux bornes au lieu de cocher des mots (cf. grammaire-groupe-nominal.ts).
+		// D'où un mode d'id PROPRE (`segment`) : l'id de mode est la maille de couverture e2e.
+		id: 'fr-gram-groupe-nominal',
+		label: 'Repère le groupe nominal',
+		// Pas de « groupe nominal » ici : la règle #718 veut des mots-clés ABSENTS du libellé
+		// affiché (« Repère le groupe nominal »), sinon ils ne rendent rien trouvable de plus
+		// qu'une recherche sur le titre. Et pas de vocabulaire du programme non plus — c'est
+		// le mot de l'ENFANT qu'on cherche, celui qu'il tapera de mémoire.
+		motsCles: ['GN', 'où commence le groupe', 'bloc de mots', 'les mots qui vont ensemble'],
+		exerciseType: clicMotType({
+			banque: PHRASES_GN,
+			consigne: CONSIGNE_GN,
+			cibleLabel: CIBLE_GN,
+			levels: ['cm1'],
+			modes: MODE_SEGMENT,
+		}),
+		etayage: [ETAYAGE_GN],
 	},
 	{
 		id: 'fr-gram-clic-sujet',

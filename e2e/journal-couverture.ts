@@ -494,6 +494,39 @@ export const COUVERTURE_JOURNAL: Record<Exercise['type'], CouvertureFormat> = {
 					);
 				},
 			},
+			{
+				// Deuxième entrée sous le MÊME format, et c'est le but : le format `clicMot`
+				// sert désormais deux GESTES (cocher des mots ; délimiter un bloc par ses deux
+				// bornes, #716). Le geste neuf a son propre id de mode, donc sa propre ligne
+				// ici — sans quoi `tests/couverture-e2e-gate.test.ts` le croirait couvert par
+				// la spec du geste historique, qu'il ne partage pas.
+				titre: 'délimiter le groupe nominal (deux bornes)',
+				geste:
+					'poser les bornes sur le PREMIER et le DERNIER mot de la phrase — le groupe nominal ne couvre jamais toute la phrase',
+				source: {
+					origine: 'catalogue',
+					lecon: 'fr-gram-groupe-nominal',
+					mode: 'segment',
+					niveau: 'cm1',
+				},
+				amorce: async (page) => {
+					await page.addInitScript(SEED_CM1);
+				},
+				jouer: async (page) => {
+					await ouvrirLecon(page, 'fr-gram-groupe-nominal');
+					await page.locator('.lseg-mot').first().waitFor();
+					await jusquAUneErreur(
+						page,
+						async () => {
+							const mots = page.locator('.lseg-mot');
+							await mots.first().click();
+							await mots.last().click();
+							await page.locator('#lclicVerif').click();
+						},
+						page.locator('#lclicActions button'),
+					);
+				},
+			},
 		],
 	},
 

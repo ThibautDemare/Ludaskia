@@ -1309,6 +1309,178 @@ html.anim-reduced .lclic-mot.correct {
 	}
 }
 
+/* ---------- Widget « délimite le bloc » (#716, repérer le groupe nominal) ----------
+   Même substrat que « clique sur le mot » (un bouton par mot), un rendu différent :
+   ici la réponse est UN bloc, et elle doit se voir comme tel.
+
+   Le ruban continu ne vient PAS de `box-decoration-break: clone`, qui était le premier
+   réflexe : cette propriété ne s'applique qu'à un élément FRAGMENTÉ sur plusieurs lignes,
+   or chaque mot est ici un `<button>` distinct, jamais fragmenté — elle n'aurait rien
+   fait. La continuité vient de `column-gap: 0` : l'espace entre deux mots est porté par
+   leur PADDING, si bien que deux fonds voisins se touchent et forment une bande d'un seul
+   tenant. Effet de bord heureux, et c'est le second argument : le padding qui fabrique le
+   ruban agrandit du même coup la cible tactile, là où un mistap ne coûte pas un mot coché
+   en trop (réversible d'un coup d'œil) mais une BORNE déplacée, bien moins visible.
+   Le retour à la ligne se règle tout seul : la bande se coupe en une bande par ligne,
+   exactement comme une sélection de texte native, que l'enfant a déjà vue sur sa tablette. */
+.lseg-zone {
+	margin: 0 0 1.1rem;
+}
+/* Outils AVANT la phrase dans le DOM, donc avant les mots au Tab (avec « Écouter »,
+   que `data-tts-pos="start"` ancre en tête) : un enfant au clavier qui se trompe au
+   troisième mot atteindrait sinon « Recommencer » en traversant toute la phrase. */
+.lseg-outils {
+	display: flex;
+	justify-content: flex-end;
+	margin: 0 0 0.5rem;
+}
+.lseg-reset {
+	min-height: 44px;
+	padding: 6px 12px;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: transparent;
+	color: var(--ink);
+	font-family: var(--ui);
+	font-size: 0.95rem;
+	cursor: pointer;
+}
+.lseg-reset:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+.lseg-phrase {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-start; /* aligné à GAUCHE (sens de lecture) */
+	align-items: flex-end;
+	column-gap: 0; /* cf. en-tête : c'est ce qui rend le ruban continu */
+	row-gap: 0.7em;
+	font-family: var(--ui);
+	font-size: 1.35rem;
+	font-weight: 600;
+	line-height: 1.2;
+}
+.lseg-mot {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 44px;
+	min-width: 32px;
+	padding: 6px 0.28em; /* l'espace inter-mots vit ICI, pas dans column-gap */
+	border: 0;
+	border-bottom: 2px dotted var(--accent-soft);
+	border-radius: 8px 8px 4px 4px;
+	background: transparent;
+	color: var(--ink);
+	font: inherit;
+	cursor: pointer;
+	transition:
+		background 0.1s ease,
+		color 0.1s ease;
+}
+.lseg-mot:active {
+	background: var(--accent-soft);
+}
+.lseg-mot:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+.lseg-mot:disabled {
+	cursor: default;
+}
+.lseg-ponct {
+	align-self: flex-end;
+	padding: 6px 0.28em;
+	color: var(--ink);
+	user-select: none;
+}
+/* Borne posée, bloc pas encore fermé. Distinguée par la FORME (contour tireté) et non
+   par une simple nuance de fond : l'enfant doit voir qu'il lui reste une frappe à faire,
+   et un daltonien comme un lecteur d'écran ne peuvent pas compter sur la couleur. */
+.lseg-mot.est-ancre {
+	background: transparent;
+	outline: 2px dashed var(--accent);
+	outline-offset: -2px;
+	border-bottom-color: var(--accent);
+}
+/* Bloc fermé : fond plein d'un seul tenant, arrondi aux SEULS vrais bords du groupe. */
+.lseg-mot.dans-bloc,
+.lseg-ponct.dans-bloc {
+	background: var(--accent-soft);
+	border-radius: 0;
+}
+.lseg-mot.dans-bloc {
+	border-bottom-color: var(--accent);
+}
+.lseg-mot.bloc-debut,
+.lseg-ponct.bloc-debut {
+	border-top-left-radius: 10px;
+	border-bottom-left-radius: 10px;
+}
+.lseg-mot.bloc-fin,
+.lseg-ponct.bloc-fin {
+	border-top-right-radius: 10px;
+	border-bottom-right-radius: 10px;
+}
+/* Après « Vérifier » : verdict mot par mot (le marquage éprouvé de « clique sur le mot »),
+   posé PAR-DESSUS le rappel de la frontière attendue. */
+.lseg-mot.correct {
+	background: var(--ok-soft);
+	color: var(--ok);
+	border-bottom: 2px solid var(--ok);
+	font-weight: 800;
+	animation: reussite-flash 0.5s ease-out;
+}
+.lseg-mot.wrong {
+	background: var(--ko-soft);
+	color: var(--ko);
+	border-bottom: 2px solid var(--ko);
+}
+.lseg-mot.is-cible {
+	background: var(--ok-soft);
+	color: var(--ok);
+	border-bottom: 2px solid var(--ok);
+	font-weight: 800; /* même poids que .correct : contraste « grand texte gras » (3:1) */
+}
+/* La frontière ATTENDUE reste lisible comme un bloc, même quand l'enfant avait débordé :
+   ses deux extrémités gardent l'arrondi, le milieu reste droit. Sans ça, le verdict ne
+   montrerait que des mots verts épars — et c'est la frontière que le critère 6 demande. */
+.lseg-ponct.bloc-attendu {
+	background: var(--ok-soft);
+}
+@media (prefers-reduced-motion: reduce) {
+	.lseg-mot.correct {
+		animation: none;
+	}
+}
+html.anim-reduced .lseg-mot.correct {
+	animation: none;
+}
+.lseg-mark {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.15em;
+	height: 1.15em;
+	margin-left: 0.3em;
+	border-radius: 50%;
+	font-size: 0.75em;
+	font-weight: 800;
+	color: var(--on-accent);
+}
+.lseg-mot.correct .lseg-mark {
+	background: var(--ok);
+}
+.lseg-mot.wrong .lseg-mark {
+	background: var(--ko);
+}
+@media (min-width: 560px) {
+	.lseg-phrase {
+		font-size: 1.5rem;
+	}
+}
+
 /* ---------- Droite graduée (#256) ---------- */
 /* On place un repère sur une droite : la consigne, la droite (centrée) puis « Vérifier »
    s'empilent dans une colonne bornée. */

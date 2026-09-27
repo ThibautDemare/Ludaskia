@@ -283,6 +283,13 @@ export type Exercise =
 			parle: string;
 			cibleLabel?: string;
 			explicationNommeCible?: boolean;
+			/** La cible est un SEGMENT à délimiter, pas un ensemble de mots à cocher (#716).
+			    Change le GESTE, pas la donnée : l'enfant pose un début et une fin, et tout ce
+			    qui est entre les deux entre dans la réponse (`ui/segment-mot-interaction.ts`)
+			    au lieu de se cocher mot par mot (`ui/clic-mot-interaction.ts`). Porté par
+			    l'exercice et non par la leçon, parce que c'est lui que le runner et la
+			    révision reçoivent. Absent ⇒ sélection libre, comportement historique. */
+			segment?: boolean;
 	  }
 	// Droite graduée (#256) — l'enfant PLACE un repère sur la graduation qui correspond
 	// à la valeur cible (numération grands nombres, nombres décimaux). Interaction : une

@@ -321,8 +321,9 @@ describe('Vocabulaire CM1 — catalogue & ordre (#244)', () => {
 	it('ordre francais.cm1 contient les 4 leçons, contraires AVANT sens proche, familles AVANT affixes', () => {
 		const ordre = ORDRE_LECONS.francais.cm1!;
 		// +1 : « Clique sur le verbe » (#259, partagée CE2/CM1) ; +5 : natures « clique sur
-		// le mot » CM1 (#437 : déterminant, conjonction, pronom, nom noyau, sujet).
-		expect(ordre).toHaveLength(71);
+		// le mot » CM1 (#437 : déterminant, conjonction, pronom, nom noyau, sujet) ;
+		// +1 : « Repère le groupe nominal » (#716).
+		expect(ordre).toHaveLength(72);
 		const i = (id: string) => ordre.indexOf(id);
 		for (const id of [
 			'fr-vocab-contraires-cm1',

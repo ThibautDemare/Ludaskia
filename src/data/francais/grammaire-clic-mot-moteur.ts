@@ -59,6 +59,12 @@ export interface PhraseClicMot {
 	    l'inverse), `npm test` échoue. Écrire l'explication suffit ; le test réclame le
 	    drapeau. */
 	explicationNommeCible?: boolean;
+	/** La cible est un SEGMENT contigu que l'enfant DÉLIMITE (deux bornes), et non un
+	    ensemble de mots qu'il coche un par un (#716). Posé par les constructeurs de
+	    segment (`phraseSegment`), jamais deviné en constatant que les indices se
+	    suivent : une cible contiguë par hasard — le verbe « a mangé » — reste une
+	    sélection libre. Absent ⇒ comportement historique. */
+	segment?: boolean;
 }
 
 /* Découpage : une suite de lettres/chiffres (avec apostrophe droite ou trait
@@ -219,6 +225,49 @@ export function phraseMots(
 	};
 }
 
+/** Construit une phrase annotée dont la cible est un SEGMENT : une suite de mots
+    CONTIGUS, que l'enfant délimitera par ses deux bornes (#716). Même garde-fou
+    d'unicité que `phrase` — le groupe doit apparaître exactement une fois, sinon la
+    cible est ambiguë et l'erreur remonte à l'écriture de la banque, pas à l'usage.
+
+    Ce qui le distingue de `phraseMots` n'est pas la contiguïté des indices (le verbe
+    « a mangé » est contigu lui aussi) mais le drapeau `segment` qu'il pose : c'est lui
+    qui contraindra le GESTE côté interface. La comparaison, insensible à la casse,
+    permet d'écrire le groupe en minuscules même quand il ouvre la phrase. */
+export function phraseSegment(
+	texte: string,
+	groupe: string,
+	opts: {
+		explication: string;
+		consigne?: string;
+		cibleLabel?: string;
+		explicationNommeCible?: boolean;
+	},
+): PhraseClicMot {
+	const tokens = tokeniser(texte);
+	const motsGroupe = tokeniser(groupe);
+	if (!motsGroupe.length) {
+		throw new Error(`grammaire-clic-mot : segment vide dans « ${texte} ».`);
+	}
+	const positions = positionsSuite(tokens, motsGroupe);
+	if (positions.length !== 1) {
+		throw new Error(
+			`grammaire-clic-mot : le segment « ${groupe} » doit apparaître exactement une fois ` +
+				`dans « ${texte} » (trouvé ${positions.length}×).`,
+		);
+	}
+	const start = positions[0];
+	return {
+		tokens,
+		cibleIndices: motsGroupe.map((_, k) => start + k),
+		segment: true,
+		explication: opts.explication,
+		consigne: opts.consigne,
+		cibleLabel: opts.cibleLabel,
+		explicationNommeCible: opts.explicationNommeCible,
+	};
+}
+
 /* Fabrique l'Exercise « clique sur le mot » depuis une phrase annotée. `consigne` et
    `cibleLabel` de la PHRASE priment sur les valeurs par défaut du type (leçons à tâche
    variable). Partagé par toutes les fabriques de la famille (`clicMotType` ici,
@@ -237,6 +286,7 @@ export function itemClicMot(
 		parle: joindrePhrase(p.tokens),
 		cibleLabel: p.cibleLabel ?? cibleLabelDefaut,
 		explicationNommeCible: p.explicationNommeCible,
+		segment: p.segment,
 	};
 }
 
@@ -245,6 +295,15 @@ export function itemClicMot(
    pas d'écran de choix) — il est neutre pour être réutilisé par les 5 natures. */
 export const MODE_CLIC: ModeOption[] = [
 	{ id: 'clic', label: 'Clique sur le mot', recommended: true },
+];
+
+/* Mode unique lui aussi (pas d'écran de choix), mais d'id DISTINCT : le geste n'est pas
+   le même — on délimite un bloc par ses deux bornes au lieu de cocher des mots (#716).
+   Ce n'est pas qu'une question de libellé : l'id de mode est la maille de couverture de
+   `tests/couverture-e2e-gate.test.ts`, si bien qu'un geste neuf réutilisant l'id `clic`
+   serait réputé couvert par la spec d'un geste qu'il ne partage pas. */
+export const MODE_SEGMENT: ModeOption[] = [
+	{ id: 'segment', label: 'Montre le groupe', recommended: true },
 ];
 
 /** Ce qu'un niveau apporte à une leçon « clique sur le mot » : sa banque, sa consigne et
@@ -273,8 +332,14 @@ export function clicMotType(opts: {
 	cibleLabel?: string;
 	levels?: SchoolLevel[];
 	ce2?: VarianteClicMot;
+	/** Mode(s) déclaré(s) par la leçon. Par défaut `MODE_CLIC` (« clique sur le mot »),
+	    qui vaut pour toutes les natures. Une leçon au GESTE différent déclare le sien
+	    (#716, `MODE_SEGMENT`) : l'id de mode est la maille de la couverture e2e
+	    (`tests/couverture-e2e-gate.test.ts`), donc un geste neuf servi sous l'id du geste
+	    historique n'aurait réclamé aucune spec. */
+	modes?: ModeOption[];
 }): ExerciseType {
-	const { banque, consigne, cibleLabel, ce2, levels = ['cm1'] } = opts;
+	const { banque, consigne, cibleLabel, ce2, levels = ['cm1'], modes = MODE_CLIC } = opts;
 	const defaut: VarianteClicMot = { banque, consigne, cibleLabel };
 	// Niveaux triés par ordre scolaire (comme `calibrated`) : `niveaux[0]` est le plus bas
 	// déclaré, c'est le repli quand aucun niveau n'est transmis.
@@ -288,7 +353,7 @@ export function clicMotType(opts: {
 		return closestSupported(niveaux, level ?? niveaux[0]) === 'ce2' ? ce2 : defaut;
 	};
 	return {
-		modes: MODE_CLIC,
+		modes,
 		consigne: (level) => variante(level).consigne,
 		exerciseKind: 'clicMot',
 		levels,

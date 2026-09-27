@@ -178,6 +178,21 @@
 .enc-seance-dictees-groupe + .enc-seance-dictees-groupe {
 	margin-top: 0.3rem;
 }
+/* Filtre de la liste (#722) : COLLÉ en haut du cadre qui défile, sinon il disparaît dès
+   qu'on descend dans la quarantaine de dictées — et c'est justement là qu'on en a besoin. */
+.enc-seance-dictees-filtre {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background: var(--paper);
+	padding: 0.15rem 0 0.35rem;
+}
+/* `hidden` posé par le filtre : les lignes sont en `display: flex`, un `display` d'auteur
+   l'emporterait sur la règle `[hidden]` du navigateur (même garde que la recherche enfant). */
+.enc-seance-dictee[hidden],
+.enc-seance-dictees-groupe[hidden] {
+	display: none;
+}
 .enc-seance-dictees-grp {
 	font-size: 0.72rem;
 	font-weight: 800;

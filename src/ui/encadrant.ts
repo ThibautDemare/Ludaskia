@@ -55,6 +55,7 @@ import {
 } from './encadrant-progression';
 import { revisionHTML, revisionClick } from './encadrant-revision';
 import { seanceHTML, seanceClick, seanceChange } from './encadrant-seance';
+import { seanceInput } from './encadrant-seance-dictees';
 import {
 	reglagesHTML,
 	reglagesChange,
@@ -271,11 +272,13 @@ function onChange(e: Event): void {
 }
 
 /* Saisie AU FIL DE LA FRAPPE (≠ `change`, qui n'arrive qu'au blur) : les recherches — banque
-   de mots (#496), sélecteur de leçon (#556) — doivent filtrer à chaque lettre. */
+   de mots (#496), sélecteur de leçon (#556), filtre des dictées d'une étape (#722) — doivent
+   filtrer à chaque lettre. */
 function onInput(e: Event): void {
 	const t = e.target as HTMLElement;
 	const act = t.dataset.act ?? '';
 	if (selecteurInput(act, t)) return;
+	if (seanceInput(act, t)) return;
 	progressionInput(act, t);
 }
 

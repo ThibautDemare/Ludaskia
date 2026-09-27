@@ -26,6 +26,7 @@
    ============================================================ */
 import { insertAt, moveAt, removeAt } from '../core/utils';
 import { rendreLaMainApresEcoute } from './consigne-tts';
+import { focaliserChamp } from './anti-suggestion';
 import { genExerciseOrtho, messageRienDePose } from '../core/orthographe/exercise';
 import { checkAnswer } from '../core/exercise';
 import { TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
@@ -217,7 +218,7 @@ export function renderMotCache(word: MotOrtho, o: OptionsTache): void {
 		motStage.style.display = 'none';
 		btnCacher.style.display = 'none';
 		zone.hidden = false;
-		input.focus();
+		focaliserChamp(input);
 	});
 
 	const verifier = () => {
@@ -234,7 +235,7 @@ export function renderMotCache(word: MotOrtho, o: OptionsTache): void {
 				fb.innerHTML =
 					html`<span class="fb-ko">Presque ! Regarde bien et réessaie.</span>`.balisage;
 				input.value = '';
-				input.focus();
+				focaliserChamp(input);
 			} else {
 				// Dernier essai : on bascule sur la correction guidée (diff sur le mot). Le
 				// retrace du mot affiché a déjà été coupé au clic « Cacher » (on n'arrive
@@ -308,7 +309,7 @@ export function renderDictee(word: MotOrtho, o: OptionsTache): void {
 			if (essais < o.essaisAvantCorrection) {
 				fb.innerHTML = html`<span class="fb-ko">Presque ! Réécoute et réessaie.</span>`.balisage;
 				input.value = '';
-				input.focus();
+				focaliserChamp(input);
 				ecouter();
 			} else {
 				o.onCorrection(input.value);
@@ -327,7 +328,7 @@ export function renderDictee(word: MotOrtho, o: OptionsTache): void {
 	   l'énoncé part tout seul sur cet écran, le champ doit donc être prêt à recevoir la frappe
 	   sans le moindre geste. `isConnected` : une voix en échec fait remplacer tout l'écran par
 	   `onSilence`, qui pose son propre focus, et on ne va pas focaliser un champ détaché. */
-	if (input.isConnected) input.focus();
+	if (input.isConnected) focaliserChamp(input);
 }
 
 /* ---------- Tuiles ---------- */
@@ -626,7 +627,7 @@ function rienDePose(
 	// et Entrée dans un champ ne le déplace pas. Sans la transition forcée, `focus()` est un
 	// no-op et le message reste inaudible précisément pour qui en a besoin.
 	cible?.blur();
-	cible?.focus();
+	focaliserChamp(cible);
 }
 
 /* Entrée valide la saisie. `stopPropagation` : la carte de révision détourne Entrée vers
@@ -656,5 +657,5 @@ function insertAtCursor(input: HTMLInputElement, text: string): void {
 	input.value = input.value.slice(0, start) + text + input.value.slice(end);
 	const pos = start + text.length;
 	input.setSelectionRange(pos, pos);
-	input.focus();
+	focaliserChamp(input);
 }

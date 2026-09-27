@@ -3,6 +3,7 @@
    ============================================================ */
 import { fmt } from '../core/utils';
 import { icon } from './icon';
+import { focaliserChamp } from './anti-suggestion';
 import { scoreItems } from '../core/scoring';
 import type { ScoredInput } from '../core/scoring';
 import type { Trophy } from '../core/rewards';
@@ -374,7 +375,7 @@ function signalerSaisiesIllisibles(champs: HTMLInputElement[]): void {
 		inp.classList.add('a-corriger');
 		inp.setAttribute('aria-describedby', HINT_ILLISIBLE);
 	});
-	champs[0].focus();
+	focaliserChamp(champs[0]);
 }
 
 /* Lève le signalement d'un champ retouché, et retire le message quand il ne reste plus
@@ -478,7 +479,7 @@ export function initSession() {
 			),
 		];
 		const i = all.indexOf(t);
-		if (i > -1 && i < all.length - 1) all[i + 1].focus();
+		if (i > -1 && i < all.length - 1) focaliserChamp(all[i + 1]);
 		else verify(); // dernier champ
 	});
 	// Grille posée (#97) : navigation entre cellules aux flèches ← →.

@@ -23,6 +23,7 @@
 import { dicteeDisponible, dicterConsigne } from './tts';
 import { lectureConsigneAuto } from '../core/profiles';
 import { icon } from './icon';
+import { focaliserChamp } from './anti-suggestion';
 import { html } from '../core/html';
 
 const MARQUE = 'ttsDone'; // dataset flag : élément déjà équipé de son bouton
@@ -83,7 +84,9 @@ export function rendreLaMainApresEcoute(btn: HTMLElement): void {
 		// focus : il ne sert que le geste tactile ou souris, qui n'a pas de focus à perdre.
 		if (e.detail === 0) return;
 		const cible = avant;
-		if (cible?.isConnected) cible.focus();
+		// `focaliserChamp` et non `focus()` : c'est une ENTRÉE de focus sur un champ de réponse,
+		// donc l'instant où Firefox Android relit le type du champ (cf. ui/anti-suggestion.ts).
+		if (cible?.isConnected) focaliserChamp(cible);
 	});
 }
 

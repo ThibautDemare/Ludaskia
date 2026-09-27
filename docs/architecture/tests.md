@@ -1015,6 +1015,41 @@ compte remonte, cf. [Espace encadrant](espace-encadrant.md)) — aucune des deux
 teste donc le détail d'une ligne, seulement la carte d'accueil, la séance, le stockage
 et la phrase de synthèse.
 
+### Tirage du mode ciblé en orthographe (séance réelle, septembre 2026)
+
+`tests/ortho-tirage-cible.test.ts` (Vitest, 8 groupes de critères, écrits AVANT
+l'implémentation) couvre `indiceProchainMotCible` (`core/orthographe/runner.ts`) :
+ordre cyclique à partir de `depuis` (milieu de liste, rebouclage en fin de liste) ;
+un mot déjà validé pour le mode est sauté tant qu'il reste un mot progressif
+(`activiteProgressive`) ; mode terminé pour tous les mots de la liste ⇒ `depuis % n`
+(la séance continue en entretien) ; liste vide ⇒ `-1` ; cumul des marches hérité de
+#641 (escalier troué compris) ; `dicteeDispo` transmis tel quel ; un scénario de
+séance à 10 mots sur deux séances de 8 activités qui rejoue le bug d'origine ;
+pureté et déterminisme. `e2e/ortho-mode-cible-tirage.spec.ts` rejoue ce même scénario
+en conditions réelles : une liste de plus de 8 mots en mode ciblé ne ressert plus
+les mêmes premiers mots (déjà validés) à la séance suivante.
+
+Bug corrigé : le tirage reprenait l'indice 0 à chaque séance ciblée ; sur une liste
+plus longue que la pause de séance (`SEANCE_MAX = 8`), les mêmes mots — déjà validés
+pour ce mode — étaient resservis en boucle et les suivants n'étaient jamais atteints,
+alors que l'écran de choix continuait d'annoncer le mode comme restant à faire.
+
+### Remasquage clavier à l'entrée de focus sur Firefox tactile (#67/#123/#139)
+
+`e2e/anti-suggestion-focus.spec.ts` (Playwright, écrit AVANT le correctif à partir du
+défaut constaté sur tablette) mesure le TYPE réel du champ au moment de l'**entrée de
+focus** (`focusin` posé en phase de capture avant toute navigation) : c'est la seule
+fenêtre où lire le `type="password"` compte, elle ne dure que jusqu'à la microtâche de
+démasquage, et la relire après coup via `getAttribute` la manquerait systématiquement.
+Couvre le focus d'arrivée en dictée (déjà correct avant le correctif : le
+`MutationObserver` de démasquage n'a pas encore joué), les focus ultérieurs qui
+rallumaient la barre de suggestions (retour de main après « Écouter », « Cacher et
+écrire », touche d'accent, tap direct), et deux négatifs (rien ne masque un champ hors
+`[data-unmask]`, ou déjà focalisé). Le détail du correctif — remasquage restreint à
+Firefox à écran tactile (`remasquageUtile`), curseur restauré sous le doigt, mise en
+page forcée dans `basculerType` — est documenté dans l'en-tête d'`ui/anti-suggestion.ts`
+et dans [Rendu & interactions](ui.md).
+
 ## Smoke tests e2e (Playwright)
 
 **Smoke tests e2e (`e2e/`, Playwright, #129).** Complémentaires : ils pilotent

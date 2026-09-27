@@ -174,7 +174,11 @@ boutons dérivés de `modes`, le mode `recommended` mis en avant) ; un type
 complet** (conseillé, qui enchaîne les activités dues) ou un **mode ciblé** (tuiles /
 mot caché / dictée). Depuis **#641** un mode ciblé **valide comme le parcours complet**
 (la validation est **cumulative** : réussir un mode valide aussi tous ceux du dessous),
-donc il fait monter les mots, peut étoiler la liste et décrocher des trophées ; l'écran
+donc il fait monter les mots, peut étoiler la liste et décrocher des trophées. Le mot
+servi est d'abord un mot que **ce mode** peut encore faire progresser, en tournant depuis
+le curseur de la séance précédente ; une fois tous validés pour ce mode, la séance passe
+en entretien sur tous les mots (`indiceProchainMotCible`, détail dans
+[design-orthographe](../design-orthographe.md)) ; l'écran
 range plus bas les modes **terminés pour cette liste** (tous ses mots les ont validés)
 sans les désactiver, et annonce le **coût** (`8 activités`) sur tous les boutons de
 séance. Sur une liste **déjà entièrement acquise**, ce bouton de tête ne relance plus le

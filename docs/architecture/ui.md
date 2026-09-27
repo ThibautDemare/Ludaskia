@@ -1479,10 +1479,25 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
 - **`brouillon.ts`** (#199) — **ardoise de dessin tactile** repliable (« J'ai besoin d'un
   brouillon ») pour poser un calcul (canvas au doigt/stylet, `touch-action: none`, mise à
   l'échelle `devicePixelRatio`) ; jetable, recréée vierge à chaque problème.
-- **`anti-suggestion.ts`** (#67/#123/#139) — coupe la **barre de suggestions** prédictives
-  des claviers mobiles (qui « souffle » la réponse) : les champs réponse naissent en
-  `type="password"` (cf. `TEXT_ANSWER_INPUT_ATTRS`, `core/items.ts`) puis sont **démasqués**
-  (`data-unmask`, « mot de passe visible » Android) avant focus par un observateur DOM global.
+- **`anti-suggestion.ts`** (#67/#123/#139, remasquage sur Firefox tactile constaté en
+  séance réelle, septembre 2026) — coupe la **barre de suggestions** prédictives des
+  claviers mobiles (qui « souffle » la réponse) : les champs réponse naissent en
+  `type="password"` (cf. `TEXT_ANSWER_INPUT_ATTRS`, `core/items.ts`) puis sont
+  **démasqués** (`data-unmask`, « mot de passe visible » Android) dès leur insertion dans
+  le DOM, par un observateur global. Chrome s'arrête là (le drapeau `hasBeenPasswordField`
+  suffit) ; **Firefox à écran tactile** (`remasquageUtile` : UA `Firefox/` + `maxTouchPoints
+  > 0`, exclut Firefox iOS/WebKit et les appareils sans écran tactile) recalcule seul le clavier à
+  chaque **entrée de focus**, jamais ailleurs — un champ `[data-unmask]` y est donc remis en
+  `password` à CHAQUE entrée de focus (tap direct via un `mousedown` délégué, focus
+  programmé via `focaliserChamp`) et redémasqué à la microtâche suivante, sélection
+  conservée (`basculerType` force la mise en page entre les deux : sans elle, Chrome remet
+  le curseur à 0 au rendu suivant un changement de type sur un champ focalisé). Le tap
+  direct restaure en plus le curseur lu **sous le doigt** sur le rendu en clair
+  (`caretPositionFromPoint`), à la fin du geste : sur un champ qui vient de passer en
+  points, le placement de Firefox n'a pas pu être mesuré (Chrome, lui, le place juste).
+  Voir la règle de code plus bas (« Accessibilité
+  (#42) ») ; le rejet « Tab n'est pas une troisième porte » est documenté dans l'en-tête du
+  module.
 - **`grand-nombre-echo.ts`** (#327) — **écho groupé des grands nombres à la frappe** sur les
   champs **`.ans-grand`** (réponses numériques ≥ 10 000 des leçons « millions » CM1, #240).
   `installGroupedNumberEcho()` (appelé une fois dans `wireDOM`, modèle de
@@ -1859,18 +1874,30 @@ l'oral jusque-là — non par décision, par défaut de câblage).
     à un seul concept partagé par deux appelants serait de la généricité anticipée. À
     rouvrir au troisième consommateur, s'il n'a rien à voir avec le TTS.
 
-  *Rejet écrit, pour ne pas le re-remonter :* les champs de réponse naissent en
-  `type="password"` (anti-suggestion des claviers mobiles, `ui/anti-suggestion.ts`) et ne
-  sont démasqués qu'à la **microtâche suivante**, un `MutationObserver` ne se déclenchant
-  jamais pendant le bloc de code qui a inséré le champ. Un focus d'arrivée posé dans ce
-  même bloc atterrit donc sur un champ encore masqué, à rebours de l'invariant que
-  `anti-suggestion.ts` documente (« basculé AVANT son premier focus »). Les **quatre**
-  runners à saisie le font — sprint, problèmes, révision, dictée —, les trois premiers
-  depuis bien avant #702. Écarté en connaissance de cause : un `focus()` programmé sans
-  geste n'ouvre pas le clavier mobile, la bascule est acquise avant que l'enfant ne touche
-  l'écran, et les chemins déclenchés par un vrai geste agissent sur un champ rendu
-  longtemps auparavant, donc déjà démasqué. Rien à corriger tant qu'un appareil réel ne
-  montre pas le contraire.
+  *Renversé par un appareil réel :* on avait écarté l'idée qu'un focus posé
+  **avant** la microtâche de démasquage (donc sur un champ encore `password`) puisse
+  poser problème — sur Chrome, exact, `hasBeenPasswordField` couvre tout focus ultérieur.
+  Constat sur tablette **Firefox** (écran tactile, septembre 2026) : GeckoView ne
+  recalcule la configuration du clavier qu'à l'**entrée de focus**, jamais au changement
+  de type d'un champ déjà focalisé ni au tap sur un champ déjà focalisé. Le focus
+  d'arrivée sur un champ **encore masqué** était donc précisément ce qui protégeait la
+  dictée ; tout focus posé **plus tard**, une fois le champ redevenu `text` (retour de
+  main après « Écouter », « Cacher et écrire », touche d'accent, tap direct), rallumait
+  les suggestions. Corrigé par un remasquage à **chaque** entrée de focus (pas seulement à
+  l'insertion), restreint à Firefox tactile (`remasquageUtile`) : Chrome n'en a pas besoin
+  et y payait un coût mesuré (curseur remis à 0 par Chrome au rendu suivant un changement
+  de type sur un champ focalisé) ; le rejet du même cycle au clavier physique/Tab et
+  l'annonce possible d'un lecteur d'écran sont documentés dans l'en-tête d'
+  `ui/anti-suggestion.ts`, pas recopiés ici.
+
+**Règle de code : tout `.focus()` dont la cible peut être un champ `[data-unmask]` passe
+par `focaliserChamp` (`ui/anti-suggestion.ts`)**, jamais un `el.focus()` direct — sinon le
+champ garde son type `text` à l'entrée de focus et les suggestions reviennent sur Firefox
+tactile. Sur tout autre élément (bouton, tuile…), `el.focus()` reste correct.
+*Rejet écrit :* pas de gate statique (règle ESLint ou test façon `erreurs-journal-gate`)
+pour cette règle. La cible d'un `.focus()` est rarement déterminable statiquement, et les
+appelants sont peu nombreux : tous ont été vérifiés un par un à l'introduction de
+`focaliserChamp`. La spec `e2e/anti-suggestion-focus.spec.ts` garde les chemins existants.
 
 **Règle : un bloc inséré AVANT un bouton auto-focalisé porte `role="status"`.** Le motif
 revient dans tout le dépôt — le lien d'étayage sous un verdict (#490), le rappel des mots

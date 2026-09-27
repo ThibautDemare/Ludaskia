@@ -2006,6 +2006,14 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   une marche, et `rangMot` ne rencontre jamais d'escalier incohérent. Pendant en lecture :
   **`activiteProgressive(mot, activite, dicteeDispo)`**, qui dit si une activité pouvait encore
   faire monter ce mot (base de l'attribution de l'étape « dictée » du programme du jour).
+  **`indiceProchainMotCible(mots, mode, dicteeDispo, depuis)`** s'appuie dessus pour le
+  **tirage d'une séance ciblée** (`ui/ortho-runner.ts:prochainNonMaitrise`) : indice du
+  premier mot, en tournant cycliquement depuis `depuis`, que ce `mode` peut encore faire
+  monter ; une fois tous les mots validés pour ce mode, rend `depuis % n` et la séance
+  continue en entretien sur tous les mots (`-1` si la liste est vide). Corrige un tirage
+  antérieur qui repartait de l'indice 0 à chaque séance ciblée : sur une liste plus
+  longue que `SEANCE_MAX`, les mêmes premiers mots — déjà validés — étaient resservis en
+  boucle, les suivants jamais atteints.
   **`prochaineActivite`/`marcheLaPlusHaute`** (mêmes fonctions, cf. « Reprise & révision
   espacée » ci-dessus) décident de la marche à servir — **la révision espacée les réutilise
   telles quelles depuis #640** (`ui/revision.ts:renderMotOrtho`), au lieu d'y servir

@@ -514,3 +514,150 @@ describe('effets de bord du report', () => {
 		expect(recap.aRevoir.map((n) => n.lessonId)).not.toContain(LECON);
 	});
 });
+
+/* ============================================================
+   Date du PREMIER franchissement (#724) : `franchieLe`.
+   Attendus dérivés du contrat de l'issue, pas du code : la date est posée une fois,
+   au premier franchissement, jamais réécrite ; elle n'est jamais inventée pour un
+   franchissement antérieur au champ ; une valeur stockée douteuse se lit comme une
+   ABSENCE, jamais comme 0 ni NaN.
+   ============================================================ */
+describe('franchieLe : date du premier franchissement (#724)', () => {
+	/* Entrée antérieure au champ : franchie (≥ 70 %) mais jamais datée. */
+	const legacyFranchie = (): EtatReport => ({ ...etatReportVierge(), meilleurPct: 85 });
+
+	it('critère 1 : premier franchissement (au seuil, ou sans-faute étoilé) → daté de l’essai', () => {
+		expect(apresEssaiLecon(undefined, SEUIL, J(10)).franchieLe).toBe(J(10));
+		expect(apresEssaiLecon(undefined, 100, J(10), true).franchieLe).toBe(J(10));
+	});
+
+	it('critère 1 : une leçon travaillée sans être franchie n’est datée qu’au franchissement', () => {
+		let etat = apresEssaiLecon(undefined, 50, J(10));
+		etat = apresEssaiLecon(etat, 60, J(11)); // entrée existante, report en cours
+		expect('franchieLe' in etat).toBe(false);
+		etat = apresEssaiLecon(etat, 80, J(12));
+		expect(etat.franchieLe).toBe(J(12));
+	});
+
+	it('critère 1 : l’étoile seule, sur un essai sous le seuil, franchit sans dater', () => {
+		// L'essai qui GAGNE l'étoile est un sans-faute : une étoile portée par un essai sous le
+		// seuil est une étoile passée, et ce franchissement n'a pas de date connue.
+		for (const pct of [50, SEUIL - 1]) {
+			const etoileSeule = apresEssaiLecon(undefined, pct, J(10), true);
+			// Franchie : aucun jour de blocage compté, contrairement au même essai sans étoile.
+			expect(etoileSeule.jours, `${pct} % étoilé`).toBe(0);
+			expect(apresEssaiLecon(undefined, pct, J(10)).jours, `${pct} % sans étoile`).toBe(1);
+			expect('franchieLe' in etoileSeule, `${pct} % étoilé`).toBe(false);
+		}
+		// Témoin : le sans-faute étoilé, lui, est daté de l'essai.
+		expect(apresEssaiLecon(undefined, 100, J(10), true).franchieLe).toBe(J(10));
+	});
+
+	it('critère 3 : une étoile déjà là avec un essai réussi mais pas sans faute n’est pas datée', () => {
+		// L'étoile ne se gagne que sur un sans-faute : présente sur un essai sous 100 %, elle est
+		// ANCIENNE, et la leçon était franchie avant cet essai, qu'une entrée existe ou non.
+		for (const pct of [SEUIL, 80, 99]) {
+			const sansEntree = apresEssaiLecon(undefined, pct, J(10), true);
+			expect('franchieLe' in sansEntree, `sans entrée, ${pct} %`).toBe(false);
+			const entreeSousSeuil = { ...etatReportVierge(), meilleurPct: 50 };
+			const avecEntree = apresEssaiLecon(entreeSousSeuil, pct, J(10), true);
+			expect('franchieLe' in avecEntree, `entrée à 50 %, ${pct} %`).toBe(false);
+		}
+	});
+
+	it('critère 2 : rejouer une leçon datée ne réécrit jamais la date, même mieux ou étoilée', () => {
+		let etat = apresEssaiLecon(undefined, 75, J(10));
+		etat = apresEssaiLecon(etat, 90, J(11));
+		etat = apresEssaiLecon(etat, 100, J(15), true);
+		expect(etat.franchieLe).toBe(J(10));
+		expect(etat.meilleurPct).toBe(100); // les essais ont bien été pris en compte
+	});
+
+	it('critère 3 : un franchissement antérieur au champ n’est jamais daté après coup', () => {
+		for (const [pct, etoilee] of [
+			[90, false],
+			[100, true],
+			[30, false],
+		] as const) {
+			const etat = apresEssaiLecon(legacyFranchie(), pct, J(10), etoilee);
+			expect('franchieLe' in etat, `rejouée à ${pct} %`).toBe(false);
+		}
+		// Au seuil pile, la leçon était déjà franchie : pas de date non plus.
+		const auSeuil = apresEssaiLecon({ ...etatReportVierge(), meilleurPct: SEUIL }, 100, J(10));
+		expect('franchieLe' in auSeuil).toBe(false);
+		// Un point sous le seuil, elle ne l'était pas : ce franchissement-ci est le premier.
+		const sousSeuil = apresEssaiLecon(
+			{ ...etatReportVierge(), meilleurPct: SEUIL - 1 },
+			SEUIL,
+			J(10),
+		);
+		expect(sousSeuil.franchieLe).toBe(J(10));
+	});
+
+	it('critère 4 : un essai qui ne franchit pas ne pose aucune date', () => {
+		const premier = apresEssaiLecon(undefined, SEUIL - 1, J(10));
+		expect('franchieLe' in premier).toBe(false);
+		expect('franchieLe' in apresEssaiLecon(premier, 50, J(10, 15))).toBe(false); // même jour
+		expect('franchieLe' in apresEssaiLecon(premier, 30, J(11))).toBe(false); // escalade
+	});
+
+	it('critère 4 : une leçon datée puis ratée garde sa date', () => {
+		const datee = apresEssaiLecon(undefined, 80, J(10));
+		expect(apresEssaiLecon(datee, 20, J(10, 15)).franchieLe).toBe(J(10));
+		expect(apresEssaiLecon(datee, 20, J(11)).franchieLe).toBe(J(10));
+	});
+
+	it('critère 4 : datée sous le seuil (franchie par l’étoile), un essai raté sans étoile garde la date', () => {
+		// Le meilleur score reste sous le seuil : sans étoile, l'essai ne franchit pas et passe
+		// par la branche du blocage. La date du premier franchissement, elle, ne se perd pas.
+		const datee: EtatReport = {
+			...etatReportVierge(),
+			jours: 1,
+			dernierJour: jourDe(J(10)),
+			meilleurPct: 60,
+			franchieLe: J(5),
+		};
+		expect(apresEssaiLecon(datee, 30, J(10, 15)).franchieLe, 'même jour').toBe(J(5));
+		expect(apresEssaiLecon(datee, 30, J(11)).franchieLe, 'jour suivant').toBe(J(5));
+	});
+
+	it('critère 5 : une date stockée non finie (NaN, Infinity) se lit comme une absence', () => {
+		for (const douteuse of [Number.NaN, Number.POSITIVE_INFINITY]) {
+			const stocke: EtatReport = { ...legacyFranchie(), franchieLe: douteuse };
+			for (const pct of [90, 30]) {
+				const etat = apresEssaiLecon(stocke, pct, J(10));
+				expect('franchieLe' in etat, `${douteuse}, rejouée à ${pct} %`).toBe(false);
+			}
+		}
+	});
+
+	it('critère 5 : persistée illisible (texte, null), la date ne ressort ni en 0 ni en NaN', () => {
+		for (const douteuse of ['abc', null, '2026-03-10']) {
+			// `lsSet` accepte du JSON quelconque : état importé ou édité à la main.
+			lsSet(LESSON_REPORT_KEY, {
+				[`${LECON}@ce2`]: { ...legacyFranchie(), franchieLe: douteuse },
+			});
+			const etat = recordEssaiLecon(LECON, 90, J(10));
+			expect('franchieLe' in etat, `renvoyé, ${String(douteuse)}`).toBe(false);
+			expect('franchieLe' in loadLessonReports()[LECON], `écrit, ${String(douteuse)}`).toBe(false);
+		}
+	});
+
+	it('critère 6 : la date survit à la sérialisation, et son absence aussi', () => {
+		const datee = apresEssaiLecon(undefined, 80, J(10));
+		const relue: EtatReport = JSON.parse(JSON.stringify(datee));
+		expect(relue).toEqual(datee);
+		expect(apresEssaiLecon(relue, 100, J(12), true).franchieLe).toBe(J(10));
+
+		const nonDatee: EtatReport = JSON.parse(JSON.stringify(legacyFranchie()));
+		expect('franchieLe' in nonDatee).toBe(false);
+		expect('franchieLe' in apresEssaiLecon(nonDatee, 100, J(12))).toBe(false);
+	});
+
+	it('critère 6 : persistée, la date du premier franchissement se relit intacte', () => {
+		recordEssaiLecon(LECON, 80, J(10));
+		recordEssaiLecon(LECON, 30, J(11));
+		recordEssaiLecon(LECON, 100, J(12), true);
+		expect(loadLessonReports()[LECON].franchieLe).toBe(J(10));
+	});
+});

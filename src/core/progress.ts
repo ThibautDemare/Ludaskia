@@ -934,12 +934,6 @@ function loadLessonReportsRaw(): Record<string, EtatReport> {
 export function loadLessonReports(): Record<string, EtatReport> {
 	return scopeActif(loadLessonReportsRaw());
 }
-/* Reports vus au niveau de STOCKAGE de chaque leçon (cf. `scopeStockage`), pendant de
-   `loadStarsStockage` : un prérequis de la classe précédente mis de côté (#724) est rangé
-   sous sa propre classe, que la vue scopée au niveau actif ne voit pas. */
-export function loadLessonReportsStockage(): Record<string, EtatReport> {
-	return scopeStockage(loadLessonReportsRaw());
-}
 /* Cartes BRUTES du profil actif (clés `lessonId@niveau`), entrée de la consolidation de la
    classe précédente (#723, #724) : les vues scopées excluent précisément ce qu'elle cherche. */
 export function loadCartesBrutes(): CartesBrutes {

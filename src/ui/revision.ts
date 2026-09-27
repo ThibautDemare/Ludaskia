@@ -550,7 +550,12 @@ function typeAideItem(it: RevItem): TypeAide | undefined {
 		case 'appariement':
 			return 'appariement';
 		case 'clicMot':
-			return 'clicMot';
+			// Le rendu branche déjà sur `it.segment` (cf. renderClicMot) : l'aide doit suivre,
+			// sinon l'enfant voit le widget à deux bornes et lit la notice de l'autre geste.
+			// Ce qu'ils ne partagent surtout pas, c'est la RÉPARATION — retoucher un mot le
+			// désélectionne d'un côté, repart d'une nouvelle borne de l'autre —, et c'est
+			// justement ce que cette aide existe pour rappeler des semaines plus tard.
+			return it.segment ? 'segmentMot' : 'clicMot';
 		default:
 			return undefined;
 	}

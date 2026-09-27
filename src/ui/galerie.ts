@@ -60,6 +60,16 @@ import { html, type SafeHtml, joindre, VIDE } from '../core/html';
    comparaison aux baselines soit stable. Valeur arbitraire (date de l'issue). */
 const SEED = 20260713;
 
+/* CONSÉQUENCE À CONNAÎTRE AVANT DE S'INQUIÉTER (#717) : toute la galerie tire dans UN SEUL
+   flux aléatoire, dans l'ordre du catalogue. Insérer une leçon consomme des tirages à sa
+   position et décale donc le flux pour TOUTES celles qui la suivent : leurs cartes montrent
+   un autre exemple, aussi valide, mais d'autres pixels. Ajouter une leçon de numération a
+   ainsi fait bouger 166 baselines sur 167, français compris — ce qui ressemble à une
+   régression globale et n'en est pas une. Symptômes qui le confirment : dimensions
+   INCHANGÉES, écarts répartis sur toutes les matières, et aucun changement dans le rendu
+   partagé. Ne pas chercher ailleurs, et ne pas « corriger » en graines par leçon sans
+   mesurer ce qu'on y gagne : la graine unique est ce qui rend la galerie reproductible. */
+
 /* Options de widget « inertes » : on ne joue pas la galerie, on ne fait que la
    RENDRE — `onState` est un no-op (aucun bouton « Vérifier » à (dé)activer). */
 const OPTS_INERTES: TuileOptions = { variant: 'lecon', onState: () => {} };

@@ -179,7 +179,7 @@ export const GRAMMAIRE_SUJET_LESSONS: LessonInput[] = [
 	},
 	{
 		id: 'fr-gram-accord-sujet-verbe',
-		label: 'L’accord du verbe avec le sujet',
+		label: "L'accord du verbe avec le sujet",
 		motsCles: ["qui fait l'action", 'terminaison du verbe', 'conjuguer avec le sujet'],
 		exerciseType: accordSujetVerbeType(),
 		etayage: [ETAYAGE_ACCORD_SUJET_VERBE],

@@ -18,7 +18,7 @@ import { html, type SafeHtml, joindre } from '../core/html';
    les écrans de résultats, entrée seule (mascotte-static), pas de boucle. */
 const ENCOURAGEMENTS = [
 	'Bravo pour tes efforts !',
-	'Tu t’entraînes super bien !',
+	"Tu t'entraînes super bien !",
 	'Continue, tu progresses !',
 	'Joli travail !',
 	'Bien joué !',

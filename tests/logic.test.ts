@@ -4026,7 +4026,7 @@ describe('vocabulaire — champs lexicaux (#114)', () => {
 		for (let i = 0; i < 500; i++) {
 			const ex = typeMots.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') continue;
-			if (ex.question.includes('n’appartient pas')) {
+			if (ex.question.includes("n'appartient pas")) {
 				// Intrus : aucune option (membres + intrus) n'est un mot ambigu.
 				for (const c of ex.choices) expect(ambigus.has(c), c).toBe(false);
 			} else {
@@ -4064,7 +4064,7 @@ describe('vocabulaire — champs lexicaux (#114)', () => {
 		for (let i = 0; i < 300; i++) {
 			const ex = type.generate({ mode: 'qcm' });
 			if (ex.type !== 'qcm') continue;
-			if (ex.question.includes('n’appartient pas')) intrus++;
+			if (ex.question.includes("n'appartient pas")) intrus++;
 			else definitions++;
 		}
 		expect(definitions).toBeGreaterThan(0);
@@ -4075,7 +4075,7 @@ describe('vocabulaire — champs lexicaux (#114)', () => {
 		const type = CHAMPS_LESSONS.find((l) => l.id === ID_MOTS)!.exerciseType;
 		for (let i = 0; i < 300; i++) {
 			const ex = type.generate({ mode: 'qcm' });
-			if (ex.type !== 'qcm' || !ex.question.includes('n’appartient pas')) continue;
+			if (ex.type !== 'qcm' || !ex.question.includes("n'appartient pas")) continue;
 			// Le champ visé est nommé dans l'énoncé ; l'intrus vient d'un autre champ.
 			const champVise = CHAMPS.find((c) => ex.question.includes(`« ${c.nom} »`))!;
 			expect(champVise).toBeTruthy();

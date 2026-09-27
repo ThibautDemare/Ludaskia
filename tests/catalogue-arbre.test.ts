@@ -492,7 +492,7 @@ describe('arbreCatalogue — recherche', () => {
    ce que #556 interdit explicitement partout ailleurs dans ce fichier. */
 describe('tronquerArbre', () => {
 	function leconFab(id: string): LeconArbre {
-		return { id, label: id, niveau: 'ce2' };
+		return { id, label: id, niveau: 'ce2', kind: 'lecon' }; // `kind` : typage seulement (#722)
 	}
 	function categorieFab(categoryId: string, n: number): CategorieArbre {
 		return {
@@ -626,7 +626,12 @@ describe('tronquerArbre', () => {
 
 		// Muter le résultat ne doit rien répercuter sur l'entrée : preuve que `categories`
 		// et `lecons` sont de nouvelles instances, pas des vues sur l'original.
-		r.arbre[0].categories[0].lecons.push({ id: 'intrus', label: 'intrus', niveau: 'ce2' });
+		r.arbre[0].categories[0].lecons.push({
+			id: 'intrus',
+			label: 'intrus',
+			niveau: 'ce2',
+			kind: 'lecon',
+		});
 		r.arbre[0].categories.push(categorieFab('intrus-cat', 1));
 
 		expect(entree[0].categories).toHaveLength(2);

@@ -545,6 +545,13 @@ pure](core.md)) pour les formats composites :
   `segment.ts` ci-dessus) qui borne les erreurs AVANT le regroupement
   (`filtrerErreursParPeriode`, `core/erreurs-journal.ts`), défaut adaptatif
   (`periodeParDefaut`) ; handler exporté `erreursClick`, routé par `progressionClick`.
+  **Prérequis de la classe précédente (#724)** : une ligne « Prérequis : <libellé> » par
+  exigence encore OUVERTE (`core/prerequis.ts:prerequisOuverts`, lue au niveau du profil
+  CONSULTÉ), travaillée ou non, ajoutée dans le corps du groupe (`prerequisGroupeHTML`) —
+  badge « classe d'origine » + bouton « Épingler »/« Retirer » qui vise le PRÉREQUIS, pas
+  la leçon du groupe. Signal « N prérequis à revoir » dans le `<summary>` (visible replié),
+  et phrase d'aide en tête de bloc, posée une seule fois, seulement si au moins un groupe en
+  porte un (cf. [Espace encadrant](espace-encadrant.md) pour le détail des infobulles).
 
 **Récap éphémère de fin de séance (#537)** — `recap-seance.ts` (hors des modules de
 section/runner ci-dessus), consommé par `session.ts` (bilans express/complet/
@@ -1432,6 +1439,12 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   relance à chaque caractère (utile à l'enfant qui regarde le clavier et valide sans
   relire), neutre (aucune couleur, ce n'est pas un verdict) et coupé sous
   `prefers-reduced-motion`.
+  **Appoint de la classe précédente (#724)** : `appointDuFiltre(f)` résout, pour le filtre
+  courant (aucun pour un favori, sélection explicite), l'ensemble des leçons fragiles via
+  `core/appoint-sprint.ts:fragilesSprint` ; `pickSprintDef` tente d'abord `tirerAppoint`
+  (probabilité bornée à 15 %, cf. [Logique pure](core.md)) avant la mini-série de matière
+  habituelle — une leçon d'appoint tirée sort donc de la série en cours sans la rompre,
+  celle-ci reprenant au tirage suivant.
 - **`session.ts`** (#349) — session d'exercice grille : vérification, saisie clavier,
   impression contextuelle (#40). Quatre exports :
   - **`verify()`** — **bloque d'abord** sur toute saisie non vide qui n'est pas un
@@ -1615,11 +1628,16 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   démonstration du moteur + le déroulé de ses pas (les deux fournis par
   **`moteurEtayage(exemple)`**, cf. `etayage-visuels.ts` ci-dessous) + une barre de
   progression + le renvoi à la **leçon prérequise** (`prerequisHTML`,
-  `core/etayage.ts:leconPrerequise` — jamais un lien de NAVIGATION, on ne propose pas
+  `core/etayage.ts:leconAvant` — jamais un lien de NAVIGATION, on ne propose pas
   à un enfant de quitter la série qu'il vient de commencer ; il peut en revanche la
   **mettre de côté** : `epinglerPrerequis` l'ajoute à la file « à revoir » du profil
   ACTIF via `toggleRevoirFor`, le même geste que l'épinglage de l'espace encadrant
   mais à l'initiative de l'enfant, cf. [Espace encadrant](espace-encadrant.md)).
+  **Depuis #724, `leconAvant` précède la règle de toujours** (`leconPrerequise`, la
+  précédente de catégorie) par un prérequis de la classe précédente encore OUVERT
+  (`core/prerequis.ts:prerequisOuverts`), travaillé ou non — nommé par son libellé de
+  SA classe, sans jamais dire laquelle à l'enfant (`niveauActifMatiere` fournit la
+  classe suivie, `loadCartesBrutes()` les cartes brutes).
   **`etayageDisponible(lesson, niveau, mode?)`** conditionne tout affichage — jamais
   sous chronomètre (sprint/express/complet, comme l'aide au geste), jamais sans
   entrée `etayagePour` pour la leçon. Sans contenu pour cette leçon, `ouvrirEtayage`

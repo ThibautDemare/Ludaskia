@@ -8,6 +8,13 @@ matière. L'**ordre pédagogique** des leçons (#208) y vit aussi, à plat :
 `core/ordre.ts`). Dossier `francais` sans cédille pour des chemins d'import ASCII
 portables ; le libellé affiché reste « Français ».
 
+Le même fichier porte aussi **`PREREQUIS`** (#724, exploité par `core/prerequis.ts`,
+cf. [Logique pure](core.md)) : quand une leçon **CM1-only** dépend d'une leçon **CE2-only**
+pour une raison étrangère à ce qu'elle enseigne (pas le simple prolongement d'une notion
+déjà couverte par la progression), l'y déclarer — un id, ou un groupe d'ids dont un seul
+suffit. Contrairement à `ORDRE_LECONS`, l'absence d'une leçon dans `PREREQUIS` n'est
+**jamais** une erreur : la plupart des leçons n'ont aucun prérequis inter-niveaux.
+
 > Les leçons sont regroupées ci-dessous par **Matière → Catégorie**. Le moteur
 > partagé (`core/`) et les runners (`ui/`) sont décrits dans
 > [Logique pure](core.md) et [Rendu & interactions](ui.md).

@@ -772,6 +772,34 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   épuisement de son programme (#484). `leconSuivante` = contournement « voir une autre
   leçon » (jamais de mur). Reste **distinct** de la révision espacée (avancer vers le
   neuf ↔ entretenir l'acquis) et du défi du jour.
+  **Classe précédente (#724)** : chaque file peut s'ouvrir sur une leçon d'en dessous
+  (`insertionsClassePrecedente`), lue dans les cartes BRUTES `bas` — 4e paramètre ajouté à
+  `sequenceLeconDuJour`/`leconDuJour`/`leconSuivante`, défaut `loadCartesBrutes()` — jamais
+  dans l'avancement qui ordonne les matières, ni dans le tour : seule la classe suivie
+  avance. Deux sources, **jamais cumulées** : (1) les **PRÉREQUIS** de la tête
+  (`core/prerequis.ts:prerequisOuverts`) déjà **travaillés** en dessous sans être franchis,
+  dans l'ordre pédagogique de leur classe — un prérequis jamais travaillé n'est jamais
+  inséré d'office (il se propose ailleurs, cf. `etayage.ts`/l'historique des erreurs) ;
+  (2) sinon l'**APPOINT** : la plus fragile des leçons commencées en dessous (même ensemble
+  et même tri que #723), une fois `APPOINT_SUIVIES_ENTRE_DEUX` (3) leçons de la classe
+  suivie **ACQUITTÉES** (franchies ou mises de côté) depuis le dernier **franchissement
+  daté** d'une leçon d'en dessous (`EtatReport.franchieLe`, cf. `report-lecon.ts`
+  ci-dessous) — et seulement tant qu'il reste au moins `APPOINT_SUIVIES_RESTANTES_MIN` (3)
+  leçons à franchir dans la classe suivie, sinon celle-ci garde la main en fin de
+  programme. Le franchissement d'un prérequis remet aussi ce compte à zéro : il tient lieu
+  de leçon d'en dessous pour sa fenêtre. Rien de tout ça ne verrouille (le report ordinaire
+  s'applique à une leçon d'en dessous mise de côté, « voir une autre leçon » y passe aussi).
+  *Rejet écrit* : le rythme « une classe suivie sur quatre » se **suspend**, sans jamais
+  remettre le compte à zéro, tant qu'**aucune** fragile n'est **proposable** (`find(proposable)`
+  renvoie `undefined` — les candidates identifiées sont toutes actuellement mises de côté) ;
+  « tant qu'il en reste » s'entend donc des fragiles proposables, pas de l'ensemble brut. Même
+  logique que la trêve de report de la leçon du jour (#485) et que le critère 5 des
+  prérequis (une exigence sans candidat proposable ne s'insère pas non plus).
+  *Checklist* : `stars`, `reports` et `bas` sont rechargés par CHAQUE appelant par défaut
+  (`loadStars()`/`loadLessonReports()`/`loadCartesBrutes()`) — l'accueil, à lui seul, en
+  déclenche plusieurs lectures indépendantes (leçon du jour, « à revoir », étayage). Négligeable
+  aujourd'hui (lecture `localStorage` synchrone, petit volume) ; à reprendre en chargeant une
+  fois par rendu d'accueil puis en injectant, si le catalogue grossit au point de le faire sentir.
   **`tourMatiereFait(subject, stars?, reports?)`** (#276, pure) répond à une question
   différente de `leconDuJour` : reste-t-il quelque chose à franchir dans **une seule**
   matière, à **son** niveau actif ? Même barre que le fil (`estFranchie` : étoilée OU
@@ -783,6 +811,30 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   faite). Consommée par `rewards.ts:gSnapshot` pour peupler `toursMatiere` — cf.
   [Gamification](gamification.md) et [Niveaux scolaires](niveaux-scolaires.md) pour la
   maille matière × niveau et le calcul en direct.
+- **`prerequis.ts`** (#724, pur) — lit la table **`PREREQUIS`** (`data/ordre-pedagogique.ts`,
+  `Record<id, ExigencePrerequis[]>`) : une leçon **CM1-only** associée à ses leçons
+  **CE2-only** prérequises, chaque exigence étant un id ou un groupe d'ids dont **un seul
+  suffit**. **`anomaliesPrerequis(table?)`** (vide = table saine, testée par
+  `tests/prerequis.test.ts`) valide la table : id inconnu (dépendante ou prérequis),
+  exigence vide, prérequis d'une autre matière, prérequis qui n'est pas d'une classe
+  **strictement inférieure** à la plus basse de la dépendante (écarte une leçon à deux
+  niveaux qui couvrirait déjà la classe de la dépendante), cycle dans le graphe
+  dépendante → prérequis (détecté indépendamment de la règle de niveau, pour qu'un
+  assouplissement futur ne le laisse pas passer). **`prerequisOuverts(lesson, niveauActif,
+  cartes)`** — une entrée par exigence dont **aucun** membre n'est franchi à SON niveau (le
+  niveau juste en dessous de `niveauActif`, `niveauInferieurImmediat`), triées dans l'ordre
+  pédagogique de ce niveau ; vide hors de la classe juste en dessous (au CM2, plus rien du
+  CE2) et pour une leçon absente de la table. Chaque entrée porte aussi `travaillee`
+  (au moins une question posée à ce niveau, tous modes) : c'est à l'appelant de filtrer.
+  **Trois consommateurs, qui n'en font pas le même usage** : `lecon-du-jour.ts` n'insère
+  qu'un prérequis DÉJÀ TRAVAILLÉ (cf. ci-dessus — l'insertion sur échec se déclencherait à
+  chaque échec sans prouver que le prérequis manque, 27/09/2026) ; `etayage.ts:leconAvant`
+  le nomme, travaillé ou non ; l'historique des erreurs (`ui/encadrant-erreurs.ts`, cf.
+  [Espace encadrant](espace-encadrant.md)) le signale au parent, travaillé ou non. Entrée
+  : toujours les cartes **BRUTES** (`CartesBrutes`, jamais une vue scopée qui exclurait
+  précisément ce qu'on cherche) — mêmes bornes d'extinction que la consolidation de la
+  classe précédente (#723) : un seul niveau d'écart, sortie définitive au franchissement
+  (`estFranchie`, monotone).
 - **`accueil-propositions.ts`** (#516) — arbitrage **pur** qui déduplique les deux
   cartes « à faire » de l'accueil, rendues indépendamment mais capables de proposer
   la MÊME leçon (une entrée épinglée « à revoir » n'est montrée que tant que la notion
@@ -804,9 +856,18 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   des deux cartes, pour que l'arbitrage s'énonce en un seul endroit.
 - **`report-lecon.ts`** (#485) — socle **pur** (sans stockage, même rôle que
   `maitrise.ts`) de l'avancement/report ci-dessus. `EtatReport {jours, dernierJour,
-  reporteLe, reprendreLe, meilleurPct}` : une entrée par leçon, créée au 1er essai en
-  mode leçon et vivant indéfiniment (structure bornée par le catalogue, aucune
-  rétention à gérer). **`estFranchie(etat, etoilee)`** teste étoile OU `meilleurPct ≥
+  reporteLe, reprendreLe, meilleurPct, franchieLe?}` : une entrée par leçon, créée au
+  1er essai en mode leçon et vivant indéfiniment (structure bornée par le catalogue,
+  aucune rétention à gérer). **`franchieLe`** (#724) date le **PREMIER** franchissement,
+  **jamais réécrite** ensuite : `apresEssaiLecon` ne la pose que si l'état n'était pas
+  déjà franchi avant l'essai (un franchissement legacy, antérieur à ce champ, reste sans
+  date plutôt que d'être daté du jour où on rejoue la leçon). Lue par
+  `lecon-du-jour.ts:insertionsClassePrecedente` pour ORDONNER les franchissements de la
+  classe précédente et doser son appoint : deux compteurs de progression ne suffisaient
+  pas à dater un franchissement, et une leçon à deux prérequis aurait sinon placé une CE2
+  juste derrière la CM1 qui vient d'être franchie (écart tracé par un commentaire daté du
+  27/09/2026 — la note de cadrage disait « pas d'état nouveau »).
+  **`estFranchie(etat, etoilee)`** teste étoile OU `meilleurPct ≥
   SEUIL_FRANCHIE` (= `SEUIL_REVOIR` de `maitrise.ts`, 70 % — un seul seuil de « plus
   besoin d'insister » réutilisé plutôt qu'un second qui aurait fallu maintenir en
   synchronisation). **`apresEssaiLecon(etat, pct, now, etoilee)`** (pure, appelée depuis
@@ -848,6 +909,25 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `perimetreChoisissable` dit si le choix a un sens. Consommé par `ui/sprint.ts`
   (sélecteur dans l'écran de config, options vides au périmètre courant désactivées) ;
   un favori (`lessons`) ignore le périmètre.
+- **`appoint-sprint.ts`** (#724, pur) — part **bornée** d'un sprint tirée dans les leçons
+  de la classe précédente **commencées sans être franchies** : l'ensemble et le tri de
+  `consolidationBasNiveau` (#723), restreints à ce que le sprint sait jouer
+  (`estEligibleSprintHorsNiveau`). **`PART_APPOINT_SPRINT_MAX`** (15 %) plafonne
+  **`partAppointSprint(k, n)`** = min(15 % ; k/(n+k)) : proportionnelle au nombre de
+  leçons fragiles `k` tant qu'il y en a peu (pour qu'une seule ne revienne pas une
+  question sur sept), plafonnée pour que le sprint reste celui de la classe suivie.
+  **`fragilesSprint(filtre, cartes)`** résout cet ensemble pour un filtre tout / matière /
+  catégorie, chaque matière lue à SON niveau actif. **`tirerAppoint(r, n, fragiles)`**
+  (`r` injecté, tirage testable par échantillon) renvoie une leçon d'appoint avec la
+  probabilité `partAppointSprint`, sinon `null`. Branché dans `ui/sprint.ts` :
+  `appointDuFiltre` résout `fragilesSprint` pour le filtre courant, sauf pour un
+  **favori** (sélection explicite de leçons, jamais touchée par l'appoint) ; `pickSprintDef`
+  tente l'appoint avant la mini-série de matière habituelle. Les questions d'appoint se
+  génèrent et se journalisent au niveau de STOCKAGE de la leçon (`niveauLecon`,
+  `recordLessonStats`), sans rien changer au chemin du sprint — y compris le **record**,
+  qui reste stocké à la classe active malgré cette dose de questions d'une autre classe
+  (*rejet écrit*, critère 19 de #724 : la dose est bornée à 15 %, le sprint reste celui du
+  catalogue de la classe suivie).
 - **`sprint-decompte.ts`** (#630, pur) — le **compte à rebours du sprint**, à
   PLUSIEURS causes de gel (`CauseGel = 'correction' | 'lecture'`) qui peuvent se
   chevaucher (écouter l'énoncé pendant qu'une correction est affichée) : un seul
@@ -1218,8 +1298,9 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   « non acquis », puis perf récente croissante (inconnue en dernier), puis ordre pédagogique.
   `nbTravaillees` compte les franchies aussi, pour distinguer « tout est réussi » de « rien
   n'a été fait ». Consommé par l'espace encadrant (`RecapProfil.classePrecedente`,
-  `encadrant-stats.ts`, cf. [Espace encadrant](espace-encadrant.md)) ; destiné aussi aux
-  canaux enfant de #724.
+  `encadrant-stats.ts`, cf. [Espace encadrant](espace-encadrant.md)) et, côté enfant, par
+  les mêmes fragiles que reprennent `lecon-du-jour.ts:insertionsClassePrecedente` et
+  `appoint-sprint.ts:fragilesSprint` (#724, ci-dessous).
 - **`progress.ts`** — records de bilans **scopés par niveau** (`recordRun` → `RunResult`
   `{rank, total, medal, isRecord}`,
   `cmpRun` « score puis temps », `loadRuns` = niveau actif / `loadRunsAll` = tous
@@ -1255,6 +1336,13 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   niveau actif (`Record<lessonId, EtatReport>`, comme `loadStars`), consommée par
   `lecon-du-jour.ts` et `rewards.ts:weakLessons`. Logique pure dans `report-lecon.ts`
   ci-dessus.
+  Les lecteurs du report d'un prérequis ou d'une leçon d'appoint (#724) ne passent pas
+  par cette vue scopée : ils lisent les cartes BRUTES ci-dessous, rangées à `@<classe>`.
+  **`loadCartesBrutes()`** / **`loadCartesBrutesFor(uuid)`**
+  (#724) renvoient les trois cartes BRUTES du profil `{stars, stats, reports}` (clés
+  `lessonId@niveau`, jamais scopées) qu'attendent `consolidationBasNiveau`,
+  `prerequisOuverts` et `fragilesSprint` (ci-dessus) — la seconde pour un profil DÉSIGNÉ
+  par UUID (espace encadrant, profil CONSULTÉ), consommée par `ui/encadrant-erreurs.ts`.
   **Mémoire de l'exemple d'avant-série** (#490, `ludaskia_etayageVu`) :
   **`loadEtayagesVus()`**/**`marquerEtayageVu(lessonId, episode)`** — namespacée par
   niveau comme `ludaskia_leconReport`, dont elle dépend (l'épisode mémorisé est
@@ -1406,7 +1494,15 @@ niveau, sans DOM ni stockage :
 
   Le module expose aussi **`leconPrerequise(lesson, niveau)`** — la leçon PRÉCÉDENTE de sa catégorie dans
   l'ordre pédagogique (`ordre.ts`/`getLessonsByCategory`, déjà trié) —, seul contenu
-  entièrement MÉCANISABLE, donc affichable même sans rien de rédigé. Enfin,
+  entièrement MÉCANISABLE, donc affichable même sans rien de rédigé.
+  **`leconAvant(lesson, niveau, niveauActif, cartes)`** (#724) précède cette règle par
+  défaut : un prérequis de la classe précédente encore OUVERT (`prerequisOuverts`,
+  `core/prerequis.ts` ci-dessus), travaillé ou non, passe devant la précédente de
+  catégorie — c'est la compétence qui manque, et le panneau est l'un des deux endroits (avec l'historique
+  des erreurs, cf. [Espace encadrant](espace-encadrant.md)) où il se PROPOSE, sans jamais
+  avoir été inséré d'office dans le fil de la leçon du jour. Le libellé nommé est celui de
+  SA classe (`niveau` renvoyé avec la leçon), sans jamais dire laquelle à l'enfant.
+  `leconPrerequise` reste le repli quand aucun prérequis n'est ouvert. Enfin,
   **`episodeEtayable(etat, now)`** identifie l'ÉPISODE de blocage dont l'enfant
   REVIENT (signature stable : l'horodatage `reporteLe` du report qui l'a ouvert, `0` =
   aucun) — un report ÉCHU (`reprendreLe` passé) signe le retour dans le fil, le

@@ -13,8 +13,8 @@ import { watchErrors, gotoHash, leconsDuNiveau } from './helpers';
 /* Deux leçons réelles du catalogue CE2 (labels tels que rendus par le
    catalogue — cf. `label` dans src/core/catalog.ts / src/data). */
 const LABEL_DUE = 'Je compare les nombres'; // num-comparer
-const LABEL_ACQUIS = 'Complément à 10/100/1000'; // math-complements
-const LABEL_MID = 'Doubles'; // math-doubles
+const LABEL_ACQUIS = 'Les compléments'; // math-complements
+const LABEL_MID = 'Les doubles'; // math-doubles
 
 /* Une entrée DUE (palier intermédiaire, échéance passée) et une entrée
    ACQUISE (palier maximal PALIER_ACQUIS = 6, sans échéance). Clé préfixée

@@ -110,7 +110,7 @@ test('écran #seance : tuile « À revoir » depuis une leçon épinglée, le cl
 
 	const tuile = page.locator('.programme-tuile[data-act="lancer"]').first();
 	await expect(tuile).toBeVisible();
-	await expect(tuile.locator('.programme-tuile-titre')).toHaveText('Complément à 10/100/1000');
+	await expect(tuile.locator('.programme-tuile-titre')).toHaveText('Les compléments');
 	await expect(tuile.locator('.programme-tuile-hint')).toHaveText('À revoir');
 	await tuile.click();
 

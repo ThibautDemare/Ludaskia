@@ -183,7 +183,7 @@ export const LESSONS = [
 	{
 		num: 5,
 		id: 'math-ajouter-9-19-29',
-		title: 'Ajouter 9, 19, 29 / 8, 18, 28',
+		title: 'Ajouter 9, 19, 29 (et 8, 18, 28)',
 		sub: 'Astuce : +9 = +10 puis -1 · +8 = +10 puis -2.',
 		consigne: "Calcule en utilisant l'astuce.",
 		build(ctx: RenderContext) {
@@ -348,7 +348,7 @@ export const LESSONS = [
 	{
 		num: 14,
 		id: 'math-multiplier-20-30-40',
-		title: 'Multiplier par 20, 30, 40',
+		title: 'Multiplier par 20, par 30, par 40',
 		sub: 'Astuce : je multiplie par le chiffre, puis par 10.',
 		consigne: 'Calcule.',
 		build(ctx: RenderContext) {
@@ -467,26 +467,11 @@ export function buildFiches() {
 /* ============================================================
    Bilans express (3 calculs par leçon)
    ============================================================ */
-export const THEMES: Record<number, string> = {
-	1: "Table d'addition",
-	2: 'Complément à 10/100/1000',
-	3: 'Doubles',
-	4: 'Moitiés',
-	5: 'Ajouter 9, 19...',
-	6: 'Soustraire 9, 19...',
-	7: 'Table de ×',
-	8: 'Moitié (pair)',
-	9: 'Multiples de 25',
-	10: 'Décompo. de 60',
-	11: 'Dizaines/centaines',
-	12: '× 10, × 100',
-	13: '× 4, × 8',
-	14: '× 20, 30, 40',
-	15: 'Décomposer',
-	// CM1 (#241)
-	16: 'Multiples de 50',
-	17: '÷ 10, ÷ 100',
-};
+/* Thème d'un bloc de bilan express = le TITRE de la leçon (#722 : un seul nom par leçon,
+   partout — la table de libellés courts qui vivait ici est partie avec ceux du catalogue). */
+export const THEMES: Record<number, string> = Object.fromEntries(
+	LESSONS_CALCUL_MENTAL.map((l) => [l.num, l.title]),
+);
 export function bilanQ(k: number): Item | undefined {
 	switch (k) {
 		case 1: {

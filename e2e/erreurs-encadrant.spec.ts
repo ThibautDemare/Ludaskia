@@ -351,8 +351,8 @@ test('tri des cartes-leçons : la plus ratée passe devant la plus récente (#51
 	// math-complements (3 erreurs, plus ancienne) EN TÊTE, devant math-doubles (1
 	// erreur, plus récente) : le volume prime sur la récence, qui ne départage plus
 	// qu'à égalité.
-	await expect(lecons.first().locator('.enc-err-lecon-lab')).toHaveText('Complément à 10/100/1000');
-	await expect(lecons.nth(1).locator('.enc-err-lecon-lab')).toHaveText('Doubles');
+	await expect(lecons.first().locator('.enc-err-lecon-lab')).toHaveText('Les compléments');
+	await expect(lecons.nth(1).locator('.enc-err-lecon-lab')).toHaveText('Les doubles');
 
 	expect(errors).toEqual([]);
 });

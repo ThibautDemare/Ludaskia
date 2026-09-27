@@ -13,7 +13,7 @@
        épingle hors classe doit ensuite apparaître sur l'accueil de l'enfant
        (carte « À revoir »), SANS aucune étiquette de niveau côté enfant
        (décision produit, comme la révision d'entretien #232).
-   Leçon choisie : `math-complements` (« Complément à 10/100/1000 »), CE2 SEULE
+   Leçon choisie : `math-complements` (« Les compléments »), CE2 SEULE
    (`levels: ['ce2']`, cf. `core/catalog.ts`) — hors classe pour un profil CM1,
    déjà utilisée par `programme-a-revoir.spec.ts` pour sa fiche de 12 items à
    verdict déterministe (`data-answer`).
@@ -27,7 +27,7 @@ import { test, expect } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
 
 const UUID = 'e2e-sel-lecon';
-const LABEL = 'Complément à 10/100/1000'; // math-complements
+const LABEL = 'Les compléments'; // math-complements
 
 /* Profil CM1 (toutes matières) : `math-complements` (CE2 seule) est donc une classe
    PRÉCÉDENTE — le scénario même de l'issue (#556 : proposer une notion d'un niveau
@@ -249,7 +249,7 @@ test('recherche du sélecteur : résultats plafonnés à 30, annonce différée,
 	const suite = selecteur.locator('[data-act="sel-plus"]');
 
 	// Sans recherche : l'arbre est replié, rien à borner — pas de bouton de suite.
-	await expect(resume).toHaveText(/^\d+ leçons? à choisir\.$/);
+	await expect(resume).toHaveText(/^\d+ leçons?( et dictées)? à choisir\.$/);
 	await expect(suite).toHaveCount(0);
 
 	// Recherche large (lettre courante, sûre de dépasser 30 résultats) : le résumé annonce

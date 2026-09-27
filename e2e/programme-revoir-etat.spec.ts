@@ -52,14 +52,14 @@ test('épinglées : une leçon jamais travaillée dans sa classe porte « à dé
 	const n = await resumes.count();
 	for (let i = 0; i < n; i++) await resumes.nth(i).click();
 
-	const ligne = page.locator('.enc-detail-item').filter({ hasText: 'Complément à 10/100/1000' });
+	const ligne = page.locator('.enc-detail-item').filter({ hasText: 'Les compléments' });
 	await expect(ligne).toBeVisible();
 	await ligne.locator('[data-act="epingler"]').click();
 
 	// Onglet Programme : la ligne épinglée porte un badge cohérent avec l'état réel
 	// (jamais travaillée -> « à découvrir »), pas d'absence de badge.
 	await page.locator('.enc-tab[data-tab="programme"]').click();
-	const epinglee = page.locator('.enc-revoir-item').filter({ hasText: 'Complément à 10/100/1000' });
+	const epinglee = page.locator('.enc-revoir-item').filter({ hasText: 'Les compléments' });
 	await expect(epinglee).toBeVisible();
 	// `toContainText`, pas `toHaveText` : le badge porte un préfixe `sr-only` (« Niveau : »)
 	// dans son texte, invisible mais présent dans le contenu textuel de l'élément.
@@ -77,7 +77,7 @@ test('épinglées : une leçon jamais travaillée dans sa classe porte « à dé
    consolidation d'une notion d'une classe précédente, le scénario même de #556. */
 const UUID_CM1 = 'e2e-revoir-etat-cm1';
 const LESSON_EN_DESSOUS_ID = 'math-complements';
-const LABEL_EN_DESSOUS = 'Complément à 10/100/1000';
+const LABEL_EN_DESSOUS = 'Les compléments';
 const SEED_CM1 = `localStorage.setItem('ludaskia_profiles', JSON.stringify({ list: [{ uuid: '${UUID_CM1}', name: 'Test', emoji: '🦊', updatedAt: 1, niveauReference: 'cm1' }], active: '${UUID_CM1}' }));`;
 const SEED_REVOIR_EN_DESSOUS = `localStorage.setItem('${UUID_CM1}/ludaskia_revoir', JSON.stringify(['${LESSON_EN_DESSOUS_ID}']));`;
 

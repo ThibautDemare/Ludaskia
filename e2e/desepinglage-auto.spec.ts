@@ -171,9 +171,7 @@ test('bloc « Retirées automatiquement » : motif « essai réussi » pour une 
 	await expect(hint).not.toContainText('maîtrise de nouveau');
 
 	// Contraste sur la MÊME liste : classe suivie → motif de maîtrise…
-	const ligneSuivie = page
-		.locator('.enc-revoir-item')
-		.filter({ hasText: 'Complément à 10/100/1000' });
+	const ligneSuivie = page.locator('.enc-revoir-item').filter({ hasText: 'Les compléments' });
 	await expect(ligneSuivie.locator('.enc-revoir-quand')).toHaveText(
 		"Retirée aujourd'hui, de nouveau maîtrisée",
 	);

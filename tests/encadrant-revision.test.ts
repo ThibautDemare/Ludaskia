@@ -304,17 +304,17 @@ describe('revisionProfil', () => {
 	it('trie parUrgence : plus en retard d’abord, futures ensuite, acquises en dernier ; égalité → alpha', () => {
 		const { recap, numLesson } = scenario(NOW);
 		// Attendu recalculé à la main par jours restants croissants (acquises rejetées en fin,
-		// classées entre elles alphabétiquement : « abricot » avant « Tables d'addition »).
+		// classées entre elles alphabétiquement : « abricot » avant « Les tables d'addition »).
 		expect(recap.parUrgence.map((e) => e.label)).toEqual([
 			'chateau', // -5
-			'Complément à 10/100/1000', // -2
-			'Doubles', // 0
+			'Les compléments', // -2
+			'Les doubles', // 0
 			'avion', // +2  (avion < zebre)
 			'zebre', // +2
-			'Moitiés', // +4
+			'Les moitiés', // +4
 			numLesson.label, // +10
 			'abricot', // acquis
-			"Tables d'addition", // acquis
+			"Les tables d'addition", // acquis
 		]);
 	});
 
@@ -583,11 +583,7 @@ describe('revisionProfil : vue par palier (#555)', () => {
 		// Palier 1 = 1 leçon (en retard de 2 j) + 2 mots (dans 2 j) : le retard d'abord,
 		// puis « avion » avant « zebre » à échéance égale. Les mots ne sont pas relégués
 		// après les leçons : l'étage est une file unique, comme la vue par urgence.
-		expect(etage1.entrees.map((e) => e.label)).toEqual([
-			'Complément à 10/100/1000',
-			'avion',
-			'zebre',
-		]);
+		expect(etage1.entrees.map((e) => e.label)).toEqual(['Les compléments', 'avion', 'zebre']);
 		expect(etage1.entrees.map((e) => e.nature)).toEqual(['lecon', 'mot', 'mot']);
 		// Et l'ordre relatif d'un étage est celui de la vue à plat, restreinte à cet étage.
 		const attendu = recap.parUrgence.filter((e) => e.palier === 1).map((e) => e.cle);

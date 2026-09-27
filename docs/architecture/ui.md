@@ -1452,6 +1452,21 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
     Pose enfin, sous chaque grille posée ratée, le lien d'étayage de la notion (#490,
     `poserLiensEtayagePosee`, cf. « Étayage de la notion » plus bas) — jamais sur un
     simple champ texte/numérique.
+    **Verdict annoncé au lecteur d'écran** (#717, `annoncerVerdict`) : valider une
+    fiche ne produisait jusque-là aucune annonce (les ✓/✗ et le bandeau sont posés
+    sans `aria-live`). Une région `role="status"` unique (`#verdictAnnonce`, créée
+    vide puis remplie au tour suivant) énonce une **synthèse**, pas un verdict par
+    champ (une fiche porte jusqu'à vingt réponses) : le score, les réponses **vides**
+    dites à part (`total` ne compte que les réponses données, cf.
+    [Accessibilité](../reference/accessibilite.md)), la présence de réponses révélées
+    et l'avertissement des 60 %. Le détail reste atteignable champ par champ :
+    chaque champ corrigé porte `aria-invalid`, et un champ faux relie sa marque
+    (`✗ → réponse`) par `aria-describedby`. La suite (modales de récompense,
+    `announceRewards`) est **chaînée après** l'annonce (`apresAnnonceVerdict`) plutôt
+    que simplement postposée dans l'ordre du code : `lockBackground`
+    (`ui/modal-a11y.ts`) rend `#sheets` `inert` dès l'ouverture d'une modale, ce qui
+    couperait la région vivante si l'annonce n'était pas déjà résolue — cf. la
+    checklist a11y correspondante dans [Accessibilité](../reference/accessibilite.md).
   - **`afficherAstuceReponseVide()`** (#467) — pose en tête de `#sheets` un message
     **découvrabilité** du droit de laisser une réponse vide (« Tu ne sais pas quoi
     répondre ? Tu peux laisser la réponse vide et continuer. ») : la fiche/le bilan en

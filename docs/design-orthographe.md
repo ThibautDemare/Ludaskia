@@ -540,8 +540,14 @@ directement le parcours (pas de choix).
 Depuis **#641**, un mode ciblé **valide comme le parcours complet** : la validation est
 **cumulative** (voir ci-dessous), donc une réussite y fait monter le mot, peut étoiler la
 liste et décrocher des trophées. Ce qu'un mode ciblé change encore : l'activité est
-**imposée** et le tour de piste passe sur **tous** les mots (jamais « fini » tant que la
-liste n'est pas acquise). L'écran répartit les modes en deux zones :
+**imposée**. Le tirage du mot (`indiceProchainMotCible`, `core/orthographe/runner.ts`)
+sert d'abord les mots que **ce mode** peut encore faire monter (`activiteProgressive`),
+en tournant depuis le curseur de la séance précédente ; une fois tous ces mots validés
+pour ce mode, il passe en **entretien** sur tous les mots (jamais « fini » tant que la
+liste n'est pas acquise). Avant ce tirage (jusqu'à septembre 2026), le tour repartait de
+l'indice 0 à chaque séance : sur une liste plus longue que la pause de séance
+(`SEANCE_MAX = 8`), les mêmes premiers mots — déjà validés — étaient resservis en boucle,
+les suivants n'étaient jamais atteints. L'écran répartit les modes en deux zones :
 - **zone principale** — ce qui reste à faire ;
 - **zone basse** (`.mode-choice-epuises`, toujours dépliée) — les modes **terminés pour
   cette liste** (tous les mots les ont validés), badge « Terminé pour cette liste · donne

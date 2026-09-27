@@ -126,6 +126,20 @@ C'est ce fichier qui porte les round-trips de correction ; `erreurs-encadrant.sp
 ne garde que l'**affichage** (regroupement, période, tri, dépliage) plus les deux
 scénarios hors couverture-par-format (seuil détaché, révision espacée).
 
+**Un format peut porter plusieurs entrées, une par GESTE distinct (#716).** Chaque
+`CouvertureFormat.entrees` est un TABLEAU depuis l'origine, pas une entrée unique : un
+même `type` d'`Exercise` peut être produit par deux mécaniques d'écran différentes, et
+c'est le cas depuis que « Repère le groupe nominal » (mode `segment`) partage le format
+`clicMot` avec les sept leçons « clique sur le mot » historiques (mode `clic`) sans en
+partager le geste — délimiter un bloc par ses deux bornes plutôt que cocher des mots un
+par un. Les deux tests paramétrés (`it.each(ENTREES)`) tournent déjà sur l'ensemble des
+entrées d'un format, donc rien à changer côté gate : une entrée de plus s'ajoute au
+tableau et suit le même contrôle que les autres. Ce qui en dépend, en revanche, c'est le
+gate de couverture des MODES (#598, ci-dessous) : il lit chaque `mode: '…'` de la table
+tel quel, donc un geste neuf réutilisant l'id de mode du geste historique serait réputé
+couvert par la spec de l'autre — c'est précisément pour l'éviter que l'id de mode d'un
+geste neuf doit être PROPRE (cf. [Contenu & leçons](contenu-et-lecons.md)).
+
 ### Voix des libellés : tu à l'enfant, vous à l'adulte (#586)
 
 `tests/voix-libelles-gate.test.ts` tient la part **mécanisable** de la convention #278

@@ -118,16 +118,25 @@ les 3 types en items QCM. Relue par l'agent pédagogue.
 
 catégorie **Grammaire**, brique d'interaction **« clique sur le mot »** : une phrase
 est rendue **mot par mot** et l'enfant sélectionne le(s) mot(s) répondant à la
-consigne. **7 leçons** partagent la mécanique (runner `ui/lecon-clic-mot.ts`, désormais
-**agnostique de la notation grammaticale ciblée**, cf. [Rendu & interactions](ui.md)).
+consigne — sauf pour une 8ᵉ leçon (#716) où il **délimite un segment** par ses deux
+bornes plutôt que de cocher des mots. **8 leçons** partagent la mécanique (runner
+`ui/lecon-clic-mot.ts`, désormais **agnostique de la notation grammaticale ciblée**,
+cf. [Rendu & interactions](ui.md)) et le format d'`Exercise` `type: 'clicMot'` ; seul
+le GESTE diffère pour la 8ᵉ, porté par le champ `segment?: boolean` de l'`Exercise`
+et par un mode d'id propre (`segment`, cf. `MODE_SEGMENT`) plutôt que le mode
+mono-leçon partagé par les sept autres (`MODE_CLIC`, id `clic`).
 
-**Famille de quatre modules + une entrée** depuis #530 (le fichier unique atteignait
+**Famille de cinq modules + une entrée** depuis #530 (le fichier unique atteignait
 1 964 lignes, le plus gros de `src/data/`) :
 
 - **`grammaire-clic-mot-moteur.ts`** — module **feuille** : modèle `PhraseClicMot`,
   tokenisation (`tokeniser`, `estPonctuation`, `joindrePhrase`), constructeurs à
-  garde-fou générique (`phrase`, `phraseMots`), énoncé de la cible (`cibleContigue`,
-  `libelleCible`), fabrique `clicMotType`/`itemClicMot`/`MODE_CLIC`, **et le
+  garde-fou générique (`phrase`, `phraseMots`, et depuis #716 **`phraseSegment`** —
+  cible un segment CONTIGU que l'enfant délimitera par ses deux bornes, drapeau
+  `segment: true` posé sur la `PhraseClicMot`), énoncé de la cible (`cibleContigue`,
+  `libelleCible`), fabrique `clicMotType`/`itemClicMot`/`MODE_CLIC`/**`MODE_SEGMENT`**
+  (#716, id de mode `segment` — **et non** l'id `clic` des sept autres, parce que
+  l'id de mode est la maille de couverture e2e, cf. [Tests](tests.md)), **et le
   VOCABULAIRE grammatical partagé entre classes** (`DET_SETS`, `PRON_SUJET`,
   `PRON_COMPL` et leurs variantes strictes, types `SousCatDet`/`RolePron`). Ce
   vocabulaire vit là parce que les garde-fous **CE2** se définissent sur les mêmes
@@ -140,12 +149,14 @@ consigne. **7 leçons** partagent la mécanique (runner `ui/lecon-clic-mot.ts`, 
   sous-catégories de déterminant, pronom sujet/complément, nom noyau, sujet.
 - **`grammaire-clic-mot-ce2.ts`** — les 4 natures CE2 (#436) : noms, déterminants,
   adjectif, pronom personnel sujet.
+- **`grammaire-groupe-nominal.ts`** (#716, CM1) — banque de **« Repère le groupe
+  nominal »**, seule du CM1, décrite avec les autres ci-dessous.
 - **`grammaire-clic-mot.ts`** — **entrée** de la famille : étayages, entrées de
   catalogue (`CLIC_MOT_LESSONS`) et **ré-export de l'API publique**. Le découpage est
   INTERNE : catalogue, UI et tests importent toujours d'ici. Aucune banque n'importe
   une autre banque (elles ne dépendent que du moteur).
 
-Les 7 leçons :
+Les 8 leçons :
 
 - **« Clique sur le verbe »** (`fr-gram-clic-verbe`, #259) — **CE2 + CM1**.
   `generate({level})` tire dans **`PHRASES_CE2`** (~47 phrases, temps simples → cible
@@ -173,13 +184,29 @@ Les 7 leçons :
 - **« Clique sur l'adjectif »** (`fr-gram-clic-adj`, #436, **CE2 seule**) — l'unique
   adjectif qualificatif de la phrase (`PHRASES_ADJ_CE2`, 60) ; participes passés
   adjectivaux et nationalités substantivables **exclus**.
+- **« Repère le groupe nominal »** (`fr-gram-groupe-nominal`, #716, **CM1 seule**) —
+  seule leçon de la famille à cibler un **SEGMENT** plutôt qu'un ensemble de mots :
+  l'enfant délimite par ses deux bornes le bloc Dét(+Adj)+Nom(+Adj) (widget dédié
+  `segment-mot-interaction.ts`, cf. [Rendu & interactions](ui.md)) au lieu de cocher
+  des mots un par un. Banque à part (`grammaire-groupe-nominal.ts`, 49 phrases,
+  fabrique `gn()` sur `phraseSegment`) : les trois patrons du programme CM1 §5.1
+  (Dét+Nom ; Dét+Nom+Adj ; Dét+Adj+Nom), déterminant **toujours** article/possessif/
+  démonstratif et jamais élidé (le tokeniseur collerait l'apostrophe au nom, rendant
+  le groupe indésignable en mots distincts), **aucune préposition** ne touche le
+  groupe (complément du nom, hors programme CM1), et une phrase à **deux** groupes
+  nominaux **nomme** celui qu'on attend (option `ancre` de `gn()`) — quatre
+  garde-fous qui lèvent à la construction de la banque plutôt qu'à sa relecture. Une
+  borne mal posée est diagnostiquée bord par bord, pas par un simple « c'est faux »
+  (`core/segment-bornes.ts:ecartBornes`, cf. [Logique pure](core.md)).
 - **« Clique sur le sujet »** (`fr-gram-clic-sujet`, #437, CM1) — noyau du groupe
   sujet, **sujet composé de deux noms propres compris** (« Paul et Léa » → cible
   double, en **sautant** « et », donc non adjacente).
 
-**Niveaux** : conjonction et sujet restent `['cm1']` (câblées après
+**Niveaux** : conjonction, groupe nominal et sujet restent `['cm1']` (câblées après
 `fr-gram-clic-verbe` dans `ORDRE_LECONS.francais.cm1`, ordre : déterminant →
-conjonction → pronom → nom noyau → sujet, la dernière synthétisant les précédentes) ;
+conjonction → pronom → **groupe nominal** → nom noyau → sujet — le groupe nominal
+avant son noyau : l'étayage du nom noyau suppose déjà une frontière de groupe tracée,
+que rien n'apprenait avant #716) ;
 déterminant, pronom et nom sont `['ce2', 'cm1']` et l'adjectif `['ce2']`. Au CE2
 (`ORDRE_LECONS.francais.ce2`), l'ordre est **déterminant → nom → adjectif →
 `fr-gram-clic-verbe` → pronom sujet** : le déterminant sert de repère pour trouver le
@@ -194,7 +221,7 @@ groupes nominaux, donc plusieurs noms et déterminants. Le runner corrigeait dé
 ensemble non adjacent (sujet composé, ni…ni).
 
 **Modèle de données** : chaque phrase est autorée (texte + mot(s)-cible) via l'une de
-deux fabriques, puis **tokenisée** (mots + ponctuation) — l'ensemble des indices-cibles
+trois fabriques, puis **tokenisée** (mots + ponctuation) — l'ensemble des indices-cibles
 est **calculé une fois à la construction** de la banque, jamais recalculé par le
 runner :
 
@@ -206,6 +233,13 @@ runner :
   chaque mot doit apparaître **exactement** autant de fois qu'il est listé dans
   `cibles` (répéter un mot dans `cibles` en cible **toutes** ses occurrences — cas
   « ni », « ni »).
+- **`phraseSegment(texte, groupe, opts)`** (#716) — cible un **segment contigu** que
+  l'enfant délimitera par ses deux bornes plutôt que de cocher des mots ; pose le
+  drapeau `segment: true` sur la `PhraseClicMot` (consommé par le runner pour choisir
+  son widget, cf. [Rendu & interactions](ui.md)). Même garde-fou d'unicité que
+  `phrase` : le groupe doit apparaître **exactement une fois** dans le texte. Seule
+  consommatrice : `grammaire-groupe-nominal.ts` (via sa propre fabrique `gn()`, qui
+  ajoute les garde-fous pédagogiques du programme CM1 §5.1, cf. ci-dessus).
 
 **Énoncer une cible de plusieurs mots** : le module **ré-exporte** `enumererFr` de
 `core/utils` (« a », « a et b », « a, b et c ») — une seule implémentation dans l'app, pas
@@ -230,9 +264,13 @@ d'adjectifs de la banque et aucun mot de même radical (adverbe en `-ment`) ; po
 pronom, un seul pronom sujet et **aucun** pronom complément ni `il` impersonnel.
 
 **Fabriques d'`ExerciseType`** : `clicVerbeType()` (verbe, CE2+CM1) et la fabrique
-**générique** `clicMotType({banque, consigne, cibleLabel?, levels?, ce2?})` (#437,
-#436) — paramétrise les leçons de natures sans dupliquer la mécanique (`levels` par
-défaut `['cm1']`). **`ce2`** (`VarianteClicMot` : banque + consigne + `cibleLabel`)
+**générique** `clicMotType({banque, consigne, cibleLabel?, levels?, ce2?, modes?})`
+(#437, #436) — paramétrise les leçons de natures sans dupliquer la mécanique (`levels`
+par défaut `['cm1']`). **`modes`** (#716) vaut `MODE_CLIC` par défaut (id `clic`,
+partagé par les sept natures au geste historique) ; le groupe nominal, seul, le
+surcharge par `MODE_SEGMENT` (id `segment`) — l'id de mode étant la maille de la
+couverture e2e (cf. [Tests](tests.md)), un geste neuf servi sous l'id du geste
+historique n'aurait réclamé aucune spec. **`ce2`** (`VarianteClicMot` : banque + consigne + `cibleLabel`)
 porte la variante CE2 d'une leçon servie aux deux niveaux ; `generate` choisit la variante
 en résolvant `opts.level` par **`closestSupported`** (le mécanisme du moteur — repli vers le
 bas puis clamp, comme `effectiveLevel`/`labelLecon`), avec **repli sur le plus bas niveau
@@ -260,11 +298,15 @@ attendus séparés par des espaces, des virgules ou « et », et **à la casse p
 « chien gamelle » au lieu de « chien et gamelle », ou « le et sa » là où la phrase ouvrait
 sur « Le », n'est pas une erreur de grammaire.
 
-Garde-fous pédagogiques communs aux 7 leçons (une seule réponse indiscutable par
+Garde-fous pédagogiques communs aux 8 leçons (une seule réponse indiscutable par
 phrase — l'**ensemble** des mots quand la cible est plurielle, lexique/longueur du
 niveau, interdits d'ambiguïté propres à chaque nature — homographes/homophones exclus,
-documentés en tête de chaque section de banque dans le fichier) : arrêtés en 2025, relus
-par l'agent pédagogue et le rédacteur FR.
+documentés en tête de chaque section de banque dans le fichier) : arrêtés en 2025 pour
+les sept premières, relus par l'agent pédagogue et le rédacteur FR ; le groupe nominal
+(#716, 2026) ajoute ses propres garde-fous de construction, documentés en tête de
+`grammaire-groupe-nominal.ts` (cf. ci-dessus) et écartés par le rédacteur langue sur un
+point : pas de plafond chiffré à la densité lexicale d'une banque (cf. [Conventions
+rédactionnelles](conventions-redaction.md)).
 
 #### `francais/phrases.ts` (#204, CM1 #245)
 

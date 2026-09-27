@@ -575,3 +575,25 @@ part : il traduit en « acquise », « maîtrisée » ou « commencée » selon 
 c'est la franchise elle-même qu'il faut dire au parent, écrire « réussie en faisant la leçon
 complète », ou « réussi » quand la phrase d'aide voisine l'a déjà expliqué. Ce n'est pas
 « acquise » : une leçon franchie sans étoile n'est pas « acquise » sur l'échelle de maîtrise.
+
+## Une infobulle reprend le qualificatif déjà employé pour le même état, jamais une paraphrase (#724)
+
+Quand deux endroits de l'interface exposent la même situation sous une forme voisine (deux
+badges, deux lignes d'épingle), leur infobulle emploie le **même qualificatif** plutôt que
+d'en varier la formulation : un mot différent laisse croire à un état différent, même quand
+la phrase autour le dément. Cas posé par les prérequis de la classe précédente signalés dans
+l'historique des erreurs (#724, `ui/encadrant-erreurs.ts`) : l'infobulle d'un prérequis déjà
+épinglé reprend mot pour mot « épinglée volontairement », déjà celui de l'infobulle d'une
+épingle hors classe suivie (`ui/encadrant-progression.ts`) — le même état (une leçon hors de
+la classe suivie, remise en jeu par un geste explicite de l'adulte) se dit de la même façon,
+qu'on l'atteigne depuis « À revoir ensemble » ou depuis l'historique des erreurs.
+
+## Une infobulle de badge décrit l'état présent, jamais sa durée de vie (#724)
+
+Une infobulle attachée à un badge d'état dit ce qui est vrai **maintenant** (« épinglée, elle
+revient sur l'accueil ») ; elle ne s'engage pas sur combien de temps ça le restera. Cas posé
+par #724 : l'infobulle d'un prérequis épinglé aurait pu ajouter « … jusqu'à ce qu'elle soit
+réussie » — vrai, mais l'extinction au franchissement est un **comportement d'architecture**
+(`estFranchie`, cf. [Logique pure](core.md)), pas une promesse à documenter dans l'UI. Une
+mécanique qui change (le seuil, la condition de sortie) ne doit pas obliger à rouvrir un
+libellé qui ne la décrivait pas.

@@ -650,6 +650,32 @@ catalogue ou liste de dictée** (#424) — peut être **épinglé** depuis ce bl
 l'action n'est **masquée** que si l'id ne résout ni l'une ni l'autre (groupe orphelin, cible
 disparue).
 
+**Prérequis de la classe précédente (#724)** : quand la leçon d'un groupe a, dans la table
+`PREREQUIS` (`data/ordre-pedagogique.ts`), un prérequis de la classe précédente encore
+OUVERT (`core/prerequis.ts:prerequisOuverts`, lu au niveau suivi par le profil CONSULTÉ),
+une ligne « Prérequis : <libellé> » s'ajoute dans le **corps** du groupe — avant la liste
+d'erreurs, comme l'action « Épingler » plus bas — que ce prérequis ait été **travaillé ou
+non** : c'est ici (et dans le panneau d'étayage, cf. [Rendu & interactions](ui.md)) qu'un
+prérequis jamais travaillé se propose, faute d'être jamais inséré d'office dans le fil de
+l'enfant. Chaque ligne porte le **badge « classe d'origine »** (même composant que pour une
+épingle hors classe, ci-dessus), avec une infobulle **propre** à cet état — « Leçon d'une
+classe précédente. Épinglez-la pour qu'elle revienne sur l'accueil de l'enfant. » tant
+qu'elle ne l'est pas, « … épinglée volontairement : elle revient sur l'accueil de
+l'enfant. » une fois épinglée (même qualificatif que l'infobulle d'une épingle hors classe,
+pour que le même état se dise de la même façon) — et un **bouton « Épingler »/« Retirer »
+qui agit sur le PRÉREQUIS**, pas sur la leçon du groupe : deux leçons de classes
+différentes peuvent être homonymes, d'où la classe portée par le nom accessible du bouton.
+Le résumé replié du groupe porte en plus un **signal** « N prérequis à revoir »
+(`.enc-err-prerequis-sig`), pour qu'un parent qui ne déplie pas le `<details>` ne le
+manque pas. Une **phrase d'aide** s'ajoute en tête du bloc entier, expliquant le mot
+« Prérequis », **une seule fois** et seulement si au moins un groupe en porte un — répétée
+sur chaque groupe, elle noierait les erreurs.
+
+*Rejet écrit* : aucun nouveau couple de couleurs pour `.enc-err-prerequis`/
+`.enc-err-prerequis-sig` — ils reprennent le texte `--grey`, et le contraste comme la cible
+tactile du bouton voisin viennent de `.enc-btn-sec`/`.enc-classe-origine`, déjà tenus par
+`tests/contraste-tokens.test.ts` (cf. [Tests](tests.md)).
+
 **Filtre de période** (#476) : un sélecteur à quatre segments (`Aujourd'hui` / `2 jours` /
 `1 semaine` / `Tout`, `data-act="erreurs-periode"`, handler exporté `erreursClick` et routé
 depuis `progressionClick` puisque c'est cette section qui insère le bloc) — composant

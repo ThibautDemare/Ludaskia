@@ -57,8 +57,9 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
   pas encore **franchies** (`estFranchie`, sortie à sens unique — cf. [Espace
   encadrant](espace-encadrant.md)). Entrée : les cartes brutes du profil, jamais la
   vue scopée à la classe active, qui exclut précisément ce qu'on cherche ici.
-  Nourrit `RecapProfil.classePrecedente` (`core/encadrant-stats.ts`) et, plus tard,
-  les canaux enfant de #724 (pas encore livrés).
+  Nourrit `RecapProfil.classePrecedente` (`core/encadrant-stats.ts`) et, côté enfant,
+  l'appoint de la classe précédente dans le fil de la leçon du jour et dans le sprint
+  (#724, cf. [Logique pure](core.md) : `core/prerequis.ts`, `core/appoint-sprint.ts`).
 
 ## Ce qu'une leçon multi-niveaux décline par classe (#436)
 
@@ -204,18 +205,23 @@ record de sprint » reste, lui, scopé au niveau actif (pas un trophée).
 **UI** — popup de **choix de classe** (`ui/onboarding.ts`, choix forcé, déclenchée si
 `besoinChoixNiveau()`), filtrage catalogue/sprint par `niveauActifMatiere`, **réglage
 parent** par matière (`ui/preferences.ts`), compteur d'accueil (cumul + objectif
-scopé), badge « déjà maîtrisée en \<classe\> » (`etoileAuxNiveaux`). **V1 = niveau
-actif seul dans les pools de tirage** (sprint/révision), toujours vrai aujourd'hui — le
-**mélange biaisé vers le bas** de ces pools reste une piste (cf. [Piste
-d'évolution](pistes-d-evolution.md)). L'**entretien du niveau inférieur en révision
-espacée**, lui, est sorti de cette piste : livré (#232, cf. [Logique pure](core.md)).
+scopé), badge « déjà maîtrisée en \<classe\> » (`etoileAuxNiveaux`). **Pools de
+tirage** : le sprint reste construit sur le niveau actif de chaque matière, mais y
+ajoute désormais un **appoint borné** (au plus 15 %, proportionnel au nombre de
+leçons fragiles) tiré dans les leçons commencées sans être franchies de la classe
+précédente (`core/appoint-sprint.ts`, #724, cf. [Logique pure](core.md)) — c'est la
+livraison du **mélange biaisé vers le bas** envisagé comme piste V2. La révision
+espacée, elle, reste scopée au niveau actif pour la génération, à l'exception de
+l'**entretien du niveau inférieur**, livré séparément (#232, cf. [Logique
+pure](core.md)).
 
 **Exception côté ADULTE (#556)** : le sélecteur de leçon de l'espace encadrant
 (`core/catalogue-arbre.ts`/`ui/selecteur-lecon.ts`, cf. [Espace
 encadrant](espace-encadrant.md)) ne filtre PAS par défaut sur le niveau — il expose tout le
 catalogue, la classe devenant un filtre parmi d'autres (barre de jetons) plutôt qu'une
 frontière. Ce renversement reste réservé à l'adulte qui DÉSIGNE une leçon précise : les
-pools de tirage de l'enfant ci-dessus (sprint/révision) restent scopés à sa classe.
+pools de tirage de l'enfant ci-dessus (sprint/révision) restent scopés à sa classe, hormis
+l'appoint borné du sprint décrit plus haut (#724).
 
 **L'exception s'étend aux dictées de mots depuis #722** : le sélecteur adulte porte aussi
 les dictées prédéfinies et les listes du parent (groupe « Dictées de mots »), avec la MÊME
@@ -228,8 +234,10 @@ passe toujours, n'étant jamais taguée par niveau.
 **Deuxième lecture adulte hors de la classe suivie (#723)** : ce que l'enfant a
 commencé sans le finir dans la classe **juste en dessous** de celle qu'il suit
 ressort côté encadrant, borné à un seul niveau d'écart — cf. « Classe précédente
-encore en cours » dans [Espace encadrant](espace-encadrant.md). Les canaux côté
-enfant restent hors périmètre, objet de #724.
+encore en cours » dans [Espace encadrant](espace-encadrant.md). **Les canaux côté
+enfant sont livrés par #724** : insertion dans le fil de la leçon du jour et appoint
+du sprint (ci-dessus), renvoi dans le panneau d'étayage, et signal dans l'historique
+des erreurs (cf. [Logique pure](core.md) et [Espace encadrant](espace-encadrant.md)).
 
 **La recherche de leçon côté ENFANT (#718, `core/recherche-lecon.ts`) n'entre pas dans
 cette exception** : le niveau y reste une FRONTIÈRE, exactement comme le catalogue

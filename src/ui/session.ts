@@ -84,7 +84,55 @@ function regleRomaineHTML(item: Item | undefined, saisie: string): SafeHtml {
    déjà pleine n'est pas annoncée de façon fiable, c'est le changement qui l'est. */
 const ID_VERDICT_SR = 'verdictAnnonce';
 
-function annoncerVerdict(ok: number, total: number, avecErreurs: boolean): void {
+/* Délai de référence du dépôt pour le patron « région vivante créée puis remplie »
+   (`selecteur-lecon.ts`, `encadrant-banque.ts`). On garde le même chiffre plutôt que d'en
+   inventer un troisième : aucun des trois n'est issu d'une mesure sur un moteur vocal
+   réel, donc la cohérence est le seul argument disponible. */
+const DELAI_ANNONCE = 350;
+
+/* Enchaînement APRÈS l'annonce. `verify()` continue en synchrone jusqu'à `announceRewards`,
+   qui ouvre une modale — et `lockBackground` (`ui/modal-a11y.ts`) rend alors `inert` tous
+   les frères de l'overlay, `#sheets` compris. Le commentaire de ce fichier l'écrit
+   déjà : une région vivante présente à l'ouverture est inertée, donc rendue MUETTE. Sans
+   ce chaînage, la synthèse disparaîtrait exactement dans le cas le plus flatteur — un
+   sans-faute qui déclenche une étoile ou un niveau (constat relecteur-accessibilite). */
+let annonceVerdictFaite: Promise<void> = Promise.resolve();
+
+function apresAnnonceVerdict(suite: () => void): void {
+	void annonceVerdictFaite.then(suite);
+}
+
+/* Annonce du VERDICT au lecteur d'écran (relecture a11y #717).
+
+   Jusqu'ici, valider une fiche ne produisait aucune annonce : ni juste/faux, ni score, ni
+   réponse révélée. Les ✓/✗ et le bandeau de résultat sont posés dans le DOM sans
+   `aria-live`, donc un enfant au lecteur d'écran validait et n'entendait rien. Le bon
+   patron existait pourtant vingt lignes plus bas (`signalerSaisiesIllisibles`), raisonné en
+   détail ; il n'avait simplement jamais été appliqué au verdict lui-même.
+
+   UNE synthèse, pas un verdict par champ : une fiche porte jusqu'à vingt réponses, et
+   vingt annonces à la suite seraient pires que le silence. Le détail reste atteignable en
+   revenant sur chaque champ (`aria-invalid`, et `aria-describedby` vers la réponse révélée).
+
+   Ce qu'elle dit, et pourquoi chaque morceau y est :
+   - le score, mais `total` ne compte QUE les réponses données (`core/scoring.ts`). « 5 bonnes
+     réponses sur 5 » quand cinq champs sont restés vides s'entendrait comme un sans-faute :
+     les vides sont donc dits à part, comme le bandeau visuel le fait déjà ;
+   - l'avertissement des 60 %, sans quoi un enfant sous le seuil entend son score sans
+     apprendre qu'il ne compte pas — le voyant, lui, voit le pictogramme.
+   REJET ÉCRIT : le pourcentage, le temps et la série restent HORS de la synthèse. C'est de
+   l'habillage, pas une information qui change ce que l'enfant doit faire ensuite, et une
+   phrase parlée se paie à l'écoute. Ne pas les y ajouter « pour être complet ».
+
+   `role="status"` et non `alert` : le verdict est attendu, l'enfant vient de le demander.
+   Une alerte interromprait la lecture en cours pour annoncer ce qu'on attendait déjà. */
+function annoncerVerdict(
+	ok: number,
+	total: number,
+	vides: number,
+	avecErreurs: boolean,
+	notEnough: boolean,
+): void {
 	let region = document.getElementById(ID_VERDICT_SR);
 	if (!region) {
 		region = document.createElement('p');
@@ -96,18 +144,24 @@ function annoncerVerdict(ok: number, total: number, avecErreurs: boolean): void 
 		document.getElementById('sheets')?.prepend(region);
 	}
 	const cible = region;
-	const pluriel = ok > 1 ? 's' : '';
+	const s = (n: number) => (n > 1 ? 's' : '');
 	const phrase =
-		total > 0
-			? `${ok} bonne${pluriel} réponse${pluriel} sur ${total}.` +
-				(avecErreurs ? ' Les réponses attendues sont affichées à côté des réponses fausses.' : '')
-			: "Aucune réponse n'a été donnée.";
+		(total > 0
+			? `${ok} bonne${s(ok)} réponse${s(ok)} sur ${total}.`
+			: "Aucune réponse n'a été donnée.") +
+		(vides > 0 ? ` Il reste ${vides} réponse${s(vides)} vide${s(vides)}.` : '') +
+		(avecErreurs ? ' Les réponses attendues sont affichées à côté des réponses fausses.' : '') +
+		(notEnough ? ' Cet essai ne compte pas : il faut répondre à au moins 60 % des calculs.' : '');
 	// Vidée d'abord : deux fiches de suite au même score produiraient sinon un texte
 	// identique, et un contenu inchangé n'est pas re-annoncé.
 	cible.textContent = '';
-	setTimeout(() => {
-		cible.textContent = phrase;
-	}, 60);
+	annonceVerdictFaite = new Promise<void>((resolve) => {
+		setTimeout(() => {
+			cible.textContent = phrase;
+			// La suite (modales de récompense) attend un tour de plus : elle inerte `#sheets`.
+			setTimeout(resolve, DELAI_ANNONCE);
+		}, DELAI_ANNONCE);
+	});
 }
 
 /* ---------- Vérification (arrête le chrono) ---------- */
@@ -193,13 +247,22 @@ export function verify() {
 				// Mise en forme partagée (#501) : le nombre révélé s'écrit comme dans les énoncés
 				// (groupé, virgule française) ; une bande déjà rédigée en ressort intacte.
 				const revelee = formatReponseRevelee(inp.dataset.attendue ?? inp.dataset.answer ?? '');
+				// La réponse révélée RATTACHÉE au champ (relecture a11y #717) : la marque suit bien
+				// l'input dans l'ordre du document, mais le parcours que l'application encourage est
+				// Tab de champ en champ — et en mode formulaire, un lecteur d'écran saute le texte
+				// statique interposé. Sans ce lien, l'enfant apprend que son champ est faux sans
+				// jamais entendre ce qui était attendu. Aucune collision avec
+				// `signalerSaisiesIllisibles`, qui pose aussi `aria-describedby` : elle sort de
+				// `verify()` AVANT cette boucle (`return` sur `aCorriger.length`), les deux ne se
+				// posent donc jamais sur le même champ au même moment.
+				mark.id = `${inp.id}-mark`;
+				inp.setAttribute('aria-describedby', mark.id);
 				mark.innerHTML =
 					html`✗ <span class="sol">→ ${revelee}</span>${regleRomaineHTML(sessionItems[inp.id], inp.value)}`.balisage;
 			}
 		}
 	});
 	setLastErrors(errors);
-	annoncerVerdict(ok, total, errors.length > 0);
 	// Étayage de la notion (#490) : à côté de chaque grille posée ratée, l'offre d'expliquer
 	// LE calcul qui vient d'être raté. Proposé, jamais imposé ni automatique — un affichage
 	// systématique s'apprendrait à ignorer par réflexe. Sans contenu pour la leçon, rien ne
@@ -212,6 +275,8 @@ export function verify() {
 	const recordable = currentMode && currentMode !== 'revision';
 	const enough = inputs.length > 0 && total >= inputs.length * 0.6;
 	const notEnough = recordable && !enough && !getSessionRecorded();
+	// Après `notEnough` : la synthèse parlée doit pouvoir le dire (cf. `annoncerVerdict`).
+	annoncerVerdict(ok, total, vides, errors.length > 0, !!notEnough);
 	// Enregistrement de l'essai (une seule fois par session)
 	// → bilan complet/express : enregistré (régularité, trophées) mais non classé
 	// → leçon seule : étoile si sans-faute
@@ -389,7 +454,7 @@ export function verify() {
 	// Récompenses : modale explicite (+ confettis) pour qu'on sache ce qu'on a gagné.
 	// Le passage de niveau a sa modale dédiée ; s'il y a aussi d'autres récompenses,
 	// on les enchaîne à la fermeture de la modale de niveau.
-	announceRewards(niveauGagne, recompensesNiv, celeb);
+	apresAnnonceVerdict(() => announceRewards(niveauGagne, recompensesNiv, celeb));
 	// petit rappel dans la barre
 	const sc = document.getElementById('score')!;
 	sc.classList.remove('hidden');
@@ -527,6 +592,10 @@ export function initSession() {
 			marked = t.closest('.heure-input')?.querySelector<HTMLElement>('.heure-h') ?? null;
 		if (marked) {
 			marked.classList.remove('correct', 'wrong');
+			// Le verdict s'efface AUSSI pour les technologies d'assistance : sans ça, le champ
+			// resterait annoncé « invalide » et décrit par une marque devenue vide.
+			marked.removeAttribute('aria-invalid');
+			marked.removeAttribute('aria-describedby');
 			const mark = document.querySelector<HTMLElement>(`.mark[data-for="${marked.id}"]`);
 			if (mark) {
 				mark.className = 'mark';

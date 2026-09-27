@@ -150,9 +150,7 @@
 /* Champ d'écriture romaine (#717) : les sept signes, en capitales. Chiffres tabulaires
    et interlettrage aéré — « MMMCMXCIX » se relit signe par signe, et c'est justement ce
    que l'enfant doit pouvoir faire pour se corriger. Plus étroit qu'un champ de
-   conjugaison (9 signes au maximum). La mise en majuscules est faite sur la VALEUR par
-   ui/session.ts ; `text-transform` n'est pas posé ici, il ferait croire que c'est réglé
-   alors qu'il ne change que l'affiché. */
+   conjugaison (9 signes au maximum). */
 .ans-romain {
 	/* Largeur et taille en unités RELATIVES, comme `.ans-grand` juste au-dessus et pour la
 	   même raison : ce champ n'existe que pour se relire signe par signe, donc il doit

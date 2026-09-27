@@ -208,6 +208,14 @@ catalogue, la classe devenant un filtre parmi d'autres (barre de jetons) plutôt
 frontière. Ce renversement reste réservé à l'adulte qui DÉSIGNE une leçon précise : les
 pools de tirage de l'enfant ci-dessus (sprint/révision) restent scopés à sa classe.
 
+**L'exception s'étend aux dictées de mots depuis #722** : le sélecteur adulte porte aussi
+les dictées prédéfinies et les listes du parent (groupe « Dictées de mots »), avec la MÊME
+opposition jeton / frontière que pour les leçons, mais une règle de niveau distincte pour
+une dictée prédéfinie (`dicteeSousFiltre`, `core/catalogue-arbre.ts`) : sous « Sa classe »,
+CUMULATIF (#243, ce que l'enfant voit — un CM1 garde les listes CE2) ; sous un jeton de
+classe précis, cette classe SEULE (`levels.includes`, comme une leçon). Une liste du parent
+passe toujours, n'étant jamais taguée par niveau.
+
 **La recherche de leçon côté ENFANT (#718, `core/recherche-lecon.ts`) n'entre pas dans
 cette exception** : le niveau y reste une FRONTIÈRE, exactement comme le catalogue
 parcouru à la main — une leçon hors du niveau actif de SA matière reste introuvable,

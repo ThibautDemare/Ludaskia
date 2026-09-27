@@ -487,3 +487,35 @@ rend rien trouvable de plus qu'une recherche sur le seul titre.
 « Les mots de sens proche » CE2 / CM1) — même notion à deux paliers jamais visibles au
 même niveau, que le libellé affiché distingue déjà. Le gate n'exige donc **pas**
 l'unicité des mots-clés, et ce n'est pas à re-remonter.
+
+## Une reprise anaphorique doit couvrir TOUTES les natures introduites par « ou » (#722)
+
+Quand une phrase introduit deux natures coordonnées par « ou » (« une leçon **ou** une
+dictée de mots »), toute reprise plus loin dans la même phrase (« ce choix », « celle-ci »)
+doit encore couvrir les DEUX, pas la seule première nommée. Cas corrigé : le sélecteur de
+leçon partagé proposant désormais aussi des dictées de mots (#722), la phrase d'aide qui
+l'introduit disait « Choisissez n'importe quelle leçon du catalogue ou dictée de mots… seule
+**cette leçon** est proposée » — la reprise oubliait la dictée pourtant nommée juste avant.
+Réécrite « … seul **ce choix** est proposé » (`ui/encadrant-progression.ts`), qui redevient
+vrai pour les deux natures sans les renommer.
+
+## Pas de « / » pour dire « ou » dans un libellé de leçon de maths : ambigu avec la division (#722)
+
+Un « / » entre deux valeurs, dans une leçon de calcul, se lit d'abord comme une division —
+le symbole porte déjà ce sens ailleurs dans la même catégorie. L'employer pour dire « ou »
+(« Ajouter 9, 19, 29 / 8, 18, 28 », en tête de leçon de calcul mental) fait lire un instant
+« neuf, dix-neuf, vingt-neuf divisé par huit… » avant de comprendre qu'il s'agit de deux
+séries distinctes. Réécrite « Ajouter 9, 19, 29 (et 8, 18, 28) » (`core/catalog.ts` /
+`core/lessons.ts`, gate d'égalité `tests/libelle-affiche.test.ts`, cf. [Tests](tests.md)) :
+la parenthèse ne laisse aucune place à un symbole d'opération.
+
+## Liste de nombres après une préposition : la répéter devant chacun, sans mélange (#722)
+
+Une préposition qui introduit une liste de nombres (« par 20, 30, 40 ») ne se pose qu'une
+fois par défaut en français, mais un enfant qui décroche en cours de lecture (ou une
+synthèse vocale qui marque une pause) peut alors détacher le dernier nombre de la série et
+le lire seul, hors de la préposition. La répéter devant CHAQUE nombre lève l'ambiguïté, à
+condition de ne jamais la mélanger avec l'ellipse dans la MÊME famille de leçons (les deux
+graphies cohabitant selon la leçon lue le jour même se liraient comme deux règles). Cas
+corrigé : « Multiplier par 20, 30, 40 » devenu « Multiplier par 20, par 30, par 40 »
+(`core/catalog.ts` / `core/lessons.ts`, même gate que ci-dessus).

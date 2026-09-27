@@ -854,39 +854,55 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   #718 : deux copies du même regroupement auraient fini par diverger sans que rien ne
   rougisse). Ne trie pas : l'appelant fournit déjà la liste dans l'ordre pédagogique
   (`trierParOrdre`/`getLessonsByCategory`). Stable, sans mutation.
-- **`libelle-affiche.ts`** (#718, pur) — **`libelleAffiche(lesson, niveau)`** : le
-  libellé qu'un enfant lit RÉELLEMENT sur sa carte — le `title` de `core/lessons.ts`
-  pour les 17 leçons de calcul mental du moteur historique (l'écran de catégorie
-  l'affiche à la place du `label` du catalogue, ex. « Multiplier par 4, par 8 » contre
-  « × 4, × 8 »), sinon `labelLecon` (#436, résolu au niveau). Seul point qui répond à
-  « voilà ce que l'enfant lit » : `ui/catalog-nav.ts` (titre de carte) ET
-  `recherche-lecon.ts` l'appellent tous deux, pour que ce que la recherche indexe soit,
-  par construction, ce que l'enfant a sous les yeux. **Rejet écrit** : `renderCategorie`
-  (`catalog-nav.ts`) cherche déjà `LESSONS_CALCUL_MENTAL.find(id)` pour le numéro de la
-  carte, et `libelleAffiche` refait la même recherche linéaire sur les 17 entrées —
-  doublon assumé (coût négligeable sur 17 entrées), pas de raison de complexifier l'API
-  pure pour le partager.
+- **`libelle-affiche.ts`** (#718, révisé #722, pur) — **`libelleAffiche(lesson, niveau)`** :
+  le libellé qu'un enfant lit RÉELLEMENT sur sa carte. Jusqu'à #722, deux noms
+  coexistaient pour les 17 leçons de calcul mental du moteur historique : le `label`
+  court du catalogue (« × 4, × 8 »), affiché partout ailleurs, et le `title` de
+  `core/lessons.ts` (« Multiplier par 4, par 8 »), que seul l'écran de catégorie
+  montrait — une recherche indexée sur le premier ratait ce que l'enfant avait sous les
+  yeux. Depuis #722 (option 1 du mainteneur : **un seul nom par leçon**), le `label` du
+  catalogue **EST** ce `title` (les 17 `label` de `core/catalog.ts` reprennent
+  désormais les titres de `core/lessons.ts`), et la fonction devient une pure
+  **identité** sur `labelLecon` (#436, résolu au niveau) : plus de cas particulier
+  calcul mental à résoudre ici. `tests/libelle-affiche.test.ts` **tient l'égalité comme
+  un gate** (cf. [Tests](tests.md)) — une leçon dont le catalogue et `lessons.ts`
+  diraient deux choses fait échouer `npm test`. Reste le seul point qui répond à
+  « voilà ce que l'enfant lit » : `ui/catalog-nav.ts` (titre de carte),
+  `recherche-lecon.ts` ET le sélecteur adulte (`catalogue-arbre.ts`, ci-dessous)
+  l'appellent tous, pour garder un seul endroit à corriger si un libellé d'affichage
+  devait un jour diverger à nouveau du catalogue.
 - **`recherche-lecon.ts`** (#718, pur) — **`rechercherLecons(requete, source)`** : la
   recherche de leçon côté ENFANT de l'écran des matières (cf. [Modes &
   navigation](modes-et-navigation.md), [Rendu & interactions](ui.md)). Sous-chaîne sur
-  `cleRecherche` (ci-dessus), inactive sous **`RECHERCHE_MIN`** (2) caractères. Quatre
-  partis pris DIFFÉRENTS du sélecteur adulte (`catalogue-arbre.ts`, #556, ci-dessous),
-  qui reste inchangé : le niveau est une FRONTIÈRE et non un filtre
-  (`source.niveau(subject)`, cf. [Niveaux scolaires](niveaux-scolaires.md)) ; le texte
+  `cleRecherche` (ci-dessus), inactive sous **`RECHERCHE_MIN`** (2) caractères. Le texte
   cherché est le libellé AFFICHÉ (`libelleAffiche` ci-dessus) plus les **mots-clés** de
-  la leçon, jamais le seul `label` ; une catégorie qui correspond (nom ou mot-clé) est un
-  RÉSULTAT à part entière qui ouvre son écran, sans entraîner ses leçons ; les dictées de
-  mots (pas des `LessonDef`) sont cherchées par leur nom, déjà filtrées au niveau par
-  l'appelant. Les leçons trouvées sont groupées par catégorie, dans l'ordre de l'ÉCRAN de
-  la catégorie (`ordreEcran` ci-dessus). Pur : ni DOM ni stockage — le texte tapé et le
-  débounce d'annonce vivent côté UI (`ui/recherche-lecon.ts`, cf. [Rendu &
+  la leçon ET de sa catégorie, jamais le seul `label` ; les dictées de mots (pas des
+  `LessonDef`) sont cherchées par leur nom, déjà filtrées au niveau par l'appelant
+  (cumulatif, #243). Les leçons trouvées sont groupées par catégorie, dans l'ordre de
+  l'ÉCRAN de la catégorie (`ordreEcran` ci-dessus). Pur : ni DOM ni stockage — le texte
+  tapé et le débounce d'annonce vivent côté UI (`ui/recherche-lecon.ts`, cf. [Rendu &
   interactions](ui.md)).
+
+  **Depuis #722, le sélecteur adulte (`catalogue-arbre.ts`, ci-dessous) reprend ces
+  mêmes règles de recherche** (même normalisation, mêmes mots-clés, même libellé
+  affiché) — avant #722 il cherchait selon des règles propres, désormais unifiées.
+  **Deux différences SEULEMENT subsistent** (documentées dans l'en-tête de
+  `catalogue-arbre.ts`, pas ici pour éviter que les deux s'éloignent encore) : le
+  niveau reste une FRONTIÈRE côté enfant contre un FILTRE côté adulte ; et une
+  catégorie qui correspond est ici un RÉSULTAT à part entière qui ouvre son écran SANS
+  entraîner ses leçons (« conjug » ne doit pas aligner 55 boutons, critère 5), quand le
+  sélecteur adulte, lui, les entraîne toutes (l'arbre EST le résultat, il n'a rien
+  d'équivalent à une « carte de catégorie » seule à proposer).
 
 ## Contenu maths & génération de fiches/bilans
 
 - **`lessons.ts`** — contenu **maths** : `LESSONS` (15 leçons CE2 constructibles
   isolément), `LESSONS_CM1` (leçons CM1, #241), `LESSONS_CALCUL_MENTAL` (lookup combiné
-  CE2+CM1 pour le rendu par `id`), `bilanQ` (générateur réutilisé par le catalogue). La
+  CE2+CM1 pour le rendu par `id`), `bilanQ` (générateur réutilisé par le catalogue).
+  **`THEMES`** (bilans express, libellé de chaque thème par numéro `bilanQ`) est
+  **dérivé** de `LESSONS_CALCUL_MENTAL.map(l => l.title)` : depuis #722 (un seul nom par
+  leçon, cf. `libelle-affiche.ts` ci-dessus), ce `title` **est** le `label` du catalogue,
+  donc `THEMES` ne peut plus diverger de ce que l'enfant lit ailleurs. La
   **fiche imprimable** (`build()`) et la **génération interactive** (`bilanQ`,
   sprint/bilan) doivent tirer dans les **mêmes plages** — c'est `bilanQ` qui pilote
   l'anti-répétition de l'entraînement. Quand une plage n'est pas une simple borne
@@ -1714,17 +1730,45 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   contenu** (dérivé de `availableLevels`, jamais d'une liste de classes en dur), dédupliqué
   seulement pour un profil MONO-niveau (sinon « Sa classe » et un jeton nommé diraient tous
   deux « CM1 » alors que retirer ce dernier rendrait le CE2 d'une autre matière
-  inatteignable). La classe D'ORIGINE d'une leçon pour un profil (`origineLecon`), elle,
-  reste dans `encadrant-stats.ts` ci-dessous : l'y déplacer créerait un cycle d'imports
-  entre les deux modules. **`tronquerArbre(arbre, limite)`** (#571) borne un arbre déjà
-  construit aux `limite` premières leçons, dans l'ordre où il les présente, et renvoie à
-  part le nombre laissé de côté (`restant`) ; catégories et matières vidées par la borne ne
-  sont pas rendues, et `total` est recalculé sur ce qui reste — le compte affiché doit
-  décrire ce qu'on voit, pas ce que la recherche a trouvé. Réservé à l'usage **sous
+  inatteignable). **Rejet écrit** : un profil MONO-niveau n'a donc aucun jeton pour sa
+  propre classe (règle de dédoublonnage ci-dessus) — pas de vue « prédéfinies de ma classe
+  seule » possible pour lui, remonté puis écarté : « Sa classe » montre déjà ce que
+  l'enfant voit, ce jeton n'ajouterait rien. La classe D'ORIGINE d'une leçon pour un profil
+  (`origineLecon`), elle, reste dans `encadrant-stats.ts` ci-dessous : l'y déplacer créerait
+  un cycle d'imports entre les deux modules. **`tronquerArbre(arbre, limite)`** (#571) borne
+  un arbre déjà construit aux `limite` premières leçons, dans l'ordre où il les présente, et
+  renvoie à part le nombre laissé de côté (`restant`) ; catégories et matières vidées par la
+  borne ne sont pas rendues, et `total` est recalculé sur ce qui reste — le compte affiché
+  doit décrire ce qu'on voit, pas ce que la recherche a trouvé. Réservé à l'usage **sous
   recherche** du sélecteur (`ui/selecteur-lecon.ts`, ci-dessous), où l'arbre est déplié
   d'office et chaque leçon rendue est un bouton dans l'ordre de tabulation (SC 2.4.1, même
   motif que la banque de mots) : hors recherche, les groupes restent repliés et rien n'a
   besoin d'être borné. `limite <= 0` vaut « pas de borne ».
+
+  **Depuis #722, la recherche du sélecteur est celle de l'enfant** (`recherche-lecon.ts`
+  ci-dessus) : même normalisation, mêmes MOTS-CLÉS des leçons ET des catégories, même
+  libellé cherché et affiché (`libelleAffiche`). Ce qui reste propre à l'adulte : une
+  catégorie qui correspond ENTRAÎNE toutes ses leçons (l'arbre est le résultat, pas de
+  « carte de catégorie » seule à proposer) — cf. `recherche-lecon.ts` ci-dessus pour le
+  détail des deux différences qui subsistent, volontairement, entre les deux recherches.
+
+  **Dictées de mots (#722)** : `opts.dictees` (type `DicteeArbreEntree {id, label,
+  source, niveau?}`, fourni par l'appelant, non filtré) ajoute un groupe **« Dictées de
+  mots »** (`DICTEES_ARBRE_ID`/`DICTEES_ARBRE_LABEL`, PAS une catégorie du catalogue —
+  son id ne doit jamais être résolu comme tel) sous Français, à la place qu'occupe
+  Orthographe dans `CATEGORIES` (juste après, qu'elle soit retenue ou non par le filtre
+  courant). **Rejet écrit** : les 9 leçons d'Orthographe passent donc avant ce groupe dès
+  qu'un mot-clé de la catégorie matche, et le premier écran de 30 lignes (`tronquerArbre`
+  ci-dessus) peut n'en montrer que 21 — remonté puis écarté, « Afficher la suite » suffit,
+  on n'altère pas l'ordre du catalogue pour une recherche. Chaque ligne porte
+  `LeconArbre.kind: 'lecon' | 'dictee'` (le consommateur choisit le geste d'après ce
+  champ — épingler sous `ortho:` + id, transformer une étape en « dictée » — le sélecteur
+  ne le sait pas). Filtre de niveau d'une dictée (`dicteeSousFiltre`) : une liste du
+  parent passe toujours (jamais taguée) ; une dictée PRÉDÉFINIE sous « Sa classe » suit la
+  règle **cumulative** de l'enfant (#243, un CM1 garde les listes CE2), sous un jeton de
+  classe précis elle est filtrée à **cette classe seule** (`levels.includes`, comme les
+  leçons). `LeconOrthoRef.niveau?` (`core/orthographe/lessons.ts`) porte la classe d'une
+  prédéfinie ; absent pour une liste du parent.
 - **`encadrant-stats.ts`** (#234, pur) — lecture de la progression **par UUID sans
   bascule** (`progressionProfil`, `niveauProfilMatiere`) ; réexporte l'échelle de maîtrise
   (`niveauNotion`/`tendanceNotion`, définie dans `maitrise.ts`) pour les imports

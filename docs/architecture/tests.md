@@ -1190,3 +1190,20 @@ rédactionnelles](conventions-redaction.md), pas mécanisable) ; qu'il apporte q
 chose (un mot-clé qui recopie le libellé passe le gate sans rendre rien de plus
 trouvable) ; rien sur les dictées de mots, qui ne sont pas des leçons du catalogue et
 sont cherchées par leur nom.
+
+### Gate d'égalité label/titre du calcul mental (#722)
+
+`tests/libelle-affiche.test.ts` tient « un seul nom par leçon » (option 1 du mainteneur,
+cf. [Logique pure](core.md) pour `libelle-affiche.ts`) : jusqu'à #722, les 17 leçons de
+calcul mental du moteur historique portaient deux noms — le `label` court de
+`core/catalog.ts` (affiché partout hors l'écran de catégorie) et le `title` de
+`core/lessons.ts` (affiché là, et seulement là). Une recherche indexée sur le premier
+ratait ce que l'enfant avait sous les yeux (critère 3 de #718). Le gate parcourt
+`LESSONS_CALCUL_MENTAL`, vérifie que les 17 `id` existent au catalogue, et surtout que
+`label` et `title` sont désormais **identiques** pour chacune — écrit AVANT le module
+(la prémisse inverse, « ils doivent différer », était l'ancien test).
+
+**Ce qu'il ne prouve pas** : que le nom retenu est le bon (choix de rédaction, hors
+mécanisable) ; rien sur le reste du catalogue, où `libelleAffiche` n'a jamais eu ce
+cas particulier à résoudre (couvert par un second `describe`, sans gate — juste la
+non-régression de `labelLecon`/#436).

@@ -731,6 +731,15 @@ sprint/révision) restent strictement scopés à sa classe, ce sélecteur ouvre 
 catalogue : le niveau y redevient un FILTRE (barre de jetons « Sa classe » / par classe,
 recherche) plutôt qu'une frontière.
 
+**Depuis #722, ce sélecteur cherche comme l'enfant** (recherche de leçon de l'écran des
+matières, #718) : mêmes mots-clés, même libellé cherché et affiché — taper « fois » ou
+« conjug » y retrouve la même chose que sur l'écran de l'enfant. Il porte aussi les
+**dictées de mots** du profil consulté, prédéfinies et listes du parent, dans un groupe
+« Dictées de mots » sous Français, juste après Orthographe : l'adulte y trouve une dictée
+par son nom exactement comme une leçon, sans changer d'écran. Seule différence assumée
+avec la recherche enfant : une catégorie qui correspond ENTRAÎNE ici toutes ses leçons
+(l'arbre EST le résultat), quand l'enfant reçoit la catégorie seule.
+
 **Trois régimes d'affichage**, selon d'où vient la cible retenue par rapport à la classe
 suivie par le profil pour la matière de la leçon (`core/encadrant-stats.ts:origineLecon` →
 `OrigineLecon {niveau, direction}`, cf. [Logique pure](core.md)) :
@@ -852,6 +861,13 @@ action de ligne — tout le catalogue, y compris les classes que l'enfant ne sui
 COEXISTE avec l'épinglage inline des « Notions par catégorie » et du signal « reste un point
 dur » ci-dessus, qui reste le geste naturel quand on vient de lire l'état d'une notion DÉJÀ
 au programme de la classe suivie : les deux écrivent la même file `ludaskia_revoir`.
+
+**Une dictée s'épingle depuis ce même sélecteur (#722)** : le groupe « Dictées de mots »
+de l'arbre porte le même bouton « Épingler », qui écrit l'entrée sous son id de file
+préfixé `ortho:` — comme le bouton d'épingle d'une ligne du bloc « Dictées » ci-dessus
+(cf. « À revoir » → carte d'accueil, plus bas, pour le préfixe). Les deux boutons
+épinglent donc la même dictée dans la même file, l'un depuis son suivi, l'autre en la
+cherchant par son nom parmi tout le catalogue.
 
 Une troisième sous-section, **« Retirées automatiquement »** (#465,
 `retraitsAutoProfil(profile, now)`), rappelle les entrées que la purge vient de retirer —
@@ -1021,7 +1037,16 @@ cases cochées : un pool de trois dictées dont deux ont depuis été supprimée
 « Une seule dictée : toujours celle-ci. », et quand plus aucune n'est atteignable le
 repère reprend le patron de l'étape « leçon » sans cible (« Tant qu'aucune dictée cochée
 n'est disponible, cette activité n'apparaîtra pas dans le programme. »). L'étape et ses
-cases restent affichées dans tous les cas, c'est là qu'on la répare. Une étape **« une leçon précise »
+cases restent affichées dans tous les cas, c'est là qu'on la répare.
+
+**Filtre à la frappe du pool de dictées (#722)**, quand la liste à cases s'allonge : un
+champ au-dessus filtre les lignes par leur nom, sur la même règle d'accents/casse que le
+sélecteur de leçon. Une case **cochée reste toujours visible et cochable**, quel que soit
+le filtre — filtrer ne doit jamais ni cacher une cible ni en décocher une. L'état du
+filtre est retenu par étape (posé par profil, programme et étape) : il ne se réinitialise
+pas au fil des autres actions de la carte.
+
+Une étape **« une leçon précise »
 (#556)** cible, elle, TOUT le catalogue via le sélecteur de leçon partagé (cf. « Assigner
 une leçon d'une autre classe » plus haut, et [Rendu & interactions](ui.md)) : elle NAÎT
 sans cible (aucune présélection, ce serait poser une consigne que l'adulte n'a pas donnée)
@@ -1032,8 +1057,20 @@ dictée devenue sans cible atteignable rejoint la même exclusion du décompte e
 (même fonction `etapeConfiguree`, à qui le composeur fournit les ids des dictées
 réellement proposables au profil consulté, #657). Une
 fois une cible retenue, elle est affichée seule sur la ligne, avec le badge « classe
-d'origine » si elle vient d'une autre classe que celle suivie. Une étape **« À revoir »
-(#464)** n'a rien à configurer : sa cible est la file épinglée du profil (ci-dessus) — un
+d'origine » si elle vient d'une autre classe que celle suivie.
+
+**Choisir une dictée dans ce sélecteur transforme l'étape (#722)** : depuis que le
+sélecteur de leçon porte aussi les dictées de mots (cf. « Assigner une leçon d'une autre
+classe » plus haut), le retenir sur une dictée plutôt qu'une leçon fait basculer l'étape
+« une leçon précise » en étape « **Une dictée** », avec cette seule dictée cochée dans son
+pool — plutôt que de refuser le choix ou de l'ignorer. L'adulte cherchait une cible par son
+nom, peu importe si le catalogue la range en leçon ou en dictée ; rien d'autre ne change
+(nombre de fois, place dans le programme). Ce changement de NATURE de l'étape est en plus
+**annoncé** (« Cette activité devient « Une dictée » : « … » cochée. ») dans une région
+live propre à sa ligne : le focus, posé sur la case de la nouvelle dictée, ne dit rien à la
+voix de ce qui vient d'arriver à l'étape elle-même.
+
+Une étape **« À revoir » (#464)** n'a rien à configurer : sa cible est la file épinglée du profil (ci-dessus) — un
 repère (« rien n'est épinglé » / « ce sera celle-ci » / « une au hasard ») prévient
 l'adulte si elle restera invisible tant que rien n'est épinglé. **Choix assumé** : cette
 étape **s'ajoute** à la carte d'accueil « à revoir », elle ne la remplace pas — deux

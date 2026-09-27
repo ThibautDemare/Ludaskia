@@ -48,7 +48,7 @@ test('ecrire : remplir le champ avec l’écriture romaine attendue (data-answer
 	expect(errors).toEqual([]);
 });
 
-test('ecrire : taper en minuscules affiche des MAJUSCULES dans le champ, et reste compté juste (arbitrage mainteneur)', async ({
+test('ecrire : taper en minuscules reste compté juste, et la forme affichée reste en majuscules (arbitrage mainteneur, relecture a11y #717)', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
@@ -57,16 +57,28 @@ test('ecrire : taper en minuscules affiche des MAJUSCULES dans le champ, et rest
 	await field.waitFor();
 	const answer = await field.getAttribute('data-answer');
 	expect(answer).toMatch(/^[IVXLCDM]+$/);
+	const saisie = (answer ?? '').toLowerCase();
 	// Frappe réelle (pressSequentially) plutôt que `fill()` : elle déclenche l'évènement
-	// `input` à CHAQUE caractère, celui qu'écoute le forçage de casse (ui/session.ts). Un
-	// `fill()` pose la valeur finale d'un coup et ne prouverait rien sur la frappe elle-même.
+	// `input` à CHAQUE caractère — celui que forçait autrefois la casse. On veut prouver
+	// qu'il n'y a plus rien qui intercepte cet évènement sur ce champ, pas seulement que
+	// la valeur finale est correcte.
 	await field.focus();
-	await field.pressSequentially((answer ?? '').toLowerCase());
-	// La VALEUR soumise, pas le rendu visuel : un `text-transform: uppercase` en CSS
-	// afficherait des majuscules sans changer ce qui part à la correction — exactement le
-	// défaut que cet arbitrage (JS, pas CSS) doit empêcher. `inputValue()` lit la vraie
-	// valeur du champ, pas son affichage.
-	expect(await field.inputValue()).toBe(answer);
+	await field.pressSequentially(saisie);
+	// Négatif — et c'est lui qui attrape la régression : la VALEUR soumise n'est plus
+	// réécrite sous l'enfant. C'est exactement ce que réintroduirait un futur forçage JS
+	// de la casse (le défaut corrigé par la relecture a11y #717 : ça casse les claviers à
+	// composition, prédiction/correction automatique, sur les tablettes ciblées).
+	expect(await field.inputValue()).toBe(saisie);
+	// Le rendu VISUEL, lui, reste en majuscules — l'exigence pédagogique n'a pas bougé :
+	// l'enfant voit la forme conventionnelle se former sous ses doigts. Sans capture
+	// d'écran/OCR, le seul canal observable ici est le style calculé qui porte cette
+	// transformation. Assertion consciente de figer le MÉCANISME actuel (CSS
+	// `text-transform`, cf. sheets.scss) plutôt que la seule exigence : si un jour ce
+	// mécanisme change pour un autre moyen de montrer la majuscule à l'écran, cette
+	// ligne devra changer avec lui — contrairement à celle du dessus (valeur non
+	// réécrite), qui doit rester vraie quel que soit ce moyen.
+	const transform = await field.evaluate((el) => getComputedStyle(el).textTransform);
+	expect(transform).toBe('uppercase');
 	await page.locator('#btnVerify').click();
 	await expect(page.locator('.mark.correct').first()).toBeVisible();
 	expect(errors).toEqual([]);
@@ -103,6 +115,46 @@ test('critère 5 : une écriture fausse mais licite marque faux et NOMME la règ
 	const regle = mark.locator('.regle-romaine');
 	await expect(regle).toBeVisible();
 	expect((await regle.innerText()).trim().length).toBeGreaterThan(0);
+	expect(errors).toEqual([]);
+});
+
+test('la validation annonce le verdict (région vivante) et pose aria-invalid sur les champs corrigés (relecture a11y #717)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'lecon-num-chiffres-romains');
+	const fields = page.locator('.ans-romain');
+	await fields.first().waitFor();
+	// Au moins une bonne (data-answer) et une fausse (« IIII », toujours fausse quel que
+	// soit l'item — même raisonnement que le test « critère 5 » juste au-dessus) : sans
+	// ça, l'annonce se réduirait au cas homogène (tout juste OU tout faux), qui ne dirait
+	// rien sur les DEUX valeurs possibles d'aria-invalid.
+	const bonneReponse = fields.first();
+	const answer = await bonneReponse.getAttribute('data-answer');
+	expect(answer).toMatch(/^[IVXLCDM]+$/);
+	await bonneReponse.fill(answer ?? '');
+	const mauvaiseReponse = fields.nth(1);
+	await mauvaiseReponse.fill('IIII');
+	// Champs restants volontairement laissés vides (non répondu ≠ faux, cf. critère 5).
+	await page.locator('#btnVerify').click();
+	const correctCount = await page.locator('.mark.correct').count();
+	const wrongCount = await page.locator('.mark.wrong').count();
+	expect(correctCount).toBeGreaterThanOrEqual(1);
+	expect(wrongCount).toBeGreaterThanOrEqual(1);
+	const total = correctCount + wrongCount;
+	// La région existe, elle est bien un statut (pas une alerte, cf. commentaire de
+	// `annoncerVerdict` dans ui/session.ts), et se REMPLIT au tour suivant (elle est créée
+	// vide) : `expect(...).toHaveText` interroge à nouveau tant que ça ne matche pas, ce
+	// qui tient compte de ce délai sans `waitForTimeout` figé.
+	const region = page.locator('#verdictAnnonce');
+	await expect(region).toHaveAttribute('role', 'status');
+	// Les deux comptes (bonnes réponses / total répondu) se retrouvent dans l'annonce —
+	// pas la phrase entière : c'est le DÉCOMPTE qui est l'exigence, pas son habillage.
+	await expect(region).toHaveText(new RegExp(`\\b${correctCount}\\b[\\s\\S]*\\b${total}\\b`));
+	await expect(bonneReponse).toHaveAttribute('aria-invalid', 'false');
+	await expect(mauvaiseReponse).toHaveAttribute('aria-invalid', 'true');
+	// Un champ resté vide n'est ni juste ni faux : rien à annoncer dessus non plus.
+	expect(await fields.nth(2).getAttribute('aria-invalid')).toBeNull();
 	expect(errors).toEqual([]);
 });
 

@@ -4,7 +4,8 @@
    Rendu de l'accompagnement (pas un bulletin) : chiffres-clés, graphe d'activité
    des 7 derniers jours avec bascule Total / Par type (#319), suivi des listes de
    dictée (frises de composition, #545), et file « À revoir ensemble » (leçons
-   épinglées + suggestions automatiques). Possède l'état de bascule du graphe
+   épinglées + suggestions automatiques ; le sous-bloc « classe précédente », #723, vit
+   dans `encadrant-classe-precedente`). Possède l'état de bascule du graphe
    (`vueActivite`). Les calculs (recap, échelle) vivent dans core/encadrant-stats ;
    ici, le rendu et les handlers de la section (bascule, épinglage, impression).
 
@@ -21,7 +22,7 @@
    `boutonsImpression`, y a migré (#534).
    ============================================================ */
 import { enumererFr } from '../core/utils';
-import { labelLecon, LEVEL_LABEL, LEVEL_ORDER } from '../core/levels';
+import { labelLecon, LEVEL_LABEL } from '../core/levels';
 import { icon } from './icon';
 import { listProfiles, activeProfile, type Profile } from '../core/profiles';
 import {
@@ -37,7 +38,7 @@ import {
 	retraitsAutoProfil,
 	type RetraitAuto,
 	type RecapProfil,
-	type RecapClassePrecedente,
+	resteClassePrecedente,
 	type RecapListeOrtho,
 	type DicteeProposee,
 	type NiveauNotion,
@@ -46,7 +47,7 @@ import {
 	type FriseComposition,
 } from '../core/encadrant-stats';
 import type { RangMot } from '../core/orthographe/etapes';
-import { getAllLessons, CATEGORIES, ORTHO_CATEGORY_ID, type SchoolLevel } from '../core/catalog';
+import { getAllLessons, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
 import { BLOCAGES_SIGNAL_ADULTE } from '../core/report-lecon';
 import { dicteeDisponible } from './tts';
 import { printScope } from './session';
@@ -71,6 +72,7 @@ import {
 } from './encadrant-banque';
 import { enregistrerSelecteur, selecteurLeconHTML, type ActionLigne } from './selecteur-lecon';
 import { segmentHTML } from './segment';
+import { classePrecedenteHTML, type LigneClassePrecedente } from './encadrant-classe-precedente';
 import { html, type SafeHtml, VIDE, joindre, attribut } from '../core/html';
 
 /* ---------- État de la section (module) ---------- */
@@ -123,27 +125,11 @@ function chiffresHTML(recap: RecapProfil): SafeHtml {
       ${recap.nouvellesRecentes > 0 ? stat(recap.nouvellesRecentes, `maîtrisée${recap.nouvellesRecentes > 1 ? 's' : ''} récemment`) : ''}
       ${stat(recap.aRevoir.length, 'à revoir ensemble')}
       ${joindre(
-				resteParClasse(recap.classePrecedente).map(({ niveau, n }) =>
+				resteClassePrecedente(recap.classePrecedente).map(({ niveau, n }) =>
 					stat(n, `encore en cours en ${LEVEL_LABEL[niveau]}`, `classe-precedente-${niveau}`),
 				),
 			)}
     </div>`;
-}
-
-/* Leçons de la classe précédente encore en cours, sommées PAR CLASSE (#723) : deux matières
-   au CM1 donnent une seule tuile « CE2 » ; maths au CM1 et français au CM2, deux tuiles. Les
-   leçons épinglées comptent : elles sont toujours en cours, l'épingle ne les franchit pas.
-   Classe à zéro masquée ; ordre scolaire. */
-function resteParClasse(
-	classes: readonly RecapClassePrecedente[],
-): { niveau: SchoolLevel; n: number }[] {
-	const parClasse = new Map<SchoolLevel, number>();
-	for (const c of classes)
-		parClasse.set(c.niveau, (parClasse.get(c.niveau) ?? 0) + c.fragiles.length);
-	return LEVEL_ORDER.flatMap((niveau) => {
-		const n = parClasse.get(niveau) ?? 0;
-		return n > 0 ? [{ niveau, n }] : [];
-	});
 }
 
 /* Détail textuel de la répartition par type d'un jour (« 2 leçons, 1 sprint ») — a11y. */
@@ -769,6 +755,9 @@ function ligneRevoir(
 		etat?: NiveauNotion;
 		essai?: { essaye: boolean; at: number | null; reussi: boolean };
 		origine?: OrigineLecon | null;
+		/** Infobulle du badge de classe, quand celle par défaut (écrite pour une ÉPINGLE) ne
+		    serait pas vraie sur ce site — cf. `INFOBULLE_CLASSE_PRECEDENTE`. */
+		infobulle?: string;
 		imprimable?: boolean;
 		quand?: string;
 		blocages?: number;
@@ -789,10 +778,21 @@ function ligneRevoir(
 				: VIDE;
 	// Classe d'origine : seulement quand la leçon vient d'ailleurs que la classe suivie, et
 	// AVANT l'état — on lit d'abord d'où vient la notion, puis où en est l'enfant dessus.
-	const classe =
-		origine && origine.direction !== 'classe-suivie'
-			? badgeClasseOrigine(origine.niveau, INFOBULLE_ORIGINE[origine.direction])
-			: '';
+	// Direction lue dans une variable locale : c'est elle que TypeScript rétrécit, pas le champ.
+	const direction = origine?.direction;
+	const horsClasse =
+		origine && direction && direction !== 'classe-suivie'
+			? { niveau: origine.niveau, direction }
+			: null;
+	const classe = horsClasse
+		? badgeClasseOrigine(
+				horsClasse.niveau,
+				opts.infobulle ?? INFOBULLE_ORIGINE[horsClasse.direction],
+			)
+		: '';
+	// Hors classe suivie, le nom du bouton dit aussi la classe (#723) : « Je reconnais les
+	// solides » existe au CE2 et au CM1, et deux boutons homonymes sont indiscernables à la voix.
+	const nomBouton = `${epingle ? 'Retirer' : 'Épingler'} « ${label} »${horsClasse ? ` (${LEVEL_LABEL[horsClasse.niveau]})` : ''}`;
 	return html`<li class="enc-revoir-item">
       <span class="enc-revoir-main">
         <span class="enc-revoir-lab">${label}</span>
@@ -800,7 +800,7 @@ function ligneRevoir(
       </span>
       ${classe}${badge}${signalBlocage(blocages)}
       <span class="enc-actions">
-        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${epingle ? 'Retirer' : 'Épingler'} « ${label} »">${epingle ? 'Retirer' : 'Épingler'}</button>
+        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${nomBouton}">${epingle ? 'Retirer' : 'Épingler'}</button>
         ${imprimable ? boutonsImpression(entryId, label) : ''}
       </span>
       ${mots ? motsDicteeHTML(mots, label) : ''}
@@ -883,8 +883,19 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): SafeHtml {
 					),
 				)}</ul>`
 		: VIDE;
+	// Classe précédente (#723) : le sous-bloc reçoit le rendu de ligne des épingles (pas de
+	// cycle d'import, et une ligne identique une fois épinglée).
+	const ligneClassePrecedente: LigneClassePrecedente = (n, { origine, infobulle }) =>
+		ligneRevoir(n.lessonId, n.label, false, {
+			etat: n.niveau,
+			origine,
+			infobulle,
+			blocages: n.blocages,
+		});
 	const blocClassePrecedente = joindre(
-		recap.classePrecedente.map((c) => classePrecedenteHTML(c, consulte, epingleeIds)),
+		recap.classePrecedente.map((c) =>
+			classePrecedenteHTML(c, consulte, epingleeIds, ligneClassePrecedente),
+		),
 	);
 	const blocRetraits = retraits.length
 		? html`<h4 class="enc-sub-lab">Retirées automatiquement</h4>
@@ -908,49 +919,6 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): SafeHtml {
       ${blocClassePrecedente}
       ${blocRetraits}
       ${epinglerHTML(consulte, new Set(pinned.map((e) => e.id)))}
-    </div>`;
-}
-
-/* Sous-bloc « Encore en cours en <classe précédente> » d'une matière (#723). Quand une
-   matière passe à la classe suivante, ce que l'enfant avait commencé sans le finir sort de
-   tout ce qui est scopé à la classe suivie (récap, suggestions) : c'est le seul endroit où
-   l'adulte le retrouve, avec de quoi l'épingler. Les lignes reprennent le rendu d'une épingle
-   hors classe (badge de classe d'origine + état d'acquisition lu à ce niveau-là) : une fois
-   épinglée, la leçon passe dans « Épinglées » sans changer d'aspect.
-   Trois corps : la liste ; « tout est déjà épinglé » ; la phrase de clôture seule quand tout
-   ce qui avait été commencé est franchi (le sous-bloc n'existe pas si rien n'a jamais été
-   commencé à ce niveau, cf. `RecapProfil.classePrecedente`). */
-function classePrecedenteHTML(
-	c: RecapClassePrecedente,
-	consulte: Profile,
-	epinglees: ReadonlySet<string>,
-): SafeHtml {
-	const classe = LEVEL_LABEL[c.niveau];
-	const suivie = LEVEL_LABEL[niveauProfilMatiere(consulte, c.subject)];
-	const lignes = c.fragiles.filter((n) => !epinglees.has(n.lessonId));
-	const origine: OrigineLecon = { niveau: c.niveau, direction: 'en-dessous' };
-	if (c.fragiles.length === 0)
-		return html`<div class="enc-classe-precedente" data-subject="${c.subject}" data-niveau="${c.niveau}">
-      <h4 class="enc-sub-lab">Encore en cours en ${classe} (${c.label})</h4>
-      <p class="enc-hint enc-classe-precedente-fin">Tout ce que ${consulte.name} avait commencé en ${classe} est maintenant franchi.</p>
-    </div>`;
-	const explication = html`<p class="enc-hint">Leçons de ${classe} que ${consulte.name} a commencées sans les réussir en entier, et que le ${suivie} ne reprend pas. Une leçon quitte cette liste quand ${consulte.name} la réussit en faisant la leçon complète, pas seulement en sprint ou en révision.</p>`;
-	const corps =
-		lignes.length === 0
-			? html`<p class="enc-hint">Elles sont toutes épinglées ci-dessus.</p>`
-			: html`<ul class="enc-revoir">${joindre(
-					lignes.map((n) =>
-						ligneRevoir(n.lessonId, n.label, false, {
-							etat: n.niveau,
-							origine,
-							blocages: n.blocages,
-						}),
-					),
-				)}</ul>`;
-	return html`<div class="enc-classe-precedente" data-subject="${c.subject}" data-niveau="${c.niveau}">
-      <h4 class="enc-sub-lab">Encore en cours en ${classe} (${c.label})</h4>
-      ${explication}
-      ${corps}
     </div>`;
 }
 
@@ -1001,8 +969,9 @@ export function progressionClick(act: string, el: HTMLElement): boolean {
 				toggleRevoirFor(uuid, entryId);
 				renderEspace();
 				// Le re-rendu recrée le DOM et la ligne CHANGE de sous-bloc (« Retirées
-				// automatiquement » → « Épinglées », #465) : on ramène le focus sur le bouton de
-				// la MÊME notion, sinon l'utilisateur clavier repart du début du document.
+				// automatiquement » ou « Encore en cours en <classe précédente> » → « Épinglées »,
+				// #465 / #723) : on ramène le focus sur le bouton de la MÊME notion, sinon
+				// l'utilisateur clavier repart du début du document.
 				container()
 					?.querySelector<HTMLElement>(
 						`[data-act="epingler"][data-lesson="${CSS.escape(entryId)}"]`,

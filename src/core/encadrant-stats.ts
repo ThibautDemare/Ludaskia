@@ -293,6 +293,23 @@ export interface RecapClassePrecedente {
 	fragiles: RecapNotion[]; // les plus fragiles d'abord ; `epingle` dit si elle est déjà épinglée
 }
 
+/* Leçons de la classe précédente encore en cours, sommées PAR CLASSE (#723) : alimente les
+   tuiles des chiffres-clés. Deux matières au CM1 donnent une seule classe (CE2) ; maths au
+   CM1 et français au CM2, deux. Les leçons ÉPINGLÉES comptent : l'épingle ne les franchit
+   pas, elles sont toujours en cours (le sous-bloc, lui, les montre dans « Épinglées », pas
+   dans sa propre liste). Classe à zéro omise ; ordre scolaire. */
+export function resteClassePrecedente(
+	classes: readonly RecapClassePrecedente[],
+): { niveau: SchoolLevel; n: number }[] {
+	const parClasse = new Map<SchoolLevel, number>();
+	for (const cl of classes)
+		parClasse.set(cl.niveau, (parClasse.get(cl.niveau) ?? 0) + cl.fragiles.length);
+	return LEVEL_ORDER.flatMap((niveau) => {
+		const n = parClasse.get(niveau) ?? 0;
+		return n > 0 ? [{ niveau, n }] : [];
+	});
+}
+
 /* Activité d'un jour : total + détail par type de session (#319). `inconnu` =
    sessions de l'ancien format (sans type) ; en pratique quasi toujours 0. */
 export interface JourActivite {

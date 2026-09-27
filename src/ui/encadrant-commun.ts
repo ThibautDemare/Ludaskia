@@ -43,9 +43,11 @@ export const ORDRE_NIVEAUX: NiveauNotion[] = ['a-decouvrir', 'non-acquis', 'en-c
 export const ORDRE_NIVEAUX_ORTHO: NiveauNotion[] = ['a-decouvrir', 'en-cours', 'acquis'];
 
 /* Badge « classe d'origine » (#556) — le nom de la classe SEUL, précédé d'un préfixe non
-   visuel. Il ne s'affiche que côté ADULTE, et seulement là où l'on voit une leçon DÉJÀ
-   CHOISIE : la ligne d'une épingle, et l'étape « une leçon précise » d'un programme une fois
-   la cible retenue. Pas dans le sélecteur (le jeton de filtre actif dit déjà la classe), pas
+   visuel. Il ne s'affiche que côté ADULTE, là où l'on voit une leçon DÉJÀ CHOISIE (la ligne
+   d'une épingle, l'étape « une leçon précise » d'un programme une fois la cible retenue) ou
+   PROPOSÉE hors de la classe suivie (les lignes du sous-bloc « Encore en cours en <classe
+   précédente> », #723, qui passent leur propre infobulle : elles ne sont pas encore
+   épinglées). Pas dans le sélecteur (le jeton de filtre actif dit déjà la classe), pas
    dans « Suggestions » ni « Retirées automatiquement » (leurs lignes viennent du récap scopé,
    donc toujours de la classe suivie). L'enfant, lui, ne voit JAMAIS d'étiquette de niveau
    (règle #232) — d'où sa place dans le module commun aux SECTIONS de l'espace encadrant.

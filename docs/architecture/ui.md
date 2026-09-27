@@ -185,7 +185,18 @@ ci-dessous.
   compose enfin le sous-bloc **« Épingler une
   leçon »** (`epinglerHTML`) : le sélecteur de leçon partagé (ci-dessus), même action que
   l'épinglage inline du récap, mais ouvrant TOUT le catalogue — y compris les classes que
-  l'enfant ne suit pas.
+  l'enfant ne suit pas. Depuis #723, `ligneRevoir` accepte une **infobulle** de badge
+  surchargée et met la **classe dans le nom accessible** du bouton hors classe suivie (deux
+  leçons de classes différentes peuvent porter le même libellé) ; la tuile « encore en cours
+  en \<classe\> » des chiffres-clés vient de `resteClassePrecedente` (`encadrant-stats.ts`).
+- **`encadrant-classe-precedente.ts`** (#723) — sous-bloc **« Encore en cours en \<classe\>
+  (\<matière\>) »** de « À revoir ensemble », un par matière : leçons de la classe précédente
+  commencées et pas réussies (`RecapProfil.classePrecedente`). Le rendu de ligne lui est
+  **injecté** par `aRevoirHTML` (`LigneClassePrecedente`, celui des épingles) : pas de cycle
+  d'import, et une ligne identique une fois épinglée ; l'action `epingler` reste aiguillée par
+  `encadrant-progression.ts`. Porte sa propre infobulle de badge (celle d'une épingle y serait
+  fausse). Extrait en application de la règle de taille ci-dessous (#636) : il faisait passer
+  `encadrant-progression.ts` au-dessus des 1000 lignes. Cf. [Espace encadrant](espace-encadrant.md).
 - **`encadrant-notions.ts`** (#534) — bloc **« Notions par catégorie »** (onglet **Suivi**),
   composé par `encadrant-progression.ts` (ci-dessus) : couverture par matière
   (`matieresHTML` + étoiles cumulées par classe, #556), **dépliage global par matière**
@@ -1519,7 +1530,8 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   `ui/*-runner.ts` et `ui/lecon-*.ts`, ce qui la rendait contournable par le nom du fichier.
   Elle vaut pour **tout module de rendu `ui/*.ts`** : un fichier qui franchit ~1000 lignes en
   accueillant un bloc autonome (sa propre vue, ses propres actions) doit voir ce bloc
-  extrait. Cas d'application : `encadrant-seance.ts` → `encadrant-favoris.ts` (#636).
+  extrait. Cas d'application : `encadrant-seance.ts` → `encadrant-favoris.ts` (#636),
+  `encadrant-progression.ts` → `encadrant-classe-precedente.ts` (#723).
   **Rejet écrit (#641)** : `renderTuiles` (~260 lignes) reste une fonction
   longue non découpée. Dette **pré-existante** — aucun hunk de #641 n'y tombe, elle a
   seulement changé de fichier avec #640 —, hors périmètre de cette PR, à traiter dans une

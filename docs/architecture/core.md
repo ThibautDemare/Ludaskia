@@ -1186,6 +1186,22 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `progress.ts`/`encadrant-stats.ts` pour **casser le cycle d'import** entre les deux : ce
   module ne dépend d'aucun autre module de l'app. `progress.ts` (écriture) et
   `encadrant-stats.ts` (lecture) le réexportent pour les imports historiques.
+- **`consolidation-bas-niveau.ts`** (#723, pur) — **ce qui reste de la classe juste en
+  dessous** pour UNE matière : **`consolidationBasNiveau(subject, niveauActif, cartes)`** →
+  `{ niveau, fragiles, nbTravaillees }` ou `undefined` (pas de classe en dessous, ou aucune
+  leçon propre à cette classe). Lit des **cartes BRUTES** (`CartesBrutes` : étoiles, stats,
+  reports, clés `lessonId@niveau`), jamais une vue scopée, qui exclut par construction ce qu'on
+  cherche. Trois bornes, qui sont aussi les conditions d'extinction : **un seul niveau d'écart**
+  (`niveauInferieurImmediat`, même règle que l'entretien #232) ; leçons **propres** à la classe
+  précédente (une leçon aussi disponible à la classe suivie est servie dans cette version-là) ;
+  **travaillées** à ce niveau et **pas franchies** (`estFranchie`, `report-lecon.ts`). Sortie
+  sur « franchie » et non sur « solide » (`estNotionSolide`, fenêtre glissante) : elle doit
+  être à **sens unique**, un mauvais sprint ne ramène rien (décision du 27/09/2026). Tri :
+  « non acquis », puis perf récente croissante (inconnue en dernier), puis ordre pédagogique.
+  `nbTravaillees` compte les franchies aussi, pour distinguer « tout est réussi » de « rien
+  n'a été fait ». Consommé par l'espace encadrant (`RecapProfil.classePrecedente`,
+  `encadrant-stats.ts`, cf. [Espace encadrant](espace-encadrant.md)) ; destiné aussi aux
+  canaux enfant de #724.
 - **`progress.ts`** — records de bilans **scopés par niveau** (`recordRun` → `RunResult`
   `{rank, total, medal, isRecord}`,
   `cmpRun` « score puis temps », `loadRuns` = niveau actif / `loadRunsAll` = tous

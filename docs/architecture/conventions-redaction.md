@@ -519,3 +519,27 @@ condition de ne jamais la mélanger avec l'ellipse dans la MÊME famille de leç
 graphies cohabitant selon la leçon lue le jour même se liraient comme deux règles). Cas
 corrigé : « Multiplier par 20, 30, 40 » devenu « Multiplier par 20, par 30, par 40 »
 (`core/catalog.ts` / `core/lessons.ts`, même gate que ci-dessus).
+
+## Jamais d'article genré devant un libellé de classe (#723)
+
+Un libellé de classe (`LEVEL_LABEL` : « CE2 », « CM1 »…) ne prend pas d'article accolé dans
+un gabarit : « que le ${classe} ne reprend pas » est juste pour tous les niveaux d'aujourd'hui,
+et faux le jour où « 6e » existe (« la 6e »), sans que rien ne le signale à l'écran. Passer par
+une tournure au genre fixe : « la classe de CM1 », « en CM1 » (`ui/encadrant-classe-precedente.ts`).
+
+## Espace encadrant : une relative double se scinde (#723)
+
+Deux relatives coordonnées sur le même antécédent (« Leçons de CE2 que X a commencées…, et que
+le CM1 ne reprend pas ») sont correctes mais lourdes en tête d'un paragraphe d'aide. Quand un
+pronom peut reprendre l'antécédent, écrire deux phrases courtes : « Leçons de CE2 que X a
+commencées sans les réussir jusqu'au bout. La classe de CM1 ne les reprend pas : elles restent
+ici. »
+
+## « Franchie » est un terme interne, pas un mot de l'écran (#723)
+
+« Franchie » (étoilée, ou réussie au seuil sur une leçon complète, `core/report-lecon.ts`)
+nomme la porte d'avancement du fil de la leçon du jour. L'espace encadrant ne le montre nulle
+part : il traduit en « acquise », « maîtrisée » ou « commencée » selon ce qu'il décrit. Quand
+c'est la franchise elle-même qu'il faut dire au parent, écrire « réussie en faisant la leçon
+complète », ou « réussi » quand la phrase d'aide voisine l'a déjà expliqué. Ce n'est pas
+« acquise » : une leçon franchie sans étoile n'est pas « acquise » sur l'échelle de maîtrise.

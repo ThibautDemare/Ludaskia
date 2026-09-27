@@ -178,6 +178,35 @@ export function activiteProgressive(
 	return modesJusqua(activite, dicteeDispo).some((m) => !mot.validation[m]);
 }
 
+/** Tirage d'une séance CIBLÉE : indice du prochain mot que `mode` peut encore faire monter
+ *  (`activiteProgressive`), en tournant à partir de `depuis` (inclus) ; quand plus aucun ne
+ *  le peut — mode terminé pour la liste —, `depuis` lui-même, et la séance continue en
+ *  entretien sur tous les mots. `-1` si la liste est vide. Pur ; `depuis` est ramené dans
+ *  `[0, n)` quel que soit l'appelant.
+ *
+ *  Avant ce tirage, la séance ciblée tournait sur TOUS les mots depuis le début de la liste,
+ *  héritage d'avant #641 (un mode ciblé ne validait rien, l'ordre n'avait donc pas
+ *  d'importance). Depuis que le mode ciblé valide, cet ordre, plafonné par la pause de
+ *  séance, resservait à chaque séance les mêmes premiers mots, déjà validés ; les suivants
+ *  n'étaient atteints qu'en enchaînant sans quitter. Vu en séance réelle (septembre 2026) :
+ *  l'enfant « faisait le tour » de ce qu'on lui montrait sans jamais finir le mode, et
+ *  l'écran de choix continuait de le proposer comme restant à faire. */
+export function indiceProchainMotCible(
+	mots: readonly MotOrtho[],
+	mode: ModeOrtho,
+	dicteeDispo: boolean,
+	depuis: number,
+): number {
+	const n = mots.length;
+	if (n === 0) return -1;
+	const d = ((depuis % n) + n) % n;
+	for (let k = 0; k < n; k++) {
+		const i = (d + k) % n;
+		if (activiteProgressive(mots[i], mode, dicteeDispo)) return i;
+	}
+	return d;
+}
+
 /** Une liste est étoilée quand tous ses mots sont « maîtrisés ». */
 export function listeEtoilee(mots: MotOrtho[], dicteeDispo: boolean): boolean {
 	return mots.length > 0 && mots.every((m) => statutMot(m, dicteeDispo) === 'maitrise');

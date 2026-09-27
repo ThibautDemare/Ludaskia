@@ -474,9 +474,11 @@ test.describe('sans voix (dictée indisponible, stub)', () => {
 		await gotoHash(page, 'ortho-mode-' + LESSON_SEANCE);
 		await page.locator('.mode-btn[data-mode="tuiles"]').click();
 
-		// 8 activités (SEANCE_MAX) : chat déjà validé tuiles (rejoué sans effet), lion
-		// franchit tuiles à sa 1re réussite (2e activité) — le mode bascule en cours de route.
-		const mots = ['chat', 'lion', 'chat', 'lion', 'chat', 'lion', 'chat', 'lion'];
+		// 8 activités (SEANCE_MAX) : le tirage ciblé sert D'ABORD le mot que les tuiles peuvent
+		// encore faire monter (lion, 1re activité — le mode bascule dès sa réussite), puis, le
+		// mode terminé, tourne sur toute la liste en entretien (chat, lion, chat…) ; chat, déjà
+		// validé, n'est rejoué que là (cf. `indiceProchainMotCible`, core/orthographe/runner.ts).
+		const mots = ['lion', 'chat', 'lion', 'chat', 'lion', 'chat', 'lion', 'chat'];
 		for (const mot of mots) {
 			await page.locator('.tuiles-bac button.tuile:not(.tuile-used)').first().waitFor();
 			await completerTuiles(page, mot);

@@ -66,6 +66,7 @@ import {
 	niveauInferieurImmediat,
 } from './levels';
 import { BLOCAGES_SIGNAL_ADULTE, type EtatReport } from './report-lecon';
+import { consolidationBasNiveau } from './consolidation-bas-niveau';
 import { niveauActifMatiere } from './niveau-actif';
 import { touchProfile, type Profile } from './profiles';
 import {
@@ -272,6 +273,24 @@ export interface RecapProfil {
 	    classe suivie, donc si les assignations hors classe restent ponctuelles. Vide tant que
 	    rien n'est étoilé ; un seul niveau ⇒ l'UI n'a rien d'utile à comparer. */
 	etoilesParNiveau: EtoilesNiveau[];
+	/** Ce qui reste de la classe JUSTE EN DESSOUS, par matière (#723) : une entrée par matière
+	    dont la classe suivie a une classe précédente au catalogue ET où l'enfant a travaillé au
+	    moins une leçon propre à cette classe. Hors du périmètre ci-dessus (compteurs, catégories,
+	    suggestions restent scopés à la classe suivie) : c'est une liste d'ACTION pour l'adulte,
+	    pas une extension du suivi. Ordre de `SUBJECTS`. */
+	classePrecedente: RecapClassePrecedente[];
+}
+
+/* Matière dont la classe précédente a encore du travail commencé et pas franchi (#723).
+   Sélection, tri et règle de sortie : `core/consolidation-bas-niveau.ts`. */
+export interface RecapClassePrecedente {
+	subject: SubjectId;
+	label: string; // libellé de la MATIÈRE
+	niveau: SchoolLevel; // la classe précédente
+	/** Leçons propres à cette classe travaillées à ce niveau, franchies comprises : > 0 avec
+	    `fragiles` vide = tout ce qui avait été commencé est franchi (phrase de clôture). */
+	nbTravaillees: number;
+	fragiles: RecapNotion[]; // les plus fragiles d'abord ; `epingle` dit si elle est déjà épinglée
 }
 
 /* Activité d'un jour : total + détail par type de session (#319). `inconnu` =
@@ -1095,6 +1114,27 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 	const file = loadRevoirFor(uuid);
 	const fileSet = new Set(file);
 
+	// Détail d'une leçon à UN niveau de stockage (état + épinglage + vues/dernière fois/
+	// tendance/frise). Partagé par le récap par catégorie (classe suivie) et par la classe
+	// précédente (#723) : une même leçon se lit ainsi pareil des deux côtés.
+	const notionDe = (l: LessonDef, niveau: SchoolLevel): RecapNotion => {
+		const k = l.id + '@' + niveau;
+		const stat = statsRaw[k];
+		const etat = niveauNotion(stat, (starsRaw[k] || 0) > 0);
+		return {
+			lessonId: l.id,
+			label: labelLecon(l, niveau),
+			niveau: etat,
+			pctRecent: perfRecente(stat)?.pct ?? null,
+			epingle: fileSet.has(l.id),
+			vues: stat?.attempts ?? 0,
+			derniereFois: stat?.lastAt ?? null,
+			tendance: tendanceNotion(stat),
+			blocages: reportsRaw[k]?.jours ?? 0,
+			frise: friseNotion(paliersRaw[k], firstSeenRaw[k], etat, debutSuivi, now),
+		};
+	};
+
 	const parCategorie: RecapCategorie[] = [];
 	const aRevoir: RecapNotion[] = [];
 	let totalMaitrisees = 0;
@@ -1121,25 +1161,14 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 			const k = l.id + '@' + niveau; // clé de stockage (le niveau est supporté → exact)
 			const etoilee = (starsRaw[k] || 0) > 0;
 			const stat = statsRaw[k];
-			const etat = niveauNotion(stat, etoilee);
+			// Le MÊME objet alimente le dépliage de la catégorie ET, s'il est faible, la file
+			// « à revoir ».
+			const notion = notionDe(l, niveau);
+			const etat = notion.niveau;
 			if (etat === 'acquis') rc.acquis++;
 			else if (etat === 'en-cours') rc.enCours++;
 			else if (etat === 'non-acquis') rc.nonAcquis++;
 			else rc.aDecouvrir++;
-			// Détail par leçon (état + épinglage + vues/dernière fois/tendance) : le MÊME objet
-			// alimente le dépliage de la catégorie ET, s'il est faible, la file « à revoir ».
-			const notion: RecapNotion = {
-				lessonId: l.id,
-				label: labelLecon(l, niveau),
-				niveau: etat,
-				pctRecent: perfRecente(stat)?.pct ?? null,
-				epingle: fileSet.has(l.id),
-				vues: stat?.attempts ?? 0,
-				derniereFois: stat?.lastAt ?? null,
-				tendance: tendanceNotion(stat),
-				blocages: reportsRaw[k]?.jours ?? 0,
-				frise: friseNotion(paliersRaw[k], firstSeenRaw[k], etat, debutSuivi, now),
-			};
 			rc.lecons.push(notion);
 
 			totalLecons++;
@@ -1184,6 +1213,25 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 	const signale = (n: RecapNotion) => Number(n.blocages >= BLOCAGES_SIGNAL_ADULTE);
 	aRevoir.sort((a, b) => signale(b) - signale(a) || (a.pctRecent ?? 100) - (b.pctRecent ?? 100));
 
+	// Classe précédente (#723), lue sur les cartes BRUTES : la vue de la classe suivie ne
+	// contient pas, par construction, ce qu'on cherche ici.
+	const classePrecedente: RecapClassePrecedente[] = [];
+	for (const sub of SUBJECTS) {
+		const c = consolidationBasNiveau(sub.id, niveauProfilMatiere(profile, sub.id), {
+			stars: starsRaw,
+			stats: statsRaw,
+			reports: reportsRaw,
+		});
+		if (!c || c.nbTravaillees === 0) continue;
+		classePrecedente.push({
+			subject: sub.id,
+			label: sub.label,
+			niveau: c.niveau,
+			nbTravaillees: c.nbTravaillees,
+			fragiles: c.fragiles.map((f) => notionDe(f.lesson, f.niveau)),
+		});
+	}
+
 	return {
 		uuid,
 		parMatiere,
@@ -1196,6 +1244,7 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 		// Aucune lecture de plus : la carte d'étoiles brute est déjà en main, et c'est le seul
 		// endroit qui la voit TOUS niveaux confondus (le reste du récap est scopé à la classe).
 		etoilesParNiveau: etoilesParNiveau(starsRaw),
+		classePrecedente,
 	};
 }
 

@@ -21,7 +21,7 @@
    `boutonsImpression`, y a migré (#534).
    ============================================================ */
 import { enumererFr } from '../core/utils';
-import { labelLecon } from '../core/levels';
+import { labelLecon, LEVEL_LABEL, LEVEL_ORDER } from '../core/levels';
 import { icon } from './icon';
 import { listProfiles, activeProfile, type Profile } from '../core/profiles';
 import {
@@ -37,6 +37,7 @@ import {
 	retraitsAutoProfil,
 	type RetraitAuto,
 	type RecapProfil,
+	type RecapClassePrecedente,
 	type RecapListeOrtho,
 	type DicteeProposee,
 	type NiveauNotion,
@@ -45,7 +46,7 @@ import {
 	type FriseComposition,
 } from '../core/encadrant-stats';
 import type { RangMot } from '../core/orthographe/etapes';
-import { getAllLessons, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
+import { getAllLessons, CATEGORIES, ORTHO_CATEGORY_ID, type SchoolLevel } from '../core/catalog';
 import { BLOCAGES_SIGNAL_ADULTE } from '../core/report-lecon';
 import { dicteeDisponible } from './tts';
 import { printScope } from './session';
@@ -70,7 +71,7 @@ import {
 } from './encadrant-banque';
 import { enregistrerSelecteur, selecteurLeconHTML, type ActionLigne } from './selecteur-lecon';
 import { segmentHTML } from './segment';
-import { html, type SafeHtml, VIDE, joindre } from '../core/html';
+import { html, type SafeHtml, VIDE, joindre, attribut } from '../core/html';
 
 /* ---------- État de la section (module) ---------- */
 let vueActivite: 'total' | 'type' = 'total'; // graphe d'activité : « Total » ou « Par type » (#319)
@@ -113,13 +114,36 @@ export function recapHTML(recap: RecapProfil, consulte: Profile): SafeHtml {
 }
 
 function chiffresHTML(recap: RecapProfil): SafeHtml {
-	const stat = (num: number, lab: string) =>
-		html`<div class="enc-stat"><span class="enc-stat-num">${num}</span><span class="enc-stat-lab">${lab}</span></div>`;
+	// `cle` n'est posée que sur les tuiles qui en ont besoin : les tuiles historiques gardent
+	// leur balisage à l'identique (un profil sans classe précédente ne voit aucun changement).
+	const stat = (num: number, lab: string, cle?: string) =>
+		html`<div class="enc-stat"${cle ? attribut('data-stat', cle) : ''}><span class="enc-stat-num">${num}</span><span class="enc-stat-lab">${lab}</span></div>`;
 	return html`<div class="enc-stats">
       ${stat(recap.totalMaitrisees, `notion${recap.totalMaitrisees > 1 ? 's' : ''} maîtrisée${recap.totalMaitrisees > 1 ? 's' : ''}`)}
       ${recap.nouvellesRecentes > 0 ? stat(recap.nouvellesRecentes, `maîtrisée${recap.nouvellesRecentes > 1 ? 's' : ''} récemment`) : ''}
       ${stat(recap.aRevoir.length, 'à revoir ensemble')}
+      ${joindre(
+				resteParClasse(recap.classePrecedente).map(({ niveau, n }) =>
+					stat(n, `encore en cours en ${LEVEL_LABEL[niveau]}`, `classe-precedente-${niveau}`),
+				),
+			)}
     </div>`;
+}
+
+/* Leçons de la classe précédente encore en cours, sommées PAR CLASSE (#723) : deux matières
+   au CM1 donnent une seule tuile « CE2 » ; maths au CM1 et français au CM2, deux tuiles. Les
+   leçons épinglées comptent : elles sont toujours en cours, l'épingle ne les franchit pas.
+   Classe à zéro masquée ; ordre scolaire. */
+function resteParClasse(
+	classes: readonly RecapClassePrecedente[],
+): { niveau: SchoolLevel; n: number }[] {
+	const parClasse = new Map<SchoolLevel, number>();
+	for (const c of classes)
+		parClasse.set(c.niveau, (parClasse.get(c.niveau) ?? 0) + c.fragiles.length);
+	return LEVEL_ORDER.flatMap((niveau) => {
+		const n = parClasse.get(niveau) ?? 0;
+		return n > 0 ? [{ niveau, n }] : [];
+	});
 }
 
 /* Détail textuel de la répartition par type d'un jour (« 2 leçons, 1 sprint ») — a11y. */
@@ -859,6 +883,9 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): SafeHtml {
 					),
 				)}</ul>`
 		: VIDE;
+	const blocClassePrecedente = joindre(
+		recap.classePrecedente.map((c) => classePrecedenteHTML(c, consulte, epingleeIds)),
+	);
 	const blocRetraits = retraits.length
 		? html`<h4 class="enc-sub-lab">Retirées automatiquement</h4>
        <p class="enc-hint">Ces notions ont quitté la liste d'elles-mêmes. Épinglez-en une si vous voulez quand même y revenir.</p>
@@ -878,8 +905,52 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): SafeHtml {
       <h4 class="enc-sub-lab">Épinglées</h4>
       ${blocEpinglees}
       ${blocSuggestions}
+      ${blocClassePrecedente}
       ${blocRetraits}
       ${epinglerHTML(consulte, new Set(pinned.map((e) => e.id)))}
+    </div>`;
+}
+
+/* Sous-bloc « Encore en cours en <classe précédente> » d'une matière (#723). Quand une
+   matière passe à la classe suivante, ce que l'enfant avait commencé sans le finir sort de
+   tout ce qui est scopé à la classe suivie (récap, suggestions) : c'est le seul endroit où
+   l'adulte le retrouve, avec de quoi l'épingler. Les lignes reprennent le rendu d'une épingle
+   hors classe (badge de classe d'origine + état d'acquisition lu à ce niveau-là) : une fois
+   épinglée, la leçon passe dans « Épinglées » sans changer d'aspect.
+   Trois corps : la liste ; « tout est déjà épinglé » ; la phrase de clôture seule quand tout
+   ce qui avait été commencé est franchi (le sous-bloc n'existe pas si rien n'a jamais été
+   commencé à ce niveau, cf. `RecapProfil.classePrecedente`). */
+function classePrecedenteHTML(
+	c: RecapClassePrecedente,
+	consulte: Profile,
+	epinglees: ReadonlySet<string>,
+): SafeHtml {
+	const classe = LEVEL_LABEL[c.niveau];
+	const suivie = LEVEL_LABEL[niveauProfilMatiere(consulte, c.subject)];
+	const lignes = c.fragiles.filter((n) => !epinglees.has(n.lessonId));
+	const origine: OrigineLecon = { niveau: c.niveau, direction: 'en-dessous' };
+	if (c.fragiles.length === 0)
+		return html`<div class="enc-classe-precedente" data-subject="${c.subject}" data-niveau="${c.niveau}">
+      <h4 class="enc-sub-lab">Encore en cours en ${classe} (${c.label})</h4>
+      <p class="enc-hint enc-classe-precedente-fin">Tout ce que ${consulte.name} avait commencé en ${classe} est maintenant franchi.</p>
+    </div>`;
+	const explication = html`<p class="enc-hint">Leçons de ${classe} que ${consulte.name} a commencées sans les réussir en entier, et que le ${suivie} ne reprend pas. Une leçon quitte cette liste quand ${consulte.name} la réussit en faisant la leçon complète, pas seulement en sprint ou en révision.</p>`;
+	const corps =
+		lignes.length === 0
+			? html`<p class="enc-hint">Elles sont toutes épinglées ci-dessus.</p>`
+			: html`<ul class="enc-revoir">${joindre(
+					lignes.map((n) =>
+						ligneRevoir(n.lessonId, n.label, false, {
+							etat: n.niveau,
+							origine,
+							blocages: n.blocages,
+						}),
+					),
+				)}</ul>`;
+	return html`<div class="enc-classe-precedente" data-subject="${c.subject}" data-niveau="${c.niveau}">
+      <h4 class="enc-sub-lab">Encore en cours en ${classe} (${c.label})</h4>
+      ${explication}
+      ${corps}
     </div>`;
 }
 

@@ -15,11 +15,17 @@ import {
 	type CartesBrutes,
 	type ConsolidationBasNiveau,
 } from '../src/core/consolidation-bas-niveau';
-import { getLessonById, getLessonsBySubject } from '../src/core/catalog';
+import { getLessonById, getLessonsBySubject, type SchoolLevel } from '../src/core/catalog';
 import { LEVEL_ORDER, labelLecon } from '../src/core/levels';
 import type { LessonStat } from '../src/core/maitrise';
 import type { EtatReport } from '../src/core/report-lecon';
-import { progressionProfil, toggleRevoirFor } from '../src/core/encadrant-stats';
+import {
+	progressionProfil,
+	resteClassePrecedente,
+	toggleRevoirFor,
+	type RecapClassePrecedente,
+	type RecapNotion,
+} from '../src/core/encadrant-stats';
 import {
 	initProfiles,
 	activeProfile,
@@ -399,5 +405,101 @@ describe('progressionProfil : classePrecedente', () => {
 		const r = progressionProfil(p, NOW).classePrecedente;
 		expect(r.map((e) => e.subject)).toEqual(['francais']);
 		expect(r[0].fragiles.map((n) => n.lessonId)).toEqual([HOMOPHONES]);
+	});
+});
+
+/* ---------- resteClassePrecedente : tuiles du Suivi (critère 8) ----------
+   Leçons de la classe précédente encore en cours, sommées PAR CLASSE, en ordre scolaire,
+   classes à zéro omises. Une leçon épinglée compte : l'épingle ne la réussit pas.
+   Seuls `niveau` et `fragiles.length` portent le calcul ; le reste est du remplissage. */
+function notion(lessonId: string, epingle = false): RecapNotion {
+	return {
+		lessonId,
+		label: lessonId,
+		niveau: 'en-cours',
+		pctRecent: 50,
+		epingle,
+		vues: 1,
+		derniereFois: T,
+		tendance: null,
+		blocages: 0,
+		frise: null,
+	};
+}
+function classe(
+	subject: string,
+	niveau: SchoolLevel,
+	fragiles: RecapNotion[],
+	nbTravaillees = fragiles.length,
+): RecapClassePrecedente {
+	return { subject, label: subject, niveau, nbTravaillees, fragiles };
+}
+
+describe('resteClassePrecedente (critère 8)', () => {
+	it('deux matières à la même classe précédente → une seule entrée, somme des deux', () => {
+		const r = resteClassePrecedente([
+			classe('math', 'ce2', [notion('a'), notion('b')]),
+			classe('francais', 'ce2', [notion('c'), notion('d'), notion('e')]),
+		]);
+		expect(r).toEqual([{ niveau: 'ce2', n: 5 }]);
+	});
+
+	it('classes différentes → une entrée chacune, en ordre scolaire, même arrivées à l’envers et entrelacées', () => {
+		// CM1 d'abord, puis CE2, puis de nouveau CM1 : ni l'ordre d'arrivée ni une somme
+		// des seules entrées voisines ne donnent l'attendu.
+		const r = resteClassePrecedente([
+			classe('math', 'cm1', [notion('a')]),
+			classe('francais', 'ce2', [notion('b'), notion('c')]),
+			classe('anglais', 'cm1', [notion('d'), notion('e'), notion('f')]),
+		]);
+		expect(r).toEqual([
+			{ niveau: 'ce2', n: 2 },
+			{ niveau: 'cm1', n: 4 },
+		]);
+	});
+
+	it('une classe sans leçon en cours est omise (tout réussi), même avec des leçons travaillées', () => {
+		expect(resteClassePrecedente([classe('math', 'ce2', [], 3)])).toEqual([]);
+		expect(
+			resteClassePrecedente([
+				classe('math', 'ce2', [], 3),
+				classe('francais', 'cm1', [notion('a')]),
+			]),
+		).toEqual([{ niveau: 'cm1', n: 1 }]);
+	});
+
+	it('une matière à zéro n’efface pas sa classe si une autre matière y a des leçons en cours', () => {
+		const r = resteClassePrecedente([
+			classe('math', 'ce2', [], 2),
+			classe('francais', 'ce2', [notion('a'), notion('b')]),
+		]);
+		expect(r).toEqual([{ niveau: 'ce2', n: 2 }]);
+	});
+
+	it('liste vide → []', () => {
+		expect(resteClassePrecedente([])).toEqual([]);
+	});
+
+	it('une leçon épinglée compte : l’épingle ne la réussit pas', () => {
+		expect(
+			resteClassePrecedente([classe('math', 'ce2', [notion('a', true), notion('b')])]),
+		).toEqual([{ niveau: 'ce2', n: 2 }]);
+		// Seule leçon en cours, et épinglée : la classe n'est pas omise pour autant.
+		expect(resteClassePrecedente([classe('francais', 'ce2', [notion('c', true)])])).toEqual([
+			{ niveau: 'ce2', n: 1 },
+		]);
+	});
+
+	it('bout en bout : CM1, deux leçons CE2 en cours dont une épinglée, une franchie → [{ ce2, 2 }]', () => {
+		const p = profilActif('cm1');
+		lsSet(LESSON_STATS_KEY, {
+			[`${ADD}@ce2`]: stat([[6, 10]]), // en cours
+			[`${TABLES}@ce2`]: stat([[3, 10]]), // non acquis, épinglée ci-dessous
+			[`${HEURE}@ce2`]: stat([[5, 10]]), // étoilée → franchie : travaillée, mais ne compte pas
+		});
+		lsSet(STARS_KEY, { [`${HEURE}@ce2`]: 1 });
+		toggleRevoirFor(p.uuid, TABLES);
+		const r = progressionProfil(p, NOW);
+		expect(resteClassePrecedente(r.classePrecedente)).toEqual([{ niveau: 'ce2', n: 2 }]);
 	});
 });

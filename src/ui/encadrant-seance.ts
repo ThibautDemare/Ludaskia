@@ -19,7 +19,7 @@
 import { icon } from './icon';
 import type { IconName } from '../core/icon-names';
 import { listProfiles, type Profile } from '../core/profiles';
-import { getLessonById, type SchoolLevel } from '../core/catalog';
+import { getLessonById } from '../core/catalog';
 import {
 	niveauProfilMatiere,
 	epingleesProfil,
@@ -70,6 +70,16 @@ import {
 } from './selecteur-lecon';
 import { segmentHTML } from './segment';
 import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
+import {
+	DELAI_ANNONCE,
+	champFiltreHTML,
+	corpsDicteesHTML,
+	filtreDictees,
+	groupesAffiches,
+	groupesDictee,
+	hintIdDictees,
+	type Groupe,
+} from './encadrant-seance-dictees';
 
 /* ---------- État de la section (module) ---------- */
 /* Message d'alerte rattaché à un programme précis d'un profil précis (les identifiants
@@ -121,6 +131,9 @@ function fermerSelecteur(): void {
    programmes du profil qu'on REGARDAIT, et « Sa classe » ne veut plus dire la même chose. */
 onChangementProfilConsulte(fermerSelecteur);
 
+/* Annonce différée d'un changement d'étape (cf. `annoncerEtape`). */
+let etapeAnnonceTimer: number | undefined;
+
 /* Infobulle du badge de classe d'origine, par sens de l'écart (#556). Le badge, lui, ne dit
    que la classe : c'est le régime d'affichage de la ligne qui porte déjà le sens, et la
    mention se répéterait sur chaque activité du cas courant. L'infobulle a le droit d'être
@@ -163,30 +176,8 @@ const JOURS_COURTS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const JOURS_LONGS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
 /* ---------- Cibles sélectionnables (dictées) ----------
-   Un groupe = un `<optgroup>` (libellé) + ses options {id, label}. Les LEÇONS, elles, ne
-   passent plus par une liste d'options : elles sont choisies dans le sélecteur tous niveaux
-   (#556, `ui/selecteur-lecon.ts`), un `<select>` ne pouvant pas porter à la fois un filtre
-   de classe, une recherche et un arbre repliable. */
-interface Groupe {
-	label: string;
-	items: { id: string; label: string }[];
-}
-
-/* Listes d'orthographe proposables comme cible d'une étape « Une dictée » :
-   dictées prédéfinies (au niveau du profil) puis listes propres au profil consulté. */
-function groupesDictee(uuid: string, niveauFr: SchoolLevel, nom: string): Groupe[] {
-	const refs = listOrthoLecons(loadOrthoFor(uuid), niveauFr);
-	const groupes: Groupe[] = [];
-	const predef = refs
-		.filter((r) => r.source === 'predefini')
-		.map((r) => ({ id: r.id, label: r.label }));
-	const listes = refs
-		.filter((r) => r.source === 'liste')
-		.map((r) => ({ id: r.id, label: r.label }));
-	if (predef.length) groupes.push({ label: 'Dictées proposées', items: predef });
-	if (listes.length) groupes.push({ label: `Listes de ${nom}`, items: listes });
-	return groupes;
-}
+   Les groupes de dictées, le filtre et le corps de la liste à cocher vivent dans
+   `ui/encadrant-seance-dictees.ts` (#722) ; ici, le fieldset qui les compose. */
 
 /* Ids des dictées que l'ENFANT peut réellement lancer, à plat. Sert au décompte
    d'activités, à la durée estimée et au repère sous les cases (#657) :
@@ -260,33 +251,11 @@ function checkboxesDicteeHTML(
 	msgRefus: string | null,
 ): SafeHtml {
 	const selected = ciblesEtape(etape);
-	const dispo = new Set(dictees.flatMap((g) => g.items.map((it) => it.id)));
-	const orphelins = selected.filter((id) => !dispo.has(id));
-	const groupes: Groupe[] = orphelins.length
-		? [
-				...dictees,
-				{
-					label: 'Cibles actuelles (indisponibles)',
-					items: orphelins.map((id) => ({ id, label: resoudreLabel(id) ?? id })),
-				},
-			]
-		: dictees;
-	// Le repère est décrit par chaque case (aria-describedby) : comme le focus revient sur
-	// la case cochée après re-rendu, le lecteur d'écran relit l'état à jour dans la même passe.
-	const hintId = `dictee-hint-${def.id}-${etape.id}`;
-	const corps = joindre(
-		groupes.map((g) => {
-			const cases = joindre(
-				g.items.map((it) => {
-					const on = selected.includes(it.id);
-					return html`<label class="enc-seance-dictee${on ? ' on' : ''}"><input type="checkbox" data-act="seance-dictee-toggle" data-def="${def.id}" data-etape="${etape.id}" data-ref="${it.id}" aria-describedby="${hintId}"${on ? drapeau('checked') : ''} /><span>${it.label}</span></label>`;
-				}),
-			);
-			// role="group" + aria-label expose le regroupement (le <p> visuel est masqué pour
-			// éviter la double annonce), même brique que recurrenceHTML.
-			return html`<div class="enc-seance-dictees-groupe" role="group" aria-label="${g.label}"><p class="enc-seance-dictees-grp" aria-hidden="true">${g.label}</p>${cases}</div>`;
-		}),
-	);
+	const { groupes, orphelins } = groupesAffiches(dictees, selected, resoudreLabel);
+	const hintId = hintIdDictees(def.id, etape.id);
+	// Filtre (#722) : posé au rendu d'après l'état de module ; à la frappe, `seanceInput`
+	// re-rend le seul `.enc-seance-dictees-corps` avec la même fonction.
+	const filtre = filtreDictees(profilConsulte()?.uuid ?? '', def.id, etape.id);
 	const totalDispo = dictees.reduce((s, g) => s + g.items.length, 0);
 	/* Un refus qui vient d'avoir lieu PRIME sur le repère de comptage : c'est le seul
 	   moment où l'adulte a besoin d'autre chose que « combien de dictées ». Le canal est
@@ -302,9 +271,25 @@ function checkboxesDicteeHTML(
 		msgRefus ?? hintDictees(nbLancables, selected.length, totalDispo, orphelins.length > 0);
 	return html`<fieldset class="enc-seance-dictees" data-def="${def.id}" data-etape="${etape.id}">
       <legend class="sr-only">Dictées visées (une ou plusieurs)</legend>
-      ${corps}
+      ${champFiltreHTML(def.id, etape.id, filtre)}
+      <div class="enc-seance-dictees-corps">${corpsDicteesHTML(def.id, etape.id, groupes, selected, filtre)}</div>
       <p id="${hintId}" class="enc-seance-dictees-hint">${hint}</p>
     </fieldset>`;
+}
+
+/* Annonce d'un changement de NATURE d'une étape (relecture a11y, SC 4.1.3 / 3.2.2) : choisir
+   une dictée dans le sélecteur d'une étape « leçon » la transforme, et le focus, posé sur
+   la case cochée, ne dit pas ce qui vient d'arriver à l'étape elle-même. La région vit dans
+   la ligne de l'étape ; on la mute APRÈS le re-rendu (une région qui naît remplie n'est
+   annoncée de façon fiable par aucun moteur). */
+function annoncerEtape(defId: string, etapeId: string, texte: string): void {
+	window.clearTimeout(etapeAnnonceTimer);
+	etapeAnnonceTimer = window.setTimeout(() => {
+		const el = container()?.querySelector<HTMLElement>(
+			`.enc-seance-etape-statut[data-def="${defId}"][data-etape="${etapeId}"]`,
+		);
+		if (el) el.textContent = texte;
+	}, DELAI_ANNONCE);
 }
 
 /* ---------- Récurrence ---------- */
@@ -472,10 +457,15 @@ function noteOrigineHTML(etape: SeanceEtape, consulte: Profile): SafeHtml {
    l'arbre, laquelle est la cible actuelle. */
 function selecteurEtapeHTML(def: SeanceDef, etape: SeanceEtape, consulte: Profile): SafeHtml {
 	const id = idSelecteur(def, etape);
+	// Une dictée (#722) n'est jamais « Choisie » ici : une étape « leçon » ne cible pas de
+	// dictée — la choisir transforme l'étape (cf. `seance-cible-choisir`).
 	const action: ActionLigne = {
 		act: 'seance-cible-choisir',
 		extra: { def: def.id, etape: etape.id },
-		etat: (l) => ({ label: l.id === etape.ref ? 'Choisie' : 'Choisir', on: l.id === etape.ref }),
+		etat: (l) => {
+			const on = l.kind === 'lecon' && l.id === etape.ref;
+			return { label: on ? 'Choisie' : 'Choisir', on };
+		},
 	};
 	// Le fournisseur permet au sélecteur de re-rendre son seul arbre à la frappe (sans quoi
 	// le champ de recherche perdrait focus et curseur à chaque lettre) : il est ré-enregistré
@@ -543,6 +533,7 @@ function etapeHTML(
 			)}</select></label>`;
 	return html`<li class="enc-seance-etape">
       <span class="enc-seance-etape-mode">${icon(MODE_ICONE[etape.kind])} ${info.label}</span>
+      <p class="sr-only enc-seance-etape-statut" role="status" aria-live="polite" data-def="${def.id}" data-etape="${etape.id}"></p>
       ${cibleInline}
       ${count}
       <button type="button" class="enc-seance-etape-del" data-act="seance-etape-del" data-def="${def.id}" data-etape="${etape.id}" aria-label="Retirer cette activité">${icon('trash')}</button>
@@ -728,7 +719,27 @@ export function seanceClick(act: string, el: HTMLElement): boolean {
 			const defs = chargerSeancesFor(uuid);
 			const etape = defs.find((d) => d.id === defId)?.etapes.find((e) => e.id === etapeId);
 			if (!etape) return true;
-			etape.ref = el.dataset.lesson || undefined;
+			const id = el.dataset.lesson || undefined;
+			if (el.dataset.kind === 'dictee' && id) {
+				// Une dictée choisie dans le sélecteur d'une étape « leçon » (#722) : l'adulte a
+				// cherché, trouvé, cliqué — l'étape devient « Une dictée » avec cette seule cible,
+				// et rien d'autre ne bouge (nombre de fois, place dans le programme). Le focus va
+				// à la case cochée : c'est là que continue le geste (ajouter d'autres dictées
+				// au pool), et jamais en tête de page.
+				etape.kind = 'dictee';
+				delete etape.ref;
+				etape.refs = [id];
+				enregistrerSeancesFor(uuid, defs);
+				alerte = null;
+				fermerSelecteur();
+				rendre(
+					`input[data-act="seance-dictee-toggle"][data-def="${defId}"][data-etape="${etapeId}"][data-ref="${CSS.escape(id)}"]`,
+				);
+				const nom = labelLeconOrtho(id, loadOrthoFor(uuid).listes) ?? id;
+				annoncerEtape(defId, etapeId, `Cette activité devient « Une dictée » : « ${nom} » cochée.`);
+				return true;
+			}
+			etape.ref = id;
 			enregistrerSeancesFor(uuid, defs);
 			alerte = null;
 			// Sélection UNIQUE : le choix fait, le sélecteur se referme et la ligne montre la

@@ -114,6 +114,13 @@ export const CHIFFRES_ROMAINS_LESSONS: LessonInput[] = [
 	{
 		id: 'num-chiffres-romains',
 		label: 'Les chiffres romains',
+		// Mots-clés de recherche (#718). Le libellé porte déjà « romain » : ceux-ci ajoutent ce
+		// qu'il ne dit pas. Les sept signes, parce qu'un enfant cherche ce qu'il a SOUS LES YEUX
+		// sans savoir comment ça s'appelle ; un exemple concret ; la formulation d'un enfant qui
+		// n'a pas le mot ; et « siècle », parce que c'est là qu'il les rencontre vraiment (la
+		// frise d'histoire) — la leçon ne traite pas les siècles, mais c'est bien elle qu'il lui
+		// faut, et aucune autre leçon ne revendique ce mot.
+		motsCles: ['I V X L C D M', 'XIV', 'siècle', 'lettres qui font des nombres'],
 		exerciseType: CHIFFRES_ROMAINS_TYPE,
 		etayage: [
 			etayageRedige(

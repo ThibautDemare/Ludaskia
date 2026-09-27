@@ -27,6 +27,7 @@ import type { ExerciseMode } from '../core/exercise';
 import { ttsAttr } from '../core/tts-text';
 import { joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
 import { bindClicMot, type ClicMotController } from './clic-mot-interaction';
+import { bindSegmentMot } from './segment-mot-interaction';
 import { bindConsigneTts } from './consigne-tts';
 import { goHome } from './navigation';
 import {
@@ -64,6 +65,11 @@ interface QuestionClicMot {
 	// L'explication nomme déjà la cible (#436) → la live region ne la réénumère pas.
 	// Absent (instantané de reprise d'avant #436 compris) ⇒ réponse annoncée.
 	explicationNommeCible?: boolean;
+	// La cible est un SEGMENT à délimiter (#716) : le runner monte alors l'autre widget.
+	// Le reste de l'écran — titre, consigne, Vérifier, feedback, journal, XP — ne change
+	// pas d'un geste à l'autre, d'où UN seul runner et deux widgets plutôt que deux
+	// runners qui auraient divergé sur tout ce qu'ils partagent.
+	segment?: boolean;
 }
 
 let lesson: LessonDef;
@@ -103,6 +109,7 @@ function genQuestions(l: LessonDef, n: number): QuestionClicMot[] {
 			parle: ex.parle,
 			cibleLabel: ex.cibleLabel,
 			explicationNommeCible: ex.explicationNommeCible,
+			segment: ex.segment,
 		});
 		misses = 0;
 	}
@@ -132,8 +139,17 @@ function demarrer(
 		mode: m ?? null,
 		etat: () => ({ questions, idx, score }),
 		render: renderQuestion,
-		aide: 'clicMot',
+		aide: aideDuGeste(),
 	});
+}
+
+/* Quelle bulle d'aide expliquer : les deux gestes n'ont ni les mêmes étapes ni la même
+   réparation, et montrer « retouche le mot, il se désélectionne » à un enfant qui délimite
+   un bloc lui décrirait une interaction qui n'existe pas chez lui. Les questions d'une
+   leçon sont homogènes (la banque entière est segmentée ou ne l'est pas), donc la première
+   suffit à trancher. */
+function aideDuGeste(): 'clicMot' | 'segmentMot' {
+	return questions[0]?.segment ? 'segmentMot' : 'clicMot';
 }
 
 export function runLeconClicMot(lessonId: string, m?: ExerciseMode): void {
@@ -185,7 +201,10 @@ function renderQuestion(): void {
       </div>
     </div>`.balisage;
 	const verif = sheets().querySelector('#lclicVerif') as HTMLButtonElement;
-	ctrl = bindClicMot(
+	// Deux gestes, un seul contrat (`verify` + `selected` + `onState`) : tout l'après-coup
+	// du runner — journal, score, révélation, XP — ne sait pas lequel des deux est monté.
+	const monter = q.segment ? bindSegmentMot : bindClicMot;
+	ctrl = monter(
 		sheets(),
 		{
 			tokens: q.tokens,
@@ -196,8 +215,8 @@ function renderQuestion(): void {
 			explicationNommeCible: q.explicationNommeCible,
 		},
 		{
-			onState: (hasSelection) => {
-				if (!answered) verif.disabled = !hasSelection;
+			onState: (pret) => {
+				if (!answered) verif.disabled = !pret;
 			},
 		},
 	);
@@ -206,7 +225,7 @@ function renderQuestion(): void {
 	bindConsigneTts(sheets()); // boutons « Écouter » : consigne (auto) + phrase entière (#42)
 	// Bouton « ? » d'aide (#272) : renderQuestion() reconstruit tout le sheets() à chaque
 	// question, donc on le re-monte à chaque rendu (l'appel est idempotent).
-	monterBoutonAide(sheets().querySelector('.lclic-col'), 'clicMot');
+	monterBoutonAide(sheets().querySelector('.lclic-col'), aideDuGeste());
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -230,7 +249,13 @@ function verifier(): void {
 			feedbackHTML: html`${
 				juste
 					? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
-					: html`<span class="lqcm-ko">Regarde le bon mot en vert, puis continue.</span>`
+					: html`<span class="lqcm-ko"
+							>${
+								q.segment
+									? 'Regarde le bon groupe en vert, puis continue.'
+									: 'Regarde le bon mot en vert, puis continue.'
+							}</span
+					  >`
 			}${expl}`,
 			// `bindClicMot.verify()` a déjà écrit dans `#lclicStatus` un message plus riche
 			// (verdict + explication, et le drapeau #436/#529 qui évite de redire la

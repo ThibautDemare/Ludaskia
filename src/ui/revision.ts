@@ -78,6 +78,7 @@ import { motsDifficilesHTML, bindMotsDifficiles, type MotDifficile } from './mot
 import { bindTuileInteraction } from './tuile-interaction';
 import { bindAppariement } from './appariement';
 import { bindClicMot } from './clic-mot-interaction';
+import { bindSegmentMot } from './segment-mot-interaction';
 import {
 	renderProblemeBoardHTML,
 	corrigerEtapesProbleme,
@@ -215,6 +216,11 @@ type RevItem = { groupLabel: string; consigne?: string; niveau?: SchoolLevel } &
 			cibleLabel?: string;
 			// L'explication nomme déjà la cible (#436) → pas de double annonce en live region.
 			explicationNommeCible?: boolean;
+			// La cible est un SEGMENT à délimiter (#716) : la révision monte alors le widget
+			// à deux bornes, comme la leçon. Sans ce report, l'enfant réviserait la notion
+			// avec un GESTE qu'il n'a jamais joué — et pourrait y cocher des mots épars, ce
+			// que la leçon lui interdit précisément.
+			segment?: boolean;
 	  }
 );
 
@@ -405,6 +411,7 @@ export function runRevisionEspacee(): void {
 					parle: ex.parle,
 					cibleLabel: ex.cibleLabel,
 					explicationNommeCible: ex.explicationNommeCible,
+					segment: ex.segment,
 				});
 				continue;
 			}
@@ -1294,7 +1301,8 @@ function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
 		html`<p class="rev-q lclic-consigne"${ttsAttr(it.actionConsigne)}>${it.actionConsigne}</p>`,
 	).balisage;
 	const verif = document.getElementById('revValidate') as HTMLButtonElement;
-	const ctrl = bindClicMot(
+	const monter = it.segment ? bindSegmentMot : bindClicMot;
+	const ctrl = monter(
 		stage,
 		{
 			tokens: it.tokens,
@@ -1306,7 +1314,7 @@ function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
 			explication: it.explication,
 			explicationNommeCible: it.explicationNommeCible,
 		},
-		{ onState: (hasSelection) => (verif.disabled = !hasSelection) },
+		{ onState: (pret) => (verif.disabled = !pret) },
 	);
 	// Mots joints par `libelleCible` (source unique, comme le runner d'entraînement) :
 	// une cible NON contiguë se lit « chien et pomme », pas « chien pomme ».

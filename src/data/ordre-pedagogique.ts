@@ -457,6 +457,11 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'fr-gram-clic-det',
 			'fr-gram-clic-conj',
 			'fr-gram-clic-pron',
+			// Repérer le GROUPE avant d'en désigner le noyau (#716) : l'étayage du nom noyau
+			// dit lui-même « repère le groupe de mots qui commence par un déterminant », donc
+			// il suppose une frontière que rien n'apprenait jusqu'ici à tracer. La leçon du
+			// noyau n'en change pas pour autant — elle recule d'un cran dans le fil.
+			'fr-gram-groupe-nominal',
 			'fr-gram-clic-noyau',
 			'fr-gram-clic-sujet',
 			// Orthographe — accord de TOUT le groupe nominal (#243) : chaîne d'accord

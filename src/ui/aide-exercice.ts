@@ -134,6 +134,18 @@ function illustrationHTML(type: TypeAide): SafeHtml {
 				<span class="an-clicmot-tok an-clicmot-tok--4">hier</span>
 				${FINGER}
 			</div>`;
+		case 'segmentMot':
+			// Mini-phrase « Le chat noir dort » : le doigt tape « Le », puis « noir » — et le
+			// ruban se remplit d'un seul tenant, « chat » compris SANS avoir été touché.
+			// C'est ce remplissage automatique qui est le message : les deux frappes ne
+			// désignent pas deux mots, elles posent les bords d'un bloc.
+			return html`<div class="aide-anim aide-anim--segment is-anim" id="aideAnim">
+				<span class="an-seg-tok an-seg-tok--1">Le</span>
+				<span class="an-seg-tok an-seg-tok--2">chat</span>
+				<span class="an-seg-tok an-seg-tok--3">noir</span>
+				<span class="an-seg-tok an-seg-tok--4">dort</span>
+				${FINGER}
+			</div>`;
 		case 'droiteGraduee':
 			// Une mini-droite graduée : le doigt touche une graduation, le repère corail
 			// s'y pose (métaphore du placement aimanté).

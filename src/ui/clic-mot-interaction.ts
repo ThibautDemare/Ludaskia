@@ -20,8 +20,9 @@
    ============================================================ */
 
 import { ttsAttr } from '../core/tts-text';
-import { estPonctuation, libelleCible } from '../data/francais/grammaire-clic-mot';
-import { html, joindre } from '../core/html';
+import { libelleCible } from '../data/francais/grammaire-clic-mot';
+import { marquerMot, phraseMotsHTML } from './phrase-mots';
+import { html } from '../core/html';
 
 export interface ClicMotSpec {
 	tokens: string[];
@@ -70,13 +71,10 @@ export function bindClicMot(
 	let fige = false;
 	let resultat = false;
 
-	const motsHTML = joindre(
-		tokens.map((t, i) =>
-			estPonctuation(t)
-				? html`<span class="lclic-ponct">${t}</span>`
-				: html`<button type="button" class="lclic-mot" data-i="${i}" aria-pressed="false">${t}</button>`,
-		),
-	);
+	// Découpage de la phrase PARTAGÉ avec le widget à deux bornes (#716, ui/phrase-mots.ts) :
+	// les deux gestes diffèrent, le substrat non — et un substrat en double aurait dérivé sur
+	// le détail qui compte (la pastille ✓/✗ qui double le signal couleur).
+	const motsHTML = phraseMotsHTML(tokens, 'lclic');
 	const mount = root.querySelector('[data-tuile-mount]');
 	if (mount) {
 		// `data-tts-label` (#470) : l'écran porte DEUX boutons « Écouter » consécutifs au
@@ -149,12 +147,12 @@ export function bindClicMot(
 				// d'accorder la phrase avec le libellé (« ce n'est pas les noms »).
 				const multiple = cible.size > 1;
 				if (estChoisi && estCible) {
-					marquer(btn, 'correct', '✓', `${btn.textContent ?? ''}, correct`);
+					marquerMot(btn, 'lclic', 'correct', `${btn.textContent ?? ''}, correct`);
 				} else if (estChoisi && !estCible) {
 					const dit = multiple
 						? `ce mot ne fait pas partie de la réponse`
 						: `ce n'est pas ${nomCible}`;
-					marquer(btn, 'wrong', '✗', `${btn.textContent ?? ''}, ${dit}`);
+					marquerMot(btn, 'lclic', 'wrong', `${btn.textContent ?? ''}, ${dit}`);
 				} else if (!estChoisi && estCible) {
 					// Bonne réponse révélée dans la phrase (surlignage vert doux), sans pastille.
 					btn.classList.add('is-cible');
@@ -185,21 +183,4 @@ export function bindClicMot(
 			return [...selection].sort((a, b) => a - b);
 		},
 	};
-}
-
-/* Applique un verdict à un mot : classe d'état, pastille ✓/✗ (double codage couleur
-   + signe), et aria-label parlant pour le lecteur d'écran. */
-function marquer(
-	btn: HTMLButtonElement,
-	etat: 'correct' | 'wrong',
-	signe: string,
-	aria: string,
-): void {
-	btn.classList.add(etat);
-	btn.setAttribute('aria-label', aria);
-	const mark = document.createElement('span');
-	mark.className = 'lclic-mark';
-	mark.setAttribute('aria-hidden', 'true');
-	mark.textContent = signe;
-	btn.appendChild(mark);
 }

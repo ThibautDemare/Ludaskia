@@ -907,6 +907,143 @@
 	}
 }
 
+/* ---- segmentMot (délimiter le groupe, #716) : mini-phrase « Le chat noir dort ». Le
+   doigt tape « Le » (borne, contour tireté), puis « noir » — et le ruban se remplit d'un
+   seul tenant. « chat » se remplit AVEC, sans avoir jamais été touché : c'est tout le
+   message de cette bulle, et la seule chose qu'un enfant ne peut pas deviner du geste.
+   Jetons contigus (aucun écart horizontal) pour la même raison que dans le vrai widget :
+   c'est ce qui fait une bande, et non trois autocollants côte à côte. ---- */
+.aide-anim--segment .an-seg-tok {
+	position: absolute;
+	top: 50px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 38px;
+	border: 0;
+	border-bottom: 2px dotted var(--accent-soft);
+	background: transparent;
+	color: var(--ink);
+	font-weight: 700;
+	font-size: 15px;
+	white-space: nowrap;
+}
+.aide-anim--segment .an-seg-tok--1 {
+	left: 40px;
+	width: 32px;
+} /* Le (borne de début) */
+.aide-anim--segment .an-seg-tok--2 {
+	left: 72px;
+	width: 48px;
+} /* chat (jamais touché, pris quand même) */
+.aide-anim--segment .an-seg-tok--3 {
+	left: 120px;
+	width: 46px;
+} /* noir (borne de fin) */
+.aide-anim--segment .an-seg-tok--4 {
+	left: 166px;
+	width: 48px;
+} /* dort (reste dehors) */
+/* État de repos = résultat final (mouvement réduit : la bulle montre le bloc formé). */
+.aide-anim--segment .an-seg-tok--1,
+.aide-anim--segment .an-seg-tok--2,
+.aide-anim--segment .an-seg-tok--3 {
+	background: var(--accent-soft);
+	border-bottom-color: var(--accent);
+}
+.aide-anim--segment .an-seg-tok--1 {
+	border-top-left-radius: 10px;
+	border-bottom-left-radius: 10px;
+}
+.aide-anim--segment .an-seg-tok--3 {
+	border-top-right-radius: 10px;
+	border-bottom-right-radius: 10px;
+}
+.aide-anim--segment .an-finger {
+	left: 133px;
+	top: 66px;
+}
+.aide-anim--segment.is-anim .an-seg-tok--1 {
+	animation: an-seg-borne 3.6s ease forwards;
+}
+.aide-anim--segment.is-anim .an-seg-tok--2 {
+	animation: an-seg-milieu 3.6s ease forwards;
+}
+.aide-anim--segment.is-anim .an-seg-tok--3 {
+	animation: an-seg-milieu 3.6s ease forwards;
+}
+.aide-anim--segment.is-anim .an-finger {
+	animation: an-seg-finger 3.6s ease forwards;
+}
+/* « Le » devient borne au 1er tap (~10 %) — contour TIRETÉ, pas encore rempli : c'est la
+   forme qui dit « il te reste une frappe », pas une nuance de couleur. Au 2e tap (48 %)
+   il rejoint le ruban. */
+@keyframes an-seg-borne {
+	0%,
+	8% {
+		background: transparent;
+		outline: 2px dashed transparent;
+		outline-offset: -2px;
+		border-bottom-color: var(--accent-soft);
+	}
+	10%,
+	46% {
+		background: transparent;
+		outline: 2px dashed var(--accent);
+		outline-offset: -2px;
+		border-bottom-color: var(--accent);
+	}
+	48%,
+	100% {
+		background: var(--accent-soft);
+		outline: 2px dashed transparent;
+		outline-offset: -2px;
+		border-bottom-color: var(--accent);
+	}
+}
+/* « chat » et « noir » se remplissent EN MÊME TEMPS, au second tap — alors que le doigt
+   n'a touché que « noir ». */
+@keyframes an-seg-milieu {
+	0%,
+	46% {
+		background: transparent;
+		border-bottom-color: var(--accent-soft);
+	}
+	48%,
+	100% {
+		background: var(--accent-soft);
+		border-bottom-color: var(--accent);
+	}
+}
+/* Le doigt tape « Le », glisse jusqu'à « noir », le tape, tient la pause (le bloc est
+   formé), puis s'écarte pour ne pas masquer le ruban. */
+@keyframes an-seg-finger {
+	0% {
+		transform: translate(-80px, 0);
+	}
+	8% {
+		transform: translate(-80px, -5px) scale(0.85);
+	}
+	14% {
+		transform: translate(-80px, 0) scale(1);
+	}
+	40% {
+		transform: translate(0, 0);
+	}
+	46% {
+		transform: translate(0, -5px) scale(0.85);
+	}
+	52% {
+		transform: translate(0, 0) scale(1);
+	}
+	82% {
+		transform: translate(0, 0);
+	}
+	100% {
+		transform: translate(18px, 28px);
+	}
+}
+
 /* ---- droite graduée (placer le repère) : le doigt touche une graduation, le repère
    corail s'y pose (métaphore du placement aimanté). ---- */
 .aide-anim--droite .an-droite-axe {

@@ -36,6 +36,7 @@ export type TypeAide =
 	| 'tableau'
 	| 'appariement'
 	| 'clicMot'
+	| 'segmentMot'
 	| 'droiteGraduee';
 
 export interface AideContenu {
@@ -131,6 +132,18 @@ export const AIDES: Record<TypeAide, AideContenu> = {
 		// #437 ; TOUS les noms / déterminants d'une phrase au CE2, jusqu'à trois mots, #436).
 		etapes: ['Touche le bon mot.', 'Parfois, il faut toucher plusieurs mots.'],
 		reparation: "Tu t'es trompé ? Retouche le mot, il se désélectionne.",
+	},
+	segmentMot: {
+		titre: 'Comment montrer le groupe ?',
+		// Deux étapes, pas trois : le geste EST en deux temps, et une troisième ligne
+		// inventerait une étape qui n'existe pas. « Tout ce qui est entre les deux » est
+		// la seule chose que l'enfant ne peut pas deviner du geste lui-même.
+		etapes: [
+			'Touche le premier mot du groupe.',
+			'Touche le dernier mot : tout ce qui est entre les deux est pris.',
+		],
+		alternative: 'Au clavier, la touche Tab passe de mot en mot et Entrée pose une borne.',
+		reparation: "Tu t'es trompé ? Touche un autre mot : ta sélection repart de là.",
 	},
 	droiteGraduee: {
 		titre: 'Comment placer le repère ?',

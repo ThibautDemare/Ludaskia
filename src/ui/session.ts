@@ -65,6 +65,51 @@ function regleRomaineHTML(item: Item | undefined, saisie: string): SafeHtml {
 	return regle ? html`<span class="regle-romaine">${libelleRegleRomaine(regle)}</span>` : VIDE;
 }
 
+/* Annonce du VERDICT au lecteur d'écran (relecture a11y #717).
+
+   Jusqu'ici, valider une fiche ne produisait aucune annonce : ni juste/faux, ni score, ni
+   réponse révélée. Les ✓/✗ et le bandeau de résultat sont posés dans le DOM sans
+   `aria-live`, donc un enfant au lecteur d'écran validait et n'entendait rien. Le bon
+   patron existait pourtant vingt lignes plus bas (`signalerSaisiesIllisibles`), raisonné en
+   détail ; il n'avait simplement jamais été appliqué au verdict lui-même.
+
+   UNE synthèse, pas un verdict par champ : une fiche porte jusqu'à vingt réponses, et
+   vingt annonces à la suite seraient pires que le silence — l'enfant décrocherait avant la
+   troisième. Le détail reste atteignable en revenant sur chaque champ, que `aria-invalid`
+   décrit désormais.
+
+   `role="status"` et non `alert` : le verdict est attendu, l'enfant vient de le demander.
+   Une alerte interromprait la lecture en cours pour annoncer ce qu'on attendait déjà.
+   La région est créée VIDE puis remplie au tour suivant : une région vivante insérée
+   déjà pleine n'est pas annoncée de façon fiable, c'est le changement qui l'est. */
+const ID_VERDICT_SR = 'verdictAnnonce';
+
+function annoncerVerdict(ok: number, total: number, avecErreurs: boolean): void {
+	let region = document.getElementById(ID_VERDICT_SR);
+	if (!region) {
+		region = document.createElement('p');
+		region.id = ID_VERDICT_SR;
+		region.className = 'sr-only';
+		region.setAttribute('role', 'status');
+		region.setAttribute('aria-live', 'polite');
+		region.setAttribute('aria-atomic', 'true');
+		document.getElementById('sheets')?.prepend(region);
+	}
+	const cible = region;
+	const pluriel = ok > 1 ? 's' : '';
+	const phrase =
+		total > 0
+			? `${ok} bonne${pluriel} réponse${pluriel} sur ${total}.` +
+				(avecErreurs ? ' Les réponses attendues sont affichées à côté des réponses fausses.' : '')
+			: "Aucune réponse n'a été donnée.";
+	// Vidée d'abord : deux fiches de suite au même score produiraient sinon un texte
+	// identique, et un contenu inchangé n'est pas re-annoncé.
+	cible.textContent = '';
+	setTimeout(() => {
+		cible.textContent = phrase;
+	}, 60);
+}
+
 /* ---------- Vérification (arrête le chrono) ---------- */
 export function verify() {
 	const inputs = document.querySelectorAll<HTMLInputElement>('#sheets input.ans');
@@ -123,6 +168,14 @@ export function verify() {
 			mark.textContent = '';
 		}
 		const status = statuses[inp.id];
+		// Validité exposée aux technologies d'assistance : le ✓/✗ est une marque VISUELLE,
+		// elle ne dit rien à un lecteur d'écran. C'est ce qui rend le détail atteignable
+		// champ par champ, une fois la synthèse annoncée (relecture a11y #717).
+		if (status === 'correct' || status === 'wrong') {
+			inp.setAttribute('aria-invalid', String(status === 'wrong'));
+		} else {
+			inp.removeAttribute('aria-invalid');
+		}
 		if (status === 'correct') {
 			inp.classList.add('correct');
 			if (mark) {
@@ -146,6 +199,7 @@ export function verify() {
 		}
 	});
 	setLastErrors(errors);
+	annoncerVerdict(ok, total, errors.length > 0);
 	// Étayage de la notion (#490) : à côté de chaque grille posée ratée, l'offre d'expliquer
 	// LE calcul qui vient d'être raté. Proposé, jamais imposé ni automatique — un affichage
 	// systématique s'apprendrait à ignorer par réflexe. Sans contenu pour la leçon, rien ne
@@ -464,21 +518,6 @@ export function initSession() {
 	// champ des minutes (.heure-min) efface la marque du champ des heures qui lui est lié.
 	document.addEventListener('input', (e: Event) => {
 		const t = e.target as HTMLElement | null;
-		// Écriture romaine (#717) : la saisie passe en MAJUSCULES à la frappe. Un
-		// `text-transform: uppercase` ne changerait que l'affichage — la valeur soumise
-		// resterait « xlvii », et c'est elle qui est corrigée, journalisée et comparée. La
-		// correction replie la casse de son côté (`checkItemAnswer`), mais ça reste un filet :
-		// ici on veut que l'enfant VOIE la forme attendue pendant qu'il écrit.
-		// Position du curseur restaurée : sans ça, corriger une lettre au milieu d'un mot
-		// renverrait le curseur en fin de champ à chaque frappe.
-		if (t instanceof HTMLInputElement && t.classList.contains('ans-romain')) {
-			const majuscules = t.value.toUpperCase();
-			if (majuscules !== t.value) {
-				const curseur = t.selectionStart;
-				t.value = majuscules;
-				if (curseur !== null) t.setSelectionRange(curseur, curseur);
-			}
-		}
 		// Champ signalé comme illisible (saisie non numérique) : le retoucher lève le
 		// signalement, comme une saisie efface son marquage ✓/✗ juste en dessous.
 		if (t?.classList.contains('a-corriger')) leverSignalementIllisible(t);

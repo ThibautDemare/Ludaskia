@@ -154,13 +154,24 @@
    ui/session.ts ; `text-transform` n'est pas posé ici, il ferait croire que c'est réglé
    alors qu'il ne change que l'affiché. */
 .ans-romain {
-	width: 120px;
+	/* Largeur et taille en unités RELATIVES, comme `.ans-grand` juste au-dessus et pour la
+	   même raison : ce champ n'existe que pour se relire signe par signe, donc il doit
+	   suivre la taille de texte réglée par l'enfant ou par son système. En `px` fixes, une
+	   police agrandie déborderait du champ au lieu de l'agrandir (relecture a11y #717). */
+	width: 12ch;
 	text-align: center;
 	font-family: var(--ui);
-	font-size: 17px;
+	font-size: clamp(1.05rem, 3.5vw, 1.35rem);
 	font-weight: 700;
 	letter-spacing: 0.06em;
 	font-variant-numeric: tabular-nums;
+	/* Majuscules à l'AFFICHAGE seulement (arbitrage mainteneur, relecture a11y #717) :
+	   l'enfant voit la forme conventionnelle se former sous ses doigts, et la valeur du
+	   champ n'est jamais réécrite sous lui. Une réécriture de `input.value` à chaque frappe
+	   ne servait que cet effet — `normaliserRomain` replie déjà la casse pour la correction
+	   comme pour le diagnostic de règle — et elle casse les claviers à composition
+	   (prédiction, correction automatique sur tablette), la cible du produit. */
+	text-transform: uppercase;
 }
 
 .ans:focus {

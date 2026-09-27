@@ -43,8 +43,9 @@ const MODE_ECRIRE = 'ecrire';
     l'issue. Elle est commune aux deux modes (la consigne se décline par niveau, pas par
     mode) ; c'est l'énoncé de chaque question qui dit dans quel sens on travaille. */
 const CONSIGNE =
-	'Écris ce que la question demande. Les chiffres romains sont un autre système : ' +
-	"un signe y garde toujours la même valeur, où qu'il soit placé, et on additionne les signes.";
+	'Écris ce que la question demande. Les chiffres romains ne marchent pas comme nos ' +
+	"nombres : la place d'un signe ne change jamais sa valeur. On additionne les signes, " +
+	"sauf dans quelques cas où l'on retire un petit signe placé devant un grand.";
 
 /** Un item, dans le sens demandé. `@` place le champ de saisie.
 

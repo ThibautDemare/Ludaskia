@@ -50,6 +50,15 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
   (= `niveauParMatiere[subject] ?? niveauReference ?? niveauDefautCatalogue(getAllLessons())`), `niveauLecon(lesson)`
   (= `effectiveLevel` sur la matière, **passé à `generate`/`genLessonItem`** par
   `build`/runners/`revision`/`sprint`), `besoinChoixNiveau()`, `lessonsNiveauActif()`.
+- **`consolidation-bas-niveau.ts`** (pur, #723) — ce qui reste, par matière, de la
+  classe **juste en dessous** de la classe suivie, quand la matière est passée à la suivante :
+  leçons propres à cette classe précédente (une leçon aussi présente à la classe
+  suivie est exclue, remplacée par sa version là-bas), travaillées à ce niveau et
+  pas encore **franchies** (`estFranchie`, sortie à sens unique — cf. [Espace
+  encadrant](espace-encadrant.md)). Entrée : les cartes brutes du profil, jamais la
+  vue scopée à la classe active, qui exclut précisément ce qu'on cherche ici.
+  Nourrit `RecapProfil.classePrecedente` (`core/encadrant-stats.ts`) et, plus tard,
+  les canaux enfant de #724 (pas encore livrés).
 
 ## Ce qu'une leçon multi-niveaux décline par classe (#436)
 
@@ -215,6 +224,12 @@ une dictée prédéfinie (`dicteeSousFiltre`, `core/catalogue-arbre.ts`) : sous 
 CUMULATIF (#243, ce que l'enfant voit — un CM1 garde les listes CE2) ; sous un jeton de
 classe précis, cette classe SEULE (`levels.includes`, comme une leçon). Une liste du parent
 passe toujours, n'étant jamais taguée par niveau.
+
+**Deuxième lecture adulte hors de la classe suivie (#723)** : ce que l'enfant a
+commencé sans le finir dans la classe **juste en dessous** de celle qu'il suit
+ressort côté encadrant, borné à un seul niveau d'écart — cf. « Classe précédente
+encore en cours » dans [Espace encadrant](espace-encadrant.md). Les canaux côté
+enfant restent hors périmètre, objet de #724.
 
 **La recherche de leçon côté ENFANT (#718, `core/recherche-lecon.ts`) n'entre pas dans
 cette exception** : le niveau y reste une FRONTIÈRE, exactement comme le catalogue

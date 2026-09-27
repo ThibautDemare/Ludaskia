@@ -794,6 +794,58 @@ la lecture de son état, côté adulte, change selon d'où elle vient.
 Ferme #535 comme sous-cas (une épingle hors classe qui ne revenait jamais sur l'accueil de
 l'enfant).
 
+## Classe précédente encore en cours (#723)
+
+Quand une matière passe à la classe suivante (CE2 → CM1), ce que l'enfant avait
+**commencé sans le finir** disparaît de tout ce qui est scopé à la classe suivie
+(récap, suggestions, compteurs) : sans ce sous-bloc, l'adulte ne le retrouverait
+plus nulle part. Logique pure dans `core/consolidation-bas-niveau.ts`, exposée sur
+le récap par `RecapProfil.classePrecedente` (`core/encadrant-stats.ts`) : une entrée
+par matière dont la classe suivie a une classe précédente au catalogue **et** où
+l'enfant y a travaillé au moins une leçon.
+
+**Trois bornes**, qui sont aussi les trois conditions d'extinction :
+- **un seul niveau d'écart** (`niveauInferieurImmediat`, même règle que
+  l'entretien de révision #232) — au CM2, rien du CE2 ne ressort ;
+- leçons **propres** à la classe précédente : une leçon qui existe aussi à la
+  classe suivie est servie dans sa version de la classe suivie, qui la remplace ;
+- leçons **travaillées** à ce niveau (au moins une question, tous modes) et **pas
+  franchies** (`estFranchie` : étoile, ou score au seuil sur une leçon complète).
+
+**Sortie à sens unique** : « franchie », pas « solide » (perf récente sur fenêtre
+glissante) — une notion solide peut redevenir fragile après un mauvais sprint,
+une notion franchie ne l'est plus jamais (étoile et meilleur score sont
+monotones). Décision du 27/09/2026. Contrepartie assumée : une leçon réussie
+seulement en sprint reste listée jusqu'à une leçon complète réussie ; le
+sous-bloc le dit en clair.
+
+**Onglet Programme** : un sous-bloc par matière (`ui/encadrant-classe-precedente.ts`),
+titre « Encore en cours en \<classe\> (\<matière\>) », entre « Suggestions » et
+« Retirées automatiquement ». Tri : non acquis d'abord, puis perf récente
+croissante, puis ordre pédagogique. Les épinglées n'y sont pas répétées. Trois
+corps possibles : la liste ; « Elles sont toutes épinglées ci-dessus. » ; la
+phrase de clôture seule quand tout est réussi. Pas de sous-bloc si rien n'a
+jamais été travaillé à ce niveau, ni pour une matière à la classe la plus basse.
+
+Les lignes reprennent le rendu d'une épingle hors classe (badge « classe
+d'origine » + état lu à ce niveau, cf. ci-dessus), fournies par l'appelant pour
+éviter un cycle d'import avec `encadrant-progression`. Leur infobulle est
+**propre** à ces lignes non épinglées — celle d'une épingle (« épinglée
+volontairement… ») y serait fausse. Hors classe suivie, le **nom accessible** du bouton
+« Épingler »/« Retirer » porte aussi la classe (`ligneRevoir`) : « Je reconnais les solides »
+existe au CE2 et au CM1, et deux boutons homonymes seraient indiscernables à la voix.
+
+**Onglet Suivi** : une tuile chiffres-clés par classe précédente distincte
+(`data-stat="classe-precedente-<niveau>"`), masquée à zéro, calculée par
+`resteClassePrecedente` (pur) — elle compte les épinglées : l'épingle ne réussit
+pas la leçon, et une tuile alignée sur la liste disparaîtrait une fois tout épinglé.
+Évolution du critère 8 de l'issue, tracée par un commentaire daté du 27/09/2026.
+
+*Rejet écrit (27/09/2026)* : la relecture langue a suggéré que la tuile,
+isolée sous son nombre, manquerait de contexte. Écarté — elle suit la
+convention elliptique des tuiles voisines (« à revoir ensemble »), et c'est le
+sous-bloc détaillé qui porte le contexte.
+
 ## « À revoir » → carte d'accueil
 
 **« À revoir » → carte d'accueil** : l'encadrant **épingle** une leçon du catalogue **ou** une

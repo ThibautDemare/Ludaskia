@@ -70,6 +70,9 @@ export interface EtatReport {
 	/** Meilleur score (%) obtenu sur un essai COMPLET en mode leçon. Monotone, comme
 	    l'étoile : ce que l'enfant a montré une fois ne se reperd pas. */
 	meilleurPct: number;
+	/** Horodatage du PREMIER franchissement (#724), absent tant que la leçon n'est pas
+	    franchie et sur les franchissements antérieurs à ce champ. */
+	franchieLe?: number;
 }
 
 export function etatReportVierge(): EtatReport {
@@ -85,13 +88,16 @@ function assainir(etat: EtatReport | undefined): EtatReport {
 	if (!etat) return vierge;
 	const num = (v: unknown, defaut: number) =>
 		typeof v === 'number' && Number.isFinite(v) ? v : defaut;
-	return {
+	const propre: EtatReport = {
 		jours: num(etat.jours, vierge.jours),
 		dernierJour: typeof etat.dernierJour === 'string' ? etat.dernierJour : vierge.dernierJour,
 		reporteLe: num(etat.reporteLe, vierge.reporteLe),
 		reprendreLe: num(etat.reprendreLe, vierge.reprendreLe),
 		meilleurPct: num(etat.meilleurPct, vierge.meilleurPct),
 	};
+	// Champ optionnel : absent reste absent (un franchissement non daté n'est pas « daté à 0 »).
+	const franchieLe = num(etat.franchieLe, NaN);
+	return Number.isNaN(franchieLe) ? propre : { ...propre, franchieLe };
 }
 
 /** Jour civil d'un instant ('YYYY-MM-DD', heure locale — même convention que
@@ -147,7 +153,19 @@ export function apresEssaiLecon(
 		// jamais résolu là où il n'y avait plus qu'un souvenir. Plus l'appli servait longtemps,
 		// moins le signal disait quelque chose (constat du `pedagogue-primaire`, #490).
 		// `dernierJour` repart avec lui : le compteur qu'il protège du double-compte est neuf.
-		return { ...base, jours: 0, dernierJour: '', meilleurPct, reporteLe: 0, reprendreLe: 0 };
+		const franchi = {
+			...base,
+			jours: 0,
+			dernierJour: '',
+			meilleurPct,
+			reporteLe: 0,
+			reprendreLe: 0,
+		};
+		// Date du PREMIER franchissement (#724), jamais réécrite : le fil y lit l'ORDRE des
+		// franchissements pour doser la classe précédente. Une leçon déjà franchie avant que ce
+		// champ existe reste sans date plutôt que d'être datée du jour où on la rejoue.
+		if (base.franchieLe !== undefined || base.meilleurPct >= SEUIL_FRANCHIE) return franchi;
+		return { ...franchi, franchieLe: now };
 	}
 	const jour = jourDe(now);
 	if (jour === base.dernierJour) return { ...base, meilleurPct };

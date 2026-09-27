@@ -26,6 +26,7 @@ import type { LeconBasNiveau } from './revision-select';
 import type { EtatRevision, OrthoState } from './orthographe/types';
 import { ajouterEssaiRecent, essaisRecents, niveauNotion, type LessonStat } from './maitrise';
 import { apresEssaiLecon, type EtatReport } from './report-lecon';
+import type { CartesBrutes } from './consolidation-bas-niveau';
 
 /* La forme `LessonStat` et ses dérivations pures (moyennes) vivent dans maitrise.ts
    (socle sans stockage, cf. cycle d'import) ; on les re-expose ici pour les nombreux
@@ -932,6 +933,25 @@ function loadLessonReportsRaw(): Record<string, EtatReport> {
 /* Vue scopée au niveau actif (clés = id de leçon nu), comme `loadStars`. */
 export function loadLessonReports(): Record<string, EtatReport> {
 	return scopeActif(loadLessonReportsRaw());
+}
+/* Reports vus au niveau de STOCKAGE de chaque leçon (cf. `scopeStockage`), pendant de
+   `loadStarsStockage` : un prérequis de la classe précédente mis de côté (#724) est rangé
+   sous sa propre classe, que la vue scopée au niveau actif ne voit pas. */
+export function loadLessonReportsStockage(): Record<string, EtatReport> {
+	return scopeStockage(loadLessonReportsRaw());
+}
+/* Cartes BRUTES du profil actif (clés `lessonId@niveau`), entrée de la consolidation de la
+   classe précédente (#723, #724) : les vues scopées excluent précisément ce qu'elle cherche. */
+export function loadCartesBrutes(): CartesBrutes {
+	return { stars: loadStarsRaw(), stats: loadLessonStatsRaw(), reports: loadLessonReportsRaw() };
+}
+/* Mêmes cartes pour un profil désigné par UUID (espace encadrant : profil CONSULTÉ). */
+export function loadCartesBrutesFor(uuid: string): CartesBrutes {
+	return {
+		stars: lsGetRaw(uuid + '/' + STARS_KEY, {}) as Record<string, number>,
+		stats: lsGetRaw(uuid + '/' + LESSON_STATS_KEY, {}) as Record<string, LessonStat>,
+		reports: lsGetRaw(uuid + '/' + LESSON_REPORT_KEY, {}) as Record<string, EtatReport>,
+	};
 }
 /* Enregistre un essai complet en mode leçon (`pct` = % de bonnes réponses) et renvoie
    l'état obtenu. `now` daté par l'appelant (testable). */

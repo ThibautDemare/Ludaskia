@@ -46,7 +46,9 @@ import {
 } from '../core/items';
 import { formatReponseRevelee, saisieEstNombre, sansSeparateurMilliers } from '../core/nombres';
 import type { Item } from '../core/items';
+import { fragilesSprint, tirerAppoint } from '../core/appoint-sprint';
 import {
+	loadCartesBrutes,
 	updateStreak,
 	recordLessonStats,
 	recordRun,
@@ -292,6 +294,8 @@ function drawSprintConfig(el: HTMLElement, scope: SprintScope): void {
 }
 
 let sprintLessonDefs: LessonDef[] = [];
+// Leçons de la classe précédente tirables en appoint (#724), hors du pool actif.
+let sprintAppoint: LessonDef[] = [];
 
 let sprintActive = false;
 /* Le compte à rebours, avec ses causes de gel (core/sprint-decompte.ts). Créé à
@@ -349,6 +353,7 @@ export function runSprint() {
 	const eligibles = lessonsForFilter(sprintFilter);
 	sprintLessonDefs =
 		sprintFilter.type === 'lessons' ? eligibles : appliquerScope(eligibles, sprintScope);
+	sprintAppoint = appointDuFiltre(sprintFilter);
 	// Sélection vide (ex. favori dont toutes les leçons ont disparu du catalogue) :
 	// rien à tirer, on revient à l'accueil plutôt que de planter le tirage.
 	if (!sprintLessonDefs.length) {
@@ -458,9 +463,23 @@ function subjectTag(subject: string): SafeHtml {
 	return html`<span class="sprint-subject sprint-subject-${subject}">${icon(meta.icon)} ${meta.label}</span>`;
 }
 
+/* Leçons de la classe précédente que ce sprint tire en appoint (#724) : aucune pour un
+   favori, sélection explicite qu'on ne modifie pas. Le périmètre « déjà vues » ne les
+   filtre pas : elles sont travaillées par construction. */
+function appointDuFiltre(f: SprintFilter): LessonDef[] {
+	if (f.type === 'lessons') return [];
+	const filtre =
+		f.type === 'subject' ? { subject: f.id } : f.type === 'category' ? { category: f.id } : {};
+	return fragilesSprint(filtre, loadCartesBrutes());
+}
+
 // Choisit la prochaine leçon en gardant la même matière sur une mini-série de
 // 2-3 questions, puis en changeant de matière si plusieurs sont disponibles.
+// Avant cela, un tirage d'appoint (#724) peut servir une leçon de la classe précédente,
+// hors série : la part est bornée, et la série de matière reprend au tirage suivant.
 function pickSprintDef(): LessonDef {
+	const appoint = tirerAppoint(Math.random, sprintLessonDefs.length, sprintAppoint);
+	if (appoint) return appoint;
 	const subjects = [...new Set(sprintLessonDefs.map((d) => d.subject))];
 	if (
 		sprintSeriesLeft <= 0 ||

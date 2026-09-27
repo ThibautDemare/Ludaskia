@@ -471,3 +471,54 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 		],
 	},
 };
+
+/* ============================================================
+   Prérequis INTER-NIVEAUX (#724).
+   ------------------------------------------------------------
+   Une leçon propre à une classe → les leçons propres à la classe en dessous qui en sont
+   des prérequis DURS : sans cette compétence, l'enfant échoue pour une raison étrangère à
+   ce que la leçon enseigne. Table dressée par `pedagogue-primaire` sur le cache
+   `docs/reference/programmes/`. L'ordre pédagogique ci-dessus suffit à l'intérieur d'une
+   classe : la table est réservée aux paires qui traversent un changement de classe.
+
+   Chaque entrée de la liste est une EXIGENCE : un id seul, ou un groupe d'ids dont UN
+   franchi suffit (même notion sous deux formats). Rien ne verrouille : un prérequis
+   ouvert est proposé dans « Ta prochaine leçon » s'il a déjà été travaillé, et nommé dans
+   l'étayage et l'historique des erreurs dans tous les cas.
+
+   Tenue par `tests/prerequis.test.ts` : ids au catalogue, même matière, prérequis d'une
+   classe strictement inférieure qui ne supporte pas celle de la leçon, aucun cycle.
+
+   Écartés volontairement par le pédagogue (ne pas les ajouter sans le rouvrir) :
+   contraires et sens proche CM1 (reprise étendue, pas un verrou), `fr-gram-clic-sujet`,
+   conjonction, forme négative (contenu neuf), homonymes (mécanisme différent des
+   homophones), décimaux et fractions > 1 (socle porté par des leçons à deux niveaux),
+   géométrie « propriétés » (la leçon réexplique ses codes).
+   ============================================================ */
+export type ExigencePrerequis = string | readonly string[];
+
+export const PREREQUIS: Record<string, readonly ExigencePrerequis[]> = {
+	// Savoir ce qu'est un reste, et estimer le chiffre du quotient. `math-div-partage`
+	// n'est pas listé : « Je découvre le reste » le prolonge (un partage qui ne tombe pas
+	// juste), il en dépend déjà.
+	'math-division-euclidienne': ['math-div-reste', 'math-tables-multiplication'],
+	// Multiplier vite des nombres arrondis et replacer les zéros.
+	'math-ordre-grandeur-produit': ['math-tables-multiplication', 'math-multiplier-10-100'],
+	// Vocabulaire faces, arêtes, sommets, introduit au CE2.
+	'geo-cm1-solides-comptage': ['geo-solides-proprietes'],
+	// La nouveauté est l'aire, le périmètre est supposé (programme CM1 §2.1). La leçon
+	// compte le périmètre en côtés de carreaux sur quadrillage : c'est donc la leçon CE2
+	// sur quadrillage qui est le prérequis, et non celle qui additionne des côtés notés.
+	'mes-aire-perimetre': ['mes-perimetre-quadrillage'],
+	// La leçon ne réenseigne pas la lecture de l'heure.
+	'mes-duree-ecoulee': ['mes-lecture-heure'],
+	// Le geste -s/-e doit être automatisé avant les cas étendus ; l'irrégulier reste un
+	// chantier CM1, pas un prérequis.
+	'fr-accords-cm1': ['fr-accords-reguliers'],
+	// Accorder une chaîne suppose de savoir transformer un mot isolé.
+	'fr-accords-groupe-nominal': ['fr-accords-reguliers'],
+	// Radical + préfixe/suffixe est un concept posé explicitement, pas intuitif.
+	'fr-vocab-affixes-cm1': ['fr-vocab-familles'],
+	// Même concept sous deux formats : l'un ou l'autre suffit.
+	'fr-vocab-familles-cm1': [['fr-vocab-familles', 'fr-vocab-familles-relier']],
+};

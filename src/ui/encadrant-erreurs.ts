@@ -21,8 +21,11 @@
    ============================================================ */
 
 import { icon } from './icon';
-import { getLessonById } from '../core/catalog';
+import { getLessonById, type LessonDef } from '../core/catalog';
 import type { Profile } from '../core/profiles';
+import type { CartesBrutes } from '../core/consolidation-bas-niveau';
+import { prerequisOuverts } from '../core/prerequis';
+import { loadCartesBrutesFor } from '../core/progress';
 import {
 	chargerErreursFor,
 	filtrerErreursParPeriode,
@@ -38,11 +41,11 @@ import {
 	orthoRevoirId,
 	niveauProfilMatiere,
 } from '../core/encadrant-stats';
-import { labelLecon } from '../core/levels';
+import { LEVEL_LABEL, labelLecon } from '../core/levels';
 import { lsGetRaw } from '../core/storage';
 import { ORTHO_KEY } from '../core/orthographe/store';
 import { labelLeconOrtho } from '../core/orthographe/lessons';
-import { container, renderEspace } from './encadrant-commun';
+import { badgeClasseOrigine, container, renderEspace } from './encadrant-commun';
 import { segmentHTML } from './segment';
 import { html, VIDE, type SafeHtml, joindre } from '../core/html';
 
@@ -138,12 +141,46 @@ function anciennesHTML(anciennes: ErreurAffichee[], now: number, label: string):
    les MAX_PAR_LECON erreurs les plus récentes, un repli « + N plus anciennes », et
    l'action « Épingler » (l'action est DANS le corps, jamais dans le <summary> :
    un bouton dans un summary basculerait le pli au clic). */
+/* Infobulle du badge de classe d'un prérequis, vraie dans les deux états du bouton voisin. */
+const INFOBULLE_PREREQUIS = {
+	libre:
+		"Leçon d'une classe précédente. Épinglez-la pour qu'elle revienne sur l'accueil de l'enfant.",
+	epingle: "Leçon d'une classe précédente, épinglée : elle revient sur l'accueil de l'enfant.",
+};
+
+/* Prérequis de la classe précédente encore ouverts pour cette leçon (#724), travaillés ou
+   non : une cause probable d'une partie des erreurs du groupe. Un prérequis jamais
+   travaillé n'est jamais inséré d'office dans le fil de l'enfant, c'est donc ici (et dans
+   l'étayage) qu'il se propose. Le bouton épingle le PRÉREQUIS, pas la leçon du groupe, et
+   son nom dit la classe : deux leçons de classes différentes peuvent être homonymes. */
+function prerequisGroupeHTML(
+	lesson: LessonDef,
+	consulte: Profile,
+	cartes: CartesBrutes,
+	epinglees: Set<string>,
+): SafeHtml {
+	const ouverts = prerequisOuverts(lesson, niveauProfilMatiere(consulte, lesson.subject), cartes);
+	return joindre(
+		ouverts.map((p) => {
+			const label = labelLecon(p.lesson, p.niveau);
+			const epingle = epinglees.has(p.lesson.id);
+			const verbe = epingle ? 'Retirer' : 'Épingler';
+			return html`<p class="enc-err-prerequis" data-prerequis="${p.lesson.id}">
+          <span>Prérequis : ${label}</span>
+          ${badgeClasseOrigine(p.niveau, epingle ? INFOBULLE_PREREQUIS.epingle : INFOBULLE_PREREQUIS.libre)}
+          <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${p.lesson.id}" aria-label="${verbe} « ${label} » (${LEVEL_LABEL[p.niveau]})">${verbe}</button>
+        </p>`;
+		}),
+	);
+}
+
 function groupeHTML(
 	g: GroupeErreursLecon,
 	epinglees: Set<string>,
 	orthoListes: readonly { id: string; label: string }[],
 	now: number,
 	consulte: Profile,
+	cartes: CartesBrutes,
 ): SafeHtml {
 	// Résolution du libellé : leçon du catalogue, sinon liste d'orthographe (prédéfinie
 	// ou du profil consulté), sinon l'id brut en dernier recours. Le libellé de leçon est
@@ -174,6 +211,7 @@ function groupeHTML(
         <span class="enc-err-count">${g.total} erreur${g.total > 1 ? 's' : ''}</span>
         ${quand ? html`<span class="enc-err-quand">dernière fois ${quand}</span>` : ''}
       </summary>
+      ${lesson ? prerequisGroupeHTML(lesson, consulte, cartes, epinglees) : VIDE}
       <ul class="enc-err-list">${joindre(visibles.map((e) => erreurLigneHTML(e, now)))}</ul>
       ${anciennesHTML(anciennes, now, label)}
       ${actions}
@@ -237,13 +275,14 @@ export function erreursHTML(consulte: Profile, now: number): SafeHtml {
 	const groupes = grouperErreursParLecon(filtrerErreursParPeriode(toutes, periode, now));
 	const epinglees = new Set(loadRevoirFor(consulte.uuid));
 	const orthoListes = orthoListesFor(consulte.uuid);
+	const cartes = loadCartesBrutesFor(consulte.uuid);
 	// Deux vides distincts : journal entièrement vide (rien à filtrer → pas de
 	// sélecteur, message rassurant) vs période sans erreur alors qu'il en existe
 	// ailleurs (on invite à élargir plutôt que de laisser croire qu'il n'y a rien).
 	// Même idiome « Rien à signaler » dans les deux cas : c'est la 2e phrase qui
 	// distingue, pas un changement de ton (relecture langue).
 	const corps = groupes.length
-		? html`<div class="enc-err-lecons">${joindre(groupes.map((g) => groupeHTML(g, epinglees, orthoListes, now, consulte)))}</div>`
+		? html`<div class="enc-err-lecons">${joindre(groupes.map((g) => groupeHTML(g, epinglees, orthoListes, now, consulte, cartes)))}</div>`
 		: toutes.length
 			? html`<p class="enc-hint enc-err-vide">Rien à signaler sur cette période. Élargissez-la pour voir les erreurs plus anciennes.</p>`
 			: html`<p class="enc-hint">Rien à signaler récemment.</p>`;

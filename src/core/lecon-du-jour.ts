@@ -29,7 +29,9 @@
 import { SUBJECTS, getLessonsBySubject } from './catalog';
 import type { LessonDef, SubjectId } from './catalog';
 import { niveauActifMatiere } from './niveau-actif';
-import { loadStars, loadLessonReports } from './progress';
+import { loadStars, loadLessonReports, loadCartesBrutes } from './progress';
+import { consolidationBasNiveau, type CartesBrutes } from './consolidation-bas-niveau';
+import { prerequisOuverts } from './prerequis';
 import { enReport, estFranchie, type EtatReport } from './report-lecon';
 
 /* Nombre maximal de leçons mises de côté EN MÊME TEMPS dans une matière. Au-delà, la
@@ -43,9 +45,19 @@ function estAcquise(stars: Record<string, number>, id: string): boolean {
 	return (stars[id] ?? 0) > 0;
 }
 
+/* Appoint de la classe précédente (#724) : une leçon d'en dessous pour trois leçons de la
+   classe suivie franchies (une sur quatre), tant qu'il reste au moins autant de leçons de
+   la classe suivie à franchir — en fin de programme, la classe suivie garde la main. Ratios
+   fixes pour ce lot (avis pédagogue : une dose dégressive sur l'année demanderait un
+   calendrier scolaire, hors périmètre). */
+export const APPOINT_SUIVIES_ENTRE_DEUX = 3;
+export const APPOINT_SUIVIES_RESTANTES_MIN = 3;
+
 interface EtatMatiere {
+	lessons: LessonDef[]; // la séquence du niveau actif, ordre pédagogique
 	restantes: LessonDef[]; // à franchir, ordre pédagogique (reportées comprises)
 	actives: LessonDef[]; // à franchir et proposables aujourd'hui (hors reportées)
+	masquees: Set<string>; // mises de côté en ce moment (au plus MAX_REPORTEES_MATIERE)
 	/** Ce dont la matière s'est « acquittée » pour l'instant = leçons franchies + leçons
 	    mises de côté. Les reportées comptent (#485) : sinon la matière garderait la main
 	    et proposerait aussitôt la leçon d'après, alors que tout l'intérêt du report est
@@ -77,10 +89,81 @@ function etatMatiere(
 			.map((l) => l.id),
 	);
 	return {
+		lessons,
 		restantes,
 		actives: restantes.filter((l) => !masquees.has(l.id)),
+		masquees,
 		avancement: lessons.length - restantes.length + masquees.size,
 	};
+}
+
+/* Leçons de la classe suivie ACQUITTÉES (franchies, ou mises de côté) depuis `depuis`,
+   instant du dernier franchissement daté d'une leçon de la classe précédente. Sans
+   franchissement daté (`-Infinity`), tout ce qui est acquitté compte, daté ou non : un
+   historique antérieur au champ `franchieLe` n'a pas d'ordre, il précède tout. */
+function suiviesDepuis(
+	etat: EtatMatiere,
+	stars: Record<string, number>,
+	reports: Record<string, EtatReport>,
+	depuis: number,
+): number {
+	let n = 0;
+	for (const l of etat.lessons) {
+		const r = reports[l.id];
+		if (estFranchie(r, estAcquise(stars, l.id))) {
+			if (depuis === -Infinity || (r?.franchieLe ?? -Infinity) > depuis) n++;
+		} else if (etat.masquees.has(l.id) && (r?.reporteLe ?? 0) > depuis) n++;
+	}
+	return n;
+}
+
+/* Leçons de la classe précédente à placer en TÊTE de la file d'une matière (#724). Deux
+   sources, jamais cumulées :
+   1. les PRÉREQUIS de la tête (table `PREREQUIS`) travaillés en dessous sans être franchis,
+      dans l'ordre pédagogique de leur classe : l'enfant échouerait sur la leçon suivie
+      pour une raison étrangère à ce qu'elle enseigne. Un prérequis jamais travaillé n'est
+      pas inséré, seulement proposé ailleurs (étayage, historique des erreurs) ;
+   2. sinon l'APPOINT : la plus fragile des leçons commencées en dessous (même ensemble et
+      même tri que le bloc parent de #723), une fois `APPOINT_SUIVIES_ENTRE_DEUX` leçons de
+      la classe suivie acquittées depuis le dernier franchissement d'en dessous. Le
+      franchissement d'un prérequis remet donc aussi le compte à zéro : il tient lieu de
+      leçon d'en dessous pour sa fenêtre.
+   Rien ne verrouille : le reste de la file suit, « voir une autre leçon » y passe. Une leçon
+   d'en dessous mise de côté suit le report ordinaire (lu à SON niveau, dans `bas`). */
+function insertionsClassePrecedente(
+	subject: SubjectId,
+	etat: EtatMatiere,
+	stars: Record<string, number>,
+	reports: Record<string, EtatReport>,
+	bas: CartesBrutes,
+	now: number,
+): LessonDef[] {
+	const niveauActif = niveauActifMatiere(subject);
+	const conso = consolidationBasNiveau(subject, niveauActif, bas);
+	if (!conso) return [];
+	const cle = (l: LessonDef) => `${l.id}@${conso.niveau}`;
+	const proposable = (l: LessonDef) => !enReport(bas.reports[cle(l)], now);
+
+	const tete = etat.actives[0];
+	const prerequis = tete
+		? prerequisOuverts(tete, niveauActif, bas)
+				.filter((p) => p.travaillee && proposable(p.lesson))
+				.map((p) => p.lesson)
+		: [];
+	if (prerequis.length > 0) return prerequis;
+
+	if (etat.restantes.length < APPOINT_SUIVIES_RESTANTES_MIN) return [];
+	const fragile = conso.fragiles.map((f) => f.lesson).find(proposable);
+	if (!fragile) return [];
+	let derniere = -Infinity;
+	for (const l of getLessonsBySubject(subject, conso.niveau)) {
+		const r = bas.reports[cle(l)];
+		if (r?.franchieLe !== undefined && !l.levels.includes(niveauActif))
+			derniere = Math.max(derniere, r.franchieLe);
+	}
+	return suiviesDepuis(etat, stars, reports, derniere) >= APPOINT_SUIVIES_ENTRE_DEUX
+		? [fragile]
+		: [];
 }
 
 /** Reste-t-il quelque chose à franchir dans UNE matière, à son niveau actif ? (#276)
@@ -122,16 +205,23 @@ function entrelacer(files: LessonDef[][]): LessonDef[] {
 
    REPLI (#485) : si tout ce qui reste est mis de côté, on repropose quand même — la plus
    anciennement reportée d'abord. Un fil vide signifie « programme terminé » à l'accueil
-   (félicitation + passerelle révision) : ce serait faux tant qu'il reste à franchir. */
+   (félicitation + passerelle révision) : ce serait faux tant qu'il reste à franchir.
+
+   CLASSE PRÉCÉDENTE (#724) : chaque file peut s'ouvrir sur une leçon d'en dessous
+   (`insertionsClassePrecedente`), lue dans les cartes BRUTES `bas`. Elle n'entre ni dans
+   l'avancement qui ordonne les matières, ni dans le tour : seule la classe suivie avance. */
 export function sequenceLeconDuJour(
 	stars: Record<string, number> = loadStars(),
 	reports: Record<string, EtatReport> = loadLessonReports(),
 	now: number = Date.now(),
+	bas: CartesBrutes = loadCartesBrutes(),
 ): LessonDef[] {
-	const etats = SUBJECTS.map((s, i) => ({ i, ...etatMatiere(s.id, stars, reports, now) })).sort(
-		(a, b) => a.avancement - b.avancement || a.i - b.i,
-	);
-	const fil = entrelacer(etats.map((m) => m.actives));
+	const etats = SUBJECTS.map((s, i) => {
+		const etat = etatMatiere(s.id, stars, reports, now);
+		const avant = insertionsClassePrecedente(s.id, etat, stars, reports, bas, now);
+		return { i, ...etat, file: [...avant, ...etat.actives] };
+	}).sort((a, b) => a.avancement - b.avancement || a.i - b.i);
+	const fil = entrelacer(etats.map((m) => m.file));
 	if (fil.length > 0) return fil;
 	return entrelacer(etats.map((m) => m.restantes)).sort(
 		(a, b) => (reports[a.id]?.reporteLe ?? 0) - (reports[b.id]?.reporteLe ?? 0),
@@ -144,8 +234,9 @@ export function leconDuJour(
 	stars: Record<string, number> = loadStars(),
 	reports: Record<string, EtatReport> = loadLessonReports(),
 	now: number = Date.now(),
+	bas: CartesBrutes = loadCartesBrutes(),
 ): LessonDef | null {
-	return sequenceLeconDuJour(stars, reports, now)[0] ?? null;
+	return sequenceLeconDuJour(stars, reports, now, bas)[0] ?? null;
 }
 
 /* Contournement « voir une autre leçon » : la leçon SUIVANTE dans le fil après
@@ -156,8 +247,9 @@ export function leconSuivante(
 	stars: Record<string, number> = loadStars(),
 	reports: Record<string, EtatReport> = loadLessonReports(),
 	now: number = Date.now(),
+	bas: CartesBrutes = loadCartesBrutes(),
 ): LessonDef | null {
-	const seq = sequenceLeconDuJour(stars, reports, now);
+	const seq = sequenceLeconDuJour(stars, reports, now, bas);
 	if (seq.length === 0) return null;
 	const i = seq.findIndex((l) => l.id === apresId);
 	return i < 0 ? seq[0] : seq[(i + 1) % seq.length];

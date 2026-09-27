@@ -29,12 +29,14 @@
    ============================================================ */
 import type { LessonDef, SchoolLevel } from './catalog';
 import { getLessonsByCategory } from './catalog';
+import type { CartesBrutes } from './consolidation-bas-niveau';
 import type { ConjugaisonSpec } from './etayage-conjugaison';
 import type { ConversionSpec } from './etayage-conversion';
 import type { DroiteSpec } from './etayage-droite';
 import type { PositionSpec } from './etayage-position';
 import type { ProblemeSpec } from './etayage-probleme';
 import type { PosedSpec } from './items';
+import { prerequisOuverts } from './prerequis';
 import { BLOCAGES_SIGNAL_ADULTE, type EtatReport } from './report-lecon';
 
 /** Exemple entièrement résolu, décrit par la DONNÉE de la leçon et déroulé par le moteur
@@ -115,6 +117,24 @@ export function leconPrerequise(lesson: LessonDef, niveau: SchoolLevel): LessonD
 	const soeurs = getLessonsByCategory(lesson.category, niveau);
 	const i = soeurs.findIndex((l) => l.id === lesson.id);
 	return i > 0 ? soeurs[i - 1] : undefined;
+}
+
+/** Leçon à nommer dans le panneau d'étayage, avec le niveau auquel la lire. Un prérequis
+    de la classe précédente encore ouvert (#724), travaillé ou non, passe devant la
+    précédente de catégorie : c'est la compétence qui manque, et l'appli ne l'insère jamais
+    d'office s'il n'a pas été travaillé — le panneau est l'un des deux endroits où il se
+    propose. Sinon, la règle de toujours (`leconPrerequise`). `niveauActif` = niveau suivi
+    dans la matière, qui borne l'écart à une classe ; `niveau` = celui de la leçon jouée. */
+export function leconAvant(
+	lesson: LessonDef,
+	niveau: SchoolLevel,
+	niveauActif: SchoolLevel,
+	cartes: CartesBrutes,
+): { lesson: LessonDef; niveau: SchoolLevel } | undefined {
+	const ouvert = prerequisOuverts(lesson, niveauActif, cartes)[0];
+	if (ouvert) return { lesson: ouvert.lesson, niveau: ouvert.niveau };
+	const avant = leconPrerequise(lesson, niveau);
+	return avant ? { lesson: avant, niveau } : undefined;
 }
 
 /** Épisode de blocage dont l'enfant REVIENT, identifié par l'horodatage du report qui

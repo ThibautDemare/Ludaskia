@@ -28,7 +28,7 @@ import {
 	doitEtayerAvantSerie,
 	episodeEtayable,
 	etayagePour,
-	leconPrerequise,
+	leconAvant,
 	type EtayageContenu,
 	type EtayageExemple,
 } from '../core/etayage';
@@ -37,11 +37,16 @@ import { moteurEtayage, type MoteurEtayage } from './etayage-visuels';
 import type { PosedSpec } from '../core/items';
 import { loadRevoir, revoirActives, toggleRevoirFor } from '../core/encadrant-stats';
 import { labelLecon } from '../core/levels';
-import { niveauLecon } from '../core/niveau-actif';
+import { niveauActifMatiere, niveauLecon } from '../core/niveau-actif';
 import { activeProfile, lectureConsigneAuto } from '../core/profiles';
 import { texteParle } from '../core/tts-text';
 import { sansSeparateurMilliers } from '../core/nombres';
-import { loadEtayagesVus, loadLessonReports, marquerEtayageVu } from '../core/progress';
+import {
+	loadCartesBrutes,
+	loadEtayagesVus,
+	loadLessonReports,
+	marquerEtayageVu,
+} from '../core/progress';
 
 import { icon } from './icon';
 import { activateModal } from './modal-a11y';
@@ -468,13 +473,23 @@ function etapesFixesHTML(contenu: EtayageContenu): SafeHtml {
    vient de commencer. L'enfant peut en revanche la METTRE DE CÔTÉ — elle rejoint la file
    « à revoir », donc la carte de son accueil, et il la retrouvera quand il aura fini.
    C'est le même geste que l'épinglage de l'espace encadrant, ici à l'initiative de
-   l'enfant : rien à quitter, rien à retenir. */
+   l'enfant : rien à quitter, rien à retenir.
+
+   Un prérequis de la classe précédente encore ouvert (#724) passe devant la précédente de
+   catégorie : c'est lui qui manque, et il se nomme par son libellé de SA classe, sans
+   jamais dire laquelle. */
 function prerequisHTML(d: EtayageDemande): SafeHtml {
-	const avant = leconPrerequise(d.lesson, d.niveau);
-	if (!avant) return VIDE;
+	const trouve = leconAvant(
+		d.lesson,
+		d.niveau,
+		niveauActifMatiere(d.lesson.subject),
+		loadCartesBrutes(),
+	);
+	if (!trouve) return VIDE;
+	const avant = trouve.lesson;
 	const deja = loadRevoir().includes(avant.id);
 	return html`<div class="etay-prerequis" data-prerequis="${avant.id}">
-			<p class="etay-prerequis-txt">Si c'est encore trop dur, tu peux revoir « ${labelLecon(avant, d.niveau)} ».</p>
+			<p class="etay-prerequis-txt">Si c'est encore trop dur, tu peux revoir « ${labelLecon(avant, trouve.niveau)} ».</p>
 			${
 				deja
 					? html`<p class="etay-prerequis-ok">${PREREQUIS_ATTEND}</p>`

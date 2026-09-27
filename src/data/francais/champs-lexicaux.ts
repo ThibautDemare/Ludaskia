@@ -233,7 +233,7 @@ function genIntrus(): Exercise {
 	const intrus = choice(motsNets(autre)).mot;
 	return {
 		type: 'qcm',
-		question: `Quel mot n’appartient pas au thème « ${champ.nom} » ? : @`,
+		question: `Quel mot n'appartient pas au thème « ${champ.nom} » ? : @`,
 		answer: intrus,
 		choices: sample([...membres, intrus], NB_CHOIX),
 		explication: `« ${intrus} » n’est pas un mot du thème « ${champ.nom} », mais du thème « ${autre.nom} ».`,

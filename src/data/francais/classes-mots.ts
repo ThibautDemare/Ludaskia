@@ -203,7 +203,7 @@ const itemsArticle = (): ItemClasseQcm[] =>
 const itemsAdverbe = (): ItemClasseQcm[] =>
 	ADVERBES.map((a) => ({
 		type: 'adverbe' as const,
-		question: `Quel est l’adverbe ? « ${a.phrase} » : @`,
+		question: `Quel est l'adverbe ? « ${a.phrase} » : @`,
 		reponse: a.adverbe,
 		distracteurs: [...a.distracteurs],
 		explication: `« ${a.adverbe} » est un adverbe : il dit comment, quand ou combien.`,

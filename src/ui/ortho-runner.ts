@@ -26,6 +26,7 @@ import {
 	decouverteEnCours,
 	listeEtoilee,
 	marcheLaPlusHaute,
+	indiceProchainMotCible,
 } from '../core/orthographe/runner';
 import { modesEpuises, modesEpuisesPendant } from '../core/orthographe/choix-mode';
 import { avancementLecon } from '../core/orthographe/progression';
@@ -66,7 +67,8 @@ let actes = 0;
 // entraînement ciblé sur ce seul mode. Depuis #641 un mode ciblé VALIDE lui aussi (le cumul
 // vit dans `validerMode`) : il peut donc faire monter un mot, étoiler la liste et décrocher
 // des trophées. Ce qu'il change encore, c'est le CHOIX de l'activité (imposée) et le tour de
-// piste (on tourne sur tous les mots au lieu de s'arrêter aux non-maîtrisés).
+// piste : les mots que ce mode peut encore faire monter d'abord, puis tous les mots en
+// entretien, au lieu de s'arrêter aux non-maîtrisés (cf. `indiceProchainMotCible`).
 let seanceMode: ModeOrtho | null = null;
 // La liste était-elle DÉJÀ étoilée à l'ouverture (#641, critère 5) ? On ne rejoue pas la
 // célébration de première complétion pour une liste acquise avant que la séance commence.
@@ -347,11 +349,15 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
    En phase de découverte (#69), on ne renvoie que des mots pas encore vus à
    l'atelier : toute la liste est découverte avant le moindre entraînement. */
 function prochainNonMaitrise(): MotOrtho | null {
-	// Mode ciblé : entraînement libre, on tourne sur tous les mots (jamais « fini »).
+	// Mode ciblé : d'abord les mots que ce mode peut encore faire monter, en tournant ; une
+	// fois le mode terminé pour la liste, entretien sur tous les mots (jamais « fini »). Le
+	// curseur repart de zéro à chaque séance : sans ce tri, une liste plus longue que
+	// `SEANCE_MAX` resservait ses premiers mots à chaque séance (cf. `indiceProchainMotCible`).
 	if (seanceMode) {
-		const m = mots[idx % mots.length];
-		idx = (idx + 1) % mots.length;
-		return m;
+		const i = indiceProchainMotCible(mots, seanceMode, dispoDictee, idx);
+		if (i < 0) return null;
+		idx = (i + 1) % mots.length;
+		return mots[i];
 	}
 	// Tour de révision : liste déjà acquise → on repasse chaque mot UNE fois, dans
 	// l'ordre, puis « fini » (pas de filtre de statut, ils sont tous maîtrisés ;

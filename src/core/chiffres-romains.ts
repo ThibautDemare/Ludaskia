@@ -130,10 +130,17 @@ export function regleEnfreinte(saisie: string, cible: number): RegleRomaine | un
 	if (s === '') return undefined;
 	if (s === enRomain(cible)) return undefined;
 	if (!/^[IVXLCDM]+$/.test(s)) return 'signe-inconnu';
-	if (/(.)\1{3}/.test(s)) return 'repetition-quadruple';
+	// Les signes UNIQUES d'abord, et c'est un correctif, pas un détail d'ordre : « VVVV »
+	// déclenchait le contrôle du quadruple, dont la phrase dit « au-delà de trois, on change
+	// de signe » — elle enseignait donc à l'enfant que « VVV » serait correct. C'est faux : V,
+	// L et D ne se répètent JAMAIS, pas même deux fois (constat redacteur-contenu-francais).
+	// Conséquence assumée quand une saisie cumule les deux fautes (« VVIIII ») : les deux
+	// messages sont vrais, on montre le plus SPÉCIFIQUE — celui qui ne vaut que pour trois
+	// signes — plutôt que la règle générale, qu'il faudrait nuancer juste après.
 	for (const signe of SIGNES_UNIQUES) {
 		if (s.split(signe).length - 1 > 1) return 'repetition-interdite';
 	}
+	if (/(.)\1{3}/.test(s)) return 'repetition-quadruple';
 	for (let i = 0; i + 1 < s.length; i++) {
 		const paire = s.slice(i, i + 2);
 		if (
@@ -162,7 +169,13 @@ export function libelleRegleRomaine(regle: RegleRomaine): string {
 		case 'soustraction-interdite':
 			return 'Seuls IV, IX, XL, XC, CD et CM se soustraient : ailleurs, le petit signe se place après le grand.';
 		case 'ordre-des-signes':
-			return 'Les signes se rangent du plus grand au plus petit, sauf dans les six formes qui se soustraient.';
+			// Recentrée sur l'ASSEMBLAGE (constat redacteur-contenu-francais) : l'ancienne
+			// formulation « du plus grand au plus petit, sauf les six formes » paraphrasait mot
+			// pour mot la règle de `soustraction-interdite`, et l'enfant ne pouvait pas savoir
+			// laquelle des deux visait SA faute. Le test ne compare que les chaînes : il ne voit
+			// pas une paraphrase. Ici la faute est ailleurs — chaque morceau est licite, c'est le
+			// tout qui n'écrit rien (« IXI », « IIX »).
+			return "Chaque signe pris seul est correct, mais assemblés dans cet ordre, ils n'écrivent aucun nombre.";
 		case 'autre-nombre':
 			return 'Cette écriture est correcte, mais elle ne donne pas le nombre demandé.';
 	}

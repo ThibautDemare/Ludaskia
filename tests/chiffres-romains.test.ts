@@ -25,6 +25,13 @@
    M / contient une des six paires soustractives), pas depuis les chiffres 4 et 9 sur
    lesquels le module la déduit.
 
+   ROUGE ASSUMÉ à la livraison : trois cas de `CAS_REGLE` (`VVVV`, `LLLL`, `DDDD`)
+   échouent contre l'implémentation actuelle. Ce n'est pas un test faux — c'est le défaut
+   qu'ils décrivent qui n'est pas encore corrigé : `regleEnfreinte` teste « quatre fois le
+   même signe » AVANT « V, L et D ne se répètent jamais », et sert donc à l'enfant une
+   phrase qui lui enseigne que `VVV` passerait. Ne pas aligner l'attendu sur le code : la
+   règle, elle, ne dépend pas du nombre de répétitions.
+
    Critères NON traduits ici, faute d'API arrêtée — voir le compte rendu :
    6 (« c'est un autre système » : relève du rendu / d'une formulation, pas d'un
    mécanisme observable — l'asserter reviendrait à figer une phrase),
@@ -611,14 +618,19 @@ describe('Critère 11 — aucune leçon de numération existante ne tire de nomb
    Critère 4 — le tirage est GRADUÉ, pas uniforme sur 1 à 3999
    ---------------------------------------------------------------
 
-   Écrit APRÈS le code : aucun palier n'était observable à la première passe. Mutations
-   jouées contre `src/` pour vérifier que ces tests gardent quelque chose —
+   Écrit APRÈS le code : aucun palier n'était observable à la première passe. Ces tests
+   étaient donc verts à l'écriture, ce qui ne prouve rien. Mutations RÉELLEMENT jouées
+   contre `src/`, puis fichiers restaurés —
    - `progressionPaliers` rendant une série d'un seul palier tiré au hasard
-     (`Array(count).fill(tirerPalierRomain())`) → « la fiche sert la progression » rougit ;
-   - `generate()` tirant uniformément sur 1-3999, ce que le critère proscrit → « un item
-     isolé reste gradué » rougit ;
-   - `aUneSoustraction` rendant toujours `false` (le palier 2 se vide) → « les trois
-     paliers partitionnent » et « palier 1 = purement additif » rougissent. */
+     (`Array(count).fill(tirerPalierRomain())`) → « la FICHE sert la progression » et
+     « la suite des paliers est ordonnée » rougissent ;
+   - `POIDS_PALIERS` mis à la taille des paliers (511/488/3000 sur 3 999), c'est-à-dire le
+     tirage uniforme sur 1-3999 que le critère proscrit → « un item tiré ISOLÉMENT »
+     rougit (et lui seul : la série, elle, reste ordonnée) ;
+   - `tirerNombreRomain(1)` piochant dans 1-3999 → « un échantillon du PREMIER palier »
+     rougit sur un vrai millier (`MMDVIII = 2508`), comme l'issue le décrit ;
+   - `palierDe` basculant à 3 dès 100 au lieu de 1000 → « le troisième palier est celui
+     des milliers » et « palier 1 = purement additif » rougissent. */
 
 /* Palier d'un nombre, DÉRIVÉ de son écriture comme le critère l'énonce : les MILLIERS
    (l'écriture commence par M), sinon les formes SOUSTRACTIVES (elle contient une des six
@@ -820,13 +832,17 @@ describe('Critère 4 — le tirage est gradué, pas uniforme sur 1 à 3999', () 
    Critère 5 — après une erreur, la RÈGLE enfreinte est nommée
    ---------------------------------------------------------------
 
-   Écrit APRÈS le code, comme le critère 4. Mutations jouées contre `src/` —
+   Écrit APRÈS le code, comme le critère 4. Mutations RÉELLEMENT jouées contre `src/`,
+   puis fichiers restaurés —
    - `regleEnfreinte` rendant `undefined` dès que la saisie n'est pas canonique (le
-     silence : la réponse est révélée, la règle non) → tous les tests de ce bloc rougissent ;
-   - la branche `repetition-quadruple` retirée (une faute de répétition tombe alors sur
-     `ordre-des-signes`) → « la règle diagnostiquée est celle qui est enfreinte » rougit ;
+     silence : la réponse est révélée, la règle non) → trois tests rougissent ;
+   - la ligne `repetition-quadruple` retirée → « la règle diagnostiquée est celle qui est
+     enfreinte » rougit (`IIII` devient `ordre-des-signes`) ;
    - `libelleRegleRomaine` rendant la même phrase pour toutes les classes → « chaque
      classe a SA phrase » rougit ;
+   - `if (s === '') return undefined` retiré → une saisie vide reçoit `signe-inconnu`,
+     « une saisie JUSTE, ou VIDE » rougit ; même test avec la garde sur la réponse
+     canonique retirée (une bonne réponse reçoit alors `autre-nombre`) ;
    - `champRomain: true` retiré de la leçon (le feedback n'est plus déclenché nulle part)
      → « le drapeau est posé là où l'enfant écrit du romain » rougit.
 
@@ -841,7 +857,7 @@ describe('Critère 4 — le tirage est gradué, pas uniforme sur 1 à 3999', () 
 const CLASSES_DE_REGLE: Record<RegleRomaine, string> = {
 	'signe-inconnu': 'une lettre hors des sept signes',
 	'repetition-quadruple': 'quatre fois le même signe',
-	'repetition-interdite': 'V, L ou D écrit deux fois',
+	'repetition-interdite': 'V, L ou D écrit plus d’une fois',
 	'soustraction-interdite': 'une soustraction hors des six formes autorisées',
 	'ordre-des-signes': 'des signes mal rangés',
 	'autre-nombre': 'une écriture correcte, mais celle d’un autre nombre',
@@ -867,6 +883,16 @@ const CAS_REGLE: { saisie: string; cible: number; regle: RegleRomaine }[] = [
 	{ saisie: 'VX', cible: 5, regle: 'soustraction-interdite' },
 	// V, L et D ne se répètent pas : 10, ce n'est pas « cinq et cinq ».
 	{ saisie: 'VV', cible: 10, regle: 'repetition-interdite' },
+	// Les trois mêmes signes, répétés QUATRE fois. La règle enfreinte est la même que
+	// pour `VV` — V, L et D ne se répètent JAMAIS, pas même deux fois — et elle ne dépend
+	// pas du nombre de répétitions. Diagnostiquer « quatre fois le même signe » ici
+	// serait faux au sens propre : la phrase de cette règle dit « au-delà de trois, on
+	// change de signe », donc elle enseigne à l'enfant que `VVV` passerait. `VVV` ne
+	// passe pas. Les trois signes sont soumis séparément : rien ne garantit qu'ils se
+	// comportent pareil tant qu'on ne le demande pas.
+	{ saisie: 'VVVV', cible: 20, regle: 'repetition-interdite' },
+	{ saisie: 'LLLL', cible: 200, regle: 'repetition-interdite' },
+	{ saisie: 'DDDD', cible: 2000, regle: 'repetition-interdite' },
 	// Chaque morceau est licite, l'assemblage ne l'est pas : le I traîne des deux côtés.
 	{ saisie: 'IXI', cible: 11, regle: 'ordre-des-signes' },
 	// Le chiffre arabe tapé dans le champ romain, et une lettre qui n'est pas un signe.
@@ -905,12 +931,16 @@ describe('Critère 5 — après une erreur, la règle enfreinte est nommée', ()
 	});
 
 	it('la règle diagnostiquée est celle que la saisie enfreint vraiment', () => {
-		for (const { saisie, cible, regle } of CAS_REGLE) {
-			expect(
-				regleEnfreinte(saisie, cible),
-				`« ${saisie} » pour ${cible} (${enRomain(cible)}) : ${CLASSES_DE_REGLE[regle]}`,
-			).toBe(regle);
-		}
+		// Tous les cas sont soumis AVANT de conclure, au lieu d'un `expect` par tour : un
+		// premier échec masquerait les suivants, et l'on corrigerait la faute cas par cas
+		// sans jamais voir la CLASSE entière qui déraille.
+		const ecarts = CAS_REGLE.filter(
+			({ saisie, cible, regle }) => regleEnfreinte(saisie, cible) !== regle,
+		).map(
+			({ saisie, cible, regle }) =>
+				`« ${saisie} » pour ${cible} (${enRomain(cible)}) : « ${regleEnfreinte(saisie, cible)} » au lieu de « ${regle} » (${CLASSES_DE_REGLE[regle]})`,
+		);
+		expect(ecarts, 'la règle nommée n’est pas la faute commise').toEqual([]);
 	});
 
 	it('chaque classe a SA phrase : non vide, rédigée, et distincte des autres', () => {

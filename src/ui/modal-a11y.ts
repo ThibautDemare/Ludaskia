@@ -23,16 +23,25 @@ export const FOCUSABLE =
 /* Rend tout le reste du <body> non focusable / non lu par les technologies
    d'assistance, et bloque le défilement de la page derrière la modale.
    PRÉCONDITION : `overlay` est un enfant DIRECT de <body> (cas de toutes les
-   modales de l'app) — on rend `inert` ses frères, jamais lui-même. Limite
-   assumée : une live-region globale (ex. toast `.ui-toast`, enfant de <body>)
-   présente AU MOMENT de l'ouverture est inertée donc rendue muette tant que la
-   modale est ouverte ; rare en pratique (toast et modale rarement simultanés). */
+   modales de l'app) — on rend `inert` ses frères, jamais lui-même.
+
+   EXCEPTION, `data-annonce-persistante` : une région vivante ainsi marquée n'est jamais
+   inertée. Sans elle, une région enfant de <body> présente à l'ouverture devient MUETTE
+   pour toute la durée de la modale — et c'est précisément le cas du verdict de correction
+   (#717) : valider une fiche sans faute ouvre une modale de récompense, qui avalait
+   l'annonce du score au moment le plus flatteur. La parade a d'abord été de RETARDER la
+   modale ; c'était pire, l'enfant pouvait cliquer un lien de la fiche pendant le sursis et
+   voir la modale lui sauter dessus (constat : `e2e/etayage.spec.ts` est tombé dessus).
+   On lève donc l'inertage plutôt que de décaler l'interface. Aucun risque de fuite du
+   piège à focus : ce qu'on exempte est un texte `sr-only` non focusable — à n'accorder
+   qu'à ça, jamais à un conteneur qui porte des contrôles. */
 function lockBackground(overlay: HTMLElement, lockScroll: boolean): () => void {
 	const inerted: HTMLElement[] = [];
 	for (const child of Array.from(document.body.children)) {
 		if (child === overlay) continue;
 		const el = child as HTMLElement;
 		if (el.hasAttribute('inert')) continue; // ne pas « libérer » plus tard ce qui l'était déjà
+		if (el.hasAttribute('data-annonce-persistante')) continue; // cf. en-tête
 		el.setAttribute('inert', '');
 		inerted.push(el);
 	}

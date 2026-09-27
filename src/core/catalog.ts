@@ -430,7 +430,7 @@ function avecEtayage(defs: LessonDef[]): LessonDef[] {
 const MATH_LESSONS: LessonDef[] = avecEtayage([
 	{
 		id: 'math-tables-addition',
-		label: "Tables d'addition",
+		label: "Les tables d'addition",
 		motsCles: ['plus', 'de tête', 'additionner'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -439,7 +439,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-complements',
-		label: 'Complément à 10/100/1000',
+		label: 'Les compléments',
 		motsCles: ['compléter à 10', 'compléter à 100', 'il manque combien'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -448,7 +448,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-doubles',
-		label: 'Doubles',
+		label: 'Les doubles',
 		motsCles: ['double de', 'fois 2'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -457,7 +457,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-moities',
-		label: 'Moitiés',
+		label: 'Les moitiés',
 		motsCles: ['moitié de', 'diviser par 2'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -466,7 +466,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-ajouter-9-19-29',
-		label: 'Ajouter 9, 19...',
+		label: 'Ajouter 9, 19, 29 (et 8, 18, 28)',
 		motsCles: ['plus 9', 'plus 8', 'astuce', 'de tête'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -475,7 +475,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-soustraire-9-19-29',
-		label: 'Soustraire 9, 19...',
+		label: 'Soustraire 9, 19, 29, 39 et un petit nombre',
 		motsCles: ['moins 9', 'moins 8', 'astuce', 'de tête'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -484,7 +484,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-tables-multiplication',
-		label: 'Table de ×',
+		label: 'Les tables de multiplication',
 		motsCles: ['fois', 'de tête', 'table de 2', 'table de 7'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -493,7 +493,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-moitie-pair',
-		label: 'Moitié (pair)',
+		label: "La moitié d'un nombre pair",
 		motsCles: ['diviser par 2', 'de tête'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -502,7 +502,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-multiples-25',
-		label: 'Multiples de 25',
+		label: 'Les multiples de 25',
 		motsCles: ['table de 25', 'fois 25'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -511,7 +511,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-decompo-60',
-		label: 'Décompo. de 60',
+		label: 'Décompositions multiplicatives de 60',
 		motsCles: ['fois', 'table', 'diviseurs de 60'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -520,7 +520,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-dizaines-centaines',
-		label: 'Dizaines/centaines',
+		label: 'Ajouter, soustraire des dizaines et des centaines',
 		motsCles: ['plus', 'moins', 'de tête', 'calcul rapide'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -529,7 +529,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-multiplier-10-100',
-		label: '× 10, × 100',
+		label: 'Multiplier par 10, par 100',
 		motsCles: ['fois 10', 'fois 100', 'zéro'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -538,7 +538,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-multiplier-4-8',
-		label: '× 4, × 8',
+		label: 'Multiplier par 4, par 8',
 		motsCles: ['fois 4', 'fois 8', 'doubler'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -547,7 +547,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-multiplier-20-30-40',
-		label: '× 20, 30, 40',
+		label: 'Multiplier par 20, par 30, par 40',
 		motsCles: ['fois 20', 'fois 30', 'fois 40'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -556,7 +556,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-decomposer-multiplication',
-		label: 'Décomposer',
+		label: 'Décomposer pour calculer une multiplication',
 		motsCles: ['fois', 'astuce', 'table'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -573,7 +573,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 const MATH_LESSONS_CM1: LessonDef[] = avecEtayage([
 	{
 		id: 'math-multiples-50',
-		label: 'Multiples de 50',
+		label: 'Les multiples de 50',
 		motsCles: ['table de 50', 'fois 50'],
 		subject: 'math',
 		category: 'math-calcul-mental',
@@ -582,7 +582,7 @@ const MATH_LESSONS_CM1: LessonDef[] = avecEtayage([
 	},
 	{
 		id: 'math-diviser-10-100',
-		label: '÷ 10, ÷ 100',
+		label: 'Diviser par 10, par 100',
 		motsCles: ['divisé par', 'zéro'],
 		subject: 'math',
 		category: 'math-calcul-mental',

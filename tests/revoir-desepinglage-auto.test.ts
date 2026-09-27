@@ -676,7 +676,7 @@ describe('retraitsAutoProfil — trace lisible par l’encadrant', () => {
 		purgeRevoirSolides(p, true, NOW);
 
 		expect(retraitsAutoProfil(p, NOW)).toEqual([
-			{ id: 'math-doubles', kind: 'lecon', label: 'Doubles', at: NOW, motif: 'maitrise' },
+			{ id: 'math-doubles', kind: 'lecon', label: 'Les doubles', at: NOW, motif: 'maitrise' },
 			{ id: orthoRevoirId(liste), kind: 'ortho', label: 'Ma dictée', at: NOW, motif: 'maitrise' },
 		]);
 	});
@@ -761,8 +761,8 @@ describe('retraitsAutoProfil — trace lisible par l’encadrant', () => {
 	it('exclut une entrée revenue dans la file (ré-épinglée)', () => {
 		const p = activeProfile();
 		seed(p.uuid, REVOIR_AUTO_KEY, [
-			{ id: 'math-doubles', kind: 'lecon', label: 'Doubles', at: NOW },
-			{ id: 'math-moities', kind: 'lecon', label: 'Moitiés', at: NOW },
+			{ id: 'math-doubles', kind: 'lecon', label: 'Les doubles', at: NOW },
+			{ id: 'math-moities', kind: 'lecon', label: 'Les moitiés', at: NOW },
 		]);
 		toggleRevoirFor(p.uuid, 'math-moities');
 		expect(retraitsAutoProfil(p, NOW).map((r) => r.id)).toEqual(['math-doubles']);
@@ -884,10 +884,10 @@ describe('retraitsAutoProfil — motif du retrait (#571)', () => {
 	it('loadRetraitsAuto : une trace SANS `motif` (antérieure à #571) reste lue', () => {
 		const p = activeProfile();
 		seed(p.uuid, REVOIR_AUTO_KEY, [
-			{ id: 'math-doubles', kind: 'lecon', label: 'Doubles', at: NOW },
+			{ id: 'math-doubles', kind: 'lecon', label: 'Les doubles', at: NOW },
 		]);
 		expect(retraitsAutoProfil(p, NOW)).toEqual([
-			{ id: 'math-doubles', kind: 'lecon', label: 'Doubles', at: NOW },
+			{ id: 'math-doubles', kind: 'lecon', label: 'Les doubles', at: NOW },
 		]);
 	});
 

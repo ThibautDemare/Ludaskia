@@ -110,7 +110,7 @@ test("sélecteur de période : resserrer sur « Aujourd'hui » retire la leçon 
 	// Défaut : « 1 semaine » (7 jours), cochée — la leçon d'il y a 3 jours y est nommée.
 	await expect(btn('7')).toHaveClass(/\bon\b/);
 	await expect(btn('7')).toHaveAttribute('aria-checked', 'true');
-	const ligne = b.locator('.enc-trav-item').filter({ hasText: 'Complément à 10/100/1000' });
+	const ligne = b.locator('.enc-trav-item').filter({ hasText: 'Les compléments' });
 	await expect(ligne).toBeVisible();
 	await expect(ligne.locator('.enc-trav-meta')).toContainText('il y a 3 jours');
 
@@ -209,10 +209,10 @@ test('compte inconnu (bilan sans ref) : la ligne apparaît SANS "fois" ni "null"
 	await gotoHash(page, 'encadrant');
 
 	const b = bloc(page);
-	const ligne = b.locator('.enc-trav-item').filter({ hasText: 'Complément à 10/100/1000' });
+	const ligne = b.locator('.enc-trav-item').filter({ hasText: 'Les compléments' });
 	// Assertion positive d'abord : la leçon est bien nommée (sinon les assertions
 	// négatives ci-dessous passeraient aussi si le bloc était vide).
-	await expect(ligne.locator('.enc-trav-lab')).toHaveText('Complément à 10/100/1000');
+	await expect(ligne.locator('.enc-trav-lab')).toHaveText('Les compléments');
 	const meta = ligne.locator('.enc-trav-meta');
 	await expect(meta).not.toContainText('fois');
 	await expect(meta).not.toContainText('null');
@@ -225,7 +225,7 @@ test('compte inconnu (bilan sans ref) : la ligne apparaît SANS "fois" ni "null"
 
 /* Sept leçons de la MÊME matière (math-calcul-mental), horodatées en ordre décroissant
    pour un tri déterministe : au-delà de MAX_TRAVAIL_PAR_MATIERE (6), la 7e (la plus
-   ancienne, « Table de × ») tombe dans le repli déplié. */
+   ancienne, « Les tables de multiplication ») tombe dans le repli déplié. */
 const SEED_7_MEME_MATIERE = `(() => {
   const now = Date.now();
   const ids = [
@@ -272,7 +272,7 @@ test('repli au-delà de 6 lignes par matière : fermé par défaut, se déplie a
 	// Dépliée, elle devient lisible.
 	await resume.click();
 	await expect(itemCache).toBeVisible();
-	await expect(itemCache.locator('.enc-trav-lab')).toHaveText('Table de ×');
+	await expect(itemCache.locator('.enc-trav-lab')).toHaveText('Les tables de multiplication');
 
 	expect(errors).toEqual([]);
 });
@@ -326,7 +326,7 @@ test('critère 1 : une leçon qui franchit « acquis » dans la fenêtre porte l
 	await gotoHash(page, 'encadrant');
 
 	const b = bloc(page);
-	const ligneAcquise = b.locator('.enc-trav-item').filter({ hasText: 'Complément à 10/100/1000' });
+	const ligneAcquise = b.locator('.enc-trav-item').filter({ hasText: 'Les compléments' });
 	await expect(ligneAcquise).toBeVisible();
 	// Fragment stable plutôt que le texte exact (`MOT_CAP`, encadrant-travail.ts, déjà
 	// reformulé une fois par la relecture langue) : « acquise » suffit à distinguer ce
@@ -335,7 +335,7 @@ test('critère 1 : une leçon qui franchit « acquis » dans la fenêtre porte l
 	// La mention est dans la méta, PAS un badge séparé (avis pédago, #536).
 	await expect(ligneAcquise.locator('.enc-trav-meta')).toContainText('acquise');
 
-	const ligneSansCap = b.locator('.enc-trav-item').filter({ hasText: 'Doubles' });
+	const ligneSansCap = b.locator('.enc-trav-item').filter({ hasText: 'Les doubles' });
 	await expect(ligneSansCap).toBeVisible();
 	await expect(ligneSansCap.locator('.enc-trav-cap')).toHaveCount(0);
 
@@ -427,7 +427,7 @@ test("critère 3 : un cap vieux de 5 jours se voit en « 1 semaine » et dispara
 	const b = bloc(page);
 	const btn = (jours: string) =>
 		b.locator(`.enc-act-mode[data-act="travail-periode"][data-jours="${jours}"]`);
-	const ligne = b.locator('.enc-trav-item').filter({ hasText: 'Moitiés' });
+	const ligne = b.locator('.enc-trav-item').filter({ hasText: 'Les moitiés' });
 
 	// Défaut : « 1 semaine » (7 jours) — le cap d'il y a 5 jours y est dedans.
 	await expect(ligne).toBeVisible();
@@ -550,7 +550,7 @@ test('critère 6 : aucune mention de cap ne porte un état bas ou intermédiaire
 		expect(t).not.toMatch(/[0-9%]/);
 	}
 
-	const ligneFaible = b.locator('.enc-trav-item').filter({ hasText: 'Moitiés' });
+	const ligneFaible = b.locator('.enc-trav-item').filter({ hasText: 'Les moitiés' });
 	await expect(ligneFaible).toBeVisible();
 	await expect(ligneFaible.locator('.enc-trav-cap')).toHaveCount(0);
 

@@ -102,7 +102,7 @@ describe('notionsDepuisPerLesson (agrégat de séance → notions nommables)', (
 
 	it("la notion porte l'id de la leçon (clé de dédoublonnage du récap)", () => {
 		const notions = notionsDepuisPerLesson({ [DOUBLES]: seau(1, 2) });
-		expect(notions).toEqual([{ id: DOUBLES, label: 'Doubles', categorie: 'Calcul mental' }]);
+		expect(notions).toEqual([{ id: DOUBLES, label: 'Les doubles', categorie: 'Calcul mental' }]);
 	});
 });
 
@@ -114,7 +114,7 @@ describe('notionLecon (résolution catalogue)', () => {
 
 	it('leçon réelle : libellé et catégorie LISIBLES, jamais un id technique', () => {
 		const n = notionLecon(DOUBLES)!;
-		expect(n).toEqual({ id: DOUBLES, label: 'Doubles', categorie: 'Calcul mental' });
+		expect(n).toEqual({ id: DOUBLES, label: 'Les doubles', categorie: 'Calcul mental' });
 		// La catégorie est le LIBELLÉ humain, pas l'id du catalogue : c'est ce que l'enfant
 		// lit quand la séance bascule en agrégation par catégorie.
 		expect(n.categorie).not.toBe(getLessonById(DOUBLES)!.category);

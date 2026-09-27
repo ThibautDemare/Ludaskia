@@ -44,7 +44,7 @@ const periodeTravail = () => PERIODES_TRAVAIL.find((p) => p.jours === joursTrava
    compteur — même parti pris que les erreurs plus anciennes (cf. encadrant-erreurs). */
 const MAX_TRAVAIL_PAR_MATIERE = 6;
 
-/* Groupé par MATIÈRE, chaque ligne portant sa CATÉGORIE : le libellé seul (« Décompo. de 60 »)
+/* Groupé par MATIÈRE, chaque ligne portant sa CATÉGORIE : le libellé seul (« Les doubles »)
    ne dit pas à un parent s'il s'agit d'une notion de base ou avancée (avis pédago). Et aucun
    état d'acquisition par ligne — une notion tout juste abordée est normalement encore « à
    découvrir », un badge afficherait donc un niveau bas sur ce qu'il y a de plus récent (idem). */

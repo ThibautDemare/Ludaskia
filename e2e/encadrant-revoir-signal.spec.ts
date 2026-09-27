@@ -14,7 +14,7 @@ import { watchErrors } from './helpers';
 /* Deux leçons réelles du catalogue CE2 (labels tels que rendus par le
    catalogue — cf. `label` dans src/core/catalog.ts / src/data), reprises des
    specs encadrant existantes. */
-const LABEL_FAIBLE = 'Complément à 10/100/1000'; // math-complements : fragile, jamais bloquée
+const LABEL_FAIBLE = 'Les compléments'; // math-complements : fragile, jamais bloquée
 const LABEL_BLOQUEE = 'Je compare les nombres'; // num-comparer : fragile ET bloquée 3 jours
 
 /* Profil e2e avec niveauReference CE2 (repris du pattern encadrant.spec.ts :

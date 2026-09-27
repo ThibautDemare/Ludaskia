@@ -667,7 +667,7 @@ describe('travailRecent — tri et déterminisme', () => {
 
 	it('à égalité complète : ordre alphabétique français, indépendant de l’ordre des clés', () => {
 		const t = AUJ(9, 0);
-		const attendu = ['Complément à 10/100/1000', 'Doubles', 'Moitiés'];
+		const attendu = ['Les compléments', 'Les doubles', 'Les moitiés'];
 		const res1 = travailSansPaliers(
 			{ 'math-moities@ce2': stat(t), 'math-doubles@ce2': stat(t), 'math-complements@ce2': stat(t) },
 			[],

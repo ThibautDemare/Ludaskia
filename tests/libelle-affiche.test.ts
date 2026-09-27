@@ -1,12 +1,12 @@
 /* ============================================================
    Libellé AFFICHÉ d'une leçon (#718) — src/core/libelle-affiche.ts (pur).
 
-   Pourquoi ce module existe : l'écran de catégorie ne montre pas toujours le libellé du
-   catalogue. Pour les 17 leçons du moteur historique de calcul mental, il affiche le
-   titre de `core/lessons.ts` (« Multiplier par 4, par 8 ») et non le `label` du catalogue
-   (« × 4, × 8 »). Une recherche indexée sur le second rate ce que l'enfant a sous les yeux
-   (critère 3 de l'issue). Écrit AVANT le module : ce fichier échoue à l'import tant qu'il
-   n'existe pas.
+   Pourquoi ce module existe : jusqu'à #722, l'écran de catégorie ne montrait pas toujours le
+   libellé du catalogue. Pour les 17 leçons du moteur historique de calcul mental, il
+   affichait le titre de `core/lessons.ts` (« Multiplier par 4, par 8 ») et non le `label` du
+   catalogue (« × 4, × 8 »). Une recherche indexée sur le second ratait ce que l'enfant avait
+   sous les yeux (critère 3 de #718). Depuis #722 (option 1 : un seul nom par leçon), le
+   `label` EST le titre, et ce fichier tient l'égalité comme un gate. Écrit AVANT le module.
 
    Référence des attendus : l'écran (ui/catalog-nav.ts, renderCategorie → cardRow) et les
    exemples cités dans l'issue, pas le module testé.
@@ -32,13 +32,17 @@ function def(id: string): LessonDef {
 }
 
 describe('libelleAffiche — calcul mental du moteur historique', () => {
-	it('prémisse : 17 leçons, toutes au catalogue, dont le titre diffère du libellé catalogue', () => {
+	it('GATE #722 : 17 leçons, toutes au catalogue, dont le libellé catalogue EST le titre de la carte', () => {
 		expect(LESSONS_CALCUL_MENTAL).toHaveLength(17);
 		for (const l of LESSONS_CALCUL_MENTAL) expect(getLessonById(l.id), l.id).toBeDefined();
-		// Si titre et libellé coïncidaient, `labelLecon` seul passerait le test suivant : il
-		// ne distinguerait plus rien.
-		const distincts = LESSONS_CALCUL_MENTAL.filter((l) => l.title !== def(l.id).label);
-		expect(distincts.length).toBeGreaterThan(0);
+		// Un seul nom par leçon, partout (#722, option 1 du mainteneur) : le `label` du
+		// catalogue et le `title` de `core/lessons.ts` ne doivent plus jamais diverger — c'est
+		// ce que voyait l'enfant sur sa carte et l'adulte partout ailleurs, deux noms pour la
+		// même leçon. (Prémisse inverse avant #722 : le test exigeait qu'ils diffèrent.)
+		const divergentes = LESSONS_CALCUL_MENTAL.filter((l) => l.title !== def(l.id).label).map(
+			(l) => `${l.id} : « ${def(l.id).label} » ≠ « ${l.title} »`,
+		);
+		expect(divergentes, 'label du catalogue ≠ titre de lessons.ts').toEqual([]);
 	});
 
 	it('chacune rend son TITRE (celui de l’écran), à chaque niveau', () => {

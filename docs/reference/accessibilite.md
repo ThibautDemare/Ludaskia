@@ -205,6 +205,16 @@ ouvrir une modale de récompense. **Non automatisable** : rien ne mesure en CI l
 réel d'annonce d'une technologie d'assistance (dépend du navigateur, du lecteur d'écran,
 et du moment exact où `inert` est posé) — d'où une checklist et non un gate.
 
+Second cas concret, même piège : la synthèse de verdict d'une fiche (`annoncerVerdict`,
+`src/ui/session.ts`, #717) enchaîne, elle aussi, sur une modale de récompense
+(`announceRewards`) quand le résultat déclenche un palier ou un trophée — précisément le
+cas le plus flatteur, un sans-faute. Le correctif retenu **attend explicitement la fin
+de l'annonce** avant d'ouvrir quoi que ce soit (`apresAnnonceVerdict`, une promesse résolue
+après le délai de remplissage de la région + un tour de plus) plutôt que de compter sur un
+ordre de rendu qui se serait avéré suffisant par hasard. Généralisable : tout écran qui
+pose une région `role="status"` puis peut enchaîner sur une modale doit **chaîner
+explicitement**, pas seulement rendre les deux dans le bon ordre visuel.
+
 **Même checklist, cas plus général : région écrite puis `focus()` dans le même tick.**
 La modale n'est qu'une façon parmi d'autres d'avaler une annonce ; en déplacer le focus
 juste après avoir rempli un `aria-live="polite"` en est une autre, certains couples
@@ -283,6 +293,17 @@ ultérieur relit le message encore affiché même sans nouvelle validation. Acce
 le contenu reste contextuellement exact tant qu'aucune nouvelle réponse n'a été donnée —
 redondant à l'oreille, jamais faux. Le nettoyer au fil de la frappe a été envisagé et
 écarté, le gain ne valant pas la mécanique.
+
+**Checklist — une synthèse vocale de score doit dire ce que le total EXCLUT, pas
+seulement ce qu'il compte.** `scoreItems` (`core/scoring.ts`) ne compte dans `total` que
+les réponses **données** : sur cinq champs restés vides, le score est « 0 sur 0 », pas
+« 0 sur 5 ». Le bandeau visuel de fin de fiche montre les deux nombres côte à côte (score
+chiffré + compte de champs vides) ; une synthèse **parlée** qui ne reprendrait que le
+score s'entendrait comme un sans-faute complet là où rien n'a été répondu. `annoncerVerdict`
+(`ui/session.ts`, #717) énonce donc les réponses vides à part, dans la même phrase. Piège
+générique pour toute future synthèse de score partiel (bilan, sprint…) : le nombre qui
+compte au visuel n'est correct que rapporté à ce que le `total` inclut vraiment, et rien
+ne le rappelle à la relecture d'un écran qui affiche juste `${ok}/${total}`.
 
 ## Note de maintenance
 

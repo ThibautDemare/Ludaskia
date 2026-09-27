@@ -1050,6 +1050,46 @@ Firefox à écran tactile (`remasquageUtile`), curseur restauré sous le doigt, 
 page forcée dans `basculerType` — est documenté dans l'en-tête d'`ui/anti-suggestion.ts`
 et dans [Rendu & interactions](ui.md).
 
+### La langue de ce que l'enfant lit, au-delà des seuls panneaux d'étayage (#717)
+
+`tests/langue-enfant.test.ts` ferme le trou laissé entre trois gates existants qui
+tenaient chacun un morceau des deux règles de langue du projet (apostrophe droite,
+tutoiement) : `catalogue-invariants.test.ts` (#578, réponses attendues seulement),
+`voix-libelles-gate.test.ts` (#586, littéraux de `src/ui`/`src/core`, tutoiement
+seul) et `etayage-redige.test.ts` (#490, panneaux d'étayage seulement). Restaient
+tenus par rien : le libellé d'une leçon ou d'un mode, la consigne de fiche **résolue
+par niveau** (`consignePourNiveau`), l'aide contextuelle (#272), le titre et la
+description d'un trophée, et la phrase qui nomme la règle enfreinte après une
+écriture romaine fautive (`libelleRegleRomaine`, #717 lui-même — la famille qui a
+motivé le gate).
+
+Il n'attrape pas des chaînes dans des fichiers : il **interroge le catalogue et les
+tables de texte par leurs entrées publiques** (`getAllLessons`, `consignePourNiveau`,
+`AIDES`, `TROPHIES`) et ne retient que les champs dont la fonction est d'être du
+vocabulaire d'interface — ce qui lui permet d'entrer dans `src/data/` là où #586
+devait renoncer (un `label` de leçon et une `phrase` d'item de grammaire vivent dans
+le même fichier, seul le champ dit lequel s'adresse à l'enfant). Les **consignes
+d'action générées** (#265) sont lues sur un item réellement **tiré**, sous graine
+fixe, puis réduites à leur **gabarit** (nombres et citations entre guillemets
+remplacés par un jeton) : sans ça l'inventaire ne convergerait jamais, une consigne
+qui interpole sa valeur produisant une chaîne neuve à chaque tirage.
+
+Les deux détecteurs (`vouvoiements`, `apostrophesCourbes`) sont **partagés**
+(`tests/gardes-langue.ts`, éprouvés sur des phrases fabriquées dans
+`tests/gardes-langue.test.ts`) et désormais **consommés aussi par
+`etayage-redige.test.ts`**, qui portait jusque-là sa propre copie des deux règles —
+une règle de langue recopiée dans deux fichiers finit par diverger.
+
+**Hors périmètre, et c'est un refus motivé** : le **contenu** des exercices (énoncés,
+phrases à lire, définitions, distracteurs — #578 en compte 280 pour la seule
+apostrophe, déclarées légitimes), les **surfaces adultes** (espace encadrant, guide
+parents, « Un mot pour les parents » — qui vouvoient à raison), et les **textes
+assemblés à l'affichage** plutôt que lus depuis une entrée publique du catalogue. Un
+inventaire par source, plutôt qu'un total global, garde chaque défaillance nommable :
+un test dédié exige que chaque leçon, chaque type d'aide, chaque classe de faute
+romaine et chaque trophée apporte encore son texte, sans quoi une source tarie (export
+renommé, champ déplacé) resterait verte en n'ayant plus rien regardé.
+
 ## Smoke tests e2e (Playwright)
 
 **Smoke tests e2e (`e2e/`, Playwright, #129).** Complémentaires : ils pilotent

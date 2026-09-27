@@ -760,6 +760,14 @@ moteur. Branché au catalogue via `DECIMAUX_LESSONS_DEFS` (`core/catalog.ts`).
 canonique, paliers, règle enfreinte) vit dans `core/chiffres-romains.ts` ; ce fichier
 porte les énoncés, les modes et l'étayage.
 
+**Hors du programme officiel de mathématiques CM1, décision produit assumée.** Les
+repères consultés (`docs/reference/programmes/cm1-maths.md`) ne mentionnent les chiffres
+romains nulle part au CM1 : la notion apparaît en 6e, comme prolongement culturel côté
+maths et comme attendu du programme d'histoire. La proposer ici, et retenir l'étendue
+1-3999 plutôt qu'un sous-ensemble plus proche d'un programme, est un choix du
+**mainteneur** — pas un dépassement de périmètre à corriger au motif qu'il excède le
+programme officiel.
+
 **Deux modes, tous deux en SAISIE** (#69) — c'est la production qui prouve que la règle
 est comprise, là où un QCM se réussit en reconnaissant une forme déjà vue :
 `ecrire` (« J'écris en chiffres romains », **par défaut** : nombre donné → écriture

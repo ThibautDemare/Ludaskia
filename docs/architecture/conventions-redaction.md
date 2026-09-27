@@ -33,6 +33,22 @@ dès la création d'un libellé :
   `tests/voix-libelles-gate.test.ts`, qui fait échouer `npm test` sur tout autre
   débordement.
 
+  **Depuis #717, un gate tient cette règle bien au-delà de l'espace encadrant** :
+  `tests/langue-enfant.test.ts` balaie tout ce que l'enfant lit ailleurs (libellés du
+  catalogue, consignes résolues par niveau, aides contextuelles, trophées, phrase qui
+  nomme une règle enfreinte) et refuse le vouvoiement qui s'y glisserait. Détecteurs
+  partagés dans `tests/gardes-langue.ts`, cf. [Tests](tests.md).
+
+  **L'apostrophe droite, elle, ne pèse pas le même poids des deux côtés, et confondre les
+  deux fait sacrifier la mauvaise.** Sur un texte que l'enfant **lit**, la forme du
+  caractère est une simple cohérence : elle ne change ni la correction, ni ce que le TTS
+  prononce. Sur une **réponse attendue**, c'est la correction elle-même qui en dépend :
+  `normalizeText` (`core/utils.ts`) ne fait que `trim` + espaces + NFC, il ne replie pas
+  « ’ » vers « ' ». Une réponse attendue écrite avec l'apostrophe typographique compterait
+  donc **faux** un enfant qui tape celle de son clavier — la seule qu'il ait — sans qu'il
+  puisse comprendre pourquoi. C'est là que la garde mord vraiment ; le balayage des textes
+  lus la double par cohérence, et parce qu'il ne coûte rien.
+
   **Le vouvoiement se porte aussi par le SUJET du verbe (#636).** Le gate ne traque que
   les pronoms et possessifs (`tu`/`vous`), et laisse donc passer un « on » impersonnel,
   qui a par ailleurs des usages légitimes en prose — impossible à mécaniser sans faux

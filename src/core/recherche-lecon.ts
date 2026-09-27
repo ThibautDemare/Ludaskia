@@ -4,19 +4,21 @@
    L'enfant tape un mot sur l'écran des matières et doit atteindre une leçon, une
    catégorie ou une dictée de mots sans traverser matière → catégorie → liste.
 
-   Quatre partis pris, tous DIFFÉRENTS du sélecteur adulte (`catalogue-arbre.ts`, #556),
-   qui reste inchangé (critère 20) :
-   - le niveau est une FRONTIÈRE, pas un filtre : chaque leçon est retenue si elle est
+   Depuis #722, le sélecteur adulte (`catalogue-arbre.ts`, #556) cherche avec les mêmes
+   mots et les mêmes noms : libellé affiché (`libelleAffiche`), mots-clés, dictées. Deux
+   différences subsistent, VOULUES (ne pas « aligner » l'un sur l'autre) :
+   - ici le niveau est une FRONTIÈRE, pas un filtre : chaque leçon est retenue si elle est
      disponible au niveau actif de SA matière (`source.niveau(subject)`), exactement comme
-     le catalogue parcouru à la main (critères 7 et 17) ;
-   - le texte cherché est le libellé AFFICHÉ (`libelleAffiche`) plus les MOTS-CLÉS de la
-     leçon (vocabulaire concret de l'enfant, #718) — jamais le seul `label` du catalogue,
-     qui diffère de l'écran pour le calcul mental (critère 3) ;
+     le catalogue parcouru à la main (critères 7 et 17) ; l'adulte, lui, choisit sa classe
+     par jeton ;
    - une catégorie qui correspond (nom ou mot-clé) est un RÉSULTAT à part entière, qui
      ouvre son écran ; elle n'entraîne PAS ses leçons (« conjug » ne doit pas aligner 55
-     boutons — la catégorie est la bonne réponse, critère 5) ;
-   - les dictées de mots, qui ne sont pas des `LessonDef`, sont cherchées par leur nom
-     (critère 6) ; l'appelant les fournit déjà filtrées au niveau (cumulatif, #243).
+     boutons — la catégorie est la bonne réponse, critère 5) ; chez l'adulte, l'arbre EST le
+     résultat, et la catégorie qui correspond déplie toutes ses leçons.
+   Deux partis pris partagés : le texte cherché est le libellé AFFICHÉ plus les MOTS-CLÉS
+   de la leçon (vocabulaire concret de l'enfant, #718), et les dictées de mots, qui ne
+   sont pas des `LessonDef`, sont cherchées par leur nom (critère 6) — l'appelant les
+   fournit ici déjà filtrées au niveau (cumulatif, #243).
 
    Correspondance : sous-chaîne sur `cleRecherche` (casse, accents, ligatures et
    apostrophes indifférents). En dessous de `RECHERCHE_MIN` caractères, la recherche est

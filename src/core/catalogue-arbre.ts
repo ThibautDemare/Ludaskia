@@ -1,5 +1,5 @@
 /* ============================================================
-   Arbre du catalogue pour la SÉLECTION d'une leçon côté adulte (#556).
+   Arbre du catalogue pour la SÉLECTION d'une leçon côté adulte (#556, #722).
    ------------------------------------------------------------
    L'espace encadrant doit pouvoir désigner N'IMPORTE QUELLE leçon du catalogue pour un
    profil — y compris d'une classe autre que celle qu'il suit — sans faire reculer toute
@@ -14,18 +14,29 @@
    profil, elle, vit dans `encadrant-stats` aux côtés de `niveauProfilMatiere` — l'y laisser
    évite un cycle d'imports entre les deux modules.
 
+   Depuis #722, la recherche de l'adulte est celle de l'enfant (#718, `recherche-lecon.ts`),
+   avec les mêmes mots et les mêmes noms : le texte cherché ET affiché est le libellé que
+   l'enfant voit (`libelleAffiche`), les MOTS-CLÉS des leçons et des catégories comptent, et
+   les DICTÉES DE MOTS (prédéfinies et listes du parent, hors `LessonDef`) forment un groupe
+   « Dictées de mots » sous Français, juste après Orthographe. Ce qui reste propre à l'adulte :
+   une catégorie qui correspond ENTRAÎNE toutes ses leçons (l'arbre est le résultat, il n'y a
+   pas de « carte de catégorie » à proposer) — l'enfant, lui, reçoit la catégorie comme
+   résultat sans ses leçons. Ne pas « aligner » l'un sur l'autre : les deux sont voulus.
+
    Le niveau reste une DONNÉE (#225) : rien ici ne connaît de liste de classes en dur, tout
    se dérive du catalogue (`availableLevels`) et du profil (`niveauProfilMatiere`).
    ============================================================ */
 import {
 	CATEGORIES,
+	ORTHO_CATEGORY_ID,
 	SUBJECTS,
 	getAllLessons,
 	type LessonDef,
 	type SchoolLevel,
 	type SubjectId,
 } from './catalog';
-import { LEVEL_LABEL, LEVEL_ORDER, availableLevels, labelLecon } from './levels';
+import { LEVEL_LABEL, LEVEL_ORDER, availableLevels } from './levels';
+import { libelleAffiche } from './libelle-affiche';
 import { niveauProfilMatiere } from './encadrant-stats';
 import type { Profile } from './profiles';
 import { trierParOrdre } from './ordre';
@@ -46,8 +57,11 @@ export interface JetonNiveau {
 /* ---------- Arbre ---------- */
 export interface LeconArbre {
 	id: string;
-	label: string; // libellé résolu AU NIVEAU affiché (#436)
+	label: string; // libellé résolu AU NIVEAU affiché (#436), tel que l'enfant le lit (#718)
 	niveau: SchoolLevel; // niveau sous lequel la leçon est proposée ici
+	/** `dictee` = dictée de mots (#722) : même ligne, mais l'id désigne une liste d'orthographe
+	    et non une leçon du catalogue — le consommateur choisit le geste d'après ce champ. */
+	kind: 'lecon' | 'dictee';
 }
 export interface CategorieArbre {
 	categoryId: string;
@@ -57,15 +71,32 @@ export interface CategorieArbre {
 export interface MatiereArbre {
 	subject: SubjectId;
 	label: string;
-	total: number; // leçons de la matière retenues (toutes catégories)
+	total: number; // leçons de la matière retenues (toutes catégories, dictées comprises)
 	categories: CategorieArbre[];
 }
+
+/** Dictée de mots telle que l'appelant la fournit (#722) : `niveau` = classe d'une dictée
+    PRÉDÉFINIE, absent pour une liste du parent (jamais taguée, donc jamais filtrée). */
+export interface DicteeArbreEntree {
+	id: string;
+	label: string;
+	source: 'predefini' | 'liste';
+	niveau?: SchoolLevel;
+}
+
+/** Identité du groupe « Dictées de mots » dans l'arbre — ce n'est PAS une catégorie du
+    catalogue (`CATEGORIES`), et son id ne doit jamais être résolu comme tel. */
+export const DICTEES_ARBRE_ID = 'dictees';
+export const DICTEES_ARBRE_LABEL = 'Dictées de mots';
 
 export interface OptionsArbre {
 	filtre?: FiltreNiveau;
 	recherche?: string;
 	/** Catalogue injectable (tests) ; par défaut le catalogue complet, SANS filtre de niveau. */
 	lessons?: readonly LessonDef[];
+	/** Dictées de mots à proposer (#722), NON filtrées par niveau : le filtre est appliqué ici.
+	    Absent = pas de groupe « Dictées de mots » (arbre identique à #556). */
+	dictees?: readonly DicteeArbreEntree[];
 }
 
 /* Niveaux DISTINCTS effectivement suivis par un profil, un par matière (ordre scolaire).
@@ -108,6 +139,20 @@ function niveauSousFiltre(subject: SubjectId, profile: Profile, filtre: FiltreNi
 	return filtre === 'sa-classe' ? niveauProfilMatiere(profile, subject) : filtre;
 }
 
+/* Une dictée passe-t-elle le filtre de niveau (#722) ? Une liste du parent, toujours (elle
+   n'est pas taguée). Une prédéfinie : sous « Sa classe », ce que l'enfant voit — filtrage
+   CUMULATIF (#243), un CM1 garde les listes CE2 ; sous un jeton de classe, cette classe seule,
+   comme les leçons (`levels.includes`). */
+function dicteeSousFiltre(
+	d: DicteeArbreEntree,
+	niveauFr: SchoolLevel,
+	filtre: FiltreNiveau,
+): boolean {
+	if (d.source === 'liste' || d.niveau === undefined) return true;
+	if (filtre === 'sa-classe') return LEVEL_ORDER.indexOf(d.niveau) <= LEVEL_ORDER.indexOf(niveauFr);
+	return d.niveau === filtre;
+}
+
 /* Arbre `matière → catégorie → leçons` du catalogue, filtre de niveau et recherche appliqués.
    Matières et catégories suivent l'ordre du catalogue ; les leçons d'une catégorie sont triées
    par l'ORDRE PÉDAGOGIQUE du niveau sous lequel elles sont proposées (`trierParOrdre`, #208),
@@ -120,32 +165,60 @@ function niveauSousFiltre(subject: SubjectId, profile: Profile, filtre: FiltreNi
    Le filtre est une APPARTENANCE stricte au niveau demandé (`levels.includes`), comme
    l'écran de l'enfant : le sélecteur montre ce que ce niveau contient, pas ce qu'il
    contiendrait par repli. La recherche s'applique À L'INTÉRIEUR du filtre actif, sur le
-   libellé de la leçon ET sur celui de sa catégorie — chercher « géométrie » doit rendre les
-   leçons de géométrie, dont aucune ne porte le mot. Accents et casse indifférents
-   (`cleRecherche`). Catégories et matières vidées par le filtre sont écartées. */
+   libellé AFFICHÉ de la leçon, ses mots-clés, le libellé de sa catégorie et les mots-clés
+   de celle-ci (#722) — chercher « géométrie » ou « tables » doit rendre toute la catégorie,
+   dont aucune leçon ne porte forcément le mot. Accents, casse et apostrophes indifférents
+   (`cleRecherche`). Catégories et matières vidées par le filtre sont écartées.
+
+   Dictées de mots (#722) : quand `opts.dictees` est fourni, un groupe « Dictées de mots »
+   prend place dans la matière français JUSTE APRÈS Orthographe — à la place qu'Orthographe
+   occupe dans `CATEGORIES`, qu'elle soit retenue ou non — avec les dictées qui passent le
+   filtre de niveau et la recherche (leur nom, ou le nom du groupe : « dictée » les rend
+   toutes). Ordre d'entrée conservé (l'appelant fournit prédéfinies puis listes du parent).
+   Jamais de groupe vide. */
 export function arbreCatalogue(profile: Profile, opts: OptionsArbre = {}): MatiereArbre[] {
 	const filtre = opts.filtre ?? FILTRE_DEFAUT;
 	const lessons = opts.lessons ?? getAllLessons();
 	const q = cleRecherche(opts.recherche ?? '');
+	const contient = (texte: string): boolean => cleRecherche(texte).includes(q);
+	const parMotCle = (mots: readonly string[] | undefined): boolean => (mots ?? []).some(contient);
 	const out: MatiereArbre[] = [];
 	for (const sub of SUBJECTS) {
 		const categories: CategorieArbre[] = [];
 		let total = 0;
+		const niveau = niveauSousFiltre(sub.id, profile, filtre);
 		for (const cat of CATEGORIES.filter((c) => c.subject === sub.id)) {
-			const catMatche = q !== '' && cleRecherche(cat.label).includes(q);
-			const niveau = niveauSousFiltre(sub.id, profile, filtre);
+			const catMatche = q !== '' && (contient(cat.label) || parMotCle(cat.motsCles));
 			const retenues = lessons.filter((l) => {
 				if (l.category !== cat.id || !l.levels.includes(niveau)) return false;
-				return q === '' || catMatche || cleRecherche(labelLecon(l, niveau)).includes(q);
+				return (
+					q === '' || catMatche || contient(libelleAffiche(l, niveau)) || parMotCle(l.motsCles)
+				);
 			});
 			const lecons: LeconArbre[] = trierParOrdre(retenues, niveau).map((l) => ({
 				id: l.id,
-				label: labelLecon(l, niveau),
+				label: libelleAffiche(l, niveau),
 				niveau,
+				kind: 'lecon',
 			}));
 			if (lecons.length) {
 				categories.push({ categoryId: cat.id, label: cat.label, lecons });
 				total += lecons.length;
+			}
+			if (cat.id === ORTHO_CATEGORY_ID && opts.dictees) {
+				const groupeMatche = q !== '' && contient(DICTEES_ARBRE_LABEL);
+				const dictees: LeconArbre[] = opts.dictees
+					.filter((d) => dicteeSousFiltre(d, niveau, filtre))
+					.filter((d) => q === '' || groupeMatche || contient(d.label))
+					.map((d) => ({ id: d.id, label: d.label, niveau, kind: 'dictee' }));
+				if (dictees.length) {
+					categories.push({
+						categoryId: DICTEES_ARBRE_ID,
+						label: DICTEES_ARBRE_LABEL,
+						lecons: dictees,
+					});
+					total += dictees.length;
+				}
 			}
 		}
 		if (categories.length) out.push({ subject: sub.id, label: sub.label, total, categories });

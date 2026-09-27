@@ -795,9 +795,16 @@ function epinglerHTML(consulte: Profile, epinglees: ReadonlySet<string>): SafeHt
 	// déjà épinglée porte DEUX boutons sur la page (sa ligne en haut, sa ligne dans l'arbre), et
 	// un `data-act` commun renverrait le focus au premier des deux — donc en haut de bloc, à
 	// chaque clic dans l'arbre.
+	// Une dictée (#722) s'épingle sous son id de file (`ortho:` + id, #424, cf. le handler) :
+	// c'est la MÊME épingle que celle de la ligne du bloc « Dictées », les deux boutons disent
+	// donc la même chose. `epinglees` porte les ids BRUTS des deux natures (`EpingleEntry.id`),
+	// d'où une comparaison directe, sans préfixe.
 	const action: ActionLigne = {
 		act: 'epingler-selecteur',
-		etat: (l) => ({ label: epinglees.has(l.id) ? 'Retirer' : 'Épingler', on: epinglees.has(l.id) }),
+		etat: (l) => {
+			const on = epinglees.has(l.id);
+			return { label: on ? 'Retirer' : 'Épingler', on };
+		},
 	};
 	// Ré-enregistré à chaque rendu : l'action de ligne capture la file épinglée du moment,
 	// et c'est elle que le sélecteur rejoue quand il re-rend son arbre à la frappe.
@@ -806,7 +813,7 @@ function epinglerHTML(consulte: Profile, epinglees: ReadonlySet<string>): SafeHt
 		return p ? { consulte: p, action } : null;
 	});
 	return html`<h4 class="enc-sub-lab">Épingler une leçon</h4>
-     <p class="enc-hint">Choisissez n'importe quelle leçon du catalogue, même pas encore abordée, même d'une autre classe que celle que suit ${consulte.name} : sa classe ne change pas, seule cette leçon est proposée.</p>
+     <p class="enc-hint">Choisissez n'importe quelle leçon du catalogue ou dictée de mots, même pas encore abordée, même d'une autre classe que celle que suit ${consulte.name} : sa classe ne change pas, seul ce choix est proposé.</p>
      ${selecteurLeconHTML({ id: ID_SELECTEUR_EPINGLE, consulte, action })}`;
 }
 
@@ -872,7 +879,7 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): SafeHtml {
       ${blocEpinglees}
       ${blocSuggestions}
       ${blocRetraits}
-      ${epinglerHTML(consulte, new Set(pinned.filter((e) => e.kind === 'lecon').map((e) => e.id)))}
+      ${epinglerHTML(consulte, new Set(pinned.map((e) => e.id)))}
     </div>`;
 }
 
@@ -899,16 +906,18 @@ export function progressionClick(act: string, el: HTMLElement): boolean {
 			return true;
 		case 'epingler-selecteur': {
 			const uuid = consulteUuid();
-			const entryId = el.dataset.lesson;
-			if (uuid && entryId) {
-				toggleRevoirFor(uuid, entryId);
+			const brut = el.dataset.lesson;
+			if (uuid && brut) {
+				// La ligne porte l'id BRUT et sa nature : une dictée (#722) s'épingle sous `ortho:`.
+				const kind = el.dataset.kind === 'dictee' ? 'dictee' : 'lecon';
+				toggleRevoirFor(uuid, kind === 'dictee' ? orthoRevoirId(brut) : brut);
 				renderEspace();
 				// Focus rendu au bouton de la MÊME leçon DANS l'arbre : la ligne existe aussi, une
 				// fois épinglée, dans le bloc « Épinglées » juste au-dessus — y renvoyer ferait
 				// perdre sa place dans l'arbre à qui en épingle plusieurs d'affilée.
 				container()
 					?.querySelector<HTMLElement>(
-						`#sel-corps-${CSS.escape(ID_SELECTEUR_EPINGLE)} [data-act="epingler-selecteur"][data-lesson="${CSS.escape(entryId)}"]`,
+						`#sel-corps-${CSS.escape(ID_SELECTEUR_EPINGLE)} [data-act="epingler-selecteur"][data-lesson="${CSS.escape(brut)}"][data-kind="${kind}"]`,
 					)
 					?.focus({ preventScroll: true });
 			}

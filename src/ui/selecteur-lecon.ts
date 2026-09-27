@@ -22,21 +22,31 @@
      lettre. Elle DÉPLIE d'office ce qui reste (une recherche dont les résultats sont cachés
      dans des groupes repliés ne servirait à rien).
 
+   Depuis #722, l'arbre porte aussi les DICTÉES DE MOTS du profil consulté (prédéfinies et
+   listes du parent, groupe « Dictées de mots » sous Français) : chaque ligne dit sa nature
+   (`data-kind`, `lecon` ou `dictee`), et c'est le consommateur qui en tire le geste (une
+   épingle de dictée s'écrit avec le préfixe `ortho:`, une étape « leçon » devient « dictée »).
+   Le sélecteur, lui, ne sait toujours pas ce qu'on fait de la ligne choisie.
+
    La logique — arbre, filtre, recherche, jetons — est pure et vit dans
    `core/catalogue-arbre.ts` ; ici, le rendu, l'état de vue et les handlers.
    ============================================================ */
 import {
+	DICTEES_ARBRE_ID,
 	FILTRE_DEFAUT,
 	arbreCatalogue,
 	compterLecons,
 	jetonsNiveau,
 	tronquerArbre,
+	type DicteeArbreEntree,
 	type FiltreNiveau,
 	type LeconArbre,
 	type MatiereArbre,
 } from '../core/catalogue-arbre';
 import type { SchoolLevel } from '../core/catalog';
 import { LEVEL_ORDER } from '../core/levels';
+import { listOrthoLecons } from '../core/orthographe/lessons';
+import { loadOrthoFor } from '../core/orthographe/store';
 import type { Profile } from '../core/profiles';
 import { onChangementProfilConsulte, container, renderEspace } from './encadrant-commun';
 import { segmentHTML } from './segment';
@@ -120,8 +130,25 @@ function ouvert(e: EtatSelecteur, cle: string): boolean {
 	return e.recherche.trim() !== '' || e.ouverts.has(cle);
 }
 
-function compteLabel(n: number): string {
-	return n > 1 ? `${n} leçons` : `${n} leçon`;
+/* Nature de ce qu'on compte (#722) : l'arbre porte des leçons ET des dictées de mots, et un
+   badge « 12 leçons » à côté du groupe « Dictées de mots » lui-même, ou un résumé « 12
+   leçons » dont 3 sont des dictées, tromperait qui l'entend sans voir l'arbre. */
+type Nature = 'lecon' | 'dictee' | 'mixte';
+
+function compteLabel(n: number, nature: Nature = 'lecon'): string {
+	if (nature === 'mixte') return `${n} leçons et dictées`;
+	const mot = nature === 'dictee' ? 'dictée' : 'leçon';
+	return n > 1 ? `${n} ${mot}s` : `${n} ${mot}`;
+}
+
+function natureCategorie(cat: MatiereArbre['categories'][number]): Nature {
+	return cat.categoryId === DICTEES_ARBRE_ID ? 'dictee' : 'lecon';
+}
+
+function natureDe(categories: readonly MatiereArbre['categories'][number][]): Nature {
+	const natures = new Set(categories.map(natureCategorie));
+	if (natures.size === 2) return 'mixte';
+	return natures.has('dictee') ? 'dictee' : 'lecon';
 }
 
 function ligneHTML(lecon: LeconArbre, action: ActionLigne): SafeHtml {
@@ -131,9 +158,11 @@ function ligneHTML(lecon: LeconArbre, action: ActionLigne): SafeHtml {
 	);
 	// Le nom accessible reprend le libellé VISIBLE de la leçon (SC 2.5.3) : « Choisir » seul,
 	// répété sur des dizaines de lignes, ne dirait rien en navigation par contrôles.
-	return html`<li class="enc-sel-item">
+	// `data-kind` sur la ligne ET sur le bouton (#722) : la ligne pour qui cherche dans le DOM,
+	// le bouton pour le handler, qui n'a que lui sous la main.
+	return html`<li class="enc-sel-item" data-kind="${lecon.kind}" data-lesson="${lecon.id}">
       <span class="enc-sel-lab">${lecon.label}</span>
-      <button type="button" class="enc-btn-sec${on ? ' on' : ''}" data-act="${action.act}" data-lesson="${lecon.id}"${extra} aria-label="${`${label} « ${lecon.label} »`}">${label}</button>
+      <button type="button" class="enc-btn-sec${on ? ' on' : ''}" data-act="${action.act}" data-lesson="${lecon.id}" data-kind="${lecon.kind}"${extra} aria-label="${`${label} « ${lecon.label} »`}">${label}</button>
     </li>`;
 }
 
@@ -147,7 +176,7 @@ function categorieHTML(
 	return html`<details class="enc-cat-d enc-sel-d enc-sel-cat" data-sel="${id}" data-selcle="${cle}"${ouvert(e, cle) ? drapeau('open') : ''}>
       <summary class="enc-cat-sum">
         <span class="enc-cat-lab">${cat.label}</span>
-        <span class="enc-cat-counts">${compteLabel(cat.lecons.length)}</span>
+        <span class="enc-cat-counts">${compteLabel(cat.lecons.length, natureCategorie(cat))}</span>
       </summary>
       <ul class="enc-sel-list">${joindre(cat.lecons.map((l) => ligneHTML(l, action)))}</ul>
     </details>`;
@@ -158,7 +187,7 @@ function matiereHTML(id: string, e: EtatSelecteur, m: MatiereArbre, action: Acti
 	return html`<details class="enc-cat-d enc-sel-d enc-sel-mat" data-sel="${id}" data-selcle="${cle}"${ouvert(e, cle) ? drapeau('open') : ''}>
       <summary class="enc-cat-sum">
         <span class="enc-cat-lab">${m.label}</span>
-        <span class="enc-cat-counts">${compteLabel(m.total)}</span>
+        <span class="enc-cat-counts">${compteLabel(m.total, natureDe(m.categories))}</span>
       </summary>
       <div class="enc-sel-cats">${joindre(m.categories.map((c) => categorieHTML(id, e, c, action)))}</div>
     </details>`;
@@ -176,9 +205,24 @@ interface VueSelecteur {
    La borne ne s'applique QUE sous recherche (#571) : là, l'arbre est déplié d'office et
    chaque leçon rendue est un bouton dans l'ordre de tabulation. Hors recherche, les groupes
    sont repliés — rien à borner, et écourter le catalogue le ferait passer pour incomplet. */
+/* Dictées de mots du profil consulté (#722), NON filtrées par niveau : c'est l'arbre pur qui
+   applique le jeton (cumulatif sous « Sa classe », classe seule sous un jeton). */
+function dicteesDe(consulte: Profile): DicteeArbreEntree[] {
+	return listOrthoLecons(loadOrthoFor(consulte.uuid)).map((r) => ({
+		id: r.id,
+		label: r.label,
+		source: r.source,
+		niveau: r.niveau,
+	}));
+}
+
 function vueCourante(id: string, consulte: Profile): VueSelecteur {
 	const e = etat(id);
-	const arbre = arbreCatalogue(consulte, { filtre: e.filtre, recherche: e.recherche });
+	const arbre = arbreCatalogue(consulte, {
+		filtre: e.filtre,
+		recherche: e.recherche,
+		dictees: dicteesDe(consulte),
+	});
 	return tronquerArbre(arbre, e.recherche.trim() === '' ? 0 : e.limite);
 }
 
@@ -197,15 +241,17 @@ function texteResume(id: string, vue: VueSelecteur): string {
 	const n = compterLecons(vue.arbre);
 	if (n === 0)
 		return etat(id).recherche.trim() === ''
-			? 'Aucune leçon dans cette classe.'
-			: 'Aucune leçon ne correspond à cette recherche.';
+			? 'Aucune leçon ni dictée dans cette classe.'
+			: 'Aucune leçon ni dictée ne correspond à cette recherche.';
+	const nature = natureDe(vue.arbre.flatMap((m) => m.categories));
 	// Troncature ANNONCÉE : une liste écourtée en silence se lit comme la liste entière, et
-	// l'adulte croirait sa recherche plus étroite qu'elle ne l'est.
+	// l'adulte croirait sa recherche plus étroite qu'elle ne l'est. (« leçon », « dictée » et
+	// « leçons et dictées » sont tous féminins : un seul accord.)
 	if (vue.restant > 0) {
 		const s = n > 1 ? 's' : '';
-		return `${n} leçon${s} affichée${s} sur ${n + vue.restant}. Les premières seulement sont listées.`;
+		return `${compteLabel(n, nature)} affichée${s} sur ${n + vue.restant}. Les premières seulement sont listées.`;
 	}
-	return `${compteLabel(n)} à choisir.`;
+	return `${compteLabel(n, nature)} à choisir.`;
 }
 
 /** Le sélecteur complet : barre de jetons de niveau, recherche, puis l'arbre replié. */

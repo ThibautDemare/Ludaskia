@@ -18,6 +18,9 @@ export interface LeconOrthoRef {
 	id: string;
 	label: string;
 	source: SourceLecon;
+	/** Classe d'une dictée PRÉDÉFINIE (#722 : le sélecteur adulte filtre par jeton de classe) ;
+	    absent pour une liste du parent, jamais taguée. */
+	niveau?: SchoolLevel;
 	nbMots: number;
 	mots: string[]; // aperçu des mots (pour la prévisualisation)
 	dateControle?: string; // listes du parent : pour le tri par échéance
@@ -39,6 +42,7 @@ export function listOrthoLecons(state: OrthoState, niveau?: SchoolLevel): LeconO
 		id: l.id,
 		label: l.label,
 		source: 'predefini',
+		niveau: l.niveau,
 		nbMots: l.mots.length,
 		mots: l.mots.map((mi) => mi.mot),
 	}));

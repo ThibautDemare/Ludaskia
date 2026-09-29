@@ -18,7 +18,7 @@ import { getAllLessons } from '../src/core/catalog';
 
    Les surfaces retenues sont énumérables, petites, et elles se recoupent :
 
-   1. LES MODES (`type.modes`, #69) — 9 ids dans tout le catalogue, tous couverts
+   1. LES MODES (`type.modes`, #69) — une poignée d'ids dans tout le catalogue, tous couverts
       aujourd'hui, zéro exception. C'est le trou que le CLAUDE.md nommait noir sur
       blanc : la table de #581 déclare UN mode par format, donc rien ne garantissait
       que le second mode d'un type soit joué un jour.

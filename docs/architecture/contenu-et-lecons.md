@@ -1121,7 +1121,7 @@ Catégorie `math-calcul-mental`. Quatre origines :
 
 ### Grandeurs et mesures
 
-#### `maths/mesures.ts` (#89, multi-niveaux #287, décimaux CM1 #248, tableau de conversion #394)
+#### `maths/mesures.ts` (#89, multi-niveaux #287, décimaux CM1 #248, tableau de conversion #394, virgule à placer #711)
 
 moteur de **conversions d'unités** partagé par
 4 leçons de « Grandeurs et mesures » — `mes-longueurs`, `mes-masses`, `mes-contenances`,
@@ -1208,6 +1208,47 @@ L↔mL…) qui resservent partout ailleurs. Sans marquage `consolidation` — to
 le tirage reste strictement uniforme. Effet de bord **assumé** : le mode saisie partage
 les mêmes `conversions`, donc un CM1 voit aussi apparaître « 3 km = ? hm » hors du
 tableau.
+
+**Troisième mode « la virgule est à placer » (#711 lot 4, `MODE_VIRGULE`, CM1 only).**
+Le mode `tableau` ne change pas : l'application continue d'y DESSINER la virgule, et
+seulement sur une réponse décimale. `virgule` est un mode À PART qui s'ajoute (jamais un
+remplacement, arbitrage mainteneur : un enfant qui découvre le tableau ne doit pas perdre
+la marche qu'il vient de monter) : c'est l'enfant qui place la virgule, à la frontière de
+colonne qui suit la case active, via un 12ᵉ bouton du pavé (rendu et interaction dans
+[Rendu & interactions](ui.md)). Décrit par **`ModeOption.levels: ['cm1']`** (#711, cf.
+[Logique pure](core.md) pour le mécanisme générique) sur la seule entrée `MODE_VIRGULE_OPTION` ;
+le générateur (`config.virguleLibre`, distinct de l'affichage) refuse lui-même le mode au
+CE2, pour qu'une URL directe ou une reprise périmée n'y ramène pas l'écriture décimale.
+**Déclaration scindée en deux niveaux, et c'est délibéré** : `conversionType(config, {
+virgulePlacable })` ajoute `MODE_VIRGULE_OPTION` à la FAMILLE (`mes-longueurs`,
+`mes-contenances` le passent à `true`), tandis que `config.virguleLibre` — posé sur le SEUL
+palier CM1 de chaque famille — pilote la génération. Nécessaire parce que `calibrated`
+étale les métadonnées du niveau le plus bas (le CE2) : une liste de modes déduite de la
+configuration reçue ne ferait donc jamais apparaître le mode, quel que soit le CM1.
+**Déclaré seulement par les familles qui ouvrent une conversion décimale au CM1** —
+longueurs et contenances — **jamais les masses** : aucune paire ×10/×100 n'y est ouverte au
+décimal (« 4,5 dag » n'a pas de référent réel, décision actée plus haut), donc le mode y
+serait un écran de choix menant à un tirage vide.
+
+`pickConversionInstance(conversions, decimalImpose)` restreint alors le VIVIER aux seules
+relations `decimal` et impose le sens petite→grande (`versPetite = false`), qui est
+justement la définition d'une réponse décimale : le mode ne tire QUE des conversions dont
+la réponse porte une virgule, donc `virguleApres` est défini sur **100 % de ses items**, et
+c'est précisément ce qui retire l'indice — dans ce mode, l'enfant n'apprend jamais de
+l'interface s'il lui faut une virgule ou non, puisqu'il lui en faut toujours une. La
+position ATTENDUE ne change pas par rapport au mode `tableau` (juste après la colonne de
+l'unité cible) ; seul QUI la pose change. Prix assumé, tracé par un commentaire daté sur
+l'issue : les deux modes ne tirent plus le même exercice à graine égale.
+
+**REJET ÉCRIT — une virgule attendue sur TOUS les items, décimaux ou entiers (#711 lot 4,
+avis pedagogue-primaire, correction de spécification actée en cours de lot).** La version
+initiale du cadrage demandait la virgule à chaque item, y compris une réponse entière, la
+position de la colonne cible suffisant à la placer. Écartée : une virgule sans chiffre
+significatif derrière elle n'est pas une écriture de nombre (« 3000, » n'existe dans aucun
+manuel), et une conversion vers une unité plus petite donne toujours un entier — aucune
+graphie à virgule n'y a de sens, quelle que soit la position de la colonne cible dans le
+tableau. Le bon critère est donc le **SENS** de la conversion, pas la position de la
+colonne, d'où la restriction du vivier ci-dessus plutôt qu'une virgule inconditionnelle.
 
 **Grandes unités de temps (#252, CM1).** La config CM1 de `mes-durees` ajoute, EN PLUS
 de h↔min / min↔s, les relations **EXACTES** entre unités de temps : **1 siècle = 100 ans,

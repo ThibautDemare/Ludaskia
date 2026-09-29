@@ -597,3 +597,32 @@ réussie » — vrai, mais l'extinction au franchissement est un **comportement 
 (`estFranchie`, cf. [Logique pure](core.md)), pas une promesse à documenter dans l'UI. Une
 mécanique qui change (le seuil, la condition de sortie) ne doit pas obliger à rouvrir un
 libellé qui ne la décrivait pas.
+
+## Un libellé de carte de choix se comprend SEUL, sans sa voisine (#711)
+
+Les cartes d'un écran de choix se lisent d'un coup d'œil, et leur ordre n'est pas garanti
+dans le temps. Un libellé qui renvoie à une autre carte (« aussi », « encore », « comme
+avant ») n'a donc de sens que pour qui les a lues dans l'ordre. Cas posé par le troisième
+mode du tableau de conversion (#711 lot 4) : « Je place **aussi** la virgule » supposait
+qu'on venait de lire « Je remplis le tableau », et se laissait même lire comme « moi aussi
+je la place ». Devenu « Je place la virgule moi-même », qui se tient seul.
+
+Corollaire sur le sous-titre : il dit **comment on procède**, pas l'étendue de la tâche,
+comme ses voisins (« au clavier », « un chiffre par case »). « Le tableau en entier » ne
+disait ni l'un ni l'autre ; « chiffres et virgule » distingue au premier regard.
+
+## Un geste sur l'écran s'écrit avec un seul verbe, jamais « retoucher » (#711)
+
+Pour une action tactile, employer **« touche »** ou **« appuie »**, et s'y tenir dans toute
+une aide. « Retoucher » est à écarter : le verbe veut dire « corriger » autant que « toucher
+de nouveau », et un enfant de CM1 peut lire les deux. Cas posé par l'aide du mode « virgule »
+(#711 lot 4), dont la réparation disait « Va sur la bonne colonne et retouche « , » ».
+
+## Un bouton se NOMME dans un texte lu à voix haute, il ne se cite pas par son glyphe (#711)
+
+Un texte destiné au TTS (consigne, aide, légende) qui désigne un bouton par le signe qu'il
+porte — « le bouton « , » », « le bouton « = » » — est muet à l'oreille : la ponctuation
+n'est pas prononcée. La voix dit « touche le bouton, la virgule se pose », sans jamais dire
+lequel. Le glyphe est en plus presque invisible à l'écran entre deux guillemets. Nommer le
+bouton (« le bouton virgule du pavé »), quitte à ce que le bouton, lui, n'affiche que son
+signe. Cas posé par l'aide du mode « virgule » (#711 lot 4).

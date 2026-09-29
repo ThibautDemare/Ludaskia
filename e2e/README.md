@@ -172,6 +172,11 @@ rapprocher le PID du bon worktree, ou dans le doute couper ce serveur avant de r
   défaut d'`ENSURE_NIVEAU`) — un piège qui ne se voit qu'à l'échec de l'assertion
   suivante, sans piste. Exemples : `seedAideVueScript(uuid)` ci-dessus,
   ou `e2e/compteur-etoiles.spec.ts` (`e2e/ludaskia_stars`).
+  **`seedAideVueScript` est une copie MANUELLE de `TypeAide` (`core/aide.ts`)** : un
+  type d'aide contextuelle ajouté côté code doit être ajouté à sa chaîne JSON, sinon
+  `npm test` échoue (`tests/aide-vue-seed-gate.test.ts`, #711 — détails dans
+  [docs/architecture/tests.md](../docs/architecture/tests.md)) plutôt que de laisser un
+  futur test ouvrir l'overlay d'aide au premier lancement du mode concerné.
 - **Forcer une fenêtre de course de façon déterministe** : un scénario qui ne reproduit un bug
   que si une action retardée (un `setTimeout` de débounce, par ex.) retombe **pendant** un
   autre événement ne doit pas dépendre du temps réel écoulé entre deux clics Playwright — ce
@@ -223,8 +228,9 @@ Deux points de méthode si tu touches à cette table :
 
 La règle « pas de fonctionnalité visuelle sans sa spec » est tenue par un gate Vitest,
 `tests/couverture-e2e-gate.test.ts`, qui lit `e2e/*.spec.ts` comme du texte : chaque **id
-de mode** du catalogue (9 aujourd'hui) et chaque **runner** `src/ui/lecon-*.ts` doit être
-exercé. Deux conséquences pour qui écrit une spec ici :
+de mode** du catalogue et chaque **runner** `src/ui/lecon-*.ts` doit être exercé.
+L'inventaire est dérivé du catalogue à chaque exécution, jamais recopié ici : inutile de
+tenir un compte à jour dans cette page. Deux conséquences pour qui écrit une spec ici :
 
 - **Un mode compte comme couvert** s'il est cliqué via `.mode-btn[data-mode="…"]` dans une
   spec, ou déclaré dans `journal-couverture.ts`. Un mode qu'on se contente de laisser par
@@ -428,3 +434,17 @@ un job **six heures** : c'est ce qui est arrivé le 19/08/2026 à trois jobs gel
 téléchargement apt, qui affichaient « pending » tout du long sans jamais signaler qu'il
 fallait relancer. Une étape bloquée doit échouer vite et bruyamment. Si la suite s'approche
 un jour de sa borne, la découper — pas relever le nombre.
+
+### Rejet écrit : la dérivation de la colonne cible est recopiée DEUX fois (#711 lot 4)
+
+`colonneCibleIndex` (`tableau-conversion.spec.ts`) et `colonneCibleTableau`
+(`journal-couverture.ts`) font la même chose : retrouver la colonne de l'unité demandée à
+partir du `.tc-enonce` et des `.tc-sym`. Les deux copies sont assumées, pas oubliées.
+
+La position attendue de la virgule n'est pas exposée dans le DOM avant correction (ce
+serait donner la réponse), donc les deux fichiers doivent la **dériver**. Les factoriser
+suppose un helper commun dans `helpers.ts`, alors que ce module n'a aujourd'hui aucun
+helper propre au tableau. Le seuil de ce dossier est **la troisième copie** : à deux, le
+partage coûte plus que la répétition. Les noms diffèrent en plus (`…Index` / `…Tableau`),
+donc un grep sur le nom ne les rapproche pas — d'où cette note, qui les nomme toutes les
+deux. Une troisième copie est le signal de factoriser, pas une quatrième relecture.

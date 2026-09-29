@@ -1294,10 +1294,48 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   niveau) signalées par un en-tête démoté + case en pointillés (jamais
   grisées/désactivées), et une virgule fixe insérée par l'app pour les paires
   décimales CM1 (`virguleApres`). Parité `recordLessonRun` (XP/étoiles) et aide
-  contextuelle (`core/aide.ts`/`aide-exercice.ts`, type `tableau`) comme les
+  contextuelle (`core/aide.ts`/`aide-exercice.ts`, type `tableau` — `tableauVirgule` en
+  mode « virgule » #711 lot 4, l'aide suit le MODE et non le runner : placer la virgule
+  n'est pas un geste de plus dans le même tableau, c'est une autre question posée à
+  l'enfant) comme les
   autres runners dédiés. Routé par `runLecon` quand `generate(mode).type ===
   'tableauConversion'` ; n'a de sens qu'en complément du mode `saisie`
   (`ui/navigation.ts` propose les deux via `ModeOption`), jamais en remplacement.
+  **3ᵉ mode « virgule » (#711 lot 4, CM1 only, `ex.virguleLibre`).** Même écran, même
+  correction case par case ; ce qui change : c'est l'enfant qui pose la virgule, à la
+  frontière de colonne qui suit la case ACTIVE, via un **12ᵉ bouton du pavé**
+  (`data-pave="virgule"`, aria-label « Placer la virgule ») — jamais entre les deux
+  chiffres d'une colonne de tête (`virguleCase` est toujours la DERNIÈRE case d'une
+  colonne). Une pression au même endroit la retire ; le curseur n'avance pas après la
+  pose (elle marque un bord, pas une case). Chaque frontière de colonne porte un
+  **emplacement visible** (`.tc-fente`) tant qu'aucune virgule n'est posée — ce qui rend
+  lisible un bouton « Vérifier » encore gris (avis specialiste-troubles-apprentissage :
+  un blocage sans cause visible est un obstacle qu'on ne peut ni voir ni raisonner).
+  **Correction dissociée** (avis pedagogue-primaire / specialiste-troubles-apprentissage) :
+  la virgule porte son propre verdict (`.tc-fente--juste/--fausse`, + l'emplacement
+  ATTENDU montré après une erreur), distinct de celui des cases — des chiffres tous
+  justes ne se repeignent pas en rouge pour une virgule seule fausse, et le feedback le
+  dit explicitement (« Tes chiffres sont bons. »). Le clavier physique répond aussi à
+  `,` et `.` (le point autant que la virgule : c'est le séparateur décimal d'un pavé
+  numérique physique).
+  **REJETS ÉCRITS (#711 lot 4)**, pour que le prochain relecteur ne les re-remonte pas :
+  - **glisser-déposer la virgule** — charge motrice trop fine pour du CM1, et contraire
+    au parti pris du runner où tout passe par un gros bouton qu'on presse ;
+  - **une zone tapable entre deux colonnes** — l'écart inter-colonnes fait 12 px, le
+    porter à une cible de 44 px suppose de mordre sur les cases voisines, qui sont
+    elles-mêmes des boutons : contrainte géométrique dure, pas un réglage de style ;
+  - **une pastille sur le bouton virgule tant qu'aucune n'est posée** — sous la règle
+    retenue la virgule est attendue sur TOUS les items du mode, donc la pastille serait
+    permanente et muette ; sous toute autre règle, elle dirait que la réponse est
+    décimale ;
+  - **étendre la cascade du bouton « effacer » pour qu'elle traverse aussi la virgule**
+    — le va-et-vient sur le bouton virgule suffit à corriger ; faire dépendre
+    l'effacement d'un chiffre de la présence d'une virgule ajoutait un état à comprendre
+    pour un gain nul ;
+  - **poser la virgule entre les deux chiffres d'une colonne de tête** — une tête à deux
+    chiffres est un artefact de la tranche fixe (elle encaisse les valeurs jusqu'à 20),
+    pas un objet de classe : y autoriser une virgule inventerait une erreur qui n'existe
+    pas au tableau noir.
   **Réponse révélée mise en forme (#501)** : les six sites qui affichent ou journalisent la
   réponse (feedback, résumé annoncé, ligne de révélation, annonce, deux entrées de journal)
   partagent désormais une variable unique `attendueTexte` — `` `${formatReponseRevelee(ex.answer)}
@@ -2168,3 +2206,30 @@ chaque question). Les deux textes qui documentent l'exception « sprint » de la
 lecture automatique — le toggle encadrant (`ui/encadrant-reglages.ts`) et la ligne en
 lecture seule des préférences enfant (`ui/preferences.ts`) — nomment désormais le
 sprint explicitement plutôt que de laisser deviner pourquoi il fait exception.
+
+### Mode « la virgule est à placer » : trois rejets écrits (#711 lot 4)
+
+Le troisième mode du tableau de conversion a fait remonter trois inquiétudes en relecture
+d'accessibilité, toutes **écartées**, avec leur mesure — pour qu'un prochain audit ne les
+re-remonte pas à l'identique.
+
+**Les emplacements de virgule ne sont pas des cibles tactiles, et n'ont pas à l'être.**
+`.tc-fente` n'a ni listener, ni rôle, ni focus, et porte `aria-hidden` : WCAG 2.5.8 (24 px)
+comme 2.5.5 (44 px) ne s'appliquent qu'aux cibles interactives. Le geste passe par le pavé,
+dont les boutons font 56 px. La mesure qui ferme le sujet : l'écart inter-colonnes du
+tableau fait **12 px**, et le porter à 44 px suppose de mordre sur les cases voisines, qui
+sont elles-mêmes des boutons — deux cibles ne peuvent pas se disputer la même zone sans que
+l'une vole les taps de l'autre. Contrainte géométrique, pas un réglage de style.
+
+**Une seule région live pour l'écho de saisie et les messages de virgule.** `#tcStatus`
+porte les deux, et ce n'est pas le cas de figure que le dépôt s'interdit par ailleurs (cf.
+`#revStatus`, plus haut) : là-bas deux responsabilités de **rythmes opposés** se
+marchaient dessus ; ici tout message vient d'un geste de l'enfant, un par geste, et
+`announce()` remplace le contenu — le dernier gagne, ce qui est le comportement voulu. Le
+verdict, lui, garde bien sa région séparée `#tcVerdict`.
+
+**Les raccourcis clavier `,` et `.` ne sont pas un chemin d'accessibilité.** Ils servent la
+saisie au clavier physique. Un lecteur d'écran en mode navigation intercepte les touches de
+toute façon ; le chemin accessible est le pavé à l'écran. Une touche **maintenue** est en
+revanche neutralisée (`e.repeat`) : là où un chiffre maintenu réécrit la même valeur, une
+virgule maintenue clignoterait entre posée et retirée.

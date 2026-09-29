@@ -172,6 +172,139 @@ describe('nombreTableauSaisi (tableau de conversion relu dans l’unité cible)'
 	});
 });
 
+/* ---------- Virgule PLACÉE par l'enfant (#711 lot 4) ----------
+   Dans le mode « virgule », l'application ne pose plus la virgule : sa position fait partie
+   de la réponse de l'enfant. Le journal encadrant doit donc rendre le nombre RÉELLEMENT
+   écrit — virgule comprise — et non la valeur juste relue depuis l'unité demandée. D'où un
+   3ᵉ paramètre : l'index PLAT de la case après laquelle l'enfant a posé sa virgule (plat,
+   et non un index de colonne : la colonne de tête peut porter deux chiffres).
+
+   Les attendus ci-dessous sont dérivés de la numération de position, pas de la fonction :
+   les chiffres du tableau forment un entier D sur n cases ; poser la virgule après la case
+   d'indice i revient à lire D / 10^(n-1-i). Un cran de plus = dix fois plus. */
+describe('nombreTableauSaisi — virgule placée par l’enfant (#711 lot 4)', () => {
+	it('virgule au bon rang : même lecture qu’avec la seule unité demandée', () => {
+		// « 253 cm = ? dm » sur l'empan m·dm·cm : la case du dm est la 2ᵉ (indice plat 1).
+		const table = cases('m:2', 'dm:5', 'cm:3');
+		expect(nombreTableauSaisi(table, 'dm', 1)).toBe('25,3');
+		expect(nombreTableauSaisi(table, 'dm', 1)).toBe(nombreTableauSaisi(table, 'dm'));
+	});
+
+	it('virgule un cran trop tôt ou trop tard : le journal montre le nombre FAUX', () => {
+		// Même table (253 en centièmes de l'unité de tête), virgule attendue après les dm.
+		const table = cases('m:2', 'dm:5', 'cm:3');
+		expect(nombreTableauSaisi(table, 'dm', 0)).toBe('2,53'); // un cran trop tôt
+		expect(nombreTableauSaisi(table, 'dm', 2)).toBe('253'); // un cran trop tard
+	});
+
+	it('colonne de tête à 2 chiffres : le paramètre est un index de CASE, pas de colonne', () => {
+		// « 1250 cm = ? m » : 4 cases pour 3 colonnes (la tête « m » porte 12). C'est le seul cas
+		// où confondre index de case et index de colonne décale la virgule d'un rang — d'où les
+		// quatre placements éprouvés ici, un par case. Les quatre se lisent
+		// 1,25 / 12,5 / 125 / 1250 — un facteur 10 par cran, y compris à l'intérieur de la tête.
+		const table = cases('m:1', 'm:2', 'dm:5', 'cm:0');
+		expect(nombreTableauSaisi(table, 'm', 0)).toBe('1,25');
+		expect(nombreTableauSaisi(table, 'm', 1)).toBe('12,5');
+		expect(nombreTableauSaisi(table, 'm', 2)).toBe('125');
+		// Virgule après la DERNIÈRE case : nombre entier, et surtout pas une virgule qui traîne.
+		expect(nombreTableauSaisi(table, 'm', 3)).toBe('1250');
+	});
+
+	it('la virgule posée PRIME sur l’unité demandée', () => {
+		// Même table, unité demandée « cm » (qui couperait après la dernière case) : c'est le
+		// geste de l'enfant qui décide, sinon le parent lirait autre chose que l'écran.
+		expect(nombreTableauSaisi(cases('m:1', 'm:2', 'dm:5', 'cm:0'), 'cm', 1)).toBe('12,5');
+		// Y compris quand l'unité demandée n'a AUCUNE case : le repli « chiffres bruts » ne doit
+		// pas avaler la virgule posée.
+		expect(nombreTableauSaisi(cases('km:3', 'hm:0', 'dam:0', 'm:0'), 'mm', 1)).toBe('30');
+		// Et le chiffre parasite reste visible derrière la virgule posée (« 3,07 », pas « 3 »).
+		expect(nombreTableauSaisi(cases('km:3', 'hm:0', 'dam:7', 'm:0'), 'm', 0)).toBe('3,07');
+	});
+
+	it('zéros sans valeur : nettoyés comme sans le paramètre', () => {
+		// Échelle complète km→mm portant « 3 m ». Le nettoyage des zéros de tête et de queue ne
+		// dépend pas de qui pose la virgule : « 300 », jamais « 000300,0 ».
+		const table = cases('km:0', 'hm:0', 'dam:0', 'm:3', 'dm:0', 'cm:0', 'mm:0');
+		expect(nombreTableauSaisi(table, 'cm', 5)).toBe('300');
+		expect(nombreTableauSaisi(table, 'cm', 3)).toBe('3');
+		// Sous l'unité, le zéro PORTE la valeur et reste écrit (« 0,003 », pas « ,003 »).
+		expect(nombreTableauSaisi(table, 'cm', 0)).toBe('0,003');
+		// Table entièrement à zéro : « 0 » où que tombe la virgule (zéro reste zéro).
+		const zeros = cases('m:0', 'dm:0', 'cm:0');
+		expect(nombreTableauSaisi(zeros, 'dm', 0)).toBe('0');
+		expect(nombreTableauSaisi(zeros, 'dm', 2)).toBe('0');
+	});
+
+	it('un cran de virgule = un facteur 10, bord gauche compris : D / 10^(cases restantes)', () => {
+		// Contre-témoin du bloc : un paramètre silencieusement ignoré rendrait la MÊME chaîne
+		// pour tous les placements. L'unité demandée est ici volontairement absente du tableau,
+		// pour que seul le placement décide.
+		for (const specs of [
+			['km:3', 'hm:0', 'dam:7', 'm:0'],
+			['m:1', 'm:2', 'dm:5', 'cm:0'],
+			['m:4', 'dm:5', 'cm:6'],
+		]) {
+			const table = cases(...specs);
+			const entier = Number(specs.map((s) => s.split(':')[1]).join(''));
+			const n = specs.length;
+			const lues = new Set<string>();
+			// `i = -1` : virgule au bord GAUCHE, devant tous les chiffres. Ce n'est pas un cas à
+			// part, c'est le même rang de plus — la formule ne change pas, donc le résultat non
+			// plus (« 0,3 » et jamais « 300 »).
+			for (let i = -1; i < n; i++) {
+				const lu = nombreTableauSaisi(table, 'unite-absente', i);
+				expect(
+					Number(lu.replace(',', '.')),
+					`${specs.join(' ')} — virgule après la case ${i} → « ${lu} »`,
+				).toBeCloseTo(entier / 10 ** (n - 1 - i), 9);
+				lues.add(lu);
+			}
+			// Deux placements distincts ne peuvent pas rendre le même nombre (aucune table nulle).
+			// n cases → n+1 frontières, bord gauche compris.
+			expect(lues.size, `${specs.join(' ')} : placements confondus`).toBe(n + 1);
+		}
+	});
+
+	it('virgule posée au bord GAUCHE : la partie entière vaut 0, jamais rien', () => {
+		// « 3 m » relu comme si l'enfant avait posé sa virgule devant tous les chiffres : 0,3 —
+		// et surtout pas 300, qui vaut mille fois ce qu'il a écrit. C'est le rang où le repli
+		// « chiffres bruts » se confondrait avec une virgule posée, et où le parent lirait donc
+		// l'inverse de ce que montrait l'écran. Un nombre s'écrit « 0,3 », jamais « ,3 ».
+		expect(nombreTableauSaisi(cases('m:3', 'dm:0', 'cm:0'), 'cm', -1)).toBe('0,3');
+		// L'unité demandée a beau avoir sa colonne : c'est le geste de l'enfant qui décide.
+		expect(nombreTableauSaisi(cases('m:2', 'dm:5', 'cm:3'), 'dm', -1)).toBe('0,253');
+		// Table entièrement à zéro : « 0 », ni « 0, » ni « 0,000 ».
+		expect(nombreTableauSaisi(cases('m:0', 'dm:0', 'cm:0'), 'dm', -1)).toBe('0');
+	});
+
+	it('paramètre absent ou `undefined` : comportement STRICTEMENT inchangé', () => {
+		// Tout le CE2 et le mode « tableau » continuent d'appeler la fonction à deux arguments :
+		// ils doivent lire exactement comme avant.
+		const tables: Array<[string[], string]> = [
+			[['km:3', 'hm:0', 'dam:0', 'm:0'], 'm'],
+			[['km:1', 'hm:5', 'dam:0', 'm:0'], 'km'],
+			[['m:2', 'dm:5', 'cm:3'], 'dm'],
+			[['m:1', 'm:2', 'dm:5', 'cm:0'], 'm'],
+			[['km:3', 'hm:0', 'dam:7', 'm:0'], 'km'],
+		];
+		for (const [specs, unite] of tables) {
+			const table = cases(...specs);
+			expect(nombreTableauSaisi(table, unite, undefined), specs.join(' ')).toBe(
+				nombreTableauSaisi(table, unite),
+			);
+		}
+		// Et les valeurs elles-mêmes ne bougent pas : garde contre un 3ᵉ paramètre doté d'une
+		// valeur par DÉFAUT (0, par exemple) au lieu d'être réellement optionnel.
+		expect(nombreTableauSaisi(cases('km:3', 'hm:0', 'dam:0', 'm:0'), 'm', undefined)).toBe('3000');
+		expect(nombreTableauSaisi(cases('m:2', 'dm:5', 'cm:3'), 'dm', undefined)).toBe('25,3');
+		// Repli INCHANGÉ, et c'est désormais son SEUL domaine : aucune virgule posée ET aucune
+		// colonne pour l'unité demandée → pas de rang où couper, les chiffres sortent bruts.
+		// Une virgule posée au même endroit (-1), elle, ne retombe plus ici.
+		expect(nombreTableauSaisi(cases('km:3', 'hm:0', 'dam:0', 'm:0'), 'mm', undefined)).toBe('3000');
+		expect(nombreTableauSaisi(cases('km:3', 'hm:0', 'dam:0', 'm:0'), 'mm', -1)).toBe('0,3');
+	});
+});
+
 describe('nombreTableauSaisi — confronté aux tableaux réellement générés (#394)', () => {
 	type Tableau = Extract<Exercise, { type: 'tableauConversion' }>;
 	const FAMILLES = ['mes-longueurs', 'mes-masses', 'mes-contenances'] as const;

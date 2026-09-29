@@ -10,7 +10,12 @@
    l'accueil.
    ============================================================ */
 import { test, expect } from '@playwright/test';
-import { watchErrors, gotoHash, seedRappelSauvegardeScript } from './helpers';
+import {
+	watchErrors,
+	gotoHash,
+	seedRappelSauvegardeScript,
+	SEUIL_RAPPEL_ACTIVITES,
+} from './helpers';
 
 test('les trois verrous réunis affichent l’encart, en tête d’accueil', async ({ page }) => {
 	const errors = watchErrors(page);
@@ -54,7 +59,9 @@ test('« Fermer » retire l’encart, qui ne revient pas dans la session (accuei
 
 test("n'apparaît pas sans assez de signal d'activité (moins de 3 activités)", async ({ page }) => {
 	const errors = watchErrors(page);
-	await page.addInitScript(seedRappelSauvegardeScript({ activites: 2 })); // sous le seuil de 3
+	// Dérivé du seuil, jamais écrit en dur : un `2` nu deviendrait silencieusement « au
+	// seuil » si celui-ci descendait, et ce test négatif passerait au vert en mentant.
+	await page.addInitScript(seedRappelSauvegardeScript({ activites: SEUIL_RAPPEL_ACTIVITES - 1 }));
 	await gotoHash(page, 'accueil');
 
 	await expect(page.locator('#rappelSauvegarde')).toHaveCount(0);

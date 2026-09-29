@@ -207,6 +207,32 @@ async function ficheComparerFausse(page: Page): Promise<void> {
 	await page.locator('.mark.wrong').first().waitFor();
 }
 
+/* Mode « virgule » du tableau de conversion (#711 lot 4) : la position ATTENDUE de la
+   virgule n'est pas exposée dans le DOM avant correction (anti-suggestion) — on la
+   DÉRIVE de l'énoncé, comme dans `tableau-conversion.spec.ts` (2ᵉ copie assumée de ce
+   petit calcul, cf. e2e/README.md « une fabrique de seed recopiée une 3ᵉ fois… » : on
+   n'y est pas encore). `.tc-enonce` s'écrit toujours « … @ ${unité} … », le trou étant
+   rendu par le span `.tc-trou` (texte « ? ») : l'unité qui suit immédiatement le « ? »
+   est l'unité demandée, quel que soit le sens de l'égalité. */
+async function colonneCibleTableau(page: Page): Promise<number> {
+	const enonce = await page.locator('.tc-enonce').innerText();
+	const m = enonce.match(/\?\s*([^\s0-9=,.]+)/);
+	if (!m) throw new Error(`Énoncé illisible pour en déduire l'unité cible : « ${enonce} »`);
+	const unite = m[1];
+	const symboles = page.locator('.tc-sym');
+	const n = await symboles.count();
+	for (let i = 0; i < n; i++) {
+		if (((await symboles.nth(i).textContent()) ?? '').trim() === unite) return i;
+	}
+	throw new Error(`Colonne cible « ${unite} » introuvable parmi les ${n} symboles affichés.`);
+}
+
+/* Rend active une case de la colonne `colIndex` : `basculerVirgule` retombe de toute
+   façon sur la DERNIÈRE case de la colonne qui contient la case active. */
+async function cliquerCaseColonneTableau(page: Page, colIndex: number): Promise<void> {
+	await page.locator('.tc-col').nth(colIndex).locator('.tc-cell').first().click();
+}
+
 /* Rejoue des manches jusqu'à en rater une. Sert aux formats dont la bonne réponse
    n'est PAS exposée dans le DOM avant correction (voulu : anti-suggestion, a11y) —
    on ne peut donc pas se tromper à coup sûr du premier coup. `manche` joue et
@@ -621,6 +647,60 @@ export const COUVERTURE_JOURNAL: Record<Exercise['type'], CouvertureFormat> = {
 					}
 					await page.locator('#tcVerif').click();
 					await page.locator('.tc-cell[data-i="0"].wrong').waitFor();
+				},
+			},
+			// Second geste, MODE différent de la même leçon (#711 lot 4) — même patron que le
+			// second geste de `clicMot` plus haut : un mode réservé à un niveau (`niveau: 'cm1'`)
+			// doit être joué par une spec, sinon `tests/couverture-e2e-gate.test.ts` (#598) le
+			// croirait non couvert.
+			{
+				titre: 'tableau de conversion (longueurs, virgule à placer, CM1)',
+				geste: 'remplir toutes les cases juste, poser la virgule un rang trop loin, puis Vérifier',
+				source: { origine: 'catalogue', lecon: 'mes-longueurs', mode: 'virgule', niveau: 'cm1' },
+				amorce: async (page) => {
+					await page.addInitScript(SEED_CM1);
+				},
+				jouer: async (page) => {
+					await ouvrirMode(page, 'mes-longueurs', 'virgule');
+					await page.locator('#tcTable').waitFor();
+					const n = await page.locator('.tc-cell').count();
+					for (let i = 0; i < n; i++) {
+						const cellule = page.locator(`.tc-cell[data-i="${i}"]`);
+						const bon = await cellule.getAttribute('data-answer');
+						await page.locator(`.tc-pave-btn[data-chiffre="${bon}"]`).click();
+					}
+					const cible = await colonneCibleTableau(page);
+					const nCol = await page.locator('.tc-col').count();
+					const fausse = cible > 0 ? cible - 1 : cible + 1;
+					if (fausse < 0 || fausse >= nCol) {
+						throw new Error(`Colonne fausse hors bornes (cible=${cible}, nCol=${nCol}).`);
+					}
+					await cliquerCaseColonneTableau(page, fausse);
+					await page.locator('.tc-pave-btn[data-pave="virgule"]').click();
+					await page.locator('#tcVerif').click();
+					await page.locator('.tc-fente--fausse').first().waitFor();
+				},
+				verifie: async (carte) => {
+					// La réponse donnée doit être le nombre LU À LA VIRGULE POSÉE (fausse), jamais
+					// la valeur juste : sinon le parent lirait un tableau juste là où l'écran en
+					// affichait un faux (cf. commentaire de `nombreTableauSaisi`,
+					// core/erreur-representation.ts).
+					const donneeTxt = (await carte.locator('.enc-err-donnee').first().textContent()) ?? '';
+					const attendueTxt = (await carte.locator('.enc-err-bonne').first().textContent()) ?? '';
+					const valeurDonnee = donneeTxt.split(':').slice(1).join(':').trim();
+					const valeurAttendue = attendueTxt.split(':').slice(1).join(':').trim();
+					if (!valeurDonnee.includes(',')) {
+						throw new Error(
+							`Réponse donnée « ${valeurDonnee} » sans virgule : une virgule mal placée mais ` +
+								`posée devrait s'y lire comme un nombre décimal.`,
+						);
+					}
+					if (valeurDonnee === valeurAttendue) {
+						throw new Error(
+							'Réponse donnée identique à la réponse attendue : la virgule mal placée ne se ' +
+								'distingue plus au journal.',
+						);
+					}
 				},
 			},
 		],

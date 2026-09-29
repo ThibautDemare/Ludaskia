@@ -43,11 +43,19 @@ async function remplirTableau(page: import('@playwright/test').Page): Promise<vo
 	}
 }
 
-test('mes-longueurs : le choix de mode propose saisie et tableau', async ({ page }) => {
+test('mes-longueurs (CE2) : le choix de mode propose saisie et tableau, jamais virgule (#711 critère 20)', async ({
+	page,
+}) => {
 	const errors = watchErrors(page);
 	await gotoHash(page, 'mode-mes-longueurs');
 	await expect(page.locator('.mode-btn[data-mode="saisie"]')).toBeVisible();
 	await expect(page.locator('.mode-btn[data-mode="tableau"]')).toBeVisible();
+	// Critère 20 (négatif) : l'écriture décimale est hors programme CE2 — le mode
+	// « virgule » (réservé au CM1 via `ModeOption.levels`) ne doit jamais y apparaître.
+	// Ce même sélecteur trouve bien le bouton côté CM1 (test « le mode virgule est
+	// proposé… » plus bas) : la paire des deux tests prouve que l'absence ici n'est
+	// pas un sélecteur muet, mais le filtre de niveau qui joue.
+	await expect(page.locator('.mode-btn[data-mode="virgule"]')).toHaveCount(0);
 	expect(errors).toEqual([]);
 });
 
@@ -520,6 +528,396 @@ test('mes-longueurs (tableau, #711 jauge) : en paysage sans débordement, la jau
 		hauteur,
 		`la jauge occupe ${hauteur}px de hauteur alors qu'elle devrait être masquée`,
 	).toBe(0);
+
+	expect(errors).toEqual([]);
+});
+
+/* ============================================================
+   Lot 4 (#711) : mode « virgule », CM1 seulement, mes-longueurs et
+   mes-contenances. L'application ne pose plus la virgule : l'enfant la place
+   lui-même, à la frontière de colonne qui suit la case active, via le 12ᵉ
+   bouton du pavé (`data-pave="virgule"`).
+   ============================================================ */
+
+/* La position ATTENDUE de la virgule n'est PAS exposée dans le DOM avant correction
+   (anti-suggestion voulue) : on la DÉRIVE de l'énoncé, jamais d'un calcul recopié du
+   générateur. `.tc-enonce` s'écrit toujours « … @ ${unité} … » (`buildQuestion`,
+   `data/maths/mesures.ts`), le trou étant rendu par le span `.tc-trou` (texte « ? ») :
+   l'unité qui suit immédiatement le « ? » est donc l'unité demandée, quel que soit le
+   sens de l'égalité (connue = @ unité, ou @ unité = connue — les deux collent l'unité
+   au trou). On retrouve ensuite la colonne dont le `.tc-sym` porte ce symbole. */
+async function colonneCibleIndex(page: Page): Promise<number> {
+	const enonce = await page.locator('.tc-enonce').innerText();
+	const m = enonce.match(/\?\s*([^\s0-9=,.]+)/);
+	if (!m) throw new Error(`Énoncé illisible pour en déduire l'unité cible : « ${enonce} »`);
+	const unite = m[1];
+	const symboles = page.locator('.tc-sym');
+	const n = await symboles.count();
+	for (let i = 0; i < n; i++) {
+		if (((await symboles.nth(i).textContent()) ?? '').trim() === unite) return i;
+	}
+	throw new Error(`Colonne cible « ${unite} » introuvable parmi les ${n} symboles affichés.`);
+}
+
+/* Rend active une case de la colonne `colIndex` (n'importe laquelle des 1-2 cases de la
+   colonne : `basculerVirgule` retombe de toute façon sur la DERNIÈRE case de la colonne
+   qui contient la case active, cf. `colonneDeCase`/`derniereCaseDe` dans lecon-tableau.ts). */
+async function cliquerCaseColonne(page: Page, colIndex: number): Promise<void> {
+	await page.locator('.tc-col').nth(colIndex).locator('.tc-cell').first().click();
+}
+
+/* Contenu CALCULÉ d'un pseudo-élément. `getComputedStyle().content` rend la chaîne ENTRE
+   GUILLEMETS ('"✓"', '""' pour un contenu vide, 'none' si masqué). Vérifier la CLASSE ne
+   suffit pas : un bug de spécificité (le masquage `.tc-table--virgule-posee .tc-fente::before`
+   battait les règles de verdict) laissait la classe posée mais supprimait pastille et liseré. */
+const contenuPseudo = (page: Page, sel: string, pseudo: '::before' | '::after') =>
+	page.locator(sel).evaluate((el, p) => getComputedStyle(el, p).content, pseudo);
+
+/* Index plats (data-i) des cases dont l'aria-label annonce la virgule. Lecture AU REPOS : la
+   virgule est `aria-hidden` sur ses emplacements, seule la case qui la précède la porte. On lit
+   `evaluateAll` (one-shot) : à appeler après une attente sur l'état visé (classe/expect). */
+const casesAvecVirgule = (page: Page): Promise<string[]> =>
+	page
+		.locator('.tc-cell')
+		.evaluateAll((els) =>
+			els
+				.filter((el) => (el.getAttribute('aria-label') ?? '').includes('virgule après'))
+				.map((el) => el.getAttribute('data-i') ?? ''),
+		);
+
+/* data-i de la DERNIÈRE case d'une colonne (1 ou 2 cases : une tête peut en porter deux). */
+const derniereCaseIndex = async (page: Page, colIndex: number): Promise<string> =>
+	(await page.locator('.tc-col').nth(colIndex).locator('.tc-cell').last().getAttribute('data-i')) ??
+	'';
+
+const clicVirgule = (page: Page) => page.locator('.tc-pave-btn[data-pave="virgule"]').click();
+
+test('mes-longueurs (CM1) : le mode « virgule » est proposé, contrairement au CE2 (#711 critère 20)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoCM1(page, 'mode-mes-longueurs');
+	await expect(page.locator('.mode-btn[data-mode="saisie"]')).toBeVisible();
+	await expect(page.locator('.mode-btn[data-mode="tableau"]')).toBeVisible();
+	await expect(page.locator('.mode-btn[data-mode="virgule"]')).toBeVisible();
+	expect(errors).toEqual([]);
+});
+
+/* mes-masses n'a AUCUNE conversion décimale au CM1 (aucune paire ×10/×100 en masse,
+   cf. commentaire de CONFIG_MASSES) : le mode ne doit pas apparaître, même à ce niveau —
+   contrairement à mes-longueurs et mes-contenances juste au-dessus/en-dessous, qui, elles,
+   le proposent au même niveau. C'est cette paire de tests qui prouve que l'absence ici
+   tient à la configuration de la leçon, pas à un filtre de niveau qui bloquerait tout. */
+test('mes-masses (CM1) : le mode « virgule » n’est PAS proposé (aucune conversion décimale en masse)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoCM1(page, 'mode-mes-masses');
+	await expect(page.locator('.mode-btn[data-mode="saisie"]')).toBeVisible();
+	await expect(page.locator('.mode-btn[data-mode="tableau"]')).toBeVisible();
+	await expect(page.locator('.mode-btn[data-mode="virgule"]')).toHaveCount(0);
+	expect(errors).toEqual([]);
+});
+
+/* Critère 19 étendu (#711 lot 4) : la réponse n'est complète que si TOUTES les cases sont
+   remplies ET la virgule posée. Avant #711, "toutes les cases remplies" suffisait — c'est
+   justement ce que ce test protège : que le mode `virgule` ajoute bien une seconde
+   condition, sans laquelle « Vérifier » s'activerait dès la dernière case écrite. */
+test('mes-longueurs (virgule, #711 critère 19 étendu) : Vérifier reste désactivé tant que la virgule n’est pas posée', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoCM1(page, 'mode-mes-longueurs');
+	await page.locator('.mode-btn[data-mode="virgule"]').click();
+	await expect(page.locator('#tcTable')).toBeVisible();
+
+	await remplirTableau(page);
+	// Toutes les cases sont remplies (remplirTableau les traite dans l'ordre de data-i
+	// croissant, en écrivant le chiffre attendu de chacune), mais aucune virgule n'a été
+	// posée : la validation doit rester bloquée.
+	await expect(page.locator('#tcVerif')).toBeDisabled();
+
+	const cible = await colonneCibleIndex(page);
+	await cliquerCaseColonne(page, cible);
+	await clicVirgule(page);
+	await expect(page.locator('#tcVerif')).toBeEnabled();
+
+	expect(errors).toEqual([]);
+});
+
+/* Le geste : poser, déplacer, retirer. `tc-table--virgule-posee` est le seul état qui
+   masque les repères vides sur TOUTES les colonnes (cf. SCSS, `.tc-table--virgule-posee
+   .tc-fente::before { content: none; }`) : le vérifier à chaque étape prouve à la fois le
+   déplacement ET la disparition des repères tant qu'une virgule reste posée quelque part. */
+test('mes-longueurs (virgule, #711 lot 4) : poser, déplacer puis retirer la virgule', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoCM1(page, 'mode-mes-longueurs');
+	await page.locator('.mode-btn[data-mode="virgule"]').click();
+	await expect(page.locator('#tcTable')).toBeVisible();
+
+	const nCol = await page.locator('.tc-col').count();
+	const a = await colonneCibleIndex(page);
+	const b = a > 0 ? a - 1 : a + 1; // une autre colonne, valide dans tous les cas (n ≥ 2)
+	expect(b).toBeGreaterThanOrEqual(0);
+	expect(b).toBeLessThan(nCol);
+
+	const table = page.locator('#tcTable');
+	const fenteA = page.locator(`.tc-fente[data-apres="${a}"]`);
+	const fenteB = page.locator(`.tc-fente[data-apres="${b}"]`);
+
+	// Au repos : aucun repère « posé », donc le masquage n'est pas actif.
+	await expect(table).not.toHaveClass(/tc-table--virgule-posee/);
+	// Le repère du vide est bien RENDU sur les emplacements tant qu'aucune virgule n'est posée.
+	expect(await contenuPseudo(page, `.tc-fente[data-apres="${b}"]`, '::before')).not.toBe('none');
+
+	// Pose en A.
+	await cliquerCaseColonne(page, a);
+	await clicVirgule(page);
+	await expect(table).toHaveClass(/tc-table--virgule-posee/);
+	await expect(fenteA).toHaveClass(/tc-fente--posee/);
+	await expect(fenteB).not.toHaveClass(/tc-fente--posee/);
+	// La virgule suit son emplacement dans les aria-label : UNE case, la dernière de A.
+	expect(await casesAvecVirgule(page)).toEqual([await derniereCaseIndex(page, a)]);
+	// Une virgule posée : les repères vides des autres emplacements ne sont plus rendus.
+	expect(await contenuPseudo(page, `.tc-fente[data-apres="${b}"]`, '::before')).toBe('none');
+
+	// Déplacement vers B : une pression AILLEURS retire l'ancienne et pose la nouvelle.
+	await cliquerCaseColonne(page, b);
+	await clicVirgule(page);
+	await expect(table).toHaveClass(/tc-table--virgule-posee/); // toujours posée quelque part
+	await expect(fenteB).toHaveClass(/tc-fente--posee/);
+	await expect(fenteA).not.toHaveClass(/tc-fente--posee/);
+	// Déplacée : le libellé quitte A et se pose sur la dernière case de B (jamais deux virgules).
+	expect(await casesAvecVirgule(page)).toEqual([await derniereCaseIndex(page, b)]);
+
+	// Retrait : une seconde pression AU MÊME ENDROIT (le focus/l'actif est resté en B).
+	await clicVirgule(page);
+	await expect(table).not.toHaveClass(/tc-table--virgule-posee/);
+	await expect(fenteB).not.toHaveClass(/tc-fente--posee/);
+	expect(await casesAvecVirgule(page)).toEqual([]); // retirée : plus aucune case ne l'annonce
+	// Virgule retirée : le repère du vide revient (le correctif ne doit pas casser ce sens-là).
+	expect(await contenuPseudo(page, `.tc-fente[data-apres="${b}"]`, '::before')).not.toBe('none');
+
+	// Colonne de tête (index 0) : la virgule se pose après sa DERNIÈRE case, jamais entre deux
+	// chiffres. Si la tête n'a qu'une case sur ce tirage, l'assertion reste vraie mais ne
+	// distingue pas index de case et index de colonne (cf. compte rendu).
+	await cliquerCaseColonne(page, 0);
+	await clicVirgule(page);
+	await expect(page.locator('.tc-fente[data-apres="0"]')).toHaveClass(/tc-fente--posee/);
+	expect(await casesAvecVirgule(page)).toEqual([await derniereCaseIndex(page, 0)]);
+
+	expect(errors).toEqual([]);
+});
+
+/* Critère 17 + correction dissociée (#711 lot 4, le cœur du lot) : des chiffres tous
+   justes ne doivent PAS se lire comme un échec total à cause d'une virgule mal placée.
+   On pose volontairement la virgule un rang trop loin (colonne voisine de la cible). */
+test('mes-longueurs (virgule, #711 critère 17) : chiffres justes + virgule mal placée → les cases restent correct, seule la virgule est fausse', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoCM1(page, 'mode-mes-longueurs');
+	await page.locator('.mode-btn[data-mode="virgule"]').click();
+	await expect(page.locator('#tcTable')).toBeVisible();
+
+	const cible = await colonneCibleIndex(page);
+	const nCol = await page.locator('.tc-col').count();
+	const fausse = cible > 0 ? cible - 1 : cible + 1;
+	expect(fausse).toBeGreaterThanOrEqual(0);
+	expect(fausse).toBeLessThan(nCol);
+
+	await remplirTableau(page); // tous les chiffres, justes
+	await cliquerCaseColonne(page, fausse);
+	await clicVirgule(page);
+	await expect(page.locator('#tcVerif')).toBeEnabled();
+	await page.locator('#tcVerif').click();
+
+	// Les chiffres, TOUS justes, restent verts malgré la virgule fausse.
+	const n = await page.locator('.tc-cell').count();
+	for (let i = 0; i < n; i++) {
+		await expect(page.locator(`.tc-cell[data-i="${i}"]`)).toHaveClass(/correct/);
+		await expect(page.locator(`.tc-cell[data-i="${i}"]`)).not.toHaveClass(/wrong/);
+	}
+	// L'emplacement choisi est marqué faux, l'emplacement attendu montré à son tour.
+	await expect(page.locator(`.tc-fente[data-apres="${fausse}"]`)).toHaveClass(/tc-fente--fausse/);
+	await expect(page.locator(`.tc-fente[data-apres="${cible}"]`)).toHaveClass(/tc-fente--attendue/);
+	// Feedback dédié : « Tes chiffres sont bons » plutôt qu'un échec en bloc.
+	// Rendu réel des marques (pas seulement les classes) : pastille ✗ sur l'emplacement choisi,
+	// liseré rendu (contenu non masqué) sur l'emplacement attendu.
+	expect(await contenuPseudo(page, `.tc-fente[data-apres="${fausse}"]`, '::before')).toBe('"✗"');
+	expect(await contenuPseudo(page, `.tc-fente[data-apres="${cible}"]`, '::before')).not.toBe(
+		'none',
+	);
+	// Seul canal du verdict de la virgule hors du visuel : le texte nomme la règle enfreinte.
+	// Libellé testé à dessein (« la virgule allait après… »), pas seulement « chiffres bons ».
+	await expect(page.locator('#tcFeedback')).toContainText('Tes chiffres sont bons');
+	await expect(page.locator('#tcFeedback')).toContainText('la virgule allait après');
+	// L'annonce de la virgule survit à la correction : la case qui la précède dit à la fois
+	// « virgule après » et « correct » (chiffres justes), et elle est seule à le dire.
+	const porteuses = await casesAvecVirgule(page);
+	expect(porteuses).toEqual([await derniereCaseIndex(page, fausse)]);
+	const libelle = await page
+		.locator(`.tc-cell[data-i="${porteuses[0]}"]`)
+		.getAttribute('aria-label');
+	expect(libelle).toContain('virgule après');
+	expect(libelle).toMatch(/correct/);
+	expect(libelle).not.toMatch(/incorrect/);
+
+	expect(errors).toEqual([]);
+});
+
+/* Cas « tout juste » : chiffres corrects + virgule au bon rang → tableau entièrement
+   correct, l'emplacement de la virgule marqué « juste ». */
+test('mes-longueurs (virgule, #711) : chiffres justes + virgule au bon rang → tableau correct', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoCM1(page, 'mode-mes-longueurs');
+	await page.locator('.mode-btn[data-mode="virgule"]').click();
+	await expect(page.locator('#tcTable')).toBeVisible();
+
+	const cible = await colonneCibleIndex(page);
+	await remplirTableau(page);
+	await cliquerCaseColonne(page, cible);
+	await clicVirgule(page);
+	await expect(page.locator('#tcVerif')).toBeEnabled();
+	await page.locator('#tcVerif').click();
+
+	const n = await page.locator('.tc-cell').count();
+	for (let i = 0; i < n; i++) {
+		await expect(page.locator(`.tc-cell[data-i="${i}"]`)).toHaveClass(/correct/);
+	}
+	await expect(page.locator(`.tc-fente[data-apres="${cible}"]`)).toHaveClass(/tc-fente--juste/);
+	expect(await contenuPseudo(page, `.tc-fente[data-apres="${cible}"]`, '::before')).toBe('"✓"');
+	await expect(page.locator('#tcFeedback')).toContainText('Bravo');
+
+	expect(errors).toEqual([]);
+});
+
+/* « Je ne sais pas, montre-moi » en mode virgule (#711 lot 4, #467). `passer()` appelle
+   `marquerVirgule(ex, null)` : elle RÉVÈLE l'emplacement attendu SANS JUGER celui que
+   l'enfant a posé. Le `null` est le contrat : le remplacer par un booléen ferait apparaître
+   une pastille ✓/✗ sur une réponse que l'enfant n'a pas soumise (ni ✗ à tort, ni ✓ qui
+   aurait l'air d'un succès sur une question passée). */
+test('mes-longueurs (virgule, #711) : « Je ne sais pas » révèle la virgule attendue sans juger celle qui est posée', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoCM1(page, 'mode-mes-longueurs');
+	await page.locator('.mode-btn[data-mode="virgule"]').click();
+	await expect(page.locator('#tcTable')).toBeVisible();
+
+	const cible = await colonneCibleIndex(page);
+	const fausse = cible > 0 ? cible - 1 : cible + 1;
+	await cliquerCaseColonne(page, fausse);
+	await clicVirgule(page);
+	await expect(page.locator(`.tc-fente[data-apres="${fausse}"]`)).toHaveClass(/tc-fente--posee/);
+
+	await page.locator('#leconPasser').click();
+
+	// Réponse révélée en texte, comme sur les autres chemins.
+	await expect(page.locator('.lecon-reveal-rep')).not.toBeEmpty();
+	// L'emplacement attendu est montré, et son repère est réellement rendu.
+	await expect(page.locator('.tc-fente--attendue')).toHaveCount(1);
+	await expect(page.locator(`.tc-fente[data-apres="${cible}"]`)).toHaveClass(/tc-fente--attendue/);
+	expect(await contenuPseudo(page, `.tc-fente[data-apres="${cible}"]`, '::before')).not.toBe(
+		'none',
+	);
+	// Aucun verdict : ni juste ni faux, nulle part.
+	await expect(page.locator('.tc-fente--juste')).toHaveCount(0);
+	await expect(page.locator('.tc-fente--fausse')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});
+
+/* Clavier physique : `,` pose la virgule, `.` la bascule (pavé numérique : le séparateur
+   décimal y est un point). Garde explicite du runner : la frappe n'est prise que si le focus est
+   dans le widget (case ou pavé), pour ne pas voler les touches au reste de la page.
+   NON TESTÉ : `!e.repeat` (touche maintenue) — un `keyboard.down` répété n'est pas simulable de
+   façon fiable, un test instable serait pire que l'absence de test. */
+test('mes-longueurs (virgule, #711) : les touches « , » et « . » posent puis retirent la virgule, seulement si le focus est dans le tableau', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoCM1(page, 'mode-mes-longueurs');
+	await page.locator('.mode-btn[data-mode="virgule"]').click();
+	await expect(page.locator('#tcTable')).toBeVisible();
+
+	const table = page.locator('#tcTable');
+	const a = await colonneCibleIndex(page);
+	await cliquerCaseColonne(page, a); // focus dans la case
+	await page.keyboard.press(',');
+	await expect(table).toHaveClass(/tc-table--virgule-posee/);
+	await expect(page.locator(`.tc-fente[data-apres="${a}"]`)).toHaveClass(/tc-fente--posee/);
+	expect(await casesAvecVirgule(page)).toEqual([await derniereCaseIndex(page, a)]);
+
+	// Le point, au même endroit : seconde pression = retrait.
+	await page.keyboard.press('.');
+	await expect(table).not.toHaveClass(/tc-table--virgule-posee/);
+	expect(await casesAvecVirgule(page)).toEqual([]);
+
+	// Garde de focus : focus HORS du widget → la touche ne fait rien. Mutation : retirer la
+	// garde `focus.closest('.tc-cell, .tc-pave')` de keyHandler (lecon-tableau.ts).
+	await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+	expect(
+		await page.evaluate(() => document.activeElement?.closest('.tc-cell, .tc-pave')),
+	).toBeNull();
+	await page.keyboard.press(',');
+	await expect(table).not.toHaveClass(/tc-table--virgule-posee/);
+	expect(await casesAvecVirgule(page)).toEqual([]);
+
+	expect(errors).toEqual([]);
+});
+
+/* Reprise (#498) : le mode se reprend comme les autres runners. La virgule posée sur la
+   question interrompue ne doit PAS être reportée : le rendu la remet à zéro. On recharge la
+   page (`reload`, pas `goto` : gate e2e-navigation) depuis l'accueil pour rejouer à froid le
+   registre des runners. */
+test('mes-longueurs (virgule, #711) : reprise d’une session interrompue — mêmes question et pavé virgule, virgule non reportée', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoCM1(page, 'mode-mes-longueurs');
+	await page.locator('.mode-btn[data-mode="virgule"]').click();
+	await expect(page.locator('#tcTable')).toBeVisible();
+
+	// Question 1 répondue puis on enchaîne : la reprise n'existe qu'à idx ≥ 1.
+	const cible1 = await colonneCibleIndex(page);
+	await remplirTableau(page);
+	await cliquerCaseColonne(page, cible1);
+	await clicVirgule(page);
+	await page.locator('#tcVerif').click();
+	await page.locator('#tcActions button').click();
+
+	// Question 2 en cours, virgule posée (à ne PAS retrouver après reprise).
+	await expect(page.locator('#tcVerif')).toBeDisabled();
+	const enonceAvant = (await page.locator('.tc-enonce').innerText()).trim();
+	const progressAvant = await page.locator('.lqcm-progress-lab').textContent();
+	await cliquerCaseColonne(page, await colonneCibleIndex(page));
+	await clicVirgule(page);
+	await expect(page.locator('#tcTable')).toHaveClass(/tc-table--virgule-posee/);
+
+	await page.locator('#toolbarBurger').click();
+	await page.locator('#btnHome').click();
+	await expect(page.locator('#home')).toBeVisible();
+	await page.reload({ waitUntil: 'networkidle' });
+
+	const carte = page.locator('.reprise-card[data-key="lecon-mes-longueurs"]');
+	await expect(carte).toBeVisible();
+	await carte.locator('.reprise-continue').click();
+
+	await expect(page.locator('#tcTable')).toBeVisible();
+	await expect(page.locator('.lqcm-progress-lab')).toHaveText(progressAvant!);
+	expect((await page.locator('.tc-enonce').innerText()).trim()).toBe(enonceAvant);
+	// Le mode a bien été repris AVEC sa virgule à placer : bouton du pavé et emplacements.
+	await expect(page.locator('.tc-pave-btn[data-pave="virgule"]')).toBeVisible();
+	await expect(page.locator('.tc-fente')).toHaveCount(await page.locator('.tc-col').count());
+	// Rien n'est reporté de la question quittée.
+	await expect(page.locator('#tcTable')).not.toHaveClass(/tc-table--virgule-posee/);
+	expect(await casesAvecVirgule(page)).toEqual([]);
+	await expect(page.locator('#tcVerif')).toBeDisabled();
 
 	expect(errors).toEqual([]);
 });

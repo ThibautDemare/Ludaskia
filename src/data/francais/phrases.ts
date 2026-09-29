@@ -708,7 +708,12 @@ export function ponctuationType(): ExerciseType {
 	return {
 		modes: MODE_QCM,
 		// Repli fiche/bilan (saisie) : on nomme la tâche, le « @ » étant le trou.
-		consigne: 'Écris le point qui va à la fin de chaque phrase : « . », « ? » ou « ! ».',
+		// Les trois signes sont NOMMÉS, pas cités par leur glyphe (#711) : la consigne est lue
+		// à voix haute, et la ponctuation ne se prononce pas — l'enfant entendait « Écris le
+		// point qui va à la fin de chaque phrase : , ou . ». Le vocabulaire est celui que la
+		// leçon emploie déjà dans ses explications (« c'est un point d'interrogation »).
+		consigne:
+			"Écris le point qui va à la fin de chaque phrase : un point, un point d'interrogation ou un point d'exclamation.",
 		generate(): Exercise {
 			const p = choice(PHRASES_PONCT);
 			return {

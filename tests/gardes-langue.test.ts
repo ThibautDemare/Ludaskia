@@ -9,7 +9,7 @@
    comptent autant : c'est la moitié du contrat que la moindre règle élargie casserait.
    ============================================================ */
 import { describe, it, expect } from 'vitest';
-import { vouvoiements, apostrophesCourbes } from './gardes-langue';
+import { vouvoiements, apostrophesCourbes, signesCites } from './gardes-langue';
 
 describe('vouvoiements — le vouvoiement s’adresse, la personne grammaticale se cite', () => {
 	it('attrape un vrai vouvoiement, sous ses tournures courantes', () => {
@@ -72,5 +72,73 @@ describe('apostrophesCourbes — l’apostrophe du projet est celle du clavier',
 		// la relecture) doit au moins être rendu avec ce qui l'entoure.
 		const [faute] = apostrophesCourbes('Touche la case, la tuile n’est plus là.');
 		expect(faute).toContain('tuile n');
+	});
+});
+
+describe('signesCites — un bouton se NOMME, il ne se cite pas par son glyphe', () => {
+	it('attrape un signe isolé entre guillemets, quel qu’il soit', () => {
+		/* Huit signes de familles différentes — ponctuation, opérateurs, comparateurs, flèche.
+		   La règle porte sur la FORME (un seul caractère non alphanumérique entre guillemets),
+		   donc elle doit valoir pour un signe que personne n'a en tête aujourd'hui : c'est tout
+		   l'intérêt de ne pas l'écrire en liste. */
+		const aAttraper = [
+			'Touche le bouton « , » : la virgule se pose.',
+			'Appuie sur « = » pour dire que c’est pareil.',
+			'Choisis « + » ou « − ».',
+			'Mets « . » à la fin de la phrase.',
+			'Le bouton « ? » ouvre l’aide.',
+			'Écris « < » si le nombre est plus petit.',
+			'Le picto « ↔ » veut dire contraire.',
+			'Sépare les nombres par « ; ».',
+		];
+		for (const p of aAttraper) expect(signesCites(p), p).not.toEqual([]);
+	});
+
+	it('les espaces qui aèrent la citation ne la sauvent pas', () => {
+		// Fine insécable (U+202F) et insécable (U+00A0) : c'est la typographie française
+		// normale autour des guillemets, et elle est INVISIBLE en relecture. Écrites en
+		// échappement ici pour rester lisibles — un copier-coller les écraserait en silence.
+		// Nommées plutôt qu’écrites : un littéral qui les porterait serait lui-même
+		// illisible, et un copier-coller les écraserait sans que personne le voie.
+		const FINE = String.fromCodePoint(0x202f); // espace fine insécable
+		const NBSP = String.fromCodePoint(0x00a0); // espace insécable
+		expect(signesCites(`Touche le bouton «${FINE},${FINE}».`)).not.toEqual([]);
+		expect(signesCites(`Touche le bouton «${NBSP},${NBSP}».`)).not.toEqual([]);
+		expect(signesCites('Touche le bouton « , ».')).not.toEqual([]);
+		expect(signesCites('Touche le bouton «,».')).not.toEqual([]);
+	});
+
+	it('ne signale PAS une citation de plusieurs caractères', () => {
+		/* Un texte cité se prononce et se voit : la règle n'a rien à y redire. Sans cette
+		   moitié, le gate rendrait impossible de citer un libellé de bouton — « Vérifier » —
+		   c'est-à-dire exactement ce que la règle recommande de faire. */
+		const aLaisserPasser = [
+			'Touche « Vérifier » quand tu as fini.',
+			'Le préfixe « re- » veut dire « encore ».',
+			"Devant une voyelle, on écrit « l' ».",
+			'Réponds « Je ne sais pas » si tu hésites.',
+			'Compare « 3,5 » et « 3,50 ».',
+			'Le signe « plus petit » se lit de gauche à droite.',
+		];
+		for (const p of aLaisserPasser) expect(signesCites(p), p).toEqual([]);
+	});
+
+	it('ne signale PAS un mot ou un nombre d’UN seul caractère', () => {
+		/* Le cas à ne pas casser, et il existe pour de vrai dans le contenu : plusieurs leçons
+		   de français citent une lettre seule (`classes-mots`, `conjugaison-meta`, `familles`).
+		   Un détecteur qui les signalerait rendrait ces leçons inécrivables — donc la règle
+		   serait désactivée plutôt que corrigée. */
+		const aLaisserPasser = [
+			'« a » est le verbe avoir, « à » est une petite préposition.',
+			'Le pronom « y » remplace un lieu.',
+			'Combien de fois le chiffre « 5 » apparaît-il ?',
+			'Le « h » de « hibou » ne s’entend pas.',
+		];
+		for (const p of aLaisserPasser) expect(signesCites(p), p).toEqual([]);
+	});
+
+	it('ne signale rien sur une phrase sans guillemets, ni sur une citation vide', () => {
+		expect(signesCites('Touche le bouton virgule du pavé.')).toEqual([]);
+		expect(signesCites('Une citation vide « » ne dit rien.')).toEqual([]);
 	});
 });

@@ -313,8 +313,13 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   porte les correspondances correctes, `intrus?` des mots décoys côté droite sans
   correspondance) | `posed` (calcul posé #97 : op + opérandes) | `tableauConversion`
   (tableau de conversion #394 : colonnes **`TableauColonne[]`** —
-  `{unite, nom, transit, chiffres, tete?}`, TOUJOURS grande→petite unité — et
-  `virguleApres?` pour les paires décimales CM1 ; corrigé **colonne par colonne** par
+  `{unite, nom, transit, chiffres, tete?}`, TOUJOURS grande→petite unité —,
+  `virguleApres?` (position de la virgule) et `virguleLibre?` (#711 lot 4, DEUX régimes) :
+  sans lui (mode `tableau`) la virgule est DESSINÉE par l'app, seulement sur une réponse
+  décimale ; avec lui (mode `virgule`, CM1 only) c'est l'ENFANT qui la place, et
+  `virguleApres` porte alors la position ATTENDUE sur 100 % des items (le vivier tiré ne
+  contient que des conversions décimales, cf. [Contenu & leçons](contenu-et-lecons.md)) ;
+  corrigé **colonne par colonne** par
   son runner, comme `posed`) | `probleme` (résolution de problèmes #199 :
   `enonce`, `etapes[]` — 1 ou 2 sous-questions corrigées indépendamment —,
   `parle`, `figure?` #95, `explication?` #252 — stratégie affichée APRÈS la
@@ -358,7 +363,9 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   | interactions ortho), interface
   **`ExerciseType`** :
   `modes?`
-  (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended}`, dans
+  (descripteurs **`ModeOption`** `{id, label, hint, icon, recommended, levels?}` — `levels?`
+  (#711) réserve ce MODE à certains niveaux, sans passer par un type ou une leçon dédiés
+  (mode « virgule » du tableau de conversion, CM1 seulement), dans
   l'ordre d'affichage), `generate(opts? : {mode?, level?})` (le `level` #225 calibre
   une leçon multi-niveaux), `check()`, et **`exerciseKind?`** (#348, type
   `ExerciseKind = 'posed' | 'tuilesOrdre' | 'tuilesTri' | 'probleme' | 'appariement' | 'clicMot' | 'droiteGraduee'`)
@@ -371,9 +378,19 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   d'ensembles / graduation choisie === cible), pas par `checkAnswer` : comme
   `posed`/`tuilesOrdre`/`tuilesTri`/`probleme`, leur `check()` renvoie toujours
   `false`.
-  Helpers **`hasMode`** et **`defaultMode`** (les écrans dérivent leurs choix d'ici,
-  **jamais en dur**, #69), et `checkAnswer` (normalisation partagée `normalizeText` ;
-  **accents et apostrophes exigés**).
+  Helpers **`hasMode`**, **`defaultMode`** et **`modesPourNiveau(type, niveau)`** (#711 :
+  les modes réellement PROPOSABLES à une classe — la liste déclarée, moins ceux qu'exclut
+  un `ModeOption.levels` ; **filtre d'AFFICHAGE seul**, le générateur concerné devant
+  refuser lui-même un mode masqué, encore atteignable par une URL directe ou une reprise
+  périmée) — les écrans dérivent leurs choix d'ici, **jamais en dur** (#69) —, et
+  `checkAnswer` (normalisation partagée `normalizeText` ; **accents et apostrophes
+  exigés**).
+  **Règle qui accompagne `levels` : un mode restreint à un niveau ne doit JAMAIS être
+  `recommended`.** `defaultMode` et `hasMode` ne filtrent pas par niveau — ils n'ont pas le
+  niveau sous la main, et le leur donner obligerait tous leurs appelants à le porter. Tant
+  qu'un mode `levels` n'est pas le mode conseillé, la non-filtration est sans effet : le
+  défaut retombe sur un mode ouvert à tous. Un mode restreint ET conseillé serait servi par
+  défaut à une classe qui ne doit pas le voir. Tenu par un test du catalogue (#711).
   **`generateSession?(count, opts)`** (correctif des répétitions de « Familles de mots
   à relier ») — méthode **optionnelle** qui tire une **session entière** de `count`
   manches en un seul appel, au lieu de `count` appels indépendants à `generate()` :
@@ -570,10 +587,14 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (`ui/session.ts`) — un `text-transform` CSS ne changerait que l'affiché.
 - **`aide.ts`** (#272) — **aide contextuelle** des runners à interaction non intuitive,
   module **pur** : porte le **contenu** des aides (`AIDES` : titre + étapes courtes ≤ 3 +
-  voie alternative + filet anti-erreur) pour 11 types (`tuiles`, `ordre`, `ordreNombres`
+  voie alternative + filet anti-erreur) pour 12 types (`tuiles`, `ordre`, `ordreNombres`
   #448 — même geste que `ordre`, formulation accordée aux nombres —, `tri`, `atelier`,
-  `lettres`, `tableau` #394, `appariement` #392, `clicMot`, `segmentMot` #716 — délimiter
-  un segment par ses deux bornes plutôt que cocher des mots —, `droiteGraduee` #256) et la
+  `lettres`, `tableau` #394, `tableauVirgule` #711 lot 4 — aide DISTINCTE du mode « la
+  virgule est à placer », et non une phrase de plus dans celle de `tableau` : c'est elle
+  qui porte la règle (« juste après la colonne de l'unité demandée »), jamais la légende
+  permanente sous le tableau —, `appariement` #392, `clicMot`, `segmentMot` #716 —
+  délimiter un segment par ses deux bornes plutôt que cocher des mots —, `droiteGraduee`
+  #256) et la
   **mémoire « aide déjà vue »** par profil (`ludaskia_aide_vue`, via `lsGet/lsSet`). Le
   rendu vit dans `ui/aide-exercice.ts`.
 - **`tour.ts`** (#330) — **guide de première visite**, module **pur** (aucun accès DOM) :
@@ -1775,9 +1796,18 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   consommé par `ui/lecon-ordre.ts` ; **`motsMalClasses(mots,
   categories, placement)`** ne renvoie que les mots MAL classés d'un tri (colonne
   choisie vs bonne colonne, une entrée par mot) — consommé par `ui/lecon-tri.ts` ;
-  **`nombreTableauSaisi(cells, answerUnit)`** relit les cases d'un tableau de conversion
-  **dans l'unité cible** (chiffres jusqu'à la colonne demandée = partie entière, ceux
-  d'après = partie décimale, virgule insérée à la bonne place) — consommé par
+  **`nombreTableauSaisi(cells, answerUnit, virguleApresCase?)`** relit les cases d'un
+  tableau de conversion **dans l'unité cible** (chiffres jusqu'à la colonne demandée =
+  partie entière, ceux d'après = partie décimale, virgule insérée à la bonne place). Le 3ᵉ
+  paramètre (#711 lot 4, mode « virgule ») fait primer la virgule POSÉE PAR L'ENFANT sur
+  l'unité demandée : sans lui, une virgule posée un cran trop loin se relirait à la bonne
+  valeur, et le parent verrait un tableau juste là où l'écran en affichait un faux.
+  *Contrat du 3ᵉ paramètre, et rejet écrit :* c'est un index de CASE (pas de colonne), et
+  son absence s'écrit `undefined`, jamais `null` — d'où le `virguleCase ?? undefined` chez
+  l'appelant. Élargir le type à `number | null` serait plus propre à l'appel, et a été
+  écarté : `??` traite déjà correctement l'index `0`, la verrue tient en trois caractères
+  chez l'unique appelant, et changer la signature d'une fonction que six formats appellent
+  coûte plus que ce qu'elle rapporte — consommé par
   `ui/lecon-tableau.ts` ; **`pairesErreur(liens, paires)`** restreint la réponse
   donnée/attendue d'un appariement aux **paires fausses** (jamais les correctes, même
   parti pris que `motsMalClasses`) — consommé par `ui/lecon-appariement.ts`. Les quatre

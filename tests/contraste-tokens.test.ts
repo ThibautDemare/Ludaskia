@@ -302,8 +302,16 @@ const PAIRES_TEXTE: Paire[] = [
 	{ avant: '--ink', arriere: '--warn-bg', ou: 'encadrant.scss .enc-warn (alerte de carte)' },
 	{ avant: '--on-accent', arriere: '--accent', ou: 'bilan.scss .bilan-cta, aide-exercice.scss' },
 	{ avant: '--on-accent', arriere: '--accent-dark', ou: 'survol des mêmes boutons (bilan.scss)' },
-	{ avant: '--on-accent', arriere: '--ok', ou: 'lecon-mode.scss .lord-cell.correct .lord-mark' },
-	{ avant: '--on-accent', arriere: '--ko', ou: 'lecon-mode.scss .lord-cell.wrong .lord-mark' },
+	{
+		avant: '--on-accent',
+		arriere: '--ok',
+		ou: 'lecon-mode.scss .lord-cell.correct .lord-mark ; tableau-conversion.scss .tc-cell.correct::after, .tc-fente--juste::before',
+	},
+	{
+		avant: '--on-accent',
+		arriere: '--ko',
+		ou: 'lecon-mode.scss .lord-cell.wrong .lord-mark ; tableau-conversion.scss .tc-cell.wrong::after, .tc-fente--fausse::before',
+	},
 	{
 		avant: '--accent-dark',
 		arriere: '--paper',

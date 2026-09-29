@@ -223,8 +223,11 @@ d'exceptions et mourrait sur son propre critère. C'est aussi la mauvaise unité
 leçon de vocabulaire sur un moteur déjà couvert ne risque rien ; un runner neuf, si. Trois
 surfaces, énumérables et petites :
 
-- **Les modes** (`type.modes`, #69) — **9 ids** dans tout le catalogue, tous couverts, zéro
-  exception. C'est le trou que le CLAUDE.md nommait explicitement : la table de #581 ne
+- **Les modes** (`type.modes`, #69) — une poignée d'ids dans tout le catalogue (treize au
+  moment d'écrire ces lignes, #711 lot 4 y ayant ajouté `virgule`), tous couverts, zéro
+  exception. Le compte est indicatif et se périme : l'inventaire du gate est **dérivé du
+  catalogue** à chaque exécution, il n'est jamais recopié ici. C'est le trou que le CLAUDE.md
+  nommait explicitement : la table de #581 ne
   déclarant qu'**un** mode par format, rien ne garantissait que le second mode d'un type
   soit joué un jour. Un mode compte comme couvert s'il est cliqué
   (`.mode-btn[data-mode="…"]`) dans une spec, ou déclaré dans la table de #581.
@@ -1181,6 +1184,13 @@ de `ui/lecon-tableau.ts`) — de sorte qu'un snapshot détecte les régressions 
 portent les effets de bord : toolbar, aide, storage, listener `document` du
 tableau).
 
+**REJET ÉCRIT — une entrée de galerie pour le mode « virgule » (#711 lot 4).** La galerie
+tourne entièrement sous **un seul germe** (`withSeed`) : insérer une entrée décale le
+tirage de TOUTES celles qui suivent dans la liste, donc fait regénérer des dizaines de
+baselines pour un mode qui n'en changeait aucune. La spec Playwright
+(`tableau-conversion.spec.ts`) couvre le mode fonctionnellement ; consigné ici pour que
+le prochain ajout de mode ne rouvre pas la question sans en peser le coût.
+
 **La comparaison de pixels agrandit le viewport avant de capturer, et c'est la seule
 chose à comprendre de cette spec (#458).** **185 des 189 éléments capturés** — 179 des
 183 fiches, plus les 6 écrans de runner — sont **plus hauts que le viewport** du profil
@@ -1296,3 +1306,47 @@ ratait ce que l'enfant avait sous les yeux (critère 3 de #718). Le gate parcour
 mécanisable) ; rien sur le reste du catalogue, où `libelleAffiche` n'a jamais eu ce
 cas particulier à résoudre (couvert par un second `describe`, sans gate — juste la
 non-régression de `labelLecon`/#436).
+
+### Gate du semis d'aides des specs e2e (#711)
+
+`e2e/helpers.ts` expose `seedAideVueScript`, qui marque **toutes** les bulles d'aide
+contextuelle comme « déjà vues » avant qu'une spec n'ouvre un écran (sinon l'overlay
+d'aide s'ouvre au 1er lancement du mode et intercepte le clic suivant, faisant échouer la
+spec loin de la cause). Sa chaîne JSON est une **copie manuelle** de `TypeAide`
+(`core/aide.ts`) — une spec e2e n'importe pas `src/` — et une copie manuelle se périme :
+mesuré à l'ajout de `tableauVirgule` (#711 lot 4), la liste était déjà périmée de **deux**
+entrées (`segmentMot`, `droiteGraduee`), la règle du lot précédent n'ayant pas survécu à
+deux runners neufs.
+
+`tests/aide-vue-seed-gate.test.ts` lit `e2e/helpers.ts` **en texte** (comme
+`couverture-e2e-gate.test.ts` : une spec e2e importe `@playwright/test`, qu'on ne charge
+pas dans Vitest) et vérifie que chaque type d'`AIDES` y est semé à `true`, qu'aucune entrée
+semée n'est orpheline (faute de frappe côté clé — le cas le plus traître : la chaîne
+« a l'air » complète et pourtant rien n'est semé pour ce type), et que la clé de stockage
+semée est bien celle que relit `core/aide.ts` (`AIDE_VUE_KEY`). Fichier **séparé** de
+`e2e-navigation-gate.test.ts` (même famille de défaut : « la page n'est pas dans l'état
+que la spec croit ») pour que le nom du fichier, seul lu au premier coup d'œil sur un
+échec, nomme directement ce qui est cassé.
+
+**Ce qu'il ne prouve pas** : qu'un runner qui omettrait le filet `fermerAideSiPresente`
+(cf. `e2e/README.md`) ouvre bien l'overlay à couvrir — seulement que la liste manuelle est
+à jour vis-à-vis du code.
+
+## Rejet écrit : la galerie capture un RUNNER, pas chaque mode (#711 lot 4)
+
+Le mode « la virgule est à placer » n'a pas d'entrée dans la galerie visuelle, et n'en aura
+pas. Deux raisons, dans cet ordre.
+
+La galerie tourne sous **un seul germe** : insérer une entrée décale le tirage de toutes
+celles qui la suivent, donc fait regénérer des dizaines de baselines. Le coût est mesuré,
+pas supposé — l'insertion d'une leçon en #716 en a modifié **91**. Et la régénération ne
+passe que par le workflow dédié, dont le push ne relance pas la CI : c'est un aller-retour
+manuel à chaque fois.
+
+Surtout, ce n'est pas ce que la galerie garde. Elle existe pour qu'un **runner** ait un
+rendu de référence, pas pour couvrir la combinatoire de ses modes ; le tableau de
+conversion y a déjà deux entrées, choisies pour leur GÉOMÉTRIE (la plus étroite et la plus
+large), pas pour leurs modes. Ce que le mode `virgule` ajoute au rendu — un bouton de plus
+au pavé, des repères au bord des colonnes — est tenu par `e2e/tableau-conversion.spec.ts`,
+qui lit le contenu calculé des pseudo-éléments, donc plus finement qu'une comparaison de
+pixels ne le ferait.

@@ -43,7 +43,13 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
   `calibrated` **propage `exerciseKind`** (première leçon à runner dédié rendue
   multi-niveaux : la droite graduée `num-droite-entiers`, CE2 + CM1) : une leçon à
   runner dédié peut désormais être calibrée sans perdre son aiguillage. `problemes.ts`
-  garde son branchement manuel (rien à y changer).
+  garde son branchement manuel (rien à y changer). Granularité plus fine encore (#711) :
+  un même `ExerciseType` multi-niveaux peut réserver un **MODE** particulier à certains
+  niveaux (`ModeOption.levels`, ex. « la virgule est à placer » du tableau de conversion,
+  CM1 seulement) sans être lui-même mono-niveau — lu à l'affichage par
+  `modesPourNiveau(type, niveau)` (`core/exercise.ts`), jamais dans la fabrique
+  (`calibrated` étale les métadonnées du niveau le plus bas), cf. [Logique
+  pure](core.md).
 - **`niveau-actif.ts`** — résout le niveau au **seam** profil/catalogue (lit la méta
   profil **directement** via `storage`, pour éviter un cycle `progress → niveau-actif →
   profiles`). `niveauActif()` (classe de référence), `niveauActifMatiere(subject)`

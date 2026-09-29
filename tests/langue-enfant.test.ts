@@ -60,7 +60,7 @@ import { TROPHIES } from '../src/core/rewards';
 import { withSeed } from '../src/core/utils';
 import { initProfiles, touchActiveProfile } from '../src/core/profiles';
 import { setOnDataWrite } from '../src/core/storage';
-import { vouvoiements, apostrophesCourbes } from './gardes-langue';
+import { vouvoiements, apostrophesCourbes, signesCites } from './gardes-langue';
 
 beforeEach(() => {
 	localStorage.clear();
@@ -199,8 +199,15 @@ const gabarit = (consigne: string): string =>
 	// donc impossibles à relire et faciles à écraser d'un copier-coller.
 	consigne.replace(/«[^»]*»/gu, '« … »').replace(/\d+(?:[.,\s]\d+)*/gu, 'N');
 
-function consignesGenerees(lessons: LessonDef[]): Texte[] {
+/* Deux formes tirées du MÊME passage (la génération est la partie coûteuse du fichier) :
+   le GABARIT, que balaient les règles de langue ci-dessus, et la consigne BRUTE. La
+   seconde n'existe que pour la règle du signe cité (#711) : `gabarit` remplace justement
+   tout ce qui est entre guillemets par « … », donc un bouton désigné par son glyphe y
+   devient invisible. Et c'est dans une consigne de maths que le cas est le plus probable
+   (« Écris le signe « < » » — le pavé de signes de #380). */
+function consignesGenerees(lessons: LessonDef[]): { gabarits: Texte[]; brutes: Texte[] } {
 	const vues = new Map<string, string>(); // gabarit -> premier endroit où on l'a vu
+	const brutes = new Map<string, string>(); // consigne telle quelle -> premier endroit
 	withSeed(GRAINE, () => {
 		for (const l of lessons)
 			for (const niveau of l.levels) {
@@ -210,13 +217,16 @@ function consignesGenerees(lessons: LessonDef[]): Texte[] {
 						const ex = l.exerciseType.generate({ level: niveau, mode });
 						const consigne = 'consigne' in ex ? ex.consigne : undefined;
 						if (!consigne) continue;
+						const ou = `${l.id}@${niveau}/${mode ?? 'défaut'} — consigne d'item`;
+						if (!brutes.has(consigne)) brutes.set(consigne, ou);
 						const cle = gabarit(consigne);
 						if (!vues.has(cle))
 							vues.set(cle, `${l.id}@${niveau}/${mode ?? 'défaut'} — consigne d'item`);
 					}
 			}
 	});
-	return [...vues].map(([texte, ou]) => ({ ou, texte }));
+	const liste = (m: Map<string, string>): Texte[] => [...m].map(([texte, ou]) => ({ ou, texte }));
+	return { gabarits: liste(vues), brutes: liste(brutes) };
 }
 
 /* ------------------------------------------------------------------
@@ -226,7 +236,7 @@ const LECONS = getAllLessons();
 const CATALOGUE = vocabulaireCatalogue();
 const AIDES_ET_RETOURS = aidesEtRetours();
 const RECOMPENSES = vocabulaireRecompenses();
-const CONSIGNES = consignesGenerees(LECONS);
+const { gabarits: CONSIGNES, brutes: CONSIGNES_BRUTES } = consignesGenerees(LECONS);
 const INVENTAIRE: Texte[] = [...CATALOGUE, ...AIDES_ET_RETOURS, ...RECOMPENSES, ...CONSIGNES];
 
 /** Rend les fautes d'un détecteur sur tout l'inventaire, chacune nommée par son endroit. */
@@ -462,6 +472,86 @@ describe('Ce que l’enfant TAPE : l’apostrophe droite y décide de la correct
 				`lui dit pourquoi. Il ne peut ni le voir ni le corriger.\n` +
 				`Convention rappelée en tête de src/data/francais/orthographe.ts : « Apostrophe ` +
 				`DROITE (') = celle tapée au clavier ».`,
+		).toEqual([]);
+	});
+});
+
+/* ============================================================
+   UN BOUTON SE NOMME, IL NE SE CITE PAS PAR SON GLYPHE (#711)
+   ------------------------------------------------------------
+   Règle écrite dans `docs/architecture/conventions-redaction.md`. Le détecteur et son
+   raisonnement vivent dans `gardes-langue.ts` ; ce qui se décide ICI, comme pour les deux
+   autres règles, c'est la SURFACE.
+
+   ── Pourquoi tout l'inventaire, et pas seulement ce qui passe au TTS ────────────
+   Le tort a deux moitiés. L'une est sonore (« touche le bouton, la virgule se pose » :
+   la voix ne dit jamais lequel) et ne concerne que le texte parlé. L'autre est visuelle
+   (un glyphe seul entre deux guillemets est la plus petite chose de la phrase, encadrée
+   de deux marques plus grosses) et concerne TOUT ce que l'enfant lit. Restreindre au TTS
+   n'aurait donc couvert que la moitié du tort.
+
+   Et surtout : « ce qui passe au TTS » n'est pas une frontière que la structure donne.
+   Les aides sont lues (`texteTtsAide`), les consignes de fiche aussi, les titres de
+   trophées non — il aurait fallu tenir à la main la liste des sources parlées,
+   c'est-à-dire créer un troisième miroir manuel, exactement le mode d'échec que deux
+   gates de cette PR viennent de fermer.
+
+   Le coût de la règle large est nul, et c'est mesuré : l'inventaire entier n'en porte
+   aucune occurrence aujourd'hui. Les seules citations d'un signe seul du dépôt sont dans
+   des COMMENTAIRES de code (47 fois « ? », 10 fois « = »…), qui n'entrent dans aucun
+   inventaire. Une règle qui couvre plus et ne coûte aucune exception est à prendre large.
+
+   ── Les consignes d'item entrent ici sous leur forme BRUTE ──────────────────────
+   Les deux autres règles balaient le GABARIT (la phrase moins sa matière) ; cette
+   règle-ci ne le peut pas, puisque `gabarit` remplace tout ce qui est entre guillemets
+   par « … » — donc effacerait précisément ce qu'elle cherche. D'où `CONSIGNES_BRUTES`,
+   tirées du même passage. Ce n'est pas une précaution théorique : le pavé de signes de
+   #380 (`<`, `>`, `=`) est exactement le genre d'endroit où une consigne serait tentée de
+   citer le bouton plutôt que de le nommer.
+   ============================================================ */
+/* Tout l'inventaire SAUF les gabarits de consigne, remplacés par leur forme brute. Ce
+   n'est pas un choix de confort : `gabarit` écrit « … » à la place du contenu cité, et
+   « … » est précisément un caractère seul, non alphanumérique, entre guillemets — le
+   gabarit déclenchait donc la règle sur son propre marqueur. Mesuré à la première
+   exécution, sur `fr-gram-groupe-nominal` (« le mot « … » »). */
+const SURFACE_GLYPHE: Texte[] = [
+	...CATALOGUE,
+	...AIDES_ET_RETOURS,
+	...RECOMPENSES,
+	...CONSIGNES_BRUTES,
+];
+
+describe('Un bouton se NOMME dans ce que l’enfant lit et entend', () => {
+	it('les consignes d’item entrent aussi sous leur forme brute (le gabarit effacerait la citation)', () => {
+		/* Anti-gate-à-vide propre à cette surface : si `CONSIGNES_BRUTES` se tarissait, la
+		   règle resterait verte en n'examinant plus la source la plus exposée. Deux exigences
+		   que la structure garantit — il y a au moins autant de consignes brutes que de
+		   gabarits (un gabarit regroupe plusieurs consignes), et le gabarit efface bien la
+		   citation, ce qui est la raison d'être de cette seconde forme. */
+		expect(CONSIGNES_BRUTES.length).toBeGreaterThanOrEqual(CONSIGNES.length);
+		expect(CONSIGNES_BRUTES.length).toBeGreaterThan(0);
+		expect(gabarit('Écris le signe « < » entre les deux nombres.')).not.toContain('<');
+		expect(signesCites('Écris le signe « < » entre les deux nombres.')).not.toEqual([]);
+	});
+
+	it('aucun signe isolé cité entre guillemets dans le vocabulaire, les aides et les consignes', () => {
+		const fautes = SURFACE_GLYPHE.flatMap(({ ou, texte }) =>
+			signesCites(texte).map((f) => `${ou} — « ${f} »`),
+		);
+		expect(
+			fautes,
+			`Ces textes DÉSIGNENT un bouton par le signe qu'il porte :\n${fautes.join('\n')}\n` +
+				`Au TTS, c'est muet : ni la ponctuation ni les symboles ne sont prononcés — la voix ` +
+				`dit « touche le bouton, la virgule se pose », sans jamais dire lequel. À l'écran, le ` +
+				`glyphe est la plus petite chose de la phrase, encadrée de deux marques plus grosses ` +
+				`que lui.\n` +
+				`À faire : NOMMER le bouton (« le bouton virgule du pavé », « le bouton égal »), ` +
+				`quitte à ce que le bouton, lui, n'affiche que son signe.\n` +
+				`Règle : docs/architecture/conventions-redaction.md, « Un bouton se NOMME dans un ` +
+				`texte lu à voix haute, il ne se cite pas par son glyphe » (#711).\n` +
+				`Non signalé, et c'est voulu : une citation de plusieurs caractères (« Vérifier ») ` +
+				`ou d'un seul caractère alphanumérique (« a », « y », « 5 ») — ce sont des mots, ` +
+				`pas des glyphes de bouton.`,
 		).toEqual([]);
 	});
 });

@@ -111,3 +111,49 @@ export function apostrophesCourbes(texte: string): string[] {
 		fautes.push(texte.slice(Math.max(0, m.index - 20), m.index + 21).trim());
 	return fautes;
 }
+
+/* ---------- Un signe CITÉ au lieu d'être NOMMÉ (#711) ----------
+   Désigner un bouton par le signe qu'il porte — « le bouton « , » », « le bouton « = » » —
+   est MUET au TTS : ni la ponctuation ni les symboles ne sont prononcés. La voix dit
+   « touche le bouton, la virgule se pose », sans jamais dire lequel. Et à l'écran, un
+   glyphe seul entre deux guillemets est la plus petite chose de la phrase, encadrée de deux
+   marques plus grosses qu'elle : l'œil de l'enfant y voit une tache. Le remède tient en un
+   mot : NOMMER le bouton (« le bouton virgule du pavé »), quitte à ce que le bouton, lui,
+   n'affiche que son signe. Règle écrite dans `docs/architecture/conventions-redaction.md`
+   (« Un bouton se NOMME dans un texte lu à voix haute, il ne se cite pas par son glyphe »),
+   cas posé par l'aide du mode « virgule » (#711 lot 4).
+
+   La règle se tient sur la FORME, pas sur une liste de signes : « un guillemet ouvrant, un
+   seul caractère non alphanumérique, un guillemet fermant ». Une liste (« , », « = », « + »)
+   aurait laissé passer le prochain glyphe — « ÷ », « ↔ », « < » — c'est-à-dire précisément
+   celui qu'on n'a pas en tête au moment d'écrire la règle.
+
+   Ce que le détecteur ne signale PAS, et c'est la moitié du contrat :
+   - une citation de PLUSIEURS caractères (« Vérifier », « re- », « l' ») : c'est du texte,
+     le TTS le prononce et l'œil le voit ;
+   - une citation d'UN caractère alphanumérique (« a » / « à » en grammaire, « y » pronom,
+     un chiffre) : c'est un mot ou un nombre, pas le glyphe d'un bouton — et c'est la forme
+     même dont plusieurs leçons de français ont besoin (mesuré : `classes-mots`,
+     `conjugaison-meta`, `familles` en citent).
+   Les espaces qui aèrent la citation ne sauvent rien : la typographie française en met
+   autour des guillemets, et ce sont des espaces INSÉCABLES (fine U+202F, U+00A0) qu'aucune
+   relecture ne voit. Nul besoin de les écrire : en JavaScript `\s` les couvre déjà tous les
+   deux — les écrire en clair dans le littéral reviendrait à poser dans le code la même
+   chose invisible que celle qu'on cherche à attraper (même raison que le `gabarit` de
+   `langue-enfant.test.ts`). */
+const BLANCS_CITATION = /\s/gu;
+
+export function signesCites(texte: string): string[] {
+	const fautes: string[] = [];
+	for (const m of texte.matchAll(/«([^»]*)»/gu)) {
+		const dedans = m[1].replace(BLANCS_CITATION, '');
+		// Compté en POINTS DE CODE : un symbole hors BMP vaut 2 en `length` et passerait pour
+		// une citation de deux caractères.
+		if ([...dedans].length !== 1) continue;
+		if (/[\p{L}\p{N}]/u.test(dedans)) continue;
+		// Rendu AVEC son contexte, comme les deux autres détecteurs : l'échec doit montrer la
+		// phrase à réécrire, pas le seul signe — qui ne dirait à personne où il se trouve.
+		fautes.push(texte.slice(Math.max(0, m.index - 25), m.index + m[0].length + 25).trim());
+	}
+	return fautes;
+}

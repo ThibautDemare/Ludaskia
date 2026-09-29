@@ -115,6 +115,21 @@ function illustrationHTML(type: TypeAide): SafeHtml {
 					<span class="tc-demo-cell"><b>m</b>0</span>
 				</div>
 			</div>`;
+		case 'tableauVirgule':
+			// Même exemple illustratif, mais dans l'autre sens — celui qui porte une virgule :
+			// « 456 cm = 4,56 m ». La virgule est dessinée APRÈS la colonne des mètres, l'unité
+			// demandée, ce qui montre la règle sans la faire lire (avis dys : une image du
+			// résultat vaut mieux qu'une phrase de plus). Non interactif, et sur une conversion
+			// qui n'est pas celle de la question en cours (jamais pré-remplir la vraie).
+			return html`<div class="aide-anim aide-anim--tableau" id="aideAnim">
+				<p class="tc-demo-q">456 cm = 4,56 m</p>
+				<div class="tc-demo">
+					<span class="tc-demo-cell"><b>m</b>4</span>
+					<span class="tc-demo-virgule" aria-hidden="true">,</span>
+					<span class="tc-demo-cell"><b>dm</b>5</span>
+					<span class="tc-demo-cell"><b>cm</b>6</span>
+				</div>
+			</div>`;
 		case 'appariement':
 			// Le doigt touche « dent » à gauche, puis « dentiste » à droite : un trait les relie.
 			return html`<div class="aide-anim aide-anim--appariement is-anim" id="aideAnim">

@@ -10,7 +10,7 @@
    history.pushState) pour rester compatible avec file://.
    ============================================================ */
 import { getAllLessons, getLessonById } from '../core/catalog';
-import { defaultMode } from '../core/exercise';
+import { defaultMode, modesPourNiveau } from '../core/exercise';
 import type { ExerciseMode } from '../core/exercise';
 
 import { buildLessonFiche } from '../core/build';
@@ -203,15 +203,22 @@ export function startLecon(id: string, origine: OrigineActivite = 'catalogue') {
 	// instantané porte déjà le mode joué — redemander lequel n'aurait pas de sens.
 	// « Recommencer » repart du parcours normal, écran de choix compris.
 	maybeRelaunch(leconKey(id), labelLecon(lesson, niveauLecon(lesson)), () => {
-		// Plusieurs modes (ex. conjugaison saisie/QCM) → écran de choix (#69).
-		location.hash = ((lesson.exerciseType.modes?.length ?? 0) > 1 ? 'mode-' : 'lecon-') + id;
+		// Plusieurs modes (ex. conjugaison saisie/QCM) → écran de choix (#69). Compté APRÈS
+		// filtrage par niveau (#711) : un mode réservé au CM1 ne doit pas ouvrir un écran de
+		// choix à un CE2 qui n'y verrait qu'un seul bouton.
+		location.hash =
+			(modesPourNiveau(lesson.exerciseType, niveauLecon(lesson)).length > 1 ? 'mode-' : 'lecon-') +
+			id;
 	});
 }
 /* Écran de choix du sous-exercice / mode (#69) : gros boutons dérivés des modes
    du type d'exercice (jamais codés en dur). Le mode conseillé est mis en avant. */
 export function showModeChoice(id: string) {
 	const lesson = getLessonById(id);
-	const opts = lesson?.exerciseType.modes;
+	// Modes PROPOSABLES à la classe de l'enfant (#711) : un mode peut être réservé à un
+	// niveau (`ModeOption.levels`). Filtrer ici et nulle part ailleurs — c'est le seul
+	// écran qui présente le choix, et le seul à connaître le niveau actif.
+	const opts = lesson ? modesPourNiveau(lesson.exerciseType, niveauLecon(lesson)) : undefined;
 	if (!lesson || !opts || opts.length <= 1) {
 		// Pas de choix réel → lancement direct (cohérent avec le mono-mode). On PROPAGE
 		// l'origine (#461) : cet écran est une étape du lancement, pas une nouvelle entrée.

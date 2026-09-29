@@ -115,6 +115,13 @@ interface MesureConfig {
 	// L'échelle est commune aux niveaux d'une famille ; ce sont les `conversions` du niveau
 	// qui déterminent les unités ÉTUDIÉES (les autres colonnes de l'empan = « de transit »).
 	echelle?: EchelleUnite[];
+	// Ce NIVEAU ouvre-t-il le mode « la virgule est à placer » (#711 lot 4) ? Porté par la
+	// configuration et pas seulement par `ModeOption.levels`, parce que le filtre de
+	// l'écran de choix est un filtre d'AFFICHAGE : une URL directe (`#lecon-…`) ou un
+	// instantané de reprise plus ancien que ce lot peut encore demander le mode. Le
+	// générateur doit donc savoir le refuser, sans quoi un CE2 se verrait demander une
+	// écriture décimale que son programme ne comporte pas (critère 20).
+	virguleLibre?: boolean;
 }
 
 /* Échelles décimales par famille (mode tableau #394). Ordre GRANDE→PETITE, stable d'un
@@ -234,11 +241,28 @@ function tirerConversion(conversions: Conversion[]): Conversion {
 	return rnd(1, 3) === 1 ? choice(pas) : choice(ancrages);
 }
 
-function pickConversionInstance(conversions: Conversion[]): ConvInstance {
-	const c = tirerConversion(conversions);
+/* `decimalImpose` (#711 lot 4) : ne tirer QUE des instances dont la réponse porte une
+   virgule, pour le mode où l'enfant la place lui-même. Deux réglages suffisent, et ils
+   passent par le chemin existant plutôt que par une copie de la logique de sens : on
+   restreint le vivier aux relations ouvertes au décimal, et on impose le sens
+   petite→grande. C'est exactement la définition d'`answerDecimal` (cf. `ConvInstance`).
+
+   Pourquoi cette restriction, et pas « virgule sur tous les items » : une virgule sans
+   chiffre derrière n'est pas une écriture de nombre (avis pedagogue-primaire). Une
+   conversion vers une unité plus petite donne toujours un entier, et aucun manuel n'y
+   écrit de virgule — pas même quand la colonne cible est au milieu du tableau. Le bon
+   critère est le SENS de la conversion, pas la position de la colonne. Corollaire utile :
+   la cible étant alors la grande unité, elle a toujours l'unité connue à sa droite, donc
+   jamais de virgule en bout de tableau ; et `frac` étant tiré NON NUL plus bas, il y a
+   toujours au moins un chiffre significatif derrière. */
+function pickConversionInstance(conversions: Conversion[], decimalImpose = false): ConvInstance {
+	const vivier = decimalImpose ? conversions.filter((x) => x.decimal) : conversions;
+	if (!vivier.length) throw new Error('Tableau : virgule à placer demandée sans relation décimale');
+	const c = tirerConversion(vivier);
 	const maxBig = c.maxBig ?? 9;
-	// ~60 % grande→petite (×, plus intuitif), ~40 % petite→grande (÷, exact).
-	const versPetite = rnd(1, 10) <= 6;
+	// ~60 % grande→petite (×, plus intuitif), ~40 % petite→grande (÷, exact). Sens IMPOSÉ
+	// petite→grande quand la réponse doit porter une virgule.
+	const versPetite = decimalImpose ? false : rnd(1, 10) <= 6;
 	const base = { big: c.big, small: c.small, factor: c.factor };
 	// grande→petite : connue = grande unité, cible = petite (réponse entière).
 	const gp = (knownValue: number | string, sPetit: number): ConvInstance => ({
@@ -354,11 +378,18 @@ function trancheFixe(echelle: EchelleUnite[], conversions: Conversion[]): Echell
    INVARIANT (à ne pas casser) : zéro-de-transit et virgule ne coexistent JAMAIS dans le même
    exercice. Il tient parce que les deux lots sont partis ensemble — le CM1 n'a plus AUCUNE
    colonne démotée (toute la chaîne de rangs y est au programme) et le CE2 n'a aucun décimal.
-   `virguleApres` est posé même si l'app rend la virgule fixe en v1 (donnée générique, ouvre une
-   saisie de la virgule sans refonte). */
-function generateTableau(config: MesureConfig): Exercise {
+   Le lot 4 ne l'entame pas : la virgule à placer est réservée au CM1, justement là où plus
+   aucune colonne n'est démotée.
+
+   `virguleLibre` (#711 lot 4) bascule QUI pose la virgule, et RESTREINT le tirage aux seules
+   conversions dont la réponse en porte une (cf. `pickConversionInstance`). `virguleApres` est
+   alors défini sur tous les items du mode, et c'est ce qui supprime l'indice : dans ce mode,
+   l'enfant n'apprend jamais de l'interface s'il lui faut une virgule ou non, puisqu'il lui en
+   faut toujours une. Le prix est assumé : les deux modes ne tirent plus les mêmes items à
+   graine égale (écart tracé par commentaire daté sur #711). */
+function generateTableau(config: MesureConfig, virguleLibre = false): Exercise {
 	const echelle = config.echelle!;
-	const inst = pickConversionInstance(config.conversions);
+	const inst = pickConversionInstance(config.conversions, virguleLibre);
 	// Les colonnes non ÉTUDIÉES au niveau sont « de transit » (en-tête démoté + case
 	// pointillés). Ce calcul se fait sur les relations configurées, donc il ne dit la vérité
 	// que si celles-ci couvrent bien les unités nommées par le programme du niveau — ce
@@ -383,7 +414,9 @@ function generateTableau(config: MesureConfig): Exercise {
 		transit: !etudiees.has(u.unite),
 		chiffres: chiffres[i],
 	}));
-	// Virgule : juste après la colonne de l'unité cible, UNIQUEMENT si la réponse est décimale.
+	// Virgule : juste après la colonne de l'unité cible, dès que la réponse est décimale.
+	// Le mode « virgule » n'en change pas la position, seulement QUI la pose — et comme il
+	// ne tire que des réponses décimales, elle y est demandée sur tous les items.
 	const virguleApres = inst.answerDecimal
 		? span.findIndex((u) => u.unite === inst.answerUnit)
 		: undefined;
@@ -409,8 +442,14 @@ function generateTableau(config: MesureConfig): Exercise {
 		colonnes,
 		parle,
 		...(virguleApres !== undefined ? { virguleApres } : {}),
+		...(virguleLibre ? { virguleLibre } : {}),
 	};
 }
+
+/* Id du mode « la virgule est à placer » (#711 lot 4). Constante partagée : il voyage dans
+   le catalogue, dans le journal encadrant et dans les gates de couverture, donc une chaîne
+   recopiée à la main finirait par diverger d'un endroit à l'autre. */
+export const MODE_VIRGULE = 'virgule';
 
 /* Modes du mode tableau (#394), proposés SEULEMENT quand la leçon porte une `echelle`
    (longueurs / masses / contenances ; pas les durées). Saisie = mode conseillé et premier
@@ -426,23 +465,64 @@ const MODES_MESURE: ModeOption[] = [
 	{ id: 'tableau', label: 'Je remplis le tableau', hint: 'un chiffre par case', icon: 'table' },
 ];
 
+/* Marche suivante du tableau (#711 lot 4) : l'application ne pose plus la virgule, c'est
+   l'enfant qui la place. Ce n'est PAS une variante du mode précédent mais un mode à part,
+   pour que le premier reste accessible (arbitrage du mainteneur : un enfant qui découvre le
+   tableau ne doit pas perdre la marche qu'il vient de monter).
+
+   `levels: ['cm1']` : placer une virgule suppose l'écriture décimale, hors programme CE2.
+   Et le mode n'est déclaré que par les FAMILLES qui ouvrent des conversions décimales
+   (longueurs, contenances). Les masses n'en ont aucune au CM1 — « 4,5 dag » n'a pas de
+   référent réel, décision déjà prise et commentée dans CONFIG_MASSES — donc le mode y
+   serait un écran de choix supplémentaire menant à un tirage vide. */
+const MODE_VIRGULE_OPTION: ModeOption = {
+	id: MODE_VIRGULE,
+	// « … moi-même » plutôt que « … aussi » : une carte de choix se lit d'un coup d'œil, donc
+	// elle doit se comprendre SEULE. « Aussi » suppose qu'on vient de lire la carte voisine,
+	// et se lit même comme « moi aussi je la place » (constat redacteur-contenu-francais).
+	// Le sous-titre dit ce qu'on fait, comme ses deux voisins (« au clavier », « un chiffre
+	// par case »), et pas l'étendue de la tâche.
+	label: 'Je place la virgule moi-même',
+	hint: 'chiffres et virgule',
+	// Pas `table`, déjà pris par le mode précédent : deux cartes voisines au même
+	// pictogramme ne se distingueraient que par leur texte, dans un écran fait pour être lu
+	// d'un coup d'œil. `pencil` dit « c'est toi qui écris », comme partout ailleurs dans le
+	// catalogue (« J'écris la forme », « J'écris le verbe ») — ici, la virgule en plus.
+	icon: 'pencil',
+	levels: ['cm1'],
+};
+
 /* Fabrique l'ExerciseType d'une leçon de conversion (un jeu de paramètres = un niveau).
    Deux modes quand une `echelle` est fournie (saisie + tableau #394), mono-mode sinon
    (durées). Utilisée telle quelle comme `build` du combinateur `calibrated` (qui prend
    `modes`/`consigne` sur le niveau le plus bas : l'echelle CE2 doit donc être présente
    pour exposer le tableau au CE2 comme au CM1). */
-export function conversionType(config: MesureConfig): ExerciseType {
+export function conversionType(
+	config: MesureConfig,
+	opts?: { virgulePlacable?: boolean },
+): ExerciseType {
 	const facts = config.facts ?? [];
+	// `virgulePlacable` se déclare à la FAMILLE, pas au niveau : `calibrated` étale les
+	// métadonnées du niveau le plus bas (le CE2), qui n'a aucune conversion décimale — une
+	// liste de modes déduite de la configuration reçue ne ferait donc jamais apparaître le
+	// mode. Ce qui dépend du niveau, c'est la GÉNÉRATION (`config.virguleLibre`), pas la
+	// déclaration ; l'affichage, lui, est filtré par `ModeOption.levels`.
+	const modes =
+		config.echelle && opts?.virgulePlacable ? [...MODES_MESURE, MODE_VIRGULE_OPTION] : MODES_MESURE;
 	return {
 		// Le tableau n'est proposé que si la famille a une échelle décimale.
-		...(config.echelle ? { modes: MODES_MESURE } : {}),
+		...(config.echelle ? { modes } : {}),
 		// Consigne d'action (#265) : l'énoncé « 3 m = @ cm » est une égalité sans verbe
 		// (« faut-il convertir ? compléter ? »). Affichée en fiche et propagée en révision.
 		consigne: 'Complète : écris le bon nombre.',
 		generate(opts?: GenerateOpts): Exercise {
 			// Mode tableau (#394) : runner dédié (ui/lecon-tableau.ts). Ignore les `facts`
-			// (repères mémorisés, hors geste du tableau) — que du calcul de rang.
-			if (opts?.mode === 'tableau' && config.echelle) return generateTableau(config);
+			// (repères mémorisés, hors geste du tableau) — que du calcul de rang. Le mode
+			// « virgule » (#711 lot 4) rend le même tableau, virgule à placer en plus, et
+			// RETOMBE sur le tableau ordinaire quand le niveau ne l'ouvre pas : un mode masqué
+			// à l'écran de choix reste atteignable par une URL ou une reprise périmée.
+			if ((opts?.mode === 'tableau' || opts?.mode === MODE_VIRGULE) && config.echelle)
+				return generateTableau(config, opts.mode === MODE_VIRGULE && config.virguleLibre === true);
 			if (facts.length && rnd(1, 4) === 1) {
 				const f = choice(facts);
 				return {
@@ -582,6 +662,7 @@ const CONFIG_LONGUEURS: Record<'ce2' | 'cm1', MesureConfig> = {
 	// km↔m et m↔mm (×1000) restent ENTIÈRES (décimal < 1 hors programme).
 	cm1: {
 		echelle: ECHELLE_LONGUEUR,
+		virguleLibre: true,
 		conversions: [
 			{ big: 'm', small: 'cm', factor: 100, maxBig: 20, decimal: 'vers-grande' },
 			{ big: 'km', small: 'm', factor: 1000, maxBig: 20 },
@@ -645,6 +726,7 @@ const CONFIG_CONTENANCES: Record<'ce2' | 'cm1', MesureConfig> = {
 	// (« 456 cL = 4,56 L »), l'entier grande→petite gardé ; L↔mL (×1000) ENTIÈRE.
 	cm1: {
 		echelle: ECHELLE_CONTENANCE,
+		virguleLibre: true,
 		conversions: [
 			{ big: 'L', small: 'cL', factor: 100, maxBig: 20, decimal: 'vers-grande' },
 			{ big: 'L', small: 'dL', factor: 10, maxBig: 20, decimal: 'deux-sens' },
@@ -665,7 +747,9 @@ export const MESURE_LESSONS: LessonInput[] = [
 		id: 'mes-longueurs',
 		label: 'Je convertis les longueurs',
 		motsCles: ['convertir', 'mètre', 'kilomètre', 'centimètre'],
-		exerciseType: calibrated<MesureConfig>(CONFIG_LONGUEURS, conversionType),
+		exerciseType: calibrated<MesureConfig>(CONFIG_LONGUEURS, (c) =>
+			conversionType(c, { virgulePlacable: true }),
+		),
 		// Exemple 3 km = 3 000 m, CONSTRUIT par le moteur pour chaque niveau : le CE2 le voit avec
 		// ses colonnes démotées, le CM1 avec la chaîne de rangs complète. Même géométrie que
 		// l'exercice réel, par construction — un exemple écrit à la main mentait dès qu'une
@@ -717,7 +801,9 @@ export const MESURE_LESSONS: LessonInput[] = [
 		id: 'mes-contenances',
 		label: 'Je convertis les contenances',
 		motsCles: ['convertir', 'litre', 'centilitre', 'volume'],
-		exerciseType: calibrated<MesureConfig>(CONFIG_CONTENANCES, conversionType),
+		exerciseType: calibrated<MesureConfig>(CONFIG_CONTENANCES, (c) =>
+			conversionType(c, { virgulePlacable: true }),
+		),
 		// 5 L = 500 cL : deux colonnes vides, toutes deux ÉTUDIÉES (aucune de transit dans
 		// cet empan) — l'exemple montre donc le 0 de rang sans le mêler au code « unité pas
 		// Exemple 5 L = 500 cL, CONSTRUIT par le moteur pour chaque niveau : le CE2 le voit avec

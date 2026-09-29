@@ -104,9 +104,20 @@ export async function gotoHash(page: Page, hash: string): Promise<void> {
    Clé préfixée par le profil (uuid par défaut = 'e2e', préfixe = 'e2e/') ; les specs
    qui amorcent LEUR propre profil (révision : uuid dédié) passent le leur, sinon le
    masque tomberait à côté et la modale s'ouvrirait quand même.
-   Ne PAS utiliser dans aide-exercice.spec.ts (elle gère l'aide elle-même). */
+   Ne PAS utiliser dans aide-exercice.spec.ts (elle gère l'aide elle-même).
+
+   Liste tenue À LA MAIN, PAS dérivée de `TypeAide` (core/aide.ts) : un import de `src/`
+   romprait la règle « une spec reste une boîte noire du rendu » (cf. plus haut). Elle
+   doit donc être tenue À JOUR MANUELLEMENT à chaque type d'aide ajouté — trois manquaient
+   ici (`tableauVirgule`, `segmentMot`, `droiteGraduee`), constaté lors de #711 lot 4.
+   `segmentMot` et `droiteGraduee` s'en tiraient sans dommage : leurs specs
+   (`groupe-nominal.spec.ts`, `droite-graduee.spec.ts`) ferment l'overlay elles-mêmes en
+   filet (`fermerAideSiPresente`) plutôt que de compter sur cette liste — mais un futur
+   test de ces runners qui omettrait ce filet ouvrirait l'overlay bloquant sans piste
+   évidente. Complétés ici plutôt que signalés seuls : l'ajout est purement additif
+   (marquer une aide « déjà vue » ne peut faire échouer aucune spec existante). */
 export function seedAideVueScript(uuid = 'e2e'): string {
-	return `localStorage.setItem('${uuid}/ludaskia_aide_vue', '{"tuiles":true,"ordre":true,"ordreNombres":true,"tri":true,"atelier":true,"lettres":true,"tableau":true,"appariement":true,"clicMot":true}');`;
+	return `localStorage.setItem('${uuid}/ludaskia_aide_vue', '{"tuiles":true,"ordre":true,"ordreNombres":true,"tri":true,"atelier":true,"lettres":true,"tableau":true,"tableauVirgule":true,"appariement":true,"clicMot":true,"segmentMot":true,"droiteGraduee":true}');`;
 }
 
 /* Surcharge pratique : injecte directement le script sur la page.
@@ -125,17 +136,28 @@ export async function seedAideVue(page: Page): Promise<void> {
 export interface SeedRappelOptions {
 	uuid?: string;
 	now?: number;
-	/** Nombre d'activités enregistrées, une par jour dans le passé (déf. 3, le seuil). */
+	/** Nombre d'activités enregistrées, une par jour dans le passé. Par défaut
+	 *  `SEUIL_RAPPEL_ACTIVITES`, c'est-à-dire pile le seuil — le nombre n'est PAS répété ici :
+	 *  une prose qui recopie une valeur est un miroir de plus, et elle ment en silence. */
 	activites?: number;
 	/** Ancienneté du dernier export (ou de l'origine si jamais exporté), en ms (déf. 3 jours). */
 	depuisSauvegardeMs?: number;
 }
 
+/* Seuil d'activités du rappel de sauvegarde, RECOPIÉ de `MIN_ACTIVITES`
+   (`src/core/rappel-sauvegarde.ts`) — une spec ne doit pas importer `src/`. La copie est
+   tenue par `tests/rappel-sauvegarde-seed-gate.test.ts`, qui compare cette valeur à la
+   vraie constante. Exportée, et pas seulement posée en défaut ci-dessous : une spec qui
+   veut se placer SOUS le seuil doit écrire `SEUIL_RAPPEL_ACTIVITES - 1`, pas un `2` nu.
+   Ce nombre-là est le plus vicieux des trois miroirs — si le seuil descendait à 2, un test
+   négatif deviendrait silencieusement positif et échouerait sans piste. */
+export const SEUIL_RAPPEL_ACTIVITES = 3;
+
 export function seedRappelSauvegardeScript(opts: SeedRappelOptions = {}): string {
 	const DAY = 24 * 60 * 60 * 1000;
 	const uuid = opts.uuid ?? 'e2e';
 	const now = opts.now ?? Date.now();
-	const nActivites = opts.activites ?? 3;
+	const nActivites = opts.activites ?? SEUIL_RAPPEL_ACTIVITES;
 	const depuis = now - (opts.depuisSauvegardeMs ?? 3 * DAY);
 	const seed: Record<string, unknown> = {
 		ludaskia_profiles: {

@@ -13,8 +13,34 @@
    (jamais grisée/opacifiée = code du champ désactivé). Accessibilité dys (avis
    specialiste-troubles-apprentissage) : nom d'unité en toutes lettres VISIBLE dans
    l'en-tête, ordre spatial grande→petite stable, légende courte permanente, aria-label
-   par case en toutes lettres, aide illustrative rappelable. La virgule (paires décimales)
-   est POSÉE par l'app en v1 (`virguleApres`) — un seul geste inédit à la fois.
+   par case en toutes lettres, aide illustrative rappelable.
+
+   DEUX MODES de tableau (#711 lot 4), et non un geste qui remplace l'autre :
+   - `tableau` : l'application POSE la virgule, et seulement sur une réponse décimale.
+     Comportement d'origine, inchangé — c'est la marche accessible, on ne la retire pas ;
+   - `virgule` (CM1 seulement) : c'est l'ENFANT qui la place, sur TOUS les items. Elle se
+     pose juste après la colonne de l'unité demandée, comme au tableau noir, que le résultat
+     soit décimal ou entier. La demander seulement sur les décimaux reviendrait à lui dire
+     que la réponse est décimale — l'exercice répondrait encore à une moitié de la question.
+
+   Le geste passe par un 12ᵉ bouton du PAVÉ (`data-pave="virgule"`), jamais par un glisser
+   ni par une zone tapable entre deux colonnes : l'écart inter-colonnes fait 12 px, le
+   porter à une cible de 44 px suppose de mordre sur les cases voisines, qui sont
+   elles-mêmes des boutons (avis designer-ux-enfant, contrainte géométrique dure).
+   La virgule se pose à la frontière de colonne qui suit la case active ; une pression au
+   même endroit la retire. ÉCARTÉ : étendre la cascade de `effacer` pour qu'elle traverse
+   aussi la virgule (proposition designer). Le va-et-vient sur le même bouton suffit à
+   corriger, et faire dépendre l'effacement d'un chiffre de la présence d'une virgule
+   ajoutait un état à comprendre pour un gain nul.
+
+   La virgule a un EMPLACEMENT VISIBLE (`.tc-fente`) à chaque frontière de colonne tant
+   qu'elle n'est pas posée : c'est ce qui rend lisible le bouton « Vérifier » encore gris
+   (avis specialiste-troubles-apprentissage — un blocage dont la cause ne se voit pas dans
+   le tableau est un obstacle qu'on ne peut ni voir ni raisonner). Les emplacements sont
+   INERTES : ils ne sont pas une seconde façon de viser, et ils ne disent pas où aller
+   puisqu'il y en a un partout. ÉCARTÉ pour la même raison inverse : une pastille sur le
+   bouton virgule tant qu'aucune n'est posée (proposition designer) — la virgule étant
+   attendue sur tous les items, elle serait permanente donc muette.
 
    ÉCARTÉ, une fois pour toutes (relecture a11y #711) : ajouter un RANG numérique à
    l'aria-label des cases (« case 4 sur 7 ») alors que la tranche fixe en affiche jusqu'à
@@ -43,6 +69,7 @@ import {
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { monterBoutonAide } from './aide-exercice';
+import type { TypeAide } from '../core/aide';
 import { capterErreur } from './erreur-capture';
 import {
 	capterPasse,
@@ -54,6 +81,10 @@ import {
 } from './lecon-passer';
 import { nombreTableauSaisi } from '../core/erreur-representation';
 import { conversionDepuisTableau } from '../core/etayage-conversion';
+// Traduction index-de-case ↔ index-de-colonne (#711 lot 4) : pure, donc dans `core/` où
+// un test la joue sur un tableau fabriqué — le cas qui casse (colonne de tête à deux
+// chiffres) ne sort pas à tous les tirages, un e2e ne le garantirait pas.
+import { derniereCaseDe, colonneDeCase, caseVirguleAttendue } from '../core/tableau-virgule';
 import type { EtayageDemande } from './etayage-panneau';
 import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 import { poserAuTrou } from '../core/items';
@@ -66,10 +97,32 @@ type Tableau = Extract<Exercise, { type: 'tableauConversion' }>;
 /* Consigne VISIBLE (et lue par le TTS) : motive le zéro, pas seulement le geste
    (avis pedagogue-primaire). L'énoncé « 3 km = ? m » s'affiche en dessous. */
 const CONSIGNE = "Écris un chiffre par case. Mets 0 quand il n'y a rien à compter dans une unité.";
+/* Mode « virgule » (#711 lot 4) : la consigne NOMME les deux gestes et suggère un ordre
+   sans l'imposer (avis specialiste-troubles-apprentissage — séquencer aide au découpage,
+   mais un ordre OBLIGATOIRE serait une règle de plus à retenir, et certains enfants
+   dyscalculiques s'appuient d'abord sur le repère de rang). Le rappel du 0 reste : il
+   porte ce que le tableau enseigne, pas seulement le geste. */
+const CONSIGNE_VIRGULE =
+	"Écris un chiffre par case, puis place la virgule. Mets 0 quand il n'y a rien à compter dans une unité.";
 /* Légende courte PERMANENTE sous le tableau (avis dys : rappel présent à chaque
    affichage, pas seulement au 1er lancement). */
 const LEGENDE =
 	'Les unités en petit ne sont pas encore vues en classe : tu peux quand même y écrire des 0.';
+/* En mode « virgule » la légende change de sujet : au CM1 aucune colonne n'est démotée
+   (toute la chaîne de rangs est au programme depuis le lot 2), donc le rappel des unités
+   « pas encore vues » n'y désigne rien. Elle dit le GESTE et ce que montrent les marques,
+   PAS la règle : où la virgule se place est ce que l'exercice demande de trouver, et cette
+   règle vit dans l'aide contextuelle (bouton « ? », `AIDES.tableauVirgule`), à la demande.
+
+   Deux phrases, et c'est voulu : la légende est lue par `aria-describedby` sur le tableau,
+   donc elle doit servir aussi à qui ne voit pas les marques (elles sont `aria-hidden`). La
+   première phrase vaut pour tout le monde, la seconde légende le visuel. « Traits » plutôt
+   que « repères », qui est un mot d'adulte et ne dit pas ce qu'on cherche des yeux. */
+const LEGENDE_VIRGULE =
+	'La virgule se pose avec le bouton virgule du pavé. Les petits traits montrent où elle peut aller.';
+
+const consigneDe = (ex: Tableau) => (ex.virguleLibre ? CONSIGNE_VIRGULE : CONSIGNE);
+const legende = (ex: Tableau) => (ex.virguleLibre ? LEGENDE_VIRGULE : LEGENDE);
 /* Débordement du tableau (#711 critère 13) : AUCUN texte dans l'écran d'exercice. Le
    signalement s'y fait par la jauge de défilement, muette et permanente (`.tc-jauge`,
    `styles/tableau-conversion.scss`) ; l'invitation à tourner l'appareil vit dans l'aide
@@ -98,6 +151,12 @@ let idx = 0;
 let score = 0;
 let cells: Cellule[] = [];
 let active = 0;
+/* Mode « virgule » (#711 lot 4) : index de la case APRÈS laquelle l'enfant a posé sa
+   virgule, `null` tant qu'elle ne l'est pas. Toujours la DERNIÈRE case d'une colonne — une
+   colonne de tête à deux chiffres est un artefact de la tranche fixe (elle encaisse les
+   valeurs jusqu'à 20), pas un objet de classe : y glisser une virgule inventerait une
+   erreur qui n'existe pas au tableau noir. Reste `null` dans le mode `tableau`. */
+let virguleCase: number | null = null;
 let frozen = false; // après validation : plus de saisie
 let keyHandler: ((e: KeyboardEvent) => void) | null = null;
 let resizeHandler: (() => void) | null = null;
@@ -163,9 +222,16 @@ function demarrer(l: LessonDef, m: ExerciseMode, qs: Tableau[], depart = 0, pts 
 		mode: m ?? null,
 		etat: () => ({ questions, idx, score }),
 		render: renderQuestion,
-		aide: 'tableau',
+		// L'aide suit le MODE, pas le runner : placer la virgule n'est pas un geste de plus
+		// dans le même tableau, c'est une autre question posée à l'enfant.
+		aide: typeAide(),
 	});
 }
+
+/* Aide contextuelle du mode courant (#711 lot 4). Lue sur l'exercice et non sur `mode`, pour
+   que le refus du générateur fasse foi : un mode « virgule » forcé hors CM1 rend un tableau
+   ordinaire, et c'est l'aide ordinaire qu'il faut alors montrer. */
+const typeAide = (): TypeAide => (questions[idx]?.virguleLibre ? 'tableauVirgule' : 'tableau');
 
 export function runLeconTableau(lessonId: string, m: ExerciseMode): void {
 	const l = getLessonById(lessonId);
@@ -212,17 +278,26 @@ function colonneHTML(
 			return html`<button type="button" class="tc-cell${col.transit ? ' tc-cell--transit' : ''}" data-i="${i}" data-answer="${cellsArg[i].attendu}" aria-label="${cellsArg[i].aria}"></button>`;
 		}),
 	);
-	// Virgule fixe (posée par l'app en v1) : élément décoratif entre deux colonnes.
+	// Virgule POSÉE PAR L'APP (mode `tableau`) : glyphe décoratif entre deux colonnes.
 	const virgule =
-		ex.virguleApres === colIndex
+		!ex.virguleLibre && ex.virguleApres === colIndex
 			? html`<span class="tc-virgule" aria-hidden="true">,</span>`
 			: VIDE;
+	// Virgule À PLACER (mode `virgule`) : un emplacement au bord droit de CHAQUE colonne,
+	// la dernière comprise (l'unité demandée y tombe souvent : « 3 m = ? mm »). Positionné
+	// en absolu dans la colonne, donc à coût de largeur NUL — le tableau déborde déjà en
+	// portrait, et un emplacement qui élargirait ferait sauter le défilement au moment même
+	// où l'enfant pose sa virgule. Inerte : `aria-hidden`, aucun listener (l'état réel est
+	// annoncé par `#tcStatus`, et le geste passe par le pavé).
+	const fente = ex.virguleLibre
+		? html`<span class="tc-fente" data-apres="${colIndex}" aria-hidden="true"></span>`
+		: VIDE;
 	return html`<div class="tc-col${tCls}">
       <div class="tc-head${col.transit ? ' tc-head--transit' : ''}">
         <span class="tc-sym">${col.unite}</span>
         <span class="tc-nom">${pluriel(col.nom)}</span>
       </div>
-      <div class="tc-col-cells">${cases}</div>
+      <div class="tc-col-cells">${cases}</div>${fente}
     </div>${virgule}`;
 }
 
@@ -244,8 +319,8 @@ export function renderTableauBoardHTML(ex: Tableau, cellsArg: Cellule[]): SafeHt
 	const enonce = poserAuTrou(html`${ex.question}`, '@', html`<span class="tc-trou">?</span>`);
 	// Repli du texte parlé aligné sur les autres runners (jamais chaîne vide) : `parle`
 	// est toujours fourni ici, mais on retombe sur l'énoncé si un futur générateur l'omet.
-	const ttsTexte = `${CONSIGNE} ${ex.parle ?? ex.question}`.trim();
-	return html`<p class="tc-consigne"${ttsAttr(ttsTexte)}>${CONSIGNE}</p>
+	const ttsTexte = `${consigneDe(ex)} ${ex.parle ?? ex.question}`.trim();
+	return html`<p class="tc-consigne"${ttsAttr(ttsTexte)}>${consigneDe(ex)}</p>
         <p class="tc-enonce">${enonce}</p>
         <div class="tc-zone">
           <div class="tc-colonne-tableau">
@@ -253,9 +328,9 @@ export function renderTableauBoardHTML(ex: Tableau, cellsArg: Cellule[]): SafeHt
               <div class="tc-table" id="tcTable" role="group" aria-describedby="tcLegende" aria-label="Tableau de conversion">${colonnes}</div>
             </div>
             <div class="tc-jauge tc-jauge--inactive" id="tcJauge" aria-hidden="true"><span class="tc-jauge-curseur"></span></div>
-            <p class="tc-legende" id="tcLegende">${LEGENDE}</p>
+            <p class="tc-legende" id="tcLegende">${legende(ex)}</p>
           </div>
-          ${paveHTML()}
+          ${paveHTML(ex)}
         </div>`;
 }
 
@@ -263,6 +338,7 @@ function renderQuestion(): void {
 	const ex = questions[idx];
 	cells = buildCells(ex); // état mutable de saisie (le board pur ci-dessous consomme LES MÊMES cases)
 	active = 0;
+	virguleCase = null;
 	frozen = false;
 	sheets().innerHTML = html`
     <div class="sprint sprint-lecon tc-runner">
@@ -281,20 +357,28 @@ function renderQuestion(): void {
 	paintAll();
 	majJaugeDefilement();
 	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
-	monterBoutonAide(sheets().querySelector('.sprint-stage'), 'tableau'); // bouton « ? » persistant
+	monterBoutonAide(sheets().querySelector('.sprint-stage'), typeAide()); // bouton « ? » persistant
 }
 
 /* Pavé de chiffres externe (façon pave-signes.ts) : gros boutons ≥ 56 px, aucune ouverture
-   de clavier natif. 1–9, puis effacer + 0. (La virgule reste posée par l'app en v1 ; pour
-   l'ouvrir plus tard, ajouter ici un bouton `data-pave="virgule"` — cf. #394.) */
-function paveHTML(): SafeHtml {
+   de clavier natif. 1–9, puis effacer + 0.
+
+   Mode « virgule » (#711 lot 4) : un 12ᵉ bouton. La grille fait trois colonnes et compte
+   onze boutons, donc la case en bas à droite est DÉJÀ vide — le bouton s'y range sans
+   déplacer un seul chiffre, et la mémoire motrice des dix touches reste intacte (avis
+   designer-ux-enfant). Il n'apparaît que dans ce mode : dans le mode `tableau` il n'aurait
+   rien à faire, et un bouton présent mais inerte se tape quand même. */
+function paveHTML(ex: Tableau): SafeHtml {
 	const btn = (d: number) =>
 		html`<button type="button" class="tc-pave-btn" data-chiffre="${d}">${d}</button>`;
 	const chiffres = joindre([1, 2, 3, 4, 5, 6, 7, 8, 9].map(btn));
+	const virgule = ex.virguleLibre
+		? html`<button type="button" class="tc-pave-btn tc-pave-virgule" data-pave="virgule" aria-label="Placer la virgule">,</button>`
+		: VIDE;
 	return html`<div class="tc-pave" role="group" aria-label="Pavé de chiffres">
       ${chiffres}
       <button type="button" class="tc-pave-btn tc-pave-back" data-pave="effacer" aria-label="Effacer">⌫</button>
-      ${btn(0)}
+      ${btn(0)}${virgule}
     </div>`;
 }
 
@@ -322,6 +406,7 @@ function wireInteraction(): void {
 			if (!(b instanceof HTMLButtonElement)) return;
 			if (b.dataset.chiffre !== undefined) saisir(b.dataset.chiffre);
 			else if (b.dataset.pave === 'effacer') effacer();
+			else if (b.dataset.pave === 'virgule') basculerVirgule();
 			else return;
 			// Après un tap, on ramène le focus sur la CASE active : Entrée y valide (au lieu de
 			// ré-activer le bouton du pavé focalisé → ré-saisie silencieuse), et la frappe
@@ -358,6 +443,14 @@ function wireInteraction(): void {
 			e.preventDefault();
 		} else if (e.key === 'Backspace') {
 			effacer();
+			e.preventDefault();
+		} else if ((e.key === ',' || e.key === '.') && questions[idx].virguleLibre && !e.repeat) {
+			// Le point autant que la virgule : sur un pavé numérique physique, le séparateur
+			// décimal est un point, et refuser la touche que l'enfant a sous le doigt serait
+			// une énigme de plus. Le tableau, lui, n'affiche jamais qu'une virgule.
+			// `!e.repeat` : une touche MAINTENUE ferait clignoter la virgule entre posée et
+			// retirée, là où un chiffre maintenu ne fait que réécrire la même valeur.
+			basculerVirgule();
 			e.preventDefault();
 		} else if (e.key === 'ArrowRight') {
 			setActive(Math.min(active + 1, cells.length - 1), estCaseFocus());
@@ -419,10 +512,22 @@ function paintCell(i: number): void {
 	b.classList.toggle('tc-cell--active', !frozen && i === active);
 	if (!frozen) b.classList.remove('correct', 'wrong');
 	b.setAttribute('aria-current', !frozen && i === active ? 'true' : 'false');
+	if (!frozen) b.setAttribute('aria-label', ariaCase(i));
+}
+
+/* Libellé d'une case, virgule COMPRISE (#711 lot 4). Sans ça, la position de la virgule
+   n'existait que dans l'annonce du geste (`#tcStatus`, qui ne se relit pas) et dans le
+   feedback final : un enfant qui parcourt le tableau case par case au lecteur d'écran, pour
+   se relire avant de valider, n'avait aucun moyen de retrouver où il l'avait posée. Les
+   emplacements eux-mêmes sont `aria-hidden` — ils ne portent aucun texte, seulement une
+   forme — donc c'est la case qui précède la virgule qui doit le dire. */
+function ariaCase(i: number): string {
+	return virguleCase === i ? `${cells[i].aria}, virgule après` : cells[i].aria;
 }
 
 function paintAll(): void {
 	cells.forEach((_, i) => paintCell(i));
+	peindreVirgule();
 	refreshVerif();
 }
 
@@ -485,9 +590,89 @@ function saisir(d: string): void {
 	paintCell(active);
 	if (focusSuit) cellBtn(active)?.focus();
 	// Retour vocal (surtout path pavé, focus hors case) : ce qu'on vient d'écrire, où.
-	announce(`${cells[prev].aria} : ${d}`);
+	announce(`${cells[prev].aria} : ${d}${resteLaVirgule()}`);
 	garderCaseActiveEnVue();
 	refreshVerif();
+}
+
+/* Pose, déplace ou retire la virgule (#711 lot 4). Elle va à la frontière de colonne qui
+   suit la case ACTIVE — jamais entre les deux chiffres d'une tête (cf. `virguleCase`). Une
+   pression au même endroit la retire : c'est la seule façon de revenir en arrière, et elle
+   tient dans le bouton qu'on vient d'utiliser.
+
+   Le curseur n'avance PAS après la pose, contrairement à un chiffre : la virgule ne remplit
+   pas une case, elle marque un bord. Faire sauter la case active ici donnerait l'impression
+   d'avoir écrit quelque chose. */
+/* Ce qu'il reste à faire, accolé au message du geste plutôt qu'annoncé à part : un enfant au
+   lecteur d'écran ne voit pas les emplacements (`aria-hidden`), et « Vérifier » désactivé est
+   sauté à la tabulation — sans cette phrase, le blocage n'a aucune cause perceptible. Un seul
+   `announce` par geste, jamais deux qui se couperaient (avis relecteur-accessibilite). */
+function resteLaVirgule(): string {
+	if (!questions[idx].virguleLibre || virguleCase !== null) return '';
+	return cells.some((c) => c.valeur === '') ? '' : ' Il reste la virgule à placer.';
+}
+
+function basculerVirgule(): void {
+	const ex = questions[idx];
+	if (frozen || !ex.virguleLibre) return;
+	const cible = derniereCaseDe(ex, colonneDeCase(ex, active));
+	if (virguleCase === cible) {
+		virguleCase = null;
+		announce(`Virgule retirée.${resteLaVirgule()}`);
+	} else {
+		virguleCase = cible;
+		// On annonce la POSITION FINALE, jamais le trajet : une région `role=status` qui
+		// raconte « déplacée de X à Y » se fait couper par l'annonce suivante et noie
+		// l'information utile (avis specialiste-troubles-apprentissage).
+		announce(`Virgule après les ${pluriel(cells[cible].col.nom)}.`);
+	}
+	peindreVirgule();
+	// Les libellés des cases portent la virgule : deux peuvent changer d'un coup (celle qu'on
+	// quitte, celle qu'on rejoint), et repeindre toute la ligne coûte moins cher que suivre
+	// laquelle était l'ancienne.
+	cells.forEach((_, i) => paintCell(i));
+	garderCaseActiveEnVue();
+	refreshVerif();
+}
+
+/* Place le glyphe dans SON emplacement et retire les autres marques. Les emplacements vides
+   ne se montrent que tant qu'aucune virgule n'est posée : avant, ils disent « il en manque
+   une quelque part » (ce qui rend lisible le bouton « Vérifier » encore gris) ; après, ils
+   ne seraient plus que des leurres à balayer. */
+function peindreVirgule(): void {
+	const table = sheets().querySelector<HTMLElement>('#tcTable');
+	if (!table) return;
+	const ex = questions[idx];
+	table.classList.toggle('tc-table--virgule-posee', virguleCase !== null);
+	for (const f of table.querySelectorAll<HTMLElement>('.tc-fente')) {
+		const col = Number(f.dataset.apres);
+		f.classList.toggle(
+			'tc-fente--posee',
+			virguleCase !== null && derniereCaseDe(ex, col) === virguleCase,
+		);
+	}
+}
+
+/* Correction de la virgule : son emplacement porte SON propre verdict, distinct de celui
+   des cases. Quand elle est fausse, l'emplacement attendu est montré à son tour — c'est la
+   même règle que partout ailleurs après une erreur, la réponse est déjà révélée dans le
+   feedback, donc rien ne « fuite ». Sans marque à sa place, la seule erreur possible sur un
+   tableau aux sept chiffres justes n'aurait aucune trace à l'écran.
+
+   `ok` à `null` = on RÉVÈLE sans juger, pour « Je ne sais pas, montre-moi » : ce chemin ne
+   marque déjà aucune case ✓/✗ (elles ne sont pas toutes remplies), il ne jugerait pas plus
+   justement une virgule posée à moitié d'une réponse. */
+function marquerVirgule(ex: Tableau, ok: boolean | null): void {
+	if (!ex.virguleLibre) return;
+	const table = sheets().querySelector<HTMLElement>('#tcTable');
+	if (!table) return;
+	const attendue = caseVirguleAttendue(ex);
+	for (const f of table.querySelectorAll<HTMLElement>('.tc-fente')) {
+		const bord = derniereCaseDe(ex, Number(f.dataset.apres));
+		if (ok !== null && bord === virguleCase)
+			f.classList.add(ok ? 'tc-fente--juste' : 'tc-fente--fausse');
+		if (ok !== true && bord === attendue) f.classList.add('tc-fente--attendue');
+	}
 }
 
 function effacer(): void {
@@ -514,17 +699,32 @@ function effacer(): void {
    à re-balayer, l'avance auto amène déjà sur la case vide suivante). */
 function refreshVerif(): void {
 	const verif = sheets().querySelector('#tcVerif') as HTMLButtonElement | null;
-	if (verif) verif.disabled = cells.some((c) => c.valeur === '');
+	if (verif) verif.disabled = !reponseComplete();
+}
+
+/* Réponse complète = toutes les cases remplies, ET la virgule posée quand le mode la demande.
+   Le blocage ne révèle rien ici, précisément parce que le mode ne tire que des conversions à
+   réponse décimale : la virgule est attendue sur tous ses items. Sur un mode où elle ne le
+   serait que parfois, ce même blocage dirait « ta réponse est décimale ». */
+function reponseComplete(): boolean {
+	if (cells.some((c) => c.valeur === '')) return false;
+	return !questions[idx].virguleLibre || virguleCase !== null;
 }
 
 function verifier(): void {
-	if (frozen || cells.some((c) => c.valeur === '')) return;
+	if (frozen || !reponseComplete()) return;
 	frozen = true;
 	const ex = questions[idx];
-	let correct = true;
+	// Deux verdicts SÉPARÉS, et non un « faux » global. Ce sont deux compétences distinctes
+	// du programme — la valeur positionnelle des chiffres d'un côté, la lecture du tableau
+	// dans l'unité demandée de l'autre (avis pedagogue-primaire) — et un enfant qui voit sa
+	// série de cases justes repeinte en rouge pour une virgule conclut qu'il a tout raté
+	// (avis specialiste-troubles-apprentissage).
+	let chiffresOk = true;
+	const virguleOk = !ex.virguleLibre || virguleCase === caseVirguleAttendue(ex);
 	cells.forEach((c, i) => {
 		const ok = c.valeur === c.attendu;
-		correct = correct && ok;
+		chiffresOk = chiffresOk && ok;
 		const b = cellBtn(i);
 		if (b) {
 			b.classList.remove('tc-cell--active');
@@ -533,12 +733,16 @@ function verifier(): void {
 			// Justesse exposée aux technologies d'assistance (le ✓/✗ CSS ::after ne l'est pas) :
 			// la réponse est déjà révélée dans le feedback, donc `attendu` ne « fuite » rien.
 			b.setAttribute('aria-invalid', String(!ok));
+			// `ariaCase` et non `c.aria` : la virgule reste audible après la correction, quand
+			// l'enfant relit son tableau pour comprendre ce qui a été compté faux.
 			b.setAttribute(
 				'aria-label',
-				ok ? `${c.aria}, correct` : `${c.aria}, incorrect, attendu ${c.attendu}`,
+				ok ? `${ariaCase(i)}, correct` : `${ariaCase(i)}, incorrect, attendu ${c.attendu}`,
 			);
 		}
 	});
+	const correct = chiffresOk && virguleOk;
+	marquerVirgule(ex, virguleOk);
 	if (correct) score++;
 	// La réponse attendue, écrite comme dans les énoncés (#501) : « 20 000 mL », pas
 	// « 20000 mL ». UNE variable pour ses trois usages — le journal encadrant, le feedback
@@ -551,9 +755,15 @@ function verifier(): void {
 	// chiffre parasite dans une colonne de transit s'y voit donc. La garde `frozen` ci-dessus
 	// assure une seule capture par question.
 	if (!correct) {
+		// La virgule POSÉE prime sur l'unité demandée (#711 lot 4) : elle fait partie de la
+		// réponse. Sans ça, un enfant qui l'a mise un cran trop loin verrait sa réponse
+		// journalisée à la bonne valeur, et le parent lirait un tableau juste là où l'écran
+		// affichait un tableau faux. Dans le mode `tableau`, `virguleCase` reste `null` et la
+		// relecture est exactement celle d'avant.
 		const saisi = nombreTableauSaisi(
 			cells.map((c) => ({ unite: c.col.unite, valeur: c.valeur })),
 			ex.answerUnit,
+			virguleCase ?? undefined,
 		);
 		capterErreur({
 			text: ex.question,
@@ -568,13 +778,26 @@ function verifier(): void {
 	// « Continuer ▶ » prend le relais.
 	masquerDecision(sheets());
 	const explication = explicationRangVide(ex);
+	// Erreur de virgule SEULE : on le dit, au lieu de laisser un « c'est faux » global sur un
+	// tableau dont les sept chiffres sont justes. C'est aussi ce qui permet à l'enfant de
+	// cibler sa reprise — celui qui ne voit qu'un « faux » doit tout revérifier, y compris ce
+	// qui était bon (avis pedagogue-primaire et specialiste-troubles-apprentissage).
+	// On nomme AUSSI l'endroit : « tes chiffres sont bons » suivi de « la bonne réponse
+	// était… » laisse l'enfant chercher ce qui cloche (constat redacteur-contenu-francais),
+	// et oblige un enfant au lecteur d'écran à retrouver le rang en comparant deux nombres à
+	// l'oreille (constat relecteur-accessibilite). C'est le seul canal qui porte le verdict
+	// de la virgule hors du visuel.
+	const noteVirgule =
+		chiffresOk && !virguleOk
+			? `Tes chiffres sont bons, mais la virgule allait après les ${pluriel(cells[caseVirguleAttendue(ex)].col.nom)}. `
+			: '';
 	wireNext(
 		sheets().querySelector('#tcActions') as HTMLElement,
 		sheets().querySelector('#tcFeedback') as HTMLElement,
 		{
 			feedbackHTML: correct
 				? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
-				: html`<span class="lqcm-ko">La bonne réponse était <strong>${attendueTexte}</strong>.${explication ? html` ${explication}` : ''}</span>`,
+				: html`<span class="lqcm-ko">${noteVirgule}La bonne réponse était <strong>${attendueTexte}</strong>.${explication ? html` ${explication}` : ''}</span>`,
 			// Ce runner ne disait RIEN à la correction (#505) : `#tcStatus` existait, mais
 			// ne servait qu'à l'écho de SAISIE au pavé (« case mètres : 3 »). Un enfant au
 			// lecteur d'écran s'entendait dicter ses propres chiffres, puis plus rien.
@@ -583,7 +806,9 @@ function verifier(): void {
 			// `#revStatus` (docs/architecture/ui.md) — « deux responsabilités dans une même
 			// région finissent par se marcher dessus ». Les deux ont ici des rythmes
 			// opposés : l'écho parle à chaque frappe, le verdict une fois, à la fin.
-			resume: correct ? VERDICT_OK : verdictKo(`La bonne réponse était ${attendueTexte}.`),
+			resume: correct
+				? VERDICT_OK
+				: verdictKo(`${noteVirgule}La bonne réponse était ${attendueTexte}.`),
 			statut: '#tcVerdict',
 			isLast: idx >= questions.length - 1,
 			// Étayage (#490) : proposé sur un tableau raté, jamais sur un tableau juste, et
@@ -667,6 +892,7 @@ function passer(): void {
 		lessonId: lesson.id,
 	});
 	paintAll(); // retire la surbrillance de la case active (plus de saisie en cours)
+	marquerVirgule(ex, null); // montre OÙ la virgule allait, sans juger celle qui est posée
 	const explication = explicationRangVide(ex);
 	// L'index avance AVANT tout affichage : la photo de reprise (#498) est prise quand
 	// l'enfant quitte l'écran, et un tableau déjà révélé ne doit jamais lui être reposé.

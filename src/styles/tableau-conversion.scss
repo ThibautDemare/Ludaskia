@@ -279,7 +279,11 @@
 	border-radius: 50%;
 	font-size: 11px;
 	font-weight: 900;
-	color: #fff;
+	/* PAS `#fff` (relecture a11y #711 lot 4) : mesuré 1,91:1 sur `--ok` et 2,71:1 sur `--ko`
+	   en thème Nuit, sous le 3:1 exigé d'une icône porteuse de sens (WCAG 1.4.11). Le token
+	   `--on-accent` existe précisément pour ça et rend 9,86:1 / 6,95:1 sur les mêmes fonds.
+	   Défaut ANTÉRIEUR au lot, corrigé ici plutôt que recopié une fois de plus. */
+	color: var(--on-accent);
 }
 .tc-cell.correct::after {
 	content: '✓';
@@ -299,6 +303,131 @@
 	font-size: 1.6rem;
 	font-weight: 800;
 	color: var(--ink);
+}
+
+/* ---- Virgule À PLACER (#711 lot 4, mode « virgule ») ----
+   Un emplacement au bord DROIT de chaque colonne, la dernière comprise. Positionné en
+   ABSOLU : coût de largeur nul, donc le tableau ne s'élargit pas et le défilement ne saute
+   pas au moment où l'enfant pose sa virgule (avis designer-ux-enfant — une action dont on
+   ne voit pas l'effet, ou qui déplace le contenu sous le doigt, est pire que pas d'action).
+   Inerte : `pointer-events: none`, aucun listener. Ce n'est pas une seconde façon de viser
+   (un écart inter-colonnes de 12 px ne fera jamais une cible tactile), c'est un repère.
+
+   Distinction juste / faux / attendu par FORME autant que par couleur (règle de cette
+   feuille, WCAG 1.4.1) : pastille ✓ ou ✗ à côté du glyphe, et l'emplacement attendu porte
+   un liseré plein là où la virgule posée n'en a pas.
+
+   PIÈGE DE SPÉCIFICITÉ, mesuré en relecture et corrigé ici : le masquage des repères vides
+   porte DEUX classes (`.tc-table--virgule-posee .tc-fente::before`, soit 0-2-1) quand les
+   règles de verdict n'en portent qu'une (0-1-1). Écrit naïvement, le masquage gagnait donc
+   sur les pastilles ✓/✗ ET sur le liseré de l'emplacement attendu : le verdict de la
+   virgule ne tenait plus qu'à la COULEUR d'un glyphe minuscule, exactement ce que cette
+   feuille s'interdit. D'où les `:not()` ci-dessous, qui sortent du masquage tout
+   emplacement porteur d'un état. Les tests e2e ne le voyaient pas — ils vérifiaient les
+   classes, pas le rendu ; ils lisent désormais le contenu calculé du pseudo-élément. */
+.tc-col {
+	position: relative;
+}
+.tc-fente {
+	position: absolute;
+	right: -7px;
+	bottom: 4px;
+	width: 14px;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	pointer-events: none;
+}
+/* Repère du VIDE : dit qu'une virgule se pose quelque part, jamais où. Il y en a un
+   partout, donc il n'indique rien ; il disparaît dès qu'une virgule est posée, où les
+   autres ne seraient plus que des leurres à balayer. C'est lui qui rend lisible le bouton
+   « Vérifier » encore gris (avis specialiste-troubles-apprentissage). */
+.tc-fente::before {
+	content: '';
+	width: 0;
+	height: 16px;
+	border-left: 2px dashed var(--grey);
+}
+.tc-table--virgule-posee
+	.tc-fente:not(.tc-fente--juste):not(.tc-fente--fausse):not(.tc-fente--attendue)::before {
+	content: none;
+}
+.tc-fente--posee::after {
+	content: ',';
+	font-family: var(--ui);
+	font-size: 1.6rem;
+	font-weight: 800;
+	line-height: 0.62;
+	color: var(--ink);
+}
+.tc-fente--juste::after {
+	color: var(--ok);
+}
+.tc-fente--fausse::after {
+	color: var(--ko);
+}
+/* Pastilles de verdict, même langage que les cases (.tc-cell.correct/.wrong), mais posées
+   À CÔTÉ du glyphe et non au-dessus : les cases portent déjà la leur en haut à droite, et
+   l'emplacement de la virgule est à ce même bord droit de colonne — les deux se seraient
+   recouvertes. Ici la pastille reste dans la rangée des chiffres, donc jamais rognée par le
+   cadre de défilement non plus. */
+.tc-fente--juste::before,
+.tc-fente--fausse::before {
+	position: absolute;
+	bottom: 20px;
+	width: 15px;
+	height: 15px;
+	line-height: 15px;
+	border: 0;
+	border-radius: 50%;
+	text-align: center;
+	font-size: 10px;
+	font-weight: 900;
+	color: var(--on-accent);
+}
+.tc-fente--juste::before {
+	content: '✓';
+	background: var(--ok);
+}
+.tc-fente--fausse::before {
+	content: '✗';
+	background: var(--ko);
+}
+/* Où elle aurait dû aller : montré SEULEMENT après une erreur, quand la réponse est de
+   toute façon déjà révélée dans le feedback. Glyphe en creux + liseré, pour ne pas se
+   confondre avec la virgule réellement posée. */
+.tc-fente--attendue::after {
+	content: ',';
+	font-family: var(--ui);
+	font-size: 1.6rem;
+	font-weight: 800;
+	line-height: 0.62;
+	color: var(--ok);
+}
+/* Liseré PLEIN, là où le repère du vide est en tirets : la forme dit « c'est ici », pas
+   « ça pourrait être ici ». Sans quoi l'emplacement attendu et un emplacement libre ne se
+   distingueraient que par la couleur. */
+.tc-fente--attendue::before {
+	content: '';
+	border-left: 3px solid var(--ok);
+	height: 22px;
+	width: 0;
+}
+
+/* Bouton virgule du pavé : même gabarit que les chiffres (≥ 56 px, jamais rétréci), mais
+   bord plein --accent au lieu de --accent-soft, fond teinté et glyphe agrandi — il n'écrit
+   pas dans une case, il marque un bord. Le bord seul ne suffisait pas : la virgule est le
+   plus petit glyphe du pavé, et à 1,5rem elle se perdait parmi dix chiffres (constat
+   designer-ux-enfant). Il se range dans la case en bas à droite, laissée vide par les onze
+   boutons existants : aucun chiffre ne bouge. */
+.tc-pave-virgule {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+	font-size: 2rem;
+	/* Le glyphe pend sous la ligne de base : on le remonte pour qu'il reste centré dans la
+	   touche comme les chiffres, au lieu de coller au bord bas. */
+	line-height: 0.7;
+	padding-bottom: 12px;
 }
 
 /* Légende courte PERMANENTE sous le tableau (rappel à chaque affichage, avis dys). */
@@ -392,6 +521,17 @@
 }
 .tc-demo-cell--transit b {
 	color: var(--grey);
+}
+/* Virgule de l'exemple illustratif du mode « virgule » (#711 lot 4) : alignée sur le bas
+   des cases, comme dans le tableau réel, et non sur leur milieu — c'est sa position par
+   rapport à la colonne qui porte le sens de l'image. */
+.tc-demo-virgule {
+	align-self: flex-end;
+	margin: 0 -6px 4px;
+	font-family: var(--ui);
+	font-size: 1.5rem;
+	font-weight: 800;
+	color: var(--ink);
 }
 
 /* ============================================================

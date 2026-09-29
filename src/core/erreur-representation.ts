@@ -174,15 +174,32 @@ export interface CelluleTableau {
    niveau, donc la colonne cible est presque toujours suivie d'autres colonnes et précédée de
    zéros de tête. Sans ce nettoyage, une réponse juste à 300 cm se journaliserait « 000300,0 »
    et le parent lirait un nombre que son enfant n'a pas écrit. */
-export function nombreTableauSaisi(cells: CelluleTableau[], answerUnit: string): string {
+export function nombreTableauSaisi(
+	cells: CelluleTableau[],
+	answerUnit: string,
+	virguleApresCase?: number,
+): string {
 	const chiffres = cells.map((c) => c.valeur);
 	// Dernière case de la colonne cible (une colonne de tête peut porter 2 chiffres).
-	const fin = cells.reduce((last, c, i) => (c.unite === answerUnit ? i : last), -1);
-	if (fin < 0) return chiffres.join('');
-	const entier = chiffres
-		.slice(0, fin + 1)
-		.join('')
-		.replace(/^0+(?=\d)/, '');
+	const cible = cells.reduce((last, c, i) => (c.unite === answerUnit ? i : last), -1);
+	// Mode « la virgule est à placer » (#711 lot 4) : la POSITION de la virgule fait partie
+	// de la réponse, elle prime donc sur l'unité demandée. Sans ça, un enfant qui pose sa
+	// virgule un cran trop loin verrait sa réponse journalisée à la bonne valeur, et le
+	// parent lirait un tableau juste là où l'écran affichait un tableau faux.
+	const fin = virguleApresCase ?? cible;
+	// Repli « unité demandée absente du tableau » : sans virgule posée NI colonne cible, aucun
+	// rang où couper, on rend les chiffres bruts. Mais une virgule POSÉE fait toujours foi, y
+	// compris au bord gauche (« 0,3 ») : la faire retomber dans ce repli montrerait au parent
+	// un nombre mille fois plus grand que celui écrit à l'écran, soit l'inverse de ce que le
+	// journal doit dire. La formule reste la même à tous les rangs — D / 10^(cases restantes).
+	if (fin < 0 && virguleApresCase === undefined) return chiffres.join('');
+	// `|| '0'` ne sert QUE pour une virgule au bord gauche (partie entière vide) : un nombre
+	// s'écrit « 0,3 », jamais « ,3 ». Partout ailleurs la tranche contient au moins un chiffre.
+	const entier =
+		chiffres
+			.slice(0, fin + 1)
+			.join('')
+			.replace(/^0+(?=\d)/, '') || '0';
 	const decimal = chiffres
 		.slice(fin + 1)
 		.join('')

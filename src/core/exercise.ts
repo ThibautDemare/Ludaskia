@@ -328,9 +328,16 @@ export type Exercise =
 	// `posed` : pas de réponse texte unique. `question` porte l'énoncé (consigne / TTS,
 	// même forme que la saisie) ; `answer` la valeur cible (révélation / filet). Les
 	// colonnes vont TOUJOURS de la grande à la petite unité (ordre spatial stable, avis
-	// dys). `virguleApres` = index de colonne après laquelle poser la virgule fixe
-	// (absent = conversion entière) ; stocké même si la virgule reste posée par l'app en
-	// v1, pour ouvrir une saisie de la virgule sans refonte (#394).
+	// dys). `virguleApres` = index de colonne après laquelle la virgule se place, avec
+	// DEUX régimes selon `virguleLibre` (#711 lot 4) :
+	//   - `virguleLibre` absent/faux (mode « tableau ») : l'application DESSINE la virgule,
+	//     et seulement quand la réponse est décimale — `virguleApres` est alors absent sur
+	//     les conversions entières ;
+	//   - `virguleLibre` vrai (mode « virgule », CM1) : c'est l'ENFANT qui la place, et
+	//     `virguleApres` porte la position ATTENDUE. Elle est définie sur TOUS les items,
+	//     décimaux ou non : la règle de classe ne conditionne pas la virgule au résultat
+	//     (« juste après la colonne de l'unité demandée »), et la conditionner ici
+	//     apprendrait à l'enfant que l'absence de demande vaut réponse entière.
 	| {
 			type: 'tableauConversion';
 			question: string;
@@ -343,6 +350,7 @@ export type Exercise =
 			uniteConnue: string;
 			colonnes: TableauColonne[];
 			virguleApres?: number;
+			virguleLibre?: boolean;
 			parle?: string;
 	  }
 	// Résolution de problèmes (#199) — énoncé textuel + 1 sous-question (problème
@@ -396,6 +404,22 @@ export interface ModeOption {
 	hint?: string; // sous-ligne d'aide optionnelle (« plus facile pour commencer »)
 	icon?: IconName; // pictogramme (icône Phosphor, rendu par ui/icon.ts)
 	recommended?: boolean; // mode par défaut / conseillé (mis en avant, choisi si aucun)
+	/** Niveaux scolaires auxquels ce mode est PROPOSÉ (#711). Absent = tous les niveaux
+	 *  de la leçon, ce qui reste le cas courant. Sert au mode « virgule » du tableau de
+	 *  conversion, qui suppose l'écriture décimale et n'a donc rien à faire au CE2.
+	 *
+	 *  Pourquoi ici et pas dans la fabrique : `ExerciseType.modes` est un tableau STATIQUE,
+	 *  et le combinateur `calibrated` (core/level-combinators.ts) étale les métadonnées du
+	 *  niveau le plus BAS — conditionner la liste dans la fabrique ferait hériter au CM1
+	 *  celle du CE2. Le niveau n'est connu qu'à la lecture, d'où un filtre au point de
+	 *  lecture (`modesPourNiveau`) plutôt qu'une liste bâtie par niveau.
+	 *
+	 *  ATTENTION : c'est un filtre d'AFFICHAGE, pas une sécurité. Un mode masqué reste
+	 *  atteignable par une URL directe ou un instantané de reprise périmé — le générateur
+	 *  concerné doit donc le refuser lui-même. Les gates qui énumèrent `type.modes`
+	 *  (couverture e2e #598, langue enfant) continuent de le voir, et c'est voulu : un mode
+	 *  restreint à un niveau doit être joué par une spec comme les autres. */
+	levels?: SchoolLevel[];
 }
 
 /** Consigne de fiche (#42), éventuellement DÉCLINÉE PAR NIVEAU (#436).
@@ -493,6 +517,17 @@ export function depuisTuilesNombre({ type: _type, ...spec }: ExerciseTuiles): Tu
 /** Le type propose-t-il ce mode ? (remplace les `modes.includes(...)` codés en dur.) */
 export function hasMode(type: ExerciseType, mode: ExerciseMode): boolean {
 	return !!type.modes?.some((m) => m.id === mode);
+}
+
+/** Modes réellement PROPOSABLES à un niveau (#711) : la liste déclarée, moins ceux dont
+ *  `levels` exclut ce niveau. Point de lecture UNIQUE des écrans qui présentent un choix
+ *  à l'enfant — le compte de modes comme les boutons doivent sortir d'ici, sinon une leçon
+ *  afficherait un écran de choix pour un mode qu'elle ne propose pas à cette classe.
+ *  Sans niveau (appelants qui n'en ont pas sous la main), rien n'est filtré. */
+export function modesPourNiveau(type: ExerciseType, niveau?: SchoolLevel): ModeOption[] {
+	const ms = type.modes ?? [];
+	if (!niveau) return ms;
+	return ms.filter((m) => !m.levels || m.levels.includes(niveau));
 }
 
 /** Mode par défaut : le mode « recommended », sinon le premier listé, sinon aucun. */

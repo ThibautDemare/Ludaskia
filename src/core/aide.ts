@@ -34,6 +34,7 @@ export type TypeAide =
 	| 'atelier'
 	| 'lettres'
 	| 'tableau'
+	| 'tableauVirgule'
 	| 'appariement'
 	| 'clicMot'
 	| 'segmentMot'
@@ -101,6 +102,29 @@ export const AIDES: Record<TypeAide, AideContenu> = {
 		titre: 'Comment remettre les lettres ?',
 		etapes: ['Touche les lettres dans le bon ordre.', 'Elles forment ton mot en haut.'],
 		reparation: "Tu t'es trompé ? Touche une lettre placée pour la déplacer ou l'enlever.",
+	},
+	// Mode « la virgule est à placer » (#711 lot 4) : aide DISTINCTE, et non une phrase de
+	// plus dans celle du tableau. C'est ici que vit la règle (« juste après la colonne de
+	// l'unité demandée ») : la légende sous le tableau, elle, ne dit que ce que les repères
+	// signifient. Trouver la colonne est justement ce que l'exercice demande — une règle
+	// posée en permanence à l'écran rendrait la marche cosmétique, alors qu'à la demande,
+	// derrière le bouton « ? », elle aide celui qui bute sans souffler la réponse aux autres.
+	tableauVirgule: {
+		titre: 'Où va la virgule ?',
+		etapes: [
+			'Écris un chiffre dans chaque case, de gauche à droite.',
+			"Cherche la colonne de l'unité qu'on te demande.",
+			// Le bouton est NOMMÉ, pas cité par son glyphe : « , » entre guillemets est presque
+			// invisible à l'écran, et la ponctuation n'est pas prononcée par le TTS — la voix
+			// aurait dit « touche le bouton, la virgule se pose », sans jamais dire lequel.
+			'Touche le bouton virgule du pavé : elle se pose juste après cette colonne.',
+		],
+		alternative:
+			"Le tableau dépasse de l'écran ? Fais-le glisser, ou tourne l'appareil, pour voir plus de colonnes.",
+		// Pas « retouche » : le verbe veut dire « corriger » autant que « toucher de nouveau »,
+		// et un enfant de CM1 peut lire les deux (constat redacteur-contenu-francais).
+		reparation:
+			'La virgule est mal placée ? Touche la bonne colonne, puis appuie de nouveau sur le bouton virgule.',
 	},
 	tableau: {
 		titre: 'Comment remplir le tableau ?',

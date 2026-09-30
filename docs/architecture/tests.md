@@ -1350,3 +1350,15 @@ large), pas pour leurs modes. Ce que le mode `virgule` ajoute au rendu — un bo
 au pavé, des repères au bord des colonnes — est tenu par `e2e/tableau-conversion.spec.ts`,
 qui lit le contenu calculé des pseudo-éléments, donc plus finement qu'une comparaison de
 pixels ne le ferait.
+
+## Un test dérive ses attendus à la main, il ne réimplémente pas la règle (#711 lot 5)
+
+**REJET ÉCRIT — l'oracle qui recopie la règle.** Un test qui recalcule son attendu avec la
+même règle que le code éprouvé recopie l'erreur des deux côtés : il passe, et ne prouve
+rien. Les attendus s'écrivent à la main, cas par cas, dérivés de l'énoncé (« 60 mm = ? cm :
+le `0` des mm est exigé, celui des dm ne l'est pas »).
+
+Cas constaté par `relecteur-qualite` : `verdictAttendu` dans `tests/tableau-verdict.test.ts`
+reprend les règles de `verdictsCases` (`core/tableau-verdict.ts`). Il est **laissé en place**,
+les cas écrits à la main autour de lui portant l'essentiel de la preuve, mais le motif ne
+doit pas se propager à un nouveau test.

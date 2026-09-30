@@ -34,9 +34,12 @@
    ajoutait un état à comprendre pour un gain nul.
 
    La virgule a un EMPLACEMENT VISIBLE (`.tc-fente`) à chaque frontière de colonne tant
-   qu'elle n'est pas posée : c'est ce qui rend lisible le bouton « Vérifier » encore gris
-   (avis specialiste-troubles-apprentissage — un blocage dont la cause ne se voit pas dans
-   le tableau est un obstacle qu'on ne peut ni voir ni raisonner). Les emplacements sont
+   qu'elle n'est pas posée : c'est ce qui montre DANS LE TABLEAU qu'il reste une virgule à
+   placer (avis specialiste-troubles-apprentissage — ce qui manque à une réponse doit se
+   voir là où on répond, pas seulement s'entendre après coup). Ce repère tenait aussi, au
+   lot 4, la lisibilité d'un bouton « Vérifier » encore gris ; depuis le lot 5 le bouton ne
+   se grise plus, et l'emplacement ne sert plus qu'à ce qu'il a toujours dit. Les
+   emplacements sont
    INERTES : ils ne sont pas une seconde façon de viser, et ils ne disent pas où aller
    puisqu'il y en a un partout. ÉCARTÉ pour la même raison inverse : une pastille sur le
    bouton virgule tant qu'aucune n'est posée (proposition designer) — la virgule étant
@@ -811,9 +814,6 @@ function effacer(): void {
 	garderCaseActiveEnVue();
 }
 
-/* Validation bloquée tant qu'une case est vide (entraîne les zéros de transit) : « Vérifier »
-   ne s'active que lorsque TOUTES les cases sont remplies (avis dys : pas de message d'erreur
-   à re-balayer, l'avance auto amène déjà sur la case vide suivante). */
 /* « Vérifier » est actif DÈS l'apparition de la question et le reste (#711 lot 5,
    critère 33). Il était gris tant qu'une case restait vide, ce qui supposait que toutes
    devaient être remplies — ce n'est plus vrai. Et un bouton gris sans explication est le
@@ -1024,8 +1024,10 @@ function explicationRangVide(ex: Tableau): string {
 }
 
 /* « Je ne sais pas, montre-moi » (#467) : la réponse est révélée en TEXTE (« 3 000 m »),
-   comme après une erreur, sans corriger les cases — « Vérifier » est justement encore inactif
-   à ce stade (le tableau n'est pas rempli) et marquer ✗ des cases jamais remplies serait faux.
+   comme après une erreur, sans corriger les cases. C'est ce qui sépare ce chemin de
+   « Vérifier », qui depuis le lot 5 est disponible au même moment : l'enfant qui vérifie
+   DEMANDE un verdict et l'obtient, même incomplet ; celui qui dit ne pas savoir demande la
+   réponse, et lui coller des ✗ par-dessus serait lui répondre à côté.
    Les cases déjà écrites restent VISIBLES, à comparer avec la réponse, mais plus modifiables
    (`frozen` + désarmement du DOM par `revelerSolution`). Le tableau compte au dénominateur
    (score inchangé ⇒ 0 XP) et n'est pas rejoué. */
@@ -1042,9 +1044,13 @@ function passer(): void {
 	// EXCEPTION ASSUMÉE, et non un oubli : les autres formats à saisie contrainte journalisent
 	// bien la tentative commencée (un repère déjà placé sur la droite graduée, des cases déjà
 	// cochées d'un QCM multi, une sous-question de problème déjà remplie — cf.
-	// core/probleme-etapes.ts). Ici la réponse n'est pas une case mais la LECTURE de toutes les
-	// cases ensemble : elle n'existe pas tant qu'il en manque une, donc il n'y a aucune réponse
-	// donnée à montrer au parent, même partielle.
+	// core/probleme-etapes.ts).
+	// La raison A CHANGÉ au lot 5, et l'ancienne ne tient plus : on disait que la lecture du
+	// tableau « n'existe pas tant qu'il manque une case », ce qui était vrai quand toutes
+	// étaient exigées. `saisiesPourJournal` sait désormais relire un tableau incomplet, et le
+	// chemin « Vérifier » s'en sert. Ce qui reste vrai ici, c'est autre chose : l'enfant a dit
+	// qu'il ne savait pas. Journaliser sa transcription partielle comme une réponse donnée
+	// montrerait au parent une erreur de conversion là où il y a eu un renoncement.
 	capterPasse({
 		text: ex.question,
 		attendue: attendueTexte,

@@ -626,3 +626,19 @@ n'est pas prononcée. La voix dit « touche le bouton, la virgule se pose », sa
 lequel. Le glyphe est en plus presque invisible à l'écran entre deux guillemets. Nommer le
 bouton (« le bouton virgule du pavé »), quitte à ce que le bouton, lui, n'affiche que son
 signe. Cas posé par l'aide du mode « virgule » (#711 lot 4).
+
+## Le retour d'un tableau de conversion : quoi écrire, quoi ne pas ancrer (#711 lot 5)
+
+Trois lignes de checklist pour tout retour de correction qui décrit ce que l'enfant devait
+poser dans le tableau (`ecritureAttendue`, `noteOubli`, `core/tableau-verdict.ts`) :
+
+- **Dire ce qu'il fallait écrire DANS une colonne** (« il fallait écrire 6 dans les cm »),
+  jamais ce qu'un nombre « s'écrit **en** » (« 60 mm s'écrit 6 en cm »). La seconde forme
+  affirme quelque chose de faux sur le nombre (c'est la ligne du tableau qui s'écrit ainsi,
+  pas la quantité), et « en » se lit déjà « converti en » dans tout l'exercice.
+- **Pas d'adverbe d'ancrage (« Ici, ») en tête d'un appoint de retour.** Il n'ancre rien :
+  l'enfant ne sait pas s'il désigne la case, la question ou le tableau.
+- **REJET ÉCRIT — les symboles d'unité (`cm`) restent dans les phrases lues, pas les noms
+  entiers.** L'énoncé et la réponse révélée les emploient déjà, l'enfant les lit dans
+  l'en-tête de chaque colonne, et la forme à quatre rangs dépasserait vingt-cinq mots en
+  toutes lettres.

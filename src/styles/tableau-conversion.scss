@@ -57,7 +57,14 @@
 	/* Marge de confort au calcul de `scrollIntoView({inline:'nearest'})` : la case ramenée en
 	   vue s'arrête un peu avant le bord au lieu d'y être collée, ce qui laisse voir qu'une
 	   colonne suit. Petite valeur exprès — c'est ce qui permet de garder `'nearest'`, donc le
-	   plus petit déplacement possible, plutôt que `'center'` et son recadrage à chaque frappe. */
+	   plus petit déplacement possible, plutôt que `'center'` et son recadrage à chaque frappe.
+
+	   REJET ÉCRIT (#711 lot 5) : ne PAS aligner cette valeur sur la `marge` de 8 px de
+	   `core/tableau-cadrage.ts`, malgré la ressemblance. Les deux ne servent pas le même geste
+	   et n'ont aucune raison de bouger ensemble : 10 px est la respiration d'un défilement qui
+	   SUIT la saisie case après case, 8 px celle d'un cadrage posé une fois à l'apparition de
+	   la question. Cette propriété CSS ne s'applique d'ailleurs pas à une écriture directe de
+	   `scrollLeft`, donc le cadrage ne la lit jamais. */
 	scroll-padding-inline: 10px;
 }
 
@@ -120,12 +127,18 @@
 	display: inline-flex;
 	align-items: flex-end;
 	/* Écart INTER-colonnes (les 2 cases d'une tête restent, elles, resserrées à 4 px : deux
-	   niveaux de regroupement, 12 contre 4). REJET ÉCRIT (#711 lot 3) : le descendre à 8 px
-	   rendrait 24 px de largeur, et le designer le juge tenable tant que l'écart avec le 4 px
-	   intra-tête reste lisible. Écarté quand même : 24 px ne changent rien au verdict du
-	   portrait (il y manque 254 px) et ne sont plus nécessaires en paysage depuis que le
-	   plafond de scène est relevé. On ne rabote pas un groupement visuel acté en #394 pour un
-	   gain qui ne décide de rien. À rouvrir seulement si une leçon dépasse huit colonnes. */
+	   niveaux de regroupement, 12 contre 4). REJET ÉCRIT, réécrit au lot 5 (#711) — la
+	   première version jugeait contre le mauvais critère, et c'est ça qui mérite d'être
+	   consigné : elle comparait le gain à la largeur du TABLEAU ENTIER (« il manque 254 px,
+	   donc 24 px ne décident de rien »), alors que ce qui doit tenir dans le cadre est
+	   l'INTERVALLE DE LA QUESTION. Contre le bon critère il ne manquait que 19 px au CE2 et
+	   33 px au CM1, et le gain aurait donc décidé de quelque chose.
+	   Écarté quand même, pour une raison qui tient : le lot 5 a trouvé ces pixels ailleurs
+	   (cadre élargi de la gouttière de scène, en-têtes resserrés sous 480 px), donc à coût
+	   nul sur le groupement visuel acté en #394. Et le coût, lui, a augmenté depuis le lot 4 :
+	   la virgule à placer LOGE dans cet écart (`.tc-fente` à `right: -7px`, `.tc-virgule` à
+	   `margin: 0 -6px`, pastilles de 15 px), qu'il faudrait recaler. À ne rouvrir que si une
+	   leçon dépasse huit colonnes. */
 	gap: 12px;
 	padding: 4px;
 }
@@ -553,6 +566,45 @@
 @media (max-width: 480px) {
 	.tc-runner .sprint-stage {
 		padding-inline: 14px;
+	}
+
+	/* Lot 5 (#711, critère 23) : les deux derniers endroits où prendre de la largeur sans
+	   toucher à ce que le hors-périmètre protège (nom d'unité entier sur une ligne, police à
+	   0,66rem, taille tactile des cases, écart inter-colonnes qui loge la virgule du lot 4).
+
+	   Ce qu'il fallait trouver, mesuré à 393 px : l'intervalle `kg↔g` fait 332 px au CE2 et
+	   346 px au CM1 pour un cadre de 313 px. Les masses sont le seul cas dur du catalogue —
+	   leurs colonnes sont dimensionnées par les noms les plus longs (« hectogrammes »,
+	   « décagrammes ») — mais elles couvrent 100 % des items au CE2, où `kg↔g` est la seule
+	   paire de la leçon. Sans ces pixels, AUCUN cadrage ne peut satisfaire le critère 21.
+
+	   (a) Le cadre sort de la gouttière de scène (+28 px). Le tableau est le seul contenu qui
+	   DÉFILE : le mener au bord de la carte ne le tronque pas, ça dit qu'il continue. Les
+	   autres enfants de `.sprint-stage` gardent leur gouttière, donc l'énoncé et le pavé ne
+	   collent à rien. `max-width` reste posé — sans lui `overflow-x` ne mord jamais (cf. le
+	   commentaire de `.tc-wrap`) — mais recalculé sur la largeur élargie. */
+	.tc-runner .tc-wrap {
+		margin-inline: -14px;
+		max-width: calc(100% + 28px);
+	}
+	/* La jauge suit le cadre qu'elle décrit : laissée à sa largeur d'avant, son curseur en
+	   butée ne tomberait plus sur le bord du tableau, et « il n'y a plus rien après » se
+	   lirait 28 px trop tôt.
+
+	   `width` explicite et non `auto` : `.tc-colonne-tableau` est en `display: contents`, donc
+	   la jauge est un enfant direct de `.sprint-stage`, une colonne flex CENTRÉE — en `auto`
+	   elle se dimensionne sur son contenu, qui est un curseur en position absolue, c'est-à-dire
+	   sur RIEN. Mesuré : piste de 0 px, jauge invisible, et les deux tests de jauge du lot 3
+	   rouges. C'est aussi ce que disait déjà le commentaire du `width: 100%` d'origine. */
+	.tc-runner .tc-jauge {
+		margin-inline: -14px;
+		width: calc(100% + 28px);
+	}
+	/* (b) Respiration des en-têtes, 8 px → 6 px (+4 px par colonne, soit +16 px sur les
+	   quatre colonnes de `kg↔g`). C'est de la marge autour du nom, pas une cible tactile :
+	   l'en-tête ne se tape pas. Le nom lui-même n'est ni tronqué ni rétréci ni coupé. */
+	.tc-runner .tc-head {
+		padding-inline: 6px;
 	}
 }
 

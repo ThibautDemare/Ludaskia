@@ -652,11 +652,16 @@ test('mes-masses (CM1) : le mode « virgule » n’est PAS proposé (aucune conv
 	expect(errors).toEqual([]);
 });
 
-/* Critère 19 étendu (#711 lot 4) : la réponse n'est complète que si TOUTES les cases sont
-   remplies ET la virgule posée. Avant #711, "toutes les cases remplies" suffisait — c'est
-   justement ce que ce test protège : que le mode `virgule` ajoute bien une seconde
-   condition, sans laquelle « Vérifier » s'activerait dès la dernière case écrite. */
-test('mes-longueurs (virgule, #711 critère 19 étendu) : Vérifier reste désactivé tant que la virgule n’est pas posée', async ({
+/* Critère 19 du lot 4, RENVERSÉ le 30/09/2026 par le mainteneur (commentaire daté sur #711,
+   lot 5, critère 33). Ce test soutenait que « Vérifier » restait gris tant que la virgule
+   n'était pas posée ; il décrivait le blocage, pas l'exigence. Le blocage a disparu : « Vérifier »
+   est actif dès l'apparition, et un bouton gris sans explication se lit « ça ne marche pas ».
+
+   Ce que le blocage GARDAIT reste vrai sous une autre forme : la virgule reste exigée, et sa
+   place est jugée. Une virgule non posée est maintenant une erreur de virgule ordinaire, dite
+   par le canal qui existe déjà (« Tes chiffres sont bons, mais la virgule allait après… »), et
+   comptée fausse : pas de Bravo. Les chiffres, eux, restent justes. */
+test('mes-longueurs (virgule, #711 critère 19 renversé) : virgule non posée → « Vérifier » actif, virgule comptée fausse et dite, chiffres justes', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
@@ -664,17 +669,28 @@ test('mes-longueurs (virgule, #711 critère 19 étendu) : Vérifier reste désac
 	await page.locator('.mode-btn[data-mode="virgule"]').click();
 	await expect(page.locator('#tcTable')).toBeVisible();
 
-	await remplirTableau(page);
-	// Toutes les cases sont remplies (remplirTableau les traite dans l'ordre de data-i
-	// croissant, en écrivant le chiffre attendu de chacune), mais aucune virgule n'a été
-	// posée : la validation doit rester bloquée.
-	await expect(page.locator('#tcVerif')).toBeDisabled();
-
-	const cible = await colonneCibleIndex(page);
-	await cliquerCaseColonne(page, cible);
-	await clicVirgule(page);
+	// Actif dès l'apparition, avant même la première case.
 	await expect(page.locator('#tcVerif')).toBeEnabled();
+	await remplirTableau(page);
+	// Toutes les cases sont remplies juste, aucune virgule posée : plus de blocage.
+	await expect(page.locator('#tcVerif')).toBeEnabled();
+	await expect(page.locator('.tc-table--virgule-posee')).toHaveCount(0);
+	await page.locator('#tcVerif').click();
 
+	// Les chiffres restent justes : c'est la virgule seule qui est comptée fausse.
+	const n = await page.locator('.tc-cell').count();
+	for (let i = 0; i < n; i++) {
+		await expect(page.locator(`.tc-cell[data-i="${i}"]`)).toHaveClass(/correct/);
+	}
+	await expect(page.locator('#tcFeedback')).not.toContainText('Bravo');
+	// Libellés testés à dessein, comme pour le critère 17 : c'est le seul canal qui dit la règle.
+	await expect(page.locator('#tcFeedback')).toContainText('Tes chiffres sont bons');
+	await expect(page.locator('#tcFeedback')).toContainText('la virgule allait après');
+	// L'emplacement attendu est montré ; aucun emplacement n'est marqué faux (rien n'était posé).
+	const cible = await colonneCibleIndex(page);
+	await expect(page.locator(`.tc-fente[data-apres="${cible}"]`)).toHaveClass(/tc-fente--attendue/);
+	await expect(page.locator('.tc-fente--fausse')).toHaveCount(0);
+	// Et la posée juste reste ce qui donne Bravo (voir le test « tout juste » plus bas).
 	expect(errors).toEqual([]);
 });
 
@@ -918,14 +934,16 @@ test('mes-longueurs (virgule, #711) : reprise d’une session interrompue — m�
 
 	// Question 1 répondue puis on enchaîne : la reprise n'existe qu'à idx ≥ 1.
 	const cible1 = await colonneCibleIndex(page);
+	const progressAvantQ1 = (await page.locator('.lqcm-progress-lab').textContent()) ?? '';
 	await remplirTableau(page);
 	await cliquerCaseColonne(page, cible1);
 	await clicVirgule(page);
 	await page.locator('#tcVerif').click();
 	await page.locator('#tcActions button').click();
 
-	// Question 2 en cours, virgule posée (à ne PAS retrouver après reprise).
-	await expect(page.locator('#tcVerif')).toBeDisabled();
+	// Question 2 en cours, virgule posée (à ne PAS retrouver après reprise). Le compteur avance :
+	// c'est lui qui dit qu'on est passé à la question 2 (« Vérifier » est actif dès l'apparition).
+	await expect(page.locator('.lqcm-progress-lab')).not.toHaveText(progressAvantQ1);
 	const enonceAvant = (await page.locator('.tc-enonce').innerText()).trim();
 	const progressAvant = await page.locator('.lqcm-progress-lab').textContent();
 	await cliquerCaseColonne(page, await colonneCibleIndex(page));
@@ -950,7 +968,8 @@ test('mes-longueurs (virgule, #711) : reprise d’une session interrompue — m�
 	// Rien n'est reporté de la question quittée.
 	await expect(page.locator('#tcTable')).not.toHaveClass(/tc-table--virgule-posee/);
 	expect(await casesAvecVirgule(page)).toEqual([]);
-	await expect(page.locator('#tcVerif')).toBeDisabled();
+	// Le tableau repris est jouable tout de suite (critère 33 : « Vérifier » n'attend rien).
+	await expect(page.locator('#tcVerif')).toBeEnabled();
 
 	expect(errors).toEqual([]);
 });

@@ -86,6 +86,12 @@ import { conversionDepuisTableau } from '../core/etayage-conversion';
 // chiffres) ne sort pas à tous les tirages, un e2e ne le garantirait pas.
 import { derniereCaseDe, colonneDeCase, caseVirguleAttendue } from '../core/tableau-virgule';
 import { bornesColonnes, scrollPourCadrer, type Segment } from '../core/tableau-cadrage';
+import {
+	zoneObligatoire,
+	verdictsCases,
+	ecritureAttendue,
+	type VerdictCase,
+} from '../core/tableau-verdict';
 import type { EtayageDemande } from './etayage-panneau';
 import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 import { poserAuTrou } from '../core/items';
@@ -348,7 +354,7 @@ function renderQuestion(): void {
       <div class="sprint-stage">
         ${leconTitreHTML(lesson)}
         ${renderTableauBoardHTML(ex, cells)}
-        ${decisionHTML('tcVerif')}
+        ${decisionHTML('tcVerif', { actif: true })}
         <div class="sprint-correction" id="tcFeedback" hidden></div>
         <div class="sprint-actions" id="tcActions" hidden></div>
         <p class="sr-only" id="tcStatus" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -556,6 +562,20 @@ const estCaseFocus = () =>
 	document.activeElement.classList.contains('tc-cell');
 
 /* Peint une case : chiffre saisi + états (active / correct / wrong). */
+/* La case plate `i` doit-elle être remplie (#711 lot 5, critères 30 à 32) ?
+
+   Le tableau ne demande plus que l'enfant remplisse les colonnes qui ne concernent pas sa
+   question : sur « 60 mm = ? cm », les cinq zéros des kilomètres aux décimètres sont
+   acceptés mais jamais exigés. `zoneObligatoire` porte toute la règle ; ici on se contente
+   de ramener un index de CASE à son index de COLONNE, la colonne de tête pouvant en fournir
+   deux. */
+function caseObligatoire(ex: Tableau, i: number): boolean {
+	const zone = zoneObligatoire(ex.colonnes, ex.uniteConnue, ex.answerUnit);
+	if (!zone) return false;
+	const col = colonneDeCase(ex, i);
+	return col >= zone.gauche && col <= zone.droite;
+}
+
 function paintCell(i: number): void {
 	const b = cellBtn(i);
 	if (!b) return;
@@ -580,7 +600,6 @@ function ariaCase(i: number): string {
 function paintAll(): void {
 	cells.forEach((_, i) => paintCell(i));
 	peindreVirgule();
-	refreshVerif();
 }
 
 /* Ramène la case active dans le champ visible du tableau, sans JAMAIS bouger la page.
@@ -692,7 +711,6 @@ function saisir(d: string): void {
 	// Retour vocal (surtout path pavé, focus hors case) : ce qu'on vient d'écrire, où.
 	announce(`${cells[prev].aria} : ${d}${resteLaVirgule()}`);
 	garderCaseActiveEnVue();
-	refreshVerif();
 }
 
 /* Pose, déplace ou retire la virgule (#711 lot 4). Elle va à la frontière de colonne qui
@@ -708,8 +726,12 @@ function saisir(d: string): void {
    sauté à la tabulation — sans cette phrase, le blocage n'a aucune cause perceptible. Un seul
    `announce` par geste, jamais deux qui se couperaient (avis relecteur-accessibilite). */
 function resteLaVirgule(): string {
-	if (!questions[idx].virguleLibre || virguleCase !== null) return '';
-	return cells.some((c) => c.valeur === '') ? '' : ' Il reste la virgule à placer.';
+	const ex = questions[idx];
+	if (!ex.virguleLibre || virguleCase !== null) return '';
+	// « Remplies » ne veut plus dire « toutes » depuis le lot 5 : une case hors de la question
+	// a le droit de rester vide, donc l'attendre bloquerait cette phrase pour toujours.
+	const reste = cells.some((c, i) => c.valeur === '' && caseObligatoire(ex, i));
+	return reste ? '' : ' Il reste la virgule à placer.';
 }
 
 function basculerVirgule(): void {
@@ -732,7 +754,6 @@ function basculerVirgule(): void {
 	// laquelle était l'ancienne.
 	cells.forEach((_, i) => paintCell(i));
 	garderCaseActiveEnVue();
-	refreshVerif();
 }
 
 /* Place le glyphe dans SON emplacement et retire les autres marques. Les emplacements vides
@@ -791,28 +812,25 @@ function effacer(): void {
 		announce(`${cells[active].aria} effacé`);
 	}
 	garderCaseActiveEnVue();
-	refreshVerif();
 }
 
 /* Validation bloquée tant qu'une case est vide (entraîne les zéros de transit) : « Vérifier »
    ne s'active que lorsque TOUTES les cases sont remplies (avis dys : pas de message d'erreur
    à re-balayer, l'avance auto amène déjà sur la case vide suivante). */
-function refreshVerif(): void {
-	const verif = sheets().querySelector('#tcVerif') as HTMLButtonElement | null;
-	if (verif) verif.disabled = !reponseComplete();
-}
+/* « Vérifier » est actif DÈS l'apparition de la question et le reste (#711 lot 5,
+   critère 33). Il était gris tant qu'une case restait vide, ce qui supposait que toutes
+   devaient être remplies — ce n'est plus vrai. Et un bouton gris sans explication est le
+   pire cas à cet âge : l'enfant le lit « ça ne marche pas », pas « il me manque quelque
+   chose » (avis designer-ux-enfant). Il peut désormais vérifier quand il veut, y compris
+   sur une réponse incomplète ; les cases exigées qu'il a laissées vides sont comptées
+   fausses, et la correction les lui montre.
 
-/* Réponse complète = toutes les cases remplies, ET la virgule posée quand le mode la demande.
-   Le blocage ne révèle rien ici, précisément parce que le mode ne tire que des conversions à
-   réponse décimale : la virgule est attendue sur tous ses items. Sur un mode où elle ne le
-   serait que parfois, ce même blocage dirait « ta réponse est décimale ». */
-function reponseComplete(): boolean {
-	if (cells.some((c) => c.valeur === '')) return false;
-	return !questions[idx].virguleLibre || virguleCase !== null;
-}
+   Ce qui disparaît avec ce blocage, et qu'il faut savoir : il tenait aussi la virgule
+   (critère 19 du lot 4, renversé par commentaire daté du 30/09). Une virgule non posée est
+   maintenant une erreur de virgule comme une autre, dite par le même canal. */
 
 function verifier(): void {
-	if (frozen || !reponseComplete()) return;
+	if (frozen) return;
 	frozen = true;
 	const ex = questions[idx];
 	// Deux verdicts SÉPARÉS, et non un « faux » global. Ce sont deux compétences distinctes
@@ -820,16 +838,35 @@ function verifier(): void {
 	// dans l'unité demandée de l'autre (avis pedagogue-primaire) — et un enfant qui voit sa
 	// série de cases justes repeinte en rouge pour une virgule conclut qu'il a tout raté
 	// (avis specialiste-troubles-apprentissage).
-	let chiffresOk = true;
 	const virguleOk = !ex.virguleLibre || virguleCase === caseVirguleAttendue(ex);
+	/* Le verdict case par case vient d'un module PUR (#711 lot 5) : une case hors de la
+	   question est juste qu'elle soit vide ou à zéro, une case exigée laissée vide est fausse,
+	   et une case hors question portant autre chose qu'un zéro est fausse. Trois règles qui
+	   n'ont rien de visuel, donc rien à faire dans un runner. */
+	const verdicts = verdictsCases(
+		ex.colonnes,
+		ex.uniteConnue,
+		ex.answerUnit,
+		cells.map((c) => c.valeur),
+	);
+	const chiffresOk = !verdicts.includes('faux');
 	cells.forEach((c, i) => {
-		const ok = c.valeur === c.attendu;
-		chiffresOk = chiffresOk && ok;
+		const v: VerdictCase = verdicts[i];
 		const b = cellBtn(i);
 		if (b) {
 			b.classList.remove('tc-cell--active');
-			b.classList.add(ok ? 'correct' : 'wrong');
 			b.setAttribute('aria-current', 'false');
+			/* `neutre` ne peint RIEN, et ce n'est pas un oubli (critère 36) : une case que
+			   l'enfant n'avait pas à remplir et qu'il a laissée vide n'a produit aucune réponse
+			   à juger. Un ✓ posé dessus dirait « tu as bon » sans dire de quoi, et un ✗ le
+			   punirait d'un droit qu'on vient de lui donner. */
+			if (v === 'neutre') {
+				b.removeAttribute('aria-invalid');
+				b.setAttribute('aria-label', ariaCase(i));
+				return;
+			}
+			const ok = v === 'juste';
+			b.classList.add(ok ? 'correct' : 'wrong');
 			// Justesse exposée aux technologies d'assistance (le ✓/✗ CSS ::after ne l'est pas) :
 			// la réponse est déjà révélée dans le feedback, donc `attendu` ne « fuite » rien.
 			b.setAttribute('aria-invalid', String(!ok));
@@ -860,8 +897,17 @@ function verifier(): void {
 		// journalisée à la bonne valeur, et le parent lirait un tableau juste là où l'écran
 		// affichait un tableau faux. Dans le mode `tableau`, `virguleCase` reste `null` et la
 		// relecture est exactement celle d'avant.
+		/* Une case vide n'est pas un zéro, et la nuance décide de ce que le parent lit
+		   (#711 lot 5, critère 34). Hors de la question, le vide VAUT zéro : l'enfant avait le
+		   droit de ne rien y écrire, et c'est bien zéro que le tableau montre. Dans la question,
+		   non : relire « 3 km = ? m » comme « 3000 m » alors que l'enfant n'a écrit que le 3
+		   afficherait au parent la bonne réponse sous un tableau faux, exactement le piège que
+		   le lot 4 avait nommé à propos de la virgule. Le trou est donc rendu VISIBLE. */
 		const saisi = nombreTableauSaisi(
-			cells.map((c) => ({ unite: c.col.unite, valeur: c.valeur })),
+			cells.map((c, i) => ({
+				unite: c.col.unite,
+				valeur: c.valeur || (caseObligatoire(ex, i) ? '_' : '0'),
+			})),
 			ex.answerUnit,
 			virguleCase ?? undefined,
 		);
@@ -887,6 +933,30 @@ function verifier(): void {
 	// et oblige un enfant au lecteur d'écran à retrouver le rang en comparant deux nombres à
 	// l'oreille (constat relecteur-accessibilite). C'est le seul canal qui porte le verdict
 	// de la virgule hors du visuel.
+	/* Critère 38 : quand la seule erreur est une case exigée laissée vide, le retour nomme
+	   l'ÉCRITURE attendue au lieu du seul chiffre manquant. « attendu 0 » sur la case des
+	   millimètres ne dit pas à l'enfant pourquoi ce zéro existe ; « 60 mm s'écrit 6 en cm et 0
+	   en mm » le lui montre (avis pedagogue-primaire). Réservé au cas où tout ce qu'il a écrit
+	   est juste : sinon il a un vrai problème de conversion, et cette phrase-là le noierait. */
+	const oubliSeul =
+		virguleOk &&
+		verdicts.every((v, i) => v !== 'faux' || cells[i].valeur === '') &&
+		verdicts.some((v, i) => v === 'faux' && cells[i].valeur === '');
+	const oublis = verdicts.filter((v, i) => v === 'faux' && cells[i].valeur === '').length;
+	const ecriture = oubliSeul ? ecritureAttendue(ex.colonnes, ex.uniteConnue, ex.answerUnit) : '';
+	/* On NOMME l'oubli avant de montrer l'écriture, et dans les termes déjà validés pour la
+	   virgule. Sans ce préfixe, « la bonne réponse était 6 cm » suivi de « 0 dans les mm » se
+	   contredit à l'oreille, et l'enfant qui a bien écrit son 6 ne comprend pas ce qui est
+	   rouge (constat redacteur-contenu-francais). Pas d'adverbe d'ancrage (« Ici, ») : il
+	   n'ancre rien, l'enfant ne sait pas si « ici » désigne la case, la question ou le
+	   tableau. */
+	const noteOubli = oubliSeul
+		? `Tes chiffres sont bons, mais il en manquait ${oublis === 1 ? 'un' : oublis}${ecriture ? ` : ${ecriture}` : ''}. `
+		: '';
+	// Une seule phrase d'appoint : `explicationRangVide` parle des zéros intermédiaires, la
+	// note d'oubli de la transcription de la donnée. Les empiler ferait trois phrases à lire
+	// sous un tableau rouge.
+	const appoint = noteOubli ? '' : explication;
 	const noteVirgule =
 		chiffresOk && !virguleOk
 			? `Tes chiffres sont bons, mais la virgule allait après les ${pluriel(cells[caseVirguleAttendue(ex)].col.nom)}. `
@@ -897,7 +967,7 @@ function verifier(): void {
 		{
 			feedbackHTML: correct
 				? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
-				: html`<span class="lqcm-ko">${noteVirgule}La bonne réponse était <strong>${attendueTexte}</strong>.${explication ? html` ${explication}` : ''}</span>`,
+				: html`<span class="lqcm-ko">${noteVirgule}${noteOubli}La bonne réponse était <strong>${attendueTexte}</strong>.${appoint ? html` ${appoint}` : ''}</span>`,
 			// Ce runner ne disait RIEN à la correction (#505) : `#tcStatus` existait, mais
 			// ne servait qu'à l'écho de SAISIE au pavé (« case mètres : 3 »). Un enfant au
 			// lecteur d'écran s'entendait dicter ses propres chiffres, puis plus rien.
@@ -908,7 +978,7 @@ function verifier(): void {
 			// opposés : l'écho parle à chaque frappe, le verdict une fois, à la fin.
 			resume: correct
 				? VERDICT_OK
-				: verdictKo(`${noteVirgule}La bonne réponse était ${attendueTexte}.`),
+				: verdictKo(`${noteVirgule}${noteOubli}La bonne réponse était ${attendueTexte}.`),
 			statut: '#tcVerdict',
 			isLast: idx >= questions.length - 1,
 			// Étayage (#490) : proposé sur un tableau raté, jamais sur un tableau juste, et

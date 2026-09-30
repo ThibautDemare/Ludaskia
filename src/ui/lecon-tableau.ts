@@ -85,6 +85,7 @@ import { conversionDepuisTableau } from '../core/etayage-conversion';
 // un test la joue sur un tableau fabriqué — le cas qui casse (colonne de tête à deux
 // chiffres) ne sort pas à tous les tirages, un e2e ne le garantirait pas.
 import { derniereCaseDe, colonneDeCase, caseVirguleAttendue } from '../core/tableau-virgule';
+import { bornesColonnes, scrollPourCadrer, type Segment } from '../core/tableau-cadrage';
 import type { EtayageDemande } from './etayage-panneau';
 import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 import { poserAuTrou } from '../core/items';
@@ -160,6 +161,7 @@ let virguleCase: number | null = null;
 let frozen = false; // après validation : plus de saisie
 let keyHandler: ((e: KeyboardEvent) => void) | null = null;
 let resizeHandler: (() => void) | null = null;
+let cadreObserver: ResizeObserver | null = null;
 
 function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
@@ -355,7 +357,8 @@ function renderQuestion(): void {
     </div>`.balisage;
 	wireInteraction();
 	paintAll();
-	majJaugeDefilement();
+	cadrerSurLaQuestion();
+	majJaugeDefilement(); // après le cadrage : le curseur dit où l'on se trouve
 	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
 	monterBoutonAide(sheets().querySelector('.sprint-stage'), typeAide()); // bouton « ? » persistant
 }
@@ -423,6 +426,46 @@ function wireInteraction(): void {
 	detachResize();
 	resizeHandler = () => majJaugeDefilement();
 	window.addEventListener('resize', resizeHandler);
+	/* Recadrage sur changement de GÉOMÉTRIE, et surveillé par `ResizeObserver` plutôt que par
+	   `window.resize` — deux raisons, toutes deux mesurées :
+
+	   1. `resize` ne veut pas dire « la largeur a changé ». Sur Firefox comme sur Chrome
+	      Android, replier ou déplier la barre d'adresse au fil du défilement en émet un où seule
+	      la HAUTEUR bouge. Recadrer là-dessus rejouerait le cadrage en pleine saisie et
+	      effacerait le défilement que l'enfant venait de faire à la main, ce que le commentaire
+	      de `cadrerSurLaQuestion` s'interdit (constats convergents du designer et du relecteur
+	      a11y).
+	   2. Filtrer la largeur À LA MAIN dans un `window.resize` a été essayé, et c'est un piège :
+	      une rotation aller-retour rend la même largeur qu'au départ, si bien que le filtre ne
+	      voyait plus rien à faire et laissait le tableau là où le navigateur l'avait remis
+	      entre-temps, c'est-à-dire à zéro. Mesuré, critère 24 rouge.
+
+	   L'observateur n'a besoin d'aucun filtre, et c'est ce qui le rend juste : il regarde LE
+	   CADRE, dont la largeur suit le conteneur et dont la hauteur est dictée par le tableau. Une
+	   barre d'adresse qui se replie ne change ni l'une ni l'autre, donc ne le réveille même pas.
+	   Il voit en revanche le zoom texte et une police système agrandie, qui changent la
+	   géométrie sans jamais émettre `resize`. La jauge, elle, reste aussi branchée sur `resize` :
+	   elle décrit une position, pas une décision.
+
+	   TROU CONNU, laissé ouvert sciemment : deux largeurs différentes appliquées sans qu'une
+	   image soit rendue entre les deux ne produisent qu'UNE notification, portant la taille
+	   finale. Si celle-ci égale la taille de départ, l'observateur se tait, alors que la mise en
+	   page intermédiaire a pu ramener le défilement à zéro. Le fermer demanderait de surveiller
+	   aussi `scrollWidth` ou l'événement `scroll`. Écarté : une rotation d'appareil dure des
+	   dizaines d'images, donc le cas ne se produit qu'en pilotant le viewport par programme. */
+	detachCadreObserver();
+	const cadre = sheets().querySelector<HTMLElement>('.tc-wrap');
+	if (cadre) {
+		cadreObserver = new ResizeObserver(() => {
+			// `observe()` notifie une première fois, tout de suite : ce rejeu est GARDÉ, et pas
+			// seulement toléré. Il est idempotent (même géométrie, même position), et il rattrape
+			// le cas où le premier cadrage a mesuré des colonnes pas encore à leur largeur finale,
+			// typiquement avant que la police de l'interface soit chargée.
+			cadrerSurLaQuestion();
+			majJaugeDefilement();
+		});
+		cadreObserver.observe(cadre);
+	}
 	const verif = sheets().querySelector('#tcVerif') as HTMLButtonElement;
 	verif.addEventListener('click', () => verifier());
 	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
@@ -474,6 +517,8 @@ function wireInteraction(): void {
 export function leconTableauCleanup(): void {
 	detachKeys();
 	detachResize();
+	// L'observateur du cadre vit lui aussi hors du markup : il survivrait à la sortie du runner.
+	detachCadreObserver();
 }
 
 function detachKeys(): void {
@@ -484,6 +529,13 @@ function detachKeys(): void {
 function detachResize(): void {
 	if (resizeHandler) window.removeEventListener('resize', resizeHandler);
 	resizeHandler = null;
+}
+
+/* L'observateur porte sur LE `.tc-wrap` courant, que chaque re-rendu remplace : sans cette
+   coupure on accumulerait un observateur par question, tous pointant sur des cadres détachés. */
+function detachCadreObserver(): void {
+	cadreObserver?.disconnect();
+	cadreObserver = null;
 }
 
 const cellBtn = (i: number) => sheets().querySelector<HTMLButtonElement>(`.tc-cell[data-i="${i}"]`);
@@ -542,6 +594,54 @@ function paintAll(): void {
    Pas de `behavior: 'smooth'` : aucun mouvement animé à accorder à `prefers-reduced-motion`. */
 function garderCaseActiveEnVue(): void {
 	cellBtn(active)?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+}
+
+/* Bords d'une colonne dans le repère du CONTENU du cadre (donc indépendants du défilement
+   courant), mesurés par rectangles plutôt que par `offsetLeft` : depuis le lot 4 les
+   colonnes sont `position: relative`, si bien que leur `offsetParent` n'est plus garanti
+   d'être le cadre, et un décalage d'origine se lirait comme un décalage de cadrage. */
+function segmentColonne(wrap: HTMLElement, col: HTMLElement | null): Segment | null {
+	if (!col) return null;
+	const cadre = wrap.getBoundingClientRect();
+	const r = col.getBoundingClientRect();
+	const origine = cadre.left + wrap.clientLeft - wrap.scrollLeft;
+	return { debut: r.left - origine, fin: r.right - origine };
+}
+
+/* Ouvre le tableau LÀ OÙ LA QUESTION SE JOUE (#711 lot 5).
+
+   Le tableau s'ouvrait sur sa première colonne et ne bougeait ensuite qu'au fil de la
+   saisie : mesuré à 393 px, le défilement valait 0 à l'apparition de CHAQUE question, et
+   sur « 3,2 cm = ? mm » l'enfant lisait une question sur les centimètres devant les
+   colonnes des kilomètres.
+
+   Ce qui doit être vu n'est pas seulement les deux colonnes de la question, mais
+   l'INTERVALLE entre elles, colonnes intermédiaires comprises (avis `pedagogue-primaire`) :
+   ce sont elles qui permettent de compter les rangs (« je descends de 3 crans, donc
+   ×1000 ») au lieu d'appliquer une recette (« kg→g, j'ajoute trois zéros »).
+
+   Appelé à l'apparition ET au redimensionnement (rotation de tablette) : une position
+   calculée une fois ne vaut plus rien quand la largeur visible change. Jamais après une
+   saisie — c'est le rôle de `garderCaseActiveEnVue`, qui suit la case active, et recadrer
+   sous les doigts de l'enfant déplacerait le tableau qu'il vient de lire.
+
+   Sans effet vertical et sans animation (critères 26 et 27) : on écrit `scrollLeft`, ce qui
+   ne touche qu'un ancêtre et n'anime rien, plutôt qu'un `scrollIntoView` dont le navigateur
+   choisit lui-même les axes. */
+function cadrerSurLaQuestion(): void {
+	const ex = questions[idx];
+	const wrap = sheets().querySelector<HTMLElement>('.tc-wrap');
+	if (!wrap || !ex) return;
+	const colonnes = [...wrap.querySelectorAll<HTMLElement>('.tc-col')];
+	const iDonnee = ex.colonnes.findIndex((c) => c.unite === ex.uniteConnue);
+	const iDemandee = ex.colonnes.findIndex((c) => c.unite === ex.answerUnit);
+	// Les deux index sont cherchés PAR RÔLE, jamais par position : `bornesColonnes` rend la
+	// paire triée, ce qui perdrait le sens du remplissage — or c'est lui qui décide du bord
+	// sur lequel le cadre s'aligne quand l'intervalle ne tient pas (critère 25).
+	const donnee = segmentColonne(wrap, colonnes[iDonnee] ?? null);
+	const demandee = segmentColonne(wrap, colonnes[iDemandee] ?? null);
+	if (!donnee || !demandee) return;
+	wrap.scrollLeft = scrollPourCadrer(donnee, demandee, wrap.clientWidth, wrap.scrollWidth);
 }
 
 /* Jauge de défilement (#711 lot 3) : dit qu'il reste des colonnes hors champ, et combien,
@@ -853,11 +953,11 @@ function etayageTableauRate(ex: Tableau): { etayage?: EtayageDemande } {
    décilitre tient bien un rang vide entre le litre et le centilitre sans avoir jamais été
    « pas encore vu ». C'est ce que la phrase a toujours voulu dire. */
 function explicationRangVide(ex: Tableau): string {
-	const iConnue = ex.colonnes.findIndex((c) => c.unite === ex.uniteConnue);
-	const iCible = ex.colonnes.findIndex((c) => c.unite === ex.answerUnit);
-	if (iConnue < 0 || iCible < 0) return '';
-	const [gauche, droite] = iConnue < iCible ? [iConnue, iCible] : [iCible, iConnue];
-	const vides = ex.colonnes.slice(gauche + 1, droite).filter((c) => Number(c.chiffres) === 0);
+	const bornes = bornesColonnes(ex.colonnes, ex.uniteConnue, ex.answerUnit);
+	if (!bornes) return '';
+	const vides = ex.colonnes
+		.slice(bornes.gauche + 1, bornes.droite)
+		.filter((c) => Number(c.chiffres) === 0);
 	if (vides.length === 0) return '';
 	return vides.length === 1
 		? `Pense au 0 de l'unité intermédiaire (le ${vides[0].nom}) pour marquer le rang vide.`

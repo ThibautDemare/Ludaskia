@@ -425,8 +425,12 @@ test('mes-longueurs (tableau, #711 critère 14) : les cases gardent leur taille 
    contraste insuffisant, cf. commentaire du critère 13 plus haut) : elle ne touche à aucun
    contenu, et dit EN PLUS quelle part du tableau est visible. Portrait 393×851 : le viewport
    où mes-longueurs déborde (mêmes mesures que les critères 11 et 13). Trois observables :
-   - au repos (avant toute interaction), le curseur est collé au bord gauche de la piste et
-     n'en occupe qu'une partie ;
+   - au repos (avant toute interaction), le curseur n'occupe qu'une partie de la piste et sa
+     position correspond au `scrollLeft` réel du cadre. Ce n'est PLUS « collé à gauche » : depuis
+     le lot 5 (#711, cadrage sur la question), le tableau s'ouvre là où la question se joue, donc
+     « au repos » ne veut plus dire `scrollLeft === 0`. La propriété qui survit : le curseur dit la
+     position RÉELLE, avec les deux extrémités (à fond à gauche / à fond à droite) comme cas
+     particuliers, vérifiées explicitement plus bas ;
    - sa largeur reflète le ratio `clientWidth / scrollWidth` de `.tc-wrap`, au plancher de
      32 px près (`min-width` SCSS) ;
    - après un défilement complet (`scrollLeft = scrollWidth`), son bord droit rejoint le bord
@@ -466,15 +470,30 @@ test('mes-longueurs (tableau, #711 jauge) : le curseur reflète la part visible 
 			};
 		});
 
-	// Au repos : collé à gauche de la piste, et partiel (pas plein).
+	// Au repos (sans geste) : le curseur est partiel (pas plein) et sa position sur la piste
+	// correspond au `scrollLeft` RÉEL du cadre, quel qu'il soit.
 	const repos = await releve();
-	expect(
-		repos.curseurLeft - repos.pisteLeft,
-		`curseur pas collé à gauche au repos : ${JSON.stringify(repos)}`,
-	).toBeLessThanOrEqual(2);
 	expect(repos.curseurWidth, `curseur plein dès le repos : ${JSON.stringify(repos)}`).toBeLessThan(
 		repos.pisteWidth,
 	);
+	const positionAttendue = () =>
+		page.evaluate(() => {
+			const wrap = document.querySelector('.tc-wrap') as HTMLElement;
+			const jauge = document.querySelector('#tcJauge') as HTMLElement;
+			const curseur = document.querySelector('.tc-jauge-curseur') as HTMLElement;
+			const cache = wrap.scrollWidth - wrap.clientWidth;
+			const course = jauge.getBoundingClientRect().width - curseur.getBoundingClientRect().width;
+			return {
+				scrollLeft: wrap.scrollLeft,
+				attendu: (Math.min(wrap.scrollLeft, cache) / cache) * course,
+				reel: curseur.getBoundingClientRect().left - jauge.getBoundingClientRect().left,
+			};
+		});
+	const auRepos = await positionAttendue();
+	expect(
+		Math.abs(auRepos.reel - auRepos.attendu),
+		`le curseur (${auRepos.reel}px) ne suit pas le défilement réel (attendu ${auRepos.attendu}px, scrollLeft ${auRepos.scrollLeft}) : ${JSON.stringify(repos)}`,
+	).toBeLessThanOrEqual(3);
 
 	// Sa largeur reflète la part visible du cadre, au plancher de 32 px près.
 	const attendu = Math.max(32, (repos.pisteWidth * repos.wrapClientWidth) / repos.wrapScrollWidth);
@@ -482,6 +501,20 @@ test('mes-longueurs (tableau, #711 jauge) : le curseur reflète la part visible 
 		Math.abs(repos.curseurWidth - attendu),
 		`largeur du curseur (${repos.curseurWidth}px) éloignée de l'attendu (${attendu}px) : ${JSON.stringify(repos)}`,
 	).toBeLessThanOrEqual(3);
+
+	// Extrémité gauche : défilement à fond à gauche, curseur collé au bord gauche de la piste.
+	await page.evaluate(() => {
+		(document.querySelector('.tc-wrap') as HTMLElement).scrollLeft = 0;
+	});
+	await expect
+		.poll(
+			async () => {
+				const d = await releve();
+				return d.curseurLeft - d.pisteLeft;
+			},
+			{ message: 'le curseur devrait être collé à gauche quand le cadre est à fond à gauche' },
+		)
+		.toBeLessThanOrEqual(2);
 
 	// Défilement complet du cadre : le curseur rejoint le bord droit de la piste.
 	await page.evaluate(() => {

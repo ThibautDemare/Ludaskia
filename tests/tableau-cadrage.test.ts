@@ -28,27 +28,30 @@
    collée à la butée sont des cas qu'aucun viewport raisonnable ne produit à la demande.
 
    Deux pièges nommés, parce qu'ils ne se voient pas à la lecture d'un appel :
-   - `bornesColonnes` rend `gauche`/`droite`, c'est-à-dire des POSITIONS, pas des rôles. Passer
-     `gauche` à `scrollPourCadrer` comme s'il s'agissait de la colonne donnée cadre toujours à
-     gauche — exactement le défaut que le critère 25 corrige, et rien ne le distingue en aval ;
+   - le module voisin offre DEUX façons de désigner les colonnes de la question :
+     `indicesQuestion` les rend par RÔLE (donnée, demandée) et `bornesColonnes` par POSITION
+     (gauche, droite). Passer `gauche` à `scrollPourCadrer` comme s'il s'agissait de la
+     colonne donnée cadre toujours à gauche — exactement le défaut que le critère 25 corrige,
+     et rien ne le distingue en aval ;
    - un `scrollLeft` négatif est ramené à 0 par le navigateur SANS rien dire. Une position
      fautive de ce genre ressemble alors trait pour trait au bug d'origine, et ne se voit qu'à
      l'usage, sur l'appareil de l'enfant.
+
+   Les colonnes de la question, elles, ne sont plus décidées ici : `indicesQuestion` et
+   `bornesColonnes` vivent dans `src/core/tableau-verdict.ts` et sont éprouvées dans
+   `tests/tableau-verdict.test.ts`. Ce fichier ne garde d'elles que la COMPOSITION avec le
+   cadrage, c'est-à-dire ce que le runner enchaîne réellement.
 
    Hors de ce fichier : que la page ne saute pas verticalement et que rien ne s'anime
    (critères 26/27) — c'est du DOM, donc de la spec Playwright.
    ============================================================ */
 import { describe, it, expect } from 'vitest';
-import {
-	bornesColonnes,
-	scrollPourCadrer,
-	type ColonneUnite,
-	type Segment,
-} from '../src/core/tableau-cadrage';
+import { scrollPourCadrer, type Segment } from '../src/core/tableau-cadrage';
+import { bornesColonnes, indicesQuestion } from '../src/core/tableau-verdict';
 
-/* ---------- Tranches de colonnes (ce que `bornesColonnes` regarde) ---------- */
+/* ---------- Tranches de colonnes (ce que le cadrage doit traduire en pixels) ---------- */
 
-const tranche = (...unites: string[]): ColonneUnite[] => unites.map((unite) => ({ unite }));
+const tranche = (...unites: string[]): { unite: string }[] => unites.map((unite) => ({ unite }));
 
 /** Les deux tranches FIXES du CM1 : sept rangs, de la plus grande unité à la plus petite. */
 const LONGUEURS = tranche('km', 'hm', 'dam', 'm', 'dm', 'cm', 'mm');
@@ -193,101 +196,6 @@ function defautsDeSens(scroll: number, t: Tableau, donnee: Segment, demandee: Se
 	}
 	return [];
 }
-
-/* ============================================================
-   `bornesColonnes` — quelles colonnes la question met en jeu
-   ============================================================ */
-
-describe('#711 lot 5 — bornesColonnes : l’intervalle de la question', () => {
-	it('« 3 km = ? m » : de la colonne km à la colonne m, colonnes intermédiaires comprises', () => {
-		const b = bornesColonnes(LONGUEURS, 'km', 'm');
-		expect(b, '« 3 km = ? m » : aucun intervalle trouvé alors que les deux unités sont là').toEqual(
-			{ gauche: 0, droite: 3 },
-		);
-		/* Ce que l'intervalle contient, et qui est la raison d'être du critère 21 : les rangs que
-		   l'enfant doit traverser. Ce sont aussi ceux que `explicationRangVide`
-		   (src/ui/lecon-tableau.ts:860) nomme quand il rappelle les 0 à poser. */
-		expect(LONGUEURS.slice(b!.gauche + 1, b!.droite).map((c) => c.unite)).toEqual(['hm', 'dam']);
-	});
-
-	it('« 456 cm = ? m » : le SENS de la conversion ne change pas l’intervalle', () => {
-		// `gauche` et `droite` sont des POSITIONS dans le tableau, pas des rôles : la même paire
-		// d'unités donne le même intervalle dans les deux sens. C'est ce qui rend le piège de
-		// composition possible (cf. plus bas) — donc autant l'écrire noir sur blanc.
-		expect(bornesColonnes(LONGUEURS, 'cm', 'm')).toEqual({ gauche: 3, droite: 5 });
-		expect(bornesColonnes(LONGUEURS, 'm', 'cm')).toEqual({ gauche: 3, droite: 5 });
-	});
-
-	it('unités adjacentes : l’intervalle se réduit aux deux colonnes, sans rien entre elles', () => {
-		for (const [connue, demandee] of [
-			['cm', 'mm'],
-			['mm', 'cm'],
-		]) {
-			const b = bornesColonnes(LONGUEURS, connue, demandee);
-			expect(b, `« ${connue} → ${demandee} »`).toEqual({ gauche: 5, droite: 6 });
-			expect(
-				LONGUEURS.slice(b!.gauche + 1, b!.droite),
-				`« ${connue} → ${demandee} » : une colonne intermédiaire inventée entre deux rangs voisins`,
-			).toEqual([]);
-		}
-	});
-
-	it('la même unité des deux côtés : une réponse DÉFINIE, l’intervalle d’une seule colonne', () => {
-		/* « 3 m = ? m » n'est pas tiré aujourd'hui, mais la fonction doit répondre : rendre `null`
-		   ferait retomber l'appelant sur « je ne sais pas cadrer » là où la réponse est évidente,
-		   et le contrat réserve `null` à l'unité INTROUVABLE. Une seule colonne, donc aucun rang
-		   intermédiaire — ce que `explicationRangVide` traduit déjà par « rien à dire ». */
-		const b = bornesColonnes(LONGUEURS, 'm', 'm');
-		expect(b).toEqual({ gauche: 3, droite: 3 });
-		expect(LONGUEURS.slice(b!.gauche + 1, b!.droite)).toEqual([]);
-	});
-
-	it('une unité absente de la tranche : `null`, et surtout pas un intervalle inventé', () => {
-		/* `explicationRangVide` (src/ui/lecon-tableau.ts:858) traite déjà ce cas par un retour vide.
-		   Ici, un repli sur { gauche: 0, droite: 0 } ferait cadrer le tableau sur sa première
-		   colonne en silence : le bug d'origine, mais devenu invisible parce qu'il aurait l'air
-		   d'une décision. */
-		expect(bornesColonnes(LONGUEURS, 't', 'kg'), 'deux unités d’une autre famille').toBeNull();
-		expect(bornesColonnes(LONGUEURS, 'km', 'L'), 'unité demandée hors tranche').toBeNull();
-		expect(bornesColonnes(LONGUEURS, 'L', 'km'), 'unité donnée hors tranche').toBeNull();
-		expect(bornesColonnes(MASSES, 'm', 'g'), 'une longueur dans le tableau des masses').toBeNull();
-	});
-
-	it('tableau vide : `null` (il n’y a aucune colonne à cadrer)', () => {
-		expect(bornesColonnes([], 'm', 'm')).toBeNull();
-		expect(bornesColonnes([], 'km', 'm')).toBeNull();
-	});
-
-	it('contrat, sur toutes les paires des deux tranches : gauche ≤ droite, et ce sont bien les deux unités de la question', () => {
-		// Balayage : 49 paires par tranche, la même unité des deux côtés comprise. Une réponse
-		// constante (« toujours la première colonne ») tombe ici, quelle que soit la constante.
-		const fautes: string[] = [];
-		for (const colonnes of [LONGUEURS, MASSES]) {
-			for (const a of colonnes) {
-				for (const b of colonnes) {
-					const r = bornesColonnes(colonnes, a.unite, b.unite);
-					if (r === null) {
-						fautes.push(`${a.unite} → ${b.unite} : null alors que les deux unités sont là`);
-						continue;
-					}
-					if (r.gauche > r.droite)
-						fautes.push(`${a.unite} → ${b.unite} : gauche > droite (${r.gauche} > ${r.droite})`);
-					if (r.gauche < 0 || r.droite >= colonnes.length)
-						fautes.push(`${a.unite} → ${b.unite} : index hors tableau (${r.gauche}, ${r.droite})`);
-					else {
-						const trouvees = new Set([colonnes[r.gauche].unite, colonnes[r.droite].unite]);
-						const attendues = new Set([a.unite, b.unite]);
-						if (![...attendues].every((u) => trouvees.has(u)) || trouvees.size !== attendues.size)
-							fautes.push(
-								`${a.unite} → ${b.unite} : l'intervalle désigne [${[...trouvees].join(', ')}] — le tableau serait cadré sur d'autres colonnes que celles de la question`,
-							);
-					}
-				}
-			}
-		}
-		expect(fautes, `Paires mal bornées :\n${fautes.join('\n')}`).toEqual([]);
-	});
-});
 
 /* ============================================================
    `scrollPourCadrer` — critère 21 : la question est visible sans défiler
@@ -620,13 +528,18 @@ describe('#711 lot 5 — la marge : du confort, jamais au prix de la question', 
    ============================================================ */
 
 describe('#711 lot 5 — composer les deux fonctions', () => {
-	/** Ce que fait le runner : trouver les colonnes de la question, puis cadrer dessus. */
-	const cadrerLaQuestion = (t: Tableau, cols: ColonneUnite[], connue: string, demandee: string) => {
-		const b = bornesColonnes(cols, connue, demandee);
-		if (b === null) return null;
-		const iConnue = cols.findIndex((c) => c.unite === connue);
-		const iDemandee = cols.findIndex((c) => c.unite === demandee);
-		return scrollPourCadrer(t.cols[iConnue], t.cols[iDemandee], t.cadre, t.total, MARGE);
+	/** Ce que fait le runner (`cadrerSurLaQuestion`, src/ui/lecon-tableau.ts) : trouver les
+	    colonnes de la question PAR RÔLE, puis cadrer dessus. Les rôles sont passés jusqu'au
+	    bout — c'est ce que le test du piège, plus bas, montre qu'on ne peut pas relâcher. */
+	const cadrerLaQuestion = (
+		t: Tableau,
+		cols: { unite: string }[],
+		connue: string,
+		demandee: string,
+	) => {
+		const q = indicesQuestion(cols, connue, demandee);
+		if (q === null) return null;
+		return scrollPourCadrer(t.cols[q.iDonnee], t.cols[q.iDemandee], t.cadre, t.total, MARGE);
 	};
 
 	it('de l’unité à la position : la question est cadrée, dans les deux sens', () => {
@@ -636,9 +549,9 @@ describe('#711 lot 5 — composer les deux fonctions', () => {
 	});
 
 	it('une unité introuvable ne se traduit pas en cadrage : rien ne bouge', () => {
-		// Le `null` de `bornesColonnes` doit arrêter la chaîne. Un repli sur un intervalle par
-		// défaut ferait défiler le tableau vers une paire de colonnes sans rapport avec la
-		// question — un mouvement que rien n'explique, sur un écran d'enfant.
+		// Le `null` d'`indicesQuestion` doit arrêter la chaîne. Un repli sur une paire par défaut
+		// ferait défiler le tableau vers des colonnes sans rapport avec la question — un
+		// mouvement que rien n'explique, sur un écran d'enfant.
 		expect(cadrerLaQuestion(MASSES_CM1, MASSES, 'm', 'g')).toBeNull();
 	});
 
@@ -649,15 +562,22 @@ describe('#711 lot 5 — composer les deux fonctions', () => {
 		   comportement d'aujourd'hui pour toutes les conversions vers la gauche — et rien, en
 		   aval, ne distinguerait les deux cas.
 
-		   Ce test n'épingle pas un comportement souhaité : il fixe le danger pour qu'il ne se
-		   redécouvre pas sur la tablette. Si un jour la composition devient sûre (deux fonctions
-		   qui se passent les rôles), c'est CE test qu'il faut rouvrir. */
+		   Les deux fonctions vivent désormais dans le MÊME module, à une lettre près dans le
+		   nom de leurs champs : la substitution est plus facile qu'avant, pas moins. Ce test
+		   n'épingle donc pas un comportement souhaité, il fixe le danger pour qu'il ne se
+		   redécouvre pas sur la tablette. */
 		const mg = col(MASSES_CM1, 'mg');
 		const kg = col(MASSES_CM1, 'kg');
 		const b = bornesColonnes(MASSES, 'mg', 'kg')!;
 		expect(b, 'la réponse est la même dans les deux sens : elle ne porte AUCUN rôle').toEqual(
 			bornesColonnes(MASSES, 'kg', 'mg'),
 		);
+		// La fonction à appeler ici, elle, distingue les deux sens : c'est la seule différence
+		// entre le cadrage juste et celui d'aujourd'hui.
+		expect(
+			indicesQuestion(MASSES, 'mg', 'kg'),
+			'les rôles ne survivent pas au trajet : la question de départ ne se retrouve plus',
+		).not.toEqual(indicesQuestion(MASSES, 'kg', 'mg'));
 
 		const naif = scrollPourCadrer(
 			MASSES_CM1.cols[b.gauche], // « gauche » pris pour la colonne donnée

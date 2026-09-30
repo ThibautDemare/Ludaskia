@@ -12,31 +12,11 @@
    tableau qui ne déborde pas du tout.
    ============================================================ */
 
-/** Une colonne, réduite à ce qui sert ici : son symbole d'unité. */
-export interface ColonneUnite {
-	unite: string;
-}
-
 /** Bords gauche et droit d'un segment, en pixels, dans le repère du tableau (donc
  *  indépendants du défilement courant). */
 export interface Segment {
 	debut: number;
 	fin: number;
-}
-
-/** Index des colonnes que la question met en jeu, dans l'ordre du tableau (`gauche` avant
- *  `droite`), quel que soit le sens de la conversion. `null` si l'une des deux unités est
- *  introuvable — cas qui ne doit pas se produire, mais rendre un intervalle inventé
- *  ferait cadrer le tableau ailleurs, en silence. */
-export function bornesColonnes(
-	colonnes: ColonneUnite[],
-	uniteConnue: string,
-	uniteDemandee: string,
-): { gauche: number; droite: number } | null {
-	const a = colonnes.findIndex((c) => c.unite === uniteConnue);
-	const b = colonnes.findIndex((c) => c.unite === uniteDemandee);
-	if (a < 0 || b < 0) return null;
-	return a <= b ? { gauche: a, droite: b } : { gauche: b, droite: a };
 }
 
 /** Défilement horizontal à appliquer au cadre pour ouvrir le tableau sur la question.

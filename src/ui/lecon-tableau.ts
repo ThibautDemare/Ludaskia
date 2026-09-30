@@ -85,11 +85,14 @@ import { conversionDepuisTableau } from '../core/etayage-conversion';
 // un test la joue sur un tableau fabriqué — le cas qui casse (colonne de tête à deux
 // chiffres) ne sort pas à tous les tirages, un e2e ne le garantirait pas.
 import { derniereCaseDe, colonneDeCase, caseVirguleAttendue } from '../core/tableau-virgule';
-import { bornesColonnes, scrollPourCadrer, type Segment } from '../core/tableau-cadrage';
+import { scrollPourCadrer, type Segment } from '../core/tableau-cadrage';
 import {
-	zoneObligatoire,
+	bornesColonnes,
+	indicesQuestion,
+	casesObligatoires,
 	verdictsCases,
-	ecritureAttendue,
+	saisiesPourJournal,
+	noteOubli,
 	type VerdictCase,
 } from '../core/tableau-verdict';
 import type { EtayageDemande } from './etayage-panneau';
@@ -561,21 +564,14 @@ const estCaseFocus = () =>
 	document.activeElement instanceof HTMLElement &&
 	document.activeElement.classList.contains('tc-cell');
 
+/* Les cases que la question EXIGE (#711 lot 5, critères 30 à 32). Le tableau ne demande
+   plus que l'enfant remplisse les colonnes qui ne le concernent pas : sur « 60 mm = ? cm »,
+   les cinq zéros des kilomètres aux décimètres sont acceptés mais jamais exigés. La règle
+   entière vit dans `core/tableau-verdict` ; ici on ne fait que la consulter. */
+const casesExigees = (ex: Tableau): boolean[] =>
+	casesObligatoires(ex.colonnes, ex.uniteConnue, ex.answerUnit);
+
 /* Peint une case : chiffre saisi + états (active / correct / wrong). */
-/* La case plate `i` doit-elle être remplie (#711 lot 5, critères 30 à 32) ?
-
-   Le tableau ne demande plus que l'enfant remplisse les colonnes qui ne concernent pas sa
-   question : sur « 60 mm = ? cm », les cinq zéros des kilomètres aux décimètres sont
-   acceptés mais jamais exigés. `zoneObligatoire` porte toute la règle ; ici on se contente
-   de ramener un index de CASE à son index de COLONNE, la colonne de tête pouvant en fournir
-   deux. */
-function caseObligatoire(ex: Tableau, i: number): boolean {
-	const zone = zoneObligatoire(ex.colonnes, ex.uniteConnue, ex.answerUnit);
-	if (!zone) return false;
-	const col = colonneDeCase(ex, i);
-	return col >= zone.gauche && col <= zone.droite;
-}
-
 function paintCell(i: number): void {
 	const b = cellBtn(i);
 	if (!b) return;
@@ -652,13 +648,13 @@ function cadrerSurLaQuestion(): void {
 	const wrap = sheets().querySelector<HTMLElement>('.tc-wrap');
 	if (!wrap || !ex) return;
 	const colonnes = [...wrap.querySelectorAll<HTMLElement>('.tc-col')];
-	const iDonnee = ex.colonnes.findIndex((c) => c.unite === ex.uniteConnue);
-	const iDemandee = ex.colonnes.findIndex((c) => c.unite === ex.answerUnit);
-	// Les deux index sont cherchés PAR RÔLE, jamais par position : `bornesColonnes` rend la
-	// paire triée, ce qui perdrait le sens du remplissage — or c'est lui qui décide du bord
-	// sur lequel le cadre s'aligne quand l'intervalle ne tient pas (critère 25).
-	const donnee = segmentColonne(wrap, colonnes[iDonnee] ?? null);
-	const demandee = segmentColonne(wrap, colonnes[iDemandee] ?? null);
+	// Les deux index sont pris PAR RÔLE, jamais par position : `bornesColonnes` rend la paire
+	// triée, ce qui perdrait le sens du remplissage — or c'est lui qui décide du bord sur
+	// lequel le cadre s'aligne quand l'intervalle ne tient pas (critère 25).
+	const q = indicesQuestion(ex.colonnes, ex.uniteConnue, ex.answerUnit);
+	if (!q) return;
+	const donnee = segmentColonne(wrap, colonnes[q.iDonnee] ?? null);
+	const demandee = segmentColonne(wrap, colonnes[q.iDemandee] ?? null);
 	if (!donnee || !demandee) return;
 	wrap.scrollLeft = scrollPourCadrer(donnee, demandee, wrap.clientWidth, wrap.scrollWidth);
 }
@@ -730,7 +726,8 @@ function resteLaVirgule(): string {
 	if (!ex.virguleLibre || virguleCase !== null) return '';
 	// « Remplies » ne veut plus dire « toutes » depuis le lot 5 : une case hors de la question
 	// a le droit de rester vide, donc l'attendre bloquerait cette phrase pour toujours.
-	const reste = cells.some((c, i) => c.valeur === '' && caseObligatoire(ex, i));
+	const exigees = casesExigees(ex);
+	const reste = cells.some((c, i) => c.valeur === '' && exigees[i]);
 	return reste ? '' : ' Il reste la virgule à placer.';
 }
 
@@ -897,17 +894,16 @@ function verifier(): void {
 		// journalisée à la bonne valeur, et le parent lirait un tableau juste là où l'écran
 		// affichait un tableau faux. Dans le mode `tableau`, `virguleCase` reste `null` et la
 		// relecture est exactement celle d'avant.
-		/* Une case vide n'est pas un zéro, et la nuance décide de ce que le parent lit
-		   (#711 lot 5, critère 34). Hors de la question, le vide VAUT zéro : l'enfant avait le
-		   droit de ne rien y écrire, et c'est bien zéro que le tableau montre. Dans la question,
-		   non : relire « 3 km = ? m » comme « 3000 m » alors que l'enfant n'a écrit que le 3
-		   afficherait au parent la bonne réponse sous un tableau faux, exactement le piège que
-		   le lot 4 avait nommé à propos de la virgule. Le trou est donc rendu VISIBLE. */
+		// Les cases vides ne se relisent pas toutes de la même façon (critère 34) :
+		// `saisiesPourJournal` porte la règle et sa raison.
+		const pourJournal = saisiesPourJournal(
+			ex.colonnes,
+			ex.uniteConnue,
+			ex.answerUnit,
+			cells.map((c) => c.valeur),
+		);
 		const saisi = nombreTableauSaisi(
-			cells.map((c, i) => ({
-				unite: c.col.unite,
-				valeur: c.valeur || (caseObligatoire(ex, i) ? '_' : '0'),
-			})),
+			cells.map((c, i) => ({ unite: c.col.unite, valeur: pourJournal[i] })),
 			ex.answerUnit,
 			virguleCase ?? undefined,
 		);
@@ -935,28 +931,21 @@ function verifier(): void {
 	// de la virgule hors du visuel.
 	/* Critère 38 : quand la seule erreur est une case exigée laissée vide, le retour nomme
 	   l'ÉCRITURE attendue au lieu du seul chiffre manquant. « attendu 0 » sur la case des
-	   millimètres ne dit pas à l'enfant pourquoi ce zéro existe ; « 60 mm s'écrit 6 en cm et 0
-	   en mm » le lui montre (avis pedagogue-primaire). Réservé au cas où tout ce qu'il a écrit
-	   est juste : sinon il a un vrai problème de conversion, et cette phrase-là le noierait. */
-	const oubliSeul =
-		virguleOk &&
-		verdicts.every((v, i) => v !== 'faux' || cells[i].valeur === '') &&
-		verdicts.some((v, i) => v === 'faux' && cells[i].valeur === '');
-	const oublis = verdicts.filter((v, i) => v === 'faux' && cells[i].valeur === '').length;
-	const ecriture = oubliSeul ? ecritureAttendue(ex.colonnes, ex.uniteConnue, ex.answerUnit) : '';
-	/* On NOMME l'oubli avant de montrer l'écriture, et dans les termes déjà validés pour la
-	   virgule. Sans ce préfixe, « la bonne réponse était 6 cm » suivi de « 0 dans les mm » se
-	   contredit à l'oreille, et l'enfant qui a bien écrit son 6 ne comprend pas ce qui est
-	   rouge (constat redacteur-contenu-francais). Pas d'adverbe d'ancrage (« Ici, ») : il
-	   n'ancre rien, l'enfant ne sait pas si « ici » désigne la case, la question ou le
-	   tableau. */
-	const noteOubli = oubliSeul
-		? `Tes chiffres sont bons, mais il en manquait ${oublis === 1 ? 'un' : oublis}${ecriture ? ` : ${ecriture}` : ''}. `
-		: '';
+	   millimètres ne dit pas à l'enfant pourquoi ce zéro existe. La règle et sa formulation
+	   vivent dans `core/tableau-verdict` : ce sont quatre bords à éprouver un par un, pas une
+	   décision d'affichage. */
+	const oubli = noteOubli(
+		ex.colonnes,
+		ex.uniteConnue,
+		ex.answerUnit,
+		cells.map((c) => c.valeur),
+		virguleOk,
+	);
+	const notePhrase = oubli ? `${oubli} ` : '';
 	// Une seule phrase d'appoint : `explicationRangVide` parle des zéros intermédiaires, la
 	// note d'oubli de la transcription de la donnée. Les empiler ferait trois phrases à lire
 	// sous un tableau rouge.
-	const appoint = noteOubli ? '' : explication;
+	const appoint = oubli ? '' : explication;
 	const noteVirgule =
 		chiffresOk && !virguleOk
 			? `Tes chiffres sont bons, mais la virgule allait après les ${pluriel(cells[caseVirguleAttendue(ex)].col.nom)}. `
@@ -967,7 +956,7 @@ function verifier(): void {
 		{
 			feedbackHTML: correct
 				? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
-				: html`<span class="lqcm-ko">${noteVirgule}${noteOubli}La bonne réponse était <strong>${attendueTexte}</strong>.${appoint ? html` ${appoint}` : ''}</span>`,
+				: html`<span class="lqcm-ko">${noteVirgule}${notePhrase}La bonne réponse était <strong>${attendueTexte}</strong>.${appoint ? html` ${appoint}` : ''}</span>`,
 			// Ce runner ne disait RIEN à la correction (#505) : `#tcStatus` existait, mais
 			// ne servait qu'à l'écho de SAISIE au pavé (« case mètres : 3 »). Un enfant au
 			// lecteur d'écran s'entendait dicter ses propres chiffres, puis plus rien.
@@ -978,7 +967,7 @@ function verifier(): void {
 			// opposés : l'écho parle à chaque frappe, le verdict une fois, à la fin.
 			resume: correct
 				? VERDICT_OK
-				: verdictKo(`${noteVirgule}${noteOubli}La bonne réponse était ${attendueTexte}.`),
+				: verdictKo(`${noteVirgule}${notePhrase}La bonne réponse était ${attendueTexte}.`),
 			statut: '#tcVerdict',
 			isLast: idx >= questions.length - 1,
 			// Étayage (#490) : proposé sur un tableau raté, jamais sur un tableau juste, et

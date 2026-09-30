@@ -38,6 +38,37 @@ export interface ColonneAttendue {
  *  (critère 36). Poser un ✓ sur du vide dirait « tu as bon » sans dire de quoi. */
 export type VerdictCase = 'juste' | 'faux' | 'neutre';
 
+/** Les deux colonnes que la question met en jeu, PAR RÔLE. `null` si l'une des deux unités
+ *  est introuvable dans la tranche.
+ *
+ *  Partagée exprès : quatre endroits cherchaient ces deux index à la main, et les rôles s'y
+ *  perdent facilement — une paire triée gauche/droite se substitue sans bruit à une paire
+ *  donnée/demandée, et tout marche encore sur les conversions vers la droite. */
+export function indicesQuestion(
+	colonnes: { unite: string }[],
+	uniteConnue: string,
+	uniteDemandee: string,
+): { iDonnee: number; iDemandee: number } | null {
+	const iDonnee = colonnes.findIndex((c) => c.unite === uniteConnue);
+	const iDemandee = colonnes.findIndex((c) => c.unite === uniteDemandee);
+	return iDonnee < 0 || iDemandee < 0 ? null : { iDonnee, iDemandee };
+}
+
+/** Index des colonnes de la question dans l'ordre du TABLEAU (`gauche` avant `droite`),
+ *  quel que soit le sens de la conversion. `null` si une unité est introuvable — rendre un
+ *  intervalle inventé ferait raisonner l'appelant sur une autre question. */
+export function bornesColonnes(
+	colonnes: { unite: string }[],
+	uniteConnue: string,
+	uniteDemandee: string,
+): { gauche: number; droite: number } | null {
+	const q = indicesQuestion(colonnes, uniteConnue, uniteDemandee);
+	if (!q) return null;
+	return q.iDonnee <= q.iDemandee
+		? { gauche: q.iDonnee, droite: q.iDemandee }
+		: { gauche: q.iDemandee, droite: q.iDonnee };
+}
+
 /** Une colonne porte-t-elle un chiffre autre que zéro ? */
 const significative = (c: ColonneAttendue) => /[1-9]/.test(c.chiffres);
 
@@ -73,9 +104,9 @@ export function zoneObligatoire(
 	uniteConnue: string,
 	uniteDemandee: string,
 ): { gauche: number; droite: number } | null {
-	const iDonnee = colonnes.findIndex((c) => c.unite === uniteConnue);
-	const iDemandee = colonnes.findIndex((c) => c.unite === uniteDemandee);
-	if (iDonnee < 0 || iDemandee < 0) return null;
+	const q = indicesQuestion(colonnes, uniteConnue, uniteDemandee);
+	if (!q) return null;
+	const { iDonnee, iDemandee } = q;
 	const donnee = rangsDeLaDonnee(colonnes, iDonnee);
 	/* La zone est l'écriture de la donnée ÉTENDUE jusqu'à la colonne où se lit la réponse :
 	   sans elle, « 3 km = ? m » n'exigerait que le `3`, et les zéros des hectomètres,
@@ -94,6 +125,19 @@ export function zoneObligatoire(
 	};
 }
 
+/** Pour chaque case, dans l'ordre plat : cette case doit-elle être remplie ?
+ *  Tout `false` quand une unité de l'énoncé est absente de la tranche. */
+export function casesObligatoires(
+	colonnes: ColonneAttendue[],
+	uniteConnue: string,
+	uniteDemandee: string,
+): boolean[] {
+	const zone = zoneObligatoire(colonnes, uniteConnue, uniteDemandee);
+	return colonnes.flatMap((c, col) =>
+		[...c.chiffres].map(() => zone !== null && col >= zone.gauche && col <= zone.droite),
+	);
+}
+
 /** Verdict de chaque case, dans l'ordre plat du tableau.
  *
  *  `saisies` porte ce que l'enfant a écrit, une entrée par case, `''` pour une case vide.
@@ -106,11 +150,12 @@ export function verdictsCases(
 	saisies: string[],
 ): VerdictCase[] {
 	const zone = zoneObligatoire(colonnes, uniteConnue, uniteDemandee);
+	const exigees = casesObligatoires(colonnes, uniteConnue, uniteDemandee);
 	const out: VerdictCase[] = [];
 	let i = 0;
-	for (const [col, c] of colonnes.entries()) {
-		const obligatoire = zone !== null && col >= zone.gauche && col <= zone.droite;
+	for (const c of colonnes) {
 		for (const attendu of c.chiffres) {
+			const obligatoire = exigees[i];
 			const saisi = saisies[i] ?? '';
 			i++;
 			/* Tranche mal formée (une unité de l'énoncé absente des colonnes) : tout neutre, et
@@ -159,8 +204,9 @@ export function ecritureAttendue(
 	uniteConnue: string,
 	uniteDemandee: string,
 ): string {
-	const iDonnee = colonnes.findIndex((c) => c.unite === uniteConnue);
-	if (iDonnee < 0 || !colonnes.some((c) => c.unite === uniteDemandee)) return '';
+	const q = indicesQuestion(colonnes, uniteConnue, uniteDemandee);
+	if (!q) return '';
+	const { iDonnee } = q;
 	const { gauche, droite } = rangsDeLaDonnee(colonnes, iDonnee);
 	if (gauche >= droite) return '';
 	const rangs = colonnes.slice(gauche, droite + 1);
@@ -187,4 +233,67 @@ function insererVirgule(chiffres: string, decimales: number): string {
 	const coupe = chiffres.length - decimales;
 	if (coupe <= 0) return chiffres;
 	return `${chiffres.slice(0, coupe)},${chiffres.slice(coupe)}`;
+}
+
+/** Les saisies telles que le JOURNAL ENCADRANT doit les relire (critère 34).
+ *
+ *  Une case vide n'est pas un zéro, et la nuance décide de ce que le parent lit. Hors de la
+ *  question, le vide VAUT zéro : l'enfant avait le droit de ne rien y écrire, et c'est bien
+ *  zéro que le tableau montre. Dans la question, non — relire « 3 km = ? m » comme
+ *  « 3000 m » alors que l'enfant n'a écrit que le `3` afficherait au parent la BONNE réponse
+ *  sous un tableau rouge, exactement le piège que le lot 4 avait nommé à propos de la
+ *  virgule. Le trou est donc rendu visible par un caractère qui n'est pas un chiffre. */
+export function saisiesPourJournal(
+	colonnes: ColonneAttendue[],
+	uniteConnue: string,
+	uniteDemandee: string,
+	saisies: string[],
+): string[] {
+	const exigees = casesObligatoires(colonnes, uniteConnue, uniteDemandee);
+	return exigees.map((exigee, i) => saisies[i] || (exigee ? TROU : '0'));
+}
+
+/** Le caractère qui marque un rang que l'enfant n'a pas rempli, dans le journal encadrant.
+ *  Ni un chiffre ni un espace : il doit survivre au retrait des zéros de tête et de queue,
+ *  et se voir dans « 3___ m ». */
+export const TROU = '_';
+
+/** Le retour de correction quand la SEULE erreur est une ou plusieurs cases exigées laissées
+ *  vides (critère 38). Chaîne vide dans tous les autres cas.
+ *
+ *  Ici plutôt que dans le runner, et ce n'est pas du rangement : la condition « sa seule
+ *  erreur est un oubli » est une règle de correction, pas une décision d'affichage, et elle
+ *  a quatre bords qu'un test doit pouvoir éprouver un par un (un oubli, plusieurs, un oubli
+ *  plus un chiffre faux, un oubli plus une virgule fausse).
+ *
+ *  On NOMME l'oubli avant de montrer l'écriture, dans les termes déjà validés pour la
+ *  virgule. Sans ce préfixe, « la bonne réponse était 6 cm » suivi de « 0 dans les mm » se
+ *  contredit à l'oreille, et l'enfant qui a bien écrit son 6 ne comprend pas ce qui est rouge
+ *  (constat redacteur-contenu-francais). */
+export function noteOubli(
+	colonnes: ColonneAttendue[],
+	uniteConnue: string,
+	uniteDemandee: string,
+	saisies: string[],
+	virguleOk: boolean,
+): string {
+	if (!virguleOk) return '';
+	const verdicts = verdictsCases(colonnes, uniteConnue, uniteDemandee, saisies);
+	const vide = (i: number) => (saisies[i] ?? '') === '';
+	// Un faux sur une case REMPLIE est un vrai problème de conversion : cette phrase-là le
+	// noierait, et l'enfant a besoin d'entendre l'autre.
+	if (verdicts.some((v, i) => v === 'faux' && !vide(i))) return '';
+	const oublis = verdicts.filter((v, i) => v === 'faux' && vide(i)).length;
+	if (oublis === 0) return '';
+	const ecriture = ecritureAttendue(colonnes, uniteConnue, uniteDemandee);
+	/* « Tes chiffres sont bons » suppose des chiffres. Un enfant peut valider un tableau
+	   auquel il n'a pas touché, puisque « Vérifier » est actif dès l'apparition de la
+	   question : le féliciter de ce qu'il n'a pas écrit sonnerait faux, et lui apprendrait
+	   surtout que la phrase ne veut rien dire. On lui montre alors l'écriture attendue, sans
+	   compliment ni reproche. */
+	const exigees = casesObligatoires(colonnes, uniteConnue, uniteDemandee);
+	const aEcritDansLaZone = exigees.some((exigee, i) => exigee && !vide(i));
+	if (!aEcritDansLaZone) return ecriture ? `${ecriture[0].toUpperCase()}${ecriture.slice(1)}.` : '';
+	const combien = oublis === 1 ? 'un' : String(oublis);
+	return `Tes chiffres sont bons, mais il en manquait ${combien}${ecriture ? ` : ${ecriture}` : ''}.`;
 }

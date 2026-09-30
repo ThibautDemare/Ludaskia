@@ -133,19 +133,41 @@ async function analyser(page: Page): Promise<Question> {
 const largeurIntervalle = (q: Question): number => q.cols[q.hi].right - q.cols[q.lo].left;
 const largeurCadre = (r: Releve): number => r.cadreDroite - r.cadreGauche;
 
+/* Signal « une nouvelle question est apparue » : le compteur de progression (« Question 3 / 10 »)
+   change. Depuis le lot 5 (#711, critère 33) « Vérifier » est actif dès l'apparition, donc son
+   état ne dit plus rien ; le compteur, lui, avance d'un cran exactement et ne peut pas se
+   satisfaire par hasard (une question qui ne change pas ne le change pas). Lu AVANT le clic. */
+const progression = (page: Page): Promise<string> => page.locator('.lqcm-progress-lab').innerText();
+
 /* Remplit toutes les cases (data-answer) puis valide et passe à la question suivante.
    Appelé APRÈS la mesure. Rend false quand la série est finie. */
 async function questionSuivante(page: Page): Promise<boolean> {
-	const cellules = page.locator('.tc-cell');
-	const n = await cellules.count();
-	for (let i = 0; i < n; i++) {
-		const chiffre = await page.locator(`.tc-cell[data-i="${i}"]`).getAttribute('data-answer');
-		await page.locator(`.tc-pave-btn[data-chiffre="${chiffre}"]`).click();
-	}
-	await page.locator('#tcVerif').click();
+	// Clics DOM en un seul aller-retour : les tests qui CHERCHENT une question rejouent des
+	// dizaines de questions, et un clic Playwright par chiffre (avec ses vérifications
+	// d'actionnabilité) rendait une série dix fois plus lente, donc la recherche trop courte.
+	await page.evaluate(() => {
+		document.querySelectorAll<HTMLElement>('.tc-cell').forEach((c) => {
+			document
+				.querySelector<HTMLElement>(`.tc-pave-btn[data-chiffre="${c.dataset.answer}"]`)
+				?.click();
+		});
+		document.querySelector<HTMLElement>('#tcVerif')?.click();
+	});
+	const avant = await progression(page);
 	await page.locator('#tcActions button').click();
 	try {
-		await expect(page.locator('#tcVerif')).toBeDisabled({ timeout: 3000 });
+		await page.waitForFunction(
+			(ancien) => {
+				const lab = document.querySelector('.lqcm-progress-lab');
+				return (
+					lab !== null &&
+					lab.textContent !== ancien &&
+					document.querySelector('.tc-enonce') !== null
+				);
+			},
+			avant,
+			{ timeout: 3000 },
+		);
 		return true;
 	} catch {
 		return false;
@@ -173,7 +195,7 @@ async function chercherQuestion(
 	page: Page,
 	ouvrir: () => Promise<void>,
 	accepte: (q: Question) => boolean,
-	series = 4,
+	series = 8,
 ): Promise<Question | null> {
 	for (let s = 0; s < series; s++) {
 		await ouvrir();
@@ -335,7 +357,7 @@ for (const sens of ['droite', 'gauche'] as const) {
 		);
 		expect(
 			q,
-			`aucune question « vers la ${sens} » à intervalle trop large tirée en 4 séries (relancer : tirage)`,
+			`aucune question « vers la ${sens} » à intervalle trop large tirée en 8 séries (relancer : tirage)`,
 		).not.toBeNull();
 		const d = q!.cols[q!.iDonnee];
 		const ctx = `« ${q!.enonce} » (scrollLeft ${q!.scrollLeft})`;
@@ -377,6 +399,7 @@ test("mes-longueurs (#711 critère 26) : l'apparition d'une question ne fait pas
 
 	for (let k = 0; k < 3; k++) {
 		const enonceAvant = await page.locator('.tc-enonce').innerText();
+		const progressAvant = await progression(page);
 		await page.evaluate(() => {
 			document.querySelectorAll<HTMLElement>('.tc-cell').forEach((c) => {
 				document
@@ -390,7 +413,8 @@ test("mes-longueurs (#711 critère 26) : l'apparition d'une question ne fait pas
 		await expect(page.locator('#tcActions button')).toBeVisible();
 		await page.evaluate((y) => window.scrollTo(0, y), Y0);
 		await page.evaluate(() => document.querySelector<HTMLElement>('#tcActions button')?.click());
-		await expect(page.locator('#tcVerif')).toBeDisabled();
+		// Le compteur avance : signal qui ne se satisfait pas par hasard (cf. `progression`).
+		await expect(page.locator('.lqcm-progress-lab')).not.toHaveText(progressAvant);
 		await expect(page.locator('.tc-enonce')).not.toHaveText(enonceAvant);
 		const y = await page.evaluate(() => window.scrollY);
 		expect(y, `la page a bougé de ${y - Y0} px au rendu de la question ${k + 2}`).toBe(Y0);

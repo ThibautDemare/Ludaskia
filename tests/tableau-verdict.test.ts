@@ -58,12 +58,22 @@
    ============================================================ */
 import { beforeEach, describe, it, expect } from 'vitest';
 import {
+	indicesQuestion,
+	bornesColonnes,
 	zoneObligatoire,
+	casesObligatoires,
 	verdictsCases,
 	ecritureAttendue,
+	saisiesPourJournal,
+	noteOubli,
+	TROU,
 	type ColonneAttendue,
 	type VerdictCase,
 } from '../src/core/tableau-verdict';
+// Le journal encadrant se relit en DEUX temps (critère 34) : ce module-ci décide de ce que
+// vaut une case vide, celui-là en tire le nombre lu dans l'unité demandée. C'est la
+// composition qui porte le risque, elle est donc jouée telle quelle plus bas.
+import { nombreTableauSaisi } from '../src/core/erreur-representation';
 import { getLessonById, type SchoolLevel } from '../src/core/catalog';
 import { ESPACE_FINE, formatNombre } from '../src/core/nombres';
 import { withSeed } from '../src/core/utils';
@@ -579,6 +589,205 @@ describe('#711 lot 5 — les fixtures disent bien ce que la question dit', () =>
 });
 
 /* ============================================================
+   `indicesQuestion` et `bornesColonnes` — quelles colonnes la question met en jeu
+   ------------------------------------------------------------
+   Deux façons de désigner les MÊMES deux colonnes, et c'est tout le sujet : l'une les rend
+   par RÔLE (la donnée, la demandée), l'autre par POSITION (gauche, droite). Rien, en aval,
+   ne distingue une paire de l'autre — même forme, deux entiers, mêmes valeurs sur toutes les
+   conversions vers la droite, c'est-à-dire sur la plupart des questions tirées. Une
+   substitution ne se verrait donc que sur « 3 000 mg = ? kg », et seulement sur la tablette.
+   Les tests qui suivent commencent par les SÉPARER.
+
+   `bornesColonnes` était éprouvée dans `tests/tableau-cadrage.test.ts` jusqu'à ce que la
+   fonction change de module ; ses attendus n'ont pas bougé. Ce qui l'a fait déménager : le
+   cadrage a besoin des RÔLES (critère 25), pas des positions, et son seul appelant restant
+   est `explicationRangVide` (src/ui/lecon-tableau.ts), qui nomme les rangs intermédiaires.
+   ============================================================ */
+
+/** Les deux tranches FIXES du CM1, réduites à ce que ces deux fonctions regardent : la suite
+    des unités, sans les chiffres attendus. */
+const RANGS_LONGUEURS = LONGUEURS.map((unite) => ({ unite }));
+const RANGS_MASSES = ['kg', 'hg', 'dag', 'g', 'dg', 'cg', 'mg'].map((unite) => ({ unite }));
+
+describe('#711 lot 5 — indicesQuestion : les deux colonnes PAR RÔLE', () => {
+	it('« 3 km = ? m » : la donnée en tête, la demandée trois rangs plus loin', () => {
+		expect(indicesQuestion(RANGS_LONGUEURS, 'km', 'm')).toEqual({ iDonnee: 0, iDemandee: 3 });
+	});
+
+	it('la conversion vers la GAUCHE inverse les deux index, là où l’intervalle ne bouge pas', () => {
+		/* Le cas qui sépare les deux fonctions, et le seul. « 3 000 mg = ? kg » part de la
+		   dernière colonne pour arriver à la première : les rôles sont inversés, l'intervalle est
+		   identique. Un appelant qui prendrait `gauche` pour le point de départ cadrerait le
+		   tableau sur les kilogrammes — c'est-à-dire sur la RÉPONSE, en laissant hors champ la
+		   seule colonne que l'énoncé n'écrit nulle part (critère 25). */
+		expect(indicesQuestion(RANGS_MASSES, 'mg', 'kg')).toEqual({ iDonnee: 6, iDemandee: 0 });
+		expect(indicesQuestion(RANGS_MASSES, 'kg', 'mg')).toEqual({ iDonnee: 0, iDemandee: 6 });
+		expect(
+			bornesColonnes(RANGS_MASSES, 'mg', 'kg'),
+			'les positions, elles, sont les mêmes dans les deux sens : c’est ce qui rend la substitution silencieuse',
+		).toEqual(bornesColonnes(RANGS_MASSES, 'kg', 'mg'));
+	});
+
+	it('ce sont des index de COLONNE, jamais de case', () => {
+		/* Sur « 12 km = ? m », la colonne de tête absorbe les rangs supérieurs et porte DEUX
+		   cases : la colonne des mètres est la quatrième (index 3) alors que sa case est la
+		   cinquième (index 4). Les appelants indexent des colonnes (`ex.colonnes`, les `.tc-col`
+		   du rendu) ; un index de case ferait cadrer le tableau un rang trop loin, et nommerait
+		   la mauvaise unité dans le retour de correction. */
+		const cols = colonnes(TETE_A_DEUX_CHIFFRES);
+		expect(cols[0].chiffres, 'la fixture doit bien porter une tête à deux chiffres').toHaveLength(
+			2,
+		);
+		expect(indicesQuestion(cols, 'km', 'm')).toEqual({ iDonnee: 0, iDemandee: 3 });
+		expect(casesDe(TETE_A_DEUX_CHIFFRES)).toHaveLength(8);
+	});
+
+	it('la même unité des deux côtés : une réponse DÉFINIE, les deux index confondus', () => {
+		// « 3 m = ? m » n'est pas tiré, mais la fonction doit répondre : le contrat réserve
+		// `null` à l'unité INTROUVABLE, et rendre `null` ici ferait retomber l'appelant sur
+		// « je ne sais pas » là où la réponse est évidente.
+		expect(indicesQuestion(RANGS_LONGUEURS, 'm', 'm')).toEqual({ iDonnee: 3, iDemandee: 3 });
+	});
+
+	it('une unité absente, ou aucune colonne : `null`, jamais un index inventé', () => {
+		/* Le repli qui coûterait cher est `-1` rendu tel quel : `colonnes[-1]` vaut `undefined`,
+		   et la chaîne continue jusqu'à un cadrage ou un verdict calculé sur une question qui
+		   n'existe pas. `null` oblige l'appelant à s'arrêter. */
+		expect(indicesQuestion(RANGS_LONGUEURS, 'L', 'km'), 'unité donnée hors tranche').toBeNull();
+		expect(indicesQuestion(RANGS_LONGUEURS, 'km', 'L'), 'unité demandée hors tranche').toBeNull();
+		expect(
+			indicesQuestion(RANGS_LONGUEURS, 't', 'kg'),
+			'deux unités d’une autre famille',
+		).toBeNull();
+		expect(
+			indicesQuestion(RANGS_MASSES, 'm', 'g'),
+			'une longueur dans le tableau des masses',
+		).toBeNull();
+		expect(indicesQuestion([], 'km', 'm'), 'aucune colonne').toBeNull();
+	});
+
+	it('contrat, sur toutes les paires des deux tranches : chaque index désigne l’unité de son RÔLE', () => {
+		// 49 paires par tranche, la même unité des deux côtés comprise. Relire l'unité à l'index
+		// rendu est le seul contrôle qui ne recopie aucune formule — et il fait tomber aussi bien
+		// une réponse constante qu'une paire triée.
+		const fautes: string[] = [];
+		for (const rangs of [RANGS_LONGUEURS, RANGS_MASSES])
+			for (const a of rangs)
+				for (const b of rangs) {
+					const q = indicesQuestion(rangs, a.unite, b.unite);
+					if (q === null) {
+						fautes.push(`${a.unite} → ${b.unite} : null alors que les deux unités sont là`);
+						continue;
+					}
+					const lu = `${rangs[q.iDonnee]?.unite} → ${rangs[q.iDemandee]?.unite}`;
+					if (lu !== `${a.unite} → ${b.unite}`)
+						fautes.push(
+							`${a.unite} → ${b.unite} : les index désignent « ${lu} » — la question posée n'est plus celle que l'enfant lit`,
+						);
+				}
+		expect(fautes, `Rôles perdus :\n${fautes.join('\n')}`).toEqual([]);
+	});
+});
+
+describe('#711 lot 5 — bornesColonnes : l’intervalle de la question', () => {
+	it('« 3 km = ? m » : de la colonne km à la colonne m, colonnes intermédiaires comprises', () => {
+		const b = bornesColonnes(RANGS_LONGUEURS, 'km', 'm');
+		expect(b, '« 3 km = ? m » : aucun intervalle trouvé alors que les deux unités sont là').toEqual(
+			{ gauche: 0, droite: 3 },
+		);
+		/* Ce que l'intervalle contient, et qui est sa raison d'être : les rangs que l'enfant doit
+		   traverser. Ce sont ceux qu'`explicationRangVide` (src/ui/lecon-tableau.ts) nomme quand
+		   il rappelle les 0 à poser, et ceux que le cadrage doit garder sous les yeux. */
+		expect(RANGS_LONGUEURS.slice(b!.gauche + 1, b!.droite).map((c) => c.unite)).toEqual([
+			'hm',
+			'dam',
+		]);
+	});
+
+	it('« 456 cm = ? m » : le SENS de la conversion ne change pas l’intervalle', () => {
+		// `gauche` et `droite` sont des POSITIONS dans le tableau, pas des rôles : la même paire
+		// d'unités donne le même intervalle dans les deux sens. C'est ce qui rend la substitution
+		// possible — donc autant l'écrire noir sur blanc.
+		expect(bornesColonnes(RANGS_LONGUEURS, 'cm', 'm')).toEqual({ gauche: 3, droite: 5 });
+		expect(bornesColonnes(RANGS_LONGUEURS, 'm', 'cm')).toEqual({ gauche: 3, droite: 5 });
+	});
+
+	it('unités adjacentes : l’intervalle se réduit aux deux colonnes, sans rien entre elles', () => {
+		for (const [connue, demandee] of [
+			['cm', 'mm'],
+			['mm', 'cm'],
+		]) {
+			const b = bornesColonnes(RANGS_LONGUEURS, connue, demandee);
+			expect(b, `« ${connue} → ${demandee} »`).toEqual({ gauche: 5, droite: 6 });
+			expect(
+				RANGS_LONGUEURS.slice(b!.gauche + 1, b!.droite),
+				`« ${connue} → ${demandee} » : une colonne intermédiaire inventée entre deux rangs voisins`,
+			).toEqual([]);
+		}
+	});
+
+	it('la même unité des deux côtés : une réponse DÉFINIE, l’intervalle d’une seule colonne', () => {
+		// Une seule colonne, donc aucun rang intermédiaire — ce qu'`explicationRangVide` traduit
+		// déjà par « rien à dire ».
+		const b = bornesColonnes(RANGS_LONGUEURS, 'm', 'm');
+		expect(b).toEqual({ gauche: 3, droite: 3 });
+		expect(RANGS_LONGUEURS.slice(b!.gauche + 1, b!.droite)).toEqual([]);
+	});
+
+	it('une unité absente de la tranche : `null`, et surtout pas un intervalle inventé', () => {
+		/* `explicationRangVide` traite déjà ce cas par un retour vide. Ici, un repli sur
+		   { gauche: 0, droite: 0 } nommerait des rangs intermédiaires pris au hasard, et ferait
+		   cadrer le tableau sur sa première colonne en silence : le bug d'origine, mais devenu
+		   invisible parce qu'il aurait l'air d'une décision. */
+		expect(
+			bornesColonnes(RANGS_LONGUEURS, 't', 'kg'),
+			'deux unités d’une autre famille',
+		).toBeNull();
+		expect(bornesColonnes(RANGS_LONGUEURS, 'km', 'L'), 'unité demandée hors tranche').toBeNull();
+		expect(bornesColonnes(RANGS_LONGUEURS, 'L', 'km'), 'unité donnée hors tranche').toBeNull();
+		expect(
+			bornesColonnes(RANGS_MASSES, 'm', 'g'),
+			'une longueur dans le tableau des masses',
+		).toBeNull();
+	});
+
+	it('tableau vide : `null` (il n’y a aucune colonne à borner)', () => {
+		expect(bornesColonnes([], 'm', 'm')).toBeNull();
+		expect(bornesColonnes([], 'km', 'm')).toBeNull();
+	});
+
+	it('contrat, sur toutes les paires des deux tranches : gauche ≤ droite, et ce sont bien les deux unités de la question', () => {
+		// Balayage : 49 paires par tranche. Une réponse constante (« toujours la première
+		// colonne ») tombe ici, quelle que soit la constante.
+		const fautes: string[] = [];
+		for (const rangs of [RANGS_LONGUEURS, RANGS_MASSES]) {
+			for (const a of rangs) {
+				for (const b of rangs) {
+					const r = bornesColonnes(rangs, a.unite, b.unite);
+					if (r === null) {
+						fautes.push(`${a.unite} → ${b.unite} : null alors que les deux unités sont là`);
+						continue;
+					}
+					if (r.gauche > r.droite)
+						fautes.push(`${a.unite} → ${b.unite} : gauche > droite (${r.gauche} > ${r.droite})`);
+					if (r.gauche < 0 || r.droite >= rangs.length)
+						fautes.push(`${a.unite} → ${b.unite} : index hors tableau (${r.gauche}, ${r.droite})`);
+					else {
+						const trouvees = new Set([rangs[r.gauche].unite, rangs[r.droite].unite]);
+						const attendues = new Set([a.unite, b.unite]);
+						if (![...attendues].every((u) => trouvees.has(u)) || trouvees.size !== attendues.size)
+							fautes.push(
+								`${a.unite} → ${b.unite} : l'intervalle désigne [${[...trouvees].join(', ')}] — les rangs nommés ne seraient pas ceux de la question`,
+							);
+					}
+				}
+			}
+		}
+		expect(fautes, `Paires mal bornées :\n${fautes.join('\n')}`).toEqual([]);
+	});
+});
+
+/* ============================================================
    `zoneObligatoire`
    ============================================================ */
 
@@ -707,6 +916,91 @@ describe('#711 lot 5 — zoneObligatoire : ce que l’enfant doit écrire', () =
 		for (const cas of TOUS)
 			fautes.push(...defautsDeZone(zoneObligatoire(colonnes(cas), cas.connue, cas.demandee), cas));
 		expect(fautes, `Zones qui violent la règle :\n${fautes.join('\n')}`).toEqual([]);
+	});
+});
+
+/* ============================================================
+   `casesObligatoires` — la zone traduite en CASES
+   ------------------------------------------------------------
+   La zone se compte en COLONNES, le rendu et la saisie en CASES, et la colonne de tête peut
+   en porter deux. Toute la fonction tient dans cette traduction, donc tout le risque aussi :
+   un résultat à sept entrées là où le tableau en a huit décale chaque réponse d'un cran à
+   partir de la tête, et l'enfant se voit exiger une case qu'il n'a pas à remplir, pendant
+   que la dernière — celle de sa réponse — devient facultative.
+   ============================================================ */
+
+describe('#711 lot 5 — casesObligatoires : une réponse par CASE, pas par colonne', () => {
+	it('« 60 mm = ? cm » : deux cases exigées sur sept', () => {
+		// La promesse de #711, en un tableau : cinq cases de moins à remplir qu'avant. Les deux
+		// qui restent sont le 6 des cm (la réponse) et le 0 des mm (le dernier chiffre de la
+		// donnée, celui qui prouve que la conversion est passée par le tableau).
+		expect(casesObligatoires(colonnes(CAS[1]), 'mm', 'cm')).toEqual([
+			false,
+			false,
+			false,
+			false,
+			false,
+			true,
+			true,
+		]);
+	});
+
+	it('« 3 km = ? m » : les quatre premières, et pas une de plus', () => {
+		// Les trois zéros de hm, dam et m sont tout l'exercice ; dm, cm et mm sont à droite du
+		// dernier chiffre de la donnée, donc facultatifs (personne n'écrit « 3000,000 »).
+		expect(casesObligatoires(colonnes(CAS[0]), 'km', 'm')).toEqual([
+			true,
+			true,
+			true,
+			true,
+			false,
+			false,
+			false,
+		]);
+	});
+
+	it('colonne de tête à deux chiffres : huit réponses pour sept colonnes', () => {
+		/* « 12 km = ? m » : la tête porte `12`, donc DEUX cases, toutes deux dans la zone. Une
+		   implémentation qui répondrait par colonne rendrait sept entrées, et le rendu peindrait
+		   l'exigence de la case des mètres sur celle des décimètres. */
+		expect(casesObligatoires(colonnes(TETE_A_DEUX_CHIFFRES), 'km', 'm')).toEqual([
+			true,
+			true,
+			true,
+			true,
+			true,
+			false,
+			false,
+			false,
+		]);
+	});
+
+	it('une unité introuvable : tout facultatif, et la LONGUEUR quand même conservée', () => {
+		/* La tranche est alors mal formée, et c'est le catalogue qui est en faute, pas l'enfant :
+		   rien ne lui est exigé. Mais le tableau se dessine quand même, donc la réponse doit
+		   garder une entrée par case — un tableau plus court ferait lire `undefined` au rendu
+		   pour les dernières, et `undefined` n'est pas `false`. */
+		const r = casesObligatoires(colonnes(CAS[0]), 'km', 'L');
+		expect(r).toHaveLength(casesDe(CAS[0]).length);
+		expect(r.some(Boolean), 'une case exigée sur une question qu’on ne sait pas lire').toBe(false);
+	});
+
+	it('toutes les questions : une entrée par case, et la zone dérivée à la main', () => {
+		const fautes: string[] = [];
+		for (const cas of TOUS) {
+			const r = casesObligatoires(colonnes(cas), cas.connue, cas.demandee);
+			const attendu = casesDe(cas).map((c) => c.obligatoire);
+			if (r.length !== attendu.length)
+				fautes.push(`${cas.nom} : ${r.length} réponses pour ${attendu.length} cases`);
+			else
+				casesDe(cas).forEach((c, i) => {
+					if (r[i] !== attendu[i])
+						fautes.push(
+							`${cas.nom} : la case ${i} (${c.attendu} dans les ${c.unite}) est rendue ${r[i] ? 'obligatoire' : 'facultative'} alors que la zone [${cas.unites[cas.zone.gauche]} … ${cas.unites[cas.zone.droite]}] la veut ${attendu[i] ? 'obligatoire' : 'facultative'}`,
+						);
+				});
+		}
+		expect(fautes, `Cases mal exigées :\n${fautes.join('\n')}`).toEqual([]);
 	});
 });
 
@@ -1137,6 +1431,348 @@ describe('#711 lot 5 — ecritureAttendue : ce que la donnée VAUT, pas ce qu’
 					`${cas.nom} : un seul rang énuméré — une décomposition à un terme ne décompose rien`,
 				).toBeGreaterThanOrEqual(2);
 		}
+	});
+});
+
+/* ============================================================
+   `saisiesPourJournal` — critère 34 : ce que le PARENT relit
+   ------------------------------------------------------------
+   « Le journal encadrant reçoit la réponse telle que l'écran l'affichait, les cases vides
+   hors zone valant zéro. Échec : le parent lit 300 là où l'enfant avait laissé des cases
+   vides. »
+
+   Une case vide n'est pas un zéro, et la nuance décide de ce que le parent lit. Hors de la
+   question, le vide VAUT zéro — l'enfant avait le droit de ne rien y écrire, et c'est bien
+   zéro que le tableau montre. Dans la question, non : relire « 3 km = ? m » comme « 3000 m »
+   alors que l'enfant n'a écrit que le 3 afficherait au parent la BONNE réponse sous un
+   tableau rouge.
+
+   Ce qui est éprouvé ici, c'est la COMPOSITION avec `nombreTableauSaisi`
+   (src/core/erreur-representation.ts), parce que c'est elle qui porte le risque : prises
+   séparément, les deux fonctions ont l'air inoffensives. Le second nettoie les zéros sans
+   valeur des deux bouts (« 000300,0 » → « 300 »), si bien qu'un trou rendu par un `0`
+   disparaîtrait purement et simplement de la ligne que le parent lit.
+   ============================================================ */
+
+/** Les saisies relues pour le journal, puis le nombre que le runner en tire dans l'unité
+    demandée — l'enchaînement exact de `verifier()` (src/ui/lecon-tableau.ts), virgule libre
+    mise à part. */
+function reluParLeParent(cas: Cas, saisies: string[]): string {
+	const pourJournal = saisiesPourJournal(colonnes(cas), cas.connue, cas.demandee, saisies);
+	return nombreTableauSaisi(
+		casesDe(cas).map((c, i) => ({ unite: c.unite, valeur: pourJournal[i] })),
+		cas.demandee,
+	);
+}
+
+describe('#711 lot 5 — saisiesPourJournal : le parent ne lit jamais une réponse que l’enfant n’a pas écrite', () => {
+	it('« 60 mm = ? cm », seul le 6 saisi : zéro hors de la question, un trou dans les mm', () => {
+		/* Les cinq colonnes des km aux dm sont hors zone : l'enfant avait le droit de les laisser
+		   vides, et c'est bien zéro que le tableau montre. La case des mm, elle, est exigée — son
+		   0 est le dernier chiffre de la DONNÉE — donc son vide est un trou. */
+		expect(saisiesPourJournal(colonnes(CAS[1]), 'mm', 'cm', ['', '', '', '', '', '6', ''])).toEqual(
+			['0', '0', '0', '0', '0', '6', TROU],
+		);
+	});
+
+	it('« 60 mm = ? cm » : sans le trou, le parent lirait la BONNE réponse sous un tableau rouge', () => {
+		/* 6 cm est la réponse attendue. Le trou tombe en DERNIÈRE position, là où
+		   `nombreTableauSaisi` retire les zéros de queue : rendu par un `0`, il serait effacé et
+		   la ligne du journal deviendrait « 6 cm », c'est-à-dire un sans-faute. Le parent
+		   chercherait alors ce que son enfant a raté. */
+		const lu = reluParLeParent(CAS[1], ['', '', '', '', '', '6', '']);
+		expect(lu, 'le journal affiche la réponse juste alors que le tableau était incomplet').not.toBe(
+			'6',
+		);
+		expect(lu).toContain(TROU);
+		expect(lu).toBe(`6,${TROU}`);
+	});
+
+	it('« 3 km = ? m », seul le 3 saisi : le journal ne dit pas 3000', () => {
+		/* Le cas nommé par la relecture. Les trois zéros de hm, dam et m sont exigés — ils sont
+		   tout l'exercice — et l'enfant ne les a pas écrits. Les rendre par des `0` ferait lire
+		   « 3000 m » au parent : la bonne réponse, exactement, alors que l'écran était rouge. */
+		expect(saisiesPourJournal(colonnes(CAS[0]), 'km', 'm', ['3', '', '', '', '', '', ''])).toEqual([
+			'3',
+			TROU,
+			TROU,
+			TROU,
+			'0',
+			'0',
+			'0',
+		]);
+		const lu = reluParLeParent(CAS[0], ['3', '', '', '', '', '', '']);
+		expect(lu, 'le parent lit la réponse attendue là où trois rangs manquaient').not.toBe('3000');
+		expect(lu).toBe(`3${TROU}${TROU}${TROU}`);
+	});
+
+	it('« 456 cm = ? m », seul le 4 saisi : le trou survit au nettoyage des zéros des deux bouts', () => {
+		/* Les zéros de tête (km, hm, dam) sont hors zone et disparaissent à la lecture, comme
+		   dans tout nombre — mais les deux rangs manquants, eux, restent visibles de part et
+		   d'autre de la virgule. Une marque faite d'un chiffre serait avalée par l'un ou l'autre
+		   des deux nettoyages. */
+		expect(reluParLeParent(CAS[2], ['', '', '', '4', '', '', ''])).toBe(`4,${TROU}${TROU}`);
+	});
+
+	it('un chiffre écrit HORS de la question n’est jamais remplacé par un zéro', () => {
+		/* Le 7 des centimètres est une vraie erreur — l'enfant a posé un chiffre dans un rang qui
+		   n'en attendait pas — et c'est précisément ce que le parent doit voir. L'écraser au
+		   prétexte que la colonne est facultative rendrait « 3000 m », donc un sans-faute sous un
+		   tableau rouge : le même piège que les cases vides, par l'autre bout. */
+		const saisies = ['3', '0', '0', '0', '', '7', ''];
+		expect(saisiesPourJournal(colonnes(CAS[0]), 'km', 'm', saisies)[5]).toBe('7');
+		expect(reluParLeParent(CAS[0], saisies)).toBe('3000,07');
+	});
+
+	it('tableau rempli en entier, ou réduit à la zone : le journal rend ce que l’écran montrait', () => {
+		/* Le contrôle positif, sans lequel les tests ci-dessus prouveraient seulement que la
+		   fonction sait marquer des trous. Rien à marquer ici : dans le premier cas l'enfant a
+		   tout écrit, dans le second il a écrit tout ce qui lui était demandé, et les deux
+		   tableaux se relisent « 6 cm ». */
+		const complete = saisieComplete(CAS[1]);
+		expect(saisiesPourJournal(colonnes(CAS[1]), 'mm', 'cm', complete)).toEqual(complete);
+		expect(reluParLeParent(CAS[1], complete)).toBe('6');
+		const minimale = saisieMinimale(CAS[1]);
+		expect(saisiesPourJournal(colonnes(CAS[1]), 'mm', 'cm', minimale)).toEqual([
+			'0',
+			'0',
+			'0',
+			'0',
+			'0',
+			'6',
+			'0',
+		]);
+		expect(reluParLeParent(CAS[1], minimale)).toBe('6');
+	});
+
+	it('le trou ne peut être ni un chiffre ni un blanc', () => {
+		// Sinon il se confond avec un rang écrit, ou disparaît à la lecture. Un seul caractère :
+		// la ligne du journal doit rester alignée sur ce que le tableau montrait.
+		expect([...TROU]).toHaveLength(1);
+		expect(TROU, 'un chiffre ou un blanc ne se distingue pas d’un rang écrit').not.toMatch(
+			/[\d\s]/u,
+		);
+	});
+
+	it('une entrée par case, même sur une saisie tronquée ou une question illisible', () => {
+		/* La longueur est ce qui aligne le journal sur les cellules du rendu : une entrée de moins
+		   et chaque unité glisse d'un cran, si bien que le parent lit un nombre construit sur les
+		   mauvaises colonnes. Deux façons de la perdre : une tranche où l'unité de l'énoncé est
+		   absente (rien n'est exigé, mais le tableau se dessine quand même), et un tableau à
+		   colonne de tête, dont les huit cases ne se comptent pas comme les sept colonnes. */
+		const cases = casesDe(TETE_A_DEUX_CHIFFRES).length;
+		expect(cases).toBe(8);
+		expect(saisiesPourJournal(colonnes(TETE_A_DEUX_CHIFFRES), 'km', 'm', ['1'])).toEqual([
+			'1',
+			TROU,
+			TROU,
+			TROU,
+			TROU,
+			'0',
+			'0',
+			'0',
+		]);
+		const illisible = saisiesPourJournal(colonnes(CAS[0]), 'km', 'L', [
+			'3',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+		]);
+		expect(illisible).toHaveLength(casesDe(CAS[0]).length);
+		expect(
+			illisible.includes(TROU),
+			'un trou annoncé sur une question qu’on ne sait pas lire : le parent lirait un manque imputé à l’enfant',
+		).toBe(false);
+	});
+});
+
+/* ============================================================
+   `noteOubli` — critère 38 : nommer l'oubli avant de montrer l'écriture
+   ------------------------------------------------------------
+   « Tes chiffres sont bons, mais il en manquait un : … » Sans ce préfixe, « la bonne réponse
+   était 6 cm » suivi de « 0 dans les mm » se contredit à l'oreille, et l'enfant qui a bien
+   écrit son 6 ne comprend pas ce qui est rouge.
+
+   La phrase AFFIRME quelque chose — que les chiffres écrits sont justes — donc elle a quatre
+   bords, et un seul de trop la rend menteuse : un oubli, plusieurs, un oubli accompagné d'un
+   chiffre faux, un oubli accompagné d'une virgule mal placée. Ils sont éprouvés un par un
+   ci-dessous, plus le cas où il n'y a rien à dire.
+
+   ── Le cinquième bord : l'enfant n'a rien écrit du tout ─────────────────────────
+   « Vérifier » est actif dès l'apparition de la question (critère 33), donc un tableau
+   auquel l'enfant n'a pas touché est validable, et « Tes chiffres sont bons » s'adressait
+   alors à qui n'en avait écrit aucun. Le compliment tombe dans ce cas : reste l'écriture
+   attendue seule, en PHRASE — majuscule et point — puisque plus rien ne la précède. Ni
+   compliment ni reproche : féliciter quelqu'un de ce qu'il n'a pas écrit lui apprend surtout
+   que la phrase ne veut rien dire.
+
+   Le seuil porte sur la ZONE, et c'est ce qui se déplace sans qu'on le voie : un 0 posé dans
+   une colonne facultative n'est pas « avoir écrit ses chiffres ». Un seuil calculé sur le
+   tableau entier rendrait le compliment à un enfant qui n'a touché aucune case exigée, et
+   les deux lectures coïncident partout ailleurs. Un test nommé plus bas les sépare.
+   ============================================================ */
+
+describe('#711 lot 5 — noteOubli : « tes chiffres sont bons » n’est dit que quand c’est vrai', () => {
+	it('un seul oubli : l’accord se fait en toutes lettres', () => {
+		/* « 60 mm = ? cm » avec le 6 écrit et le 0 des mm oublié. « il en manquait 1 » écrirait un
+		   nombre là où le français met un article : c'est la forme qu'on lit, et celle que le TTS
+		   prononce correctement. */
+		const phrase = noteOubli(colonnes(CAS[1]), 'mm', 'cm', ['', '', '', '', '', '6', ''], true);
+		expect(phrase).toBe(
+			'Tes chiffres sont bons, mais il en manquait un : pour 60 mm, il fallait écrire 6 dans les cm et 0 dans les mm.',
+		);
+		expect(phrase, 'un oubli annoncé par le chiffre 1').not.toContain('manquait 1');
+	});
+
+	it('plusieurs oublis : le nombre est dit, et l’écriture entière avec lui', () => {
+		// « 456 cm = ? m » avec le seul 4 écrit : les 5 des dm et 6 des cm manquent. L'enfant a
+		// besoin de voir l'écriture COMPLÈTE, pas seulement les deux rangs qu'il a sautés — c'est
+		// la transcription du nombre qu'il n'a pas faite.
+		expect(noteOubli(colonnes(CAS[2]), 'cm', 'm', ['', '', '', '4', '', '', ''], true)).toBe(
+			'Tes chiffres sont bons, mais il en manquait 2 : pour 456 cm, il fallait écrire 4 dans les m, 5 dans les dm et 6 dans les cm.',
+		);
+	});
+
+	it('un oubli ET un chiffre faux : la phrase se tait', () => {
+		/* Le 9 posé dans les décimètres à la place du 5 est une vraie erreur de conversion. Dire
+		   « tes chiffres sont bons » serait faux, et surtout cela noierait ce que l'enfant a
+		   besoin d'entendre : ce n'est pas un rang qu'il a sauté, c'est le nombre qu'il a mal lu. */
+		expect(noteOubli(colonnes(CAS[2]), 'cm', 'm', ['', '', '', '4', '9', '', ''], true)).toBe('');
+	});
+
+	it('un chiffre faux HORS de la zone compte aussi : la phrase se tait', () => {
+		// Le 7 posé dans les décimètres n'était pas exigé, mais il est écrit, et il est faux : le
+		// tableau que l'enfant a rempli ne se lit pas 6 cm. Une case facultative donne le droit de
+		// ne RIEN écrire, pas celui d'écrire n'importe quoi.
+		expect(noteOubli(colonnes(CAS[1]), 'mm', 'cm', ['', '', '', '', '7', '6', ''], true)).toBe('');
+	});
+
+	it('un oubli ET une virgule mal placée : la phrase se tait', () => {
+		/* Mêmes chiffres qu'au premier test, mais la virgule est fausse. Le runner a déjà sa
+		   phrase pour ce cas (« la virgule allait après les millimètres ») ; empiler les deux
+		   ferait trois lignes à lire sous un tableau rouge, et « tes chiffres sont bons » y
+		   apparaîtrait deux fois. */
+		expect(noteOubli(colonnes(CAS[1]), 'mm', 'cm', ['', '', '', '', '', '6', ''], false)).toBe('');
+	});
+
+	it('rien d’oublié : rien à dire, y compris quand la moitié du tableau est restée vide', () => {
+		/* Le contrôle positif, et la promesse du lot en même temps : sur la saisie MINIMALE, cinq
+		   cases sont vides et aucune ne manque. La règle d'avant en aurait compté cinq et affiché
+		   la phrase à un enfant qui venait de répondre juste. */
+		expect(noteOubli(colonnes(CAS[1]), 'mm', 'cm', saisieMinimale(CAS[1]), true)).toBe('');
+		expect(noteOubli(colonnes(CAS[1]), 'mm', 'cm', saisieComplete(CAS[1]), true)).toBe('');
+	});
+
+	it('une donnée qui tient sur un rang : le compte, sans deux-points orphelin', () => {
+		/* « 3 km = ? m » avec le seul 3 écrit. Il n'y a rien à décomposer — « 3 km s'écrit 3 en
+		   km » ne dirait rien que l'énoncé n'ait dit — donc `ecritureAttendue` rend une chaîne
+		   vide, et la phrase doit se refermer proprement. Un « : » suivi d'un point est ce que
+		   produit une concaténation qui ne teste pas son morceau. C'est `explicationRangVide` qui
+		   prend le relais ici, avec « Pense aux 0 des unités intermédiaires ». */
+		const phrase = noteOubli(colonnes(CAS[0]), 'km', 'm', ['3', '', '', '', '', '', ''], true);
+		expect(phrase).toBe('Tes chiffres sont bons, mais il en manquait 3.');
+		expect(phrase).not.toContain(' : .');
+	});
+
+	it('une unité introuvable : la phrase se tait plutôt que d’imputer un manque à l’enfant', () => {
+		// Tranche mal formée, donc défaut de catalogue : aucune case n'est exigée, aucune ne
+		// manque, et surtout on ne reproche rien à l'enfant pour une leçon cassée.
+		expect(noteOubli(colonnes(CAS[0]), 'km', 'L', ['3', '', '', '', '', '', ''], true)).toBe('');
+	});
+
+	it('un tableau auquel il n’a pas touché : l’écriture attendue, et AUCUN compliment', () => {
+		/* « Vérifier » est actif dès l'apparition de la question (critère 33), donc ce tableau-là
+		   est validable. « Tes chiffres sont bons » y félicitait un enfant qui n'avait écrit aucun
+		   chiffre — un compliment qui ne correspond à rien apprend surtout que la phrase ne veut
+		   rien dire, et le suivant, mérité celui-là, ne vaudra plus rien.
+
+		   Ce qui reste est l'écriture attendue, seule : ni compliment, ni reproche. */
+		const phrase = noteOubli(colonnes(CAS[2]), 'cm', 'm', saisieVide(CAS[2]), true);
+		expect(phrase).toBe(
+			'Pour 456 cm, il fallait écrire 4 dans les m, 5 dans les dm et 6 dans les cm.',
+		);
+		expect(phrase, 'félicité pour des chiffres qu’il n’a pas écrits').not.toContain(
+			'Tes chiffres sont bons',
+		);
+		// Même chose sur le cas du critère 38, pour que la branche ne tienne pas à une question.
+		expect(noteOubli(colonnes(CAS[1]), 'mm', 'cm', saisieVide(CAS[1]), true)).toBe(
+			'Pour 60 mm, il fallait écrire 6 dans les cm et 0 dans les mm.',
+		);
+	});
+
+	it('le seuil porte sur la ZONE : un chiffre juste posé hors d’elle ne fait pas « avoir écrit »', () => {
+		/* Le bord qui se déplace sans se voir. Les deux lectures — « il a rempli une case exigée »
+		   et « il a rempli une case » — coïncident sur toutes les saisies ordinaires ; elles ne
+		   divergent que lorsque l'enfant a posé quelque chose de JUSTE hors de la question, ici le
+		   0 des kilomètres, qui est bien le chiffre attendu dans cette colonne mais ne dit rien de
+		   la conversion demandée. Un seuil calculé sur le tableau entier le prendrait pour une
+		   transcription commencée et rendrait le compliment. */
+		const horsZone = ['0', '', '', '', '', '', ''];
+		expect(
+			casesObligatoires(colonnes(CAS[2]), 'cm', 'm')[0],
+			'la fixture ne place plus cette case hors de la zone : le test ne sépare plus rien',
+		).toBe(false);
+		expect(noteOubli(colonnes(CAS[2]), 'cm', 'm', horsZone, true)).toBe(
+			'Pour 456 cm, il fallait écrire 4 dans les m, 5 dans les dm et 6 dans les cm.',
+		);
+		// L'autre côté du seuil, sur la MÊME question : un seul chiffre écrit dans la zone, et le
+		// compliment revient. C'est ce couple qui fixe la frontière, pas chaque cas pris seul.
+		expect(noteOubli(colonnes(CAS[2]), 'cm', 'm', ['', '', '', '4', '', '', ''], true)).toBe(
+			'Tes chiffres sont bons, mais il en manquait 2 : pour 456 cm, il fallait écrire 4 dans les m, 5 dans les dm et 6 dans les cm.',
+		);
+	});
+
+	it('rien écrit ET rien à décomposer : la phrase se tait entièrement', () => {
+		/* « 3 km = ? m » vierge. Sans compliment à donner et sans écriture à montrer — la donnée
+		   tient sur un seul rang — il ne reste rien à dire : un « Pour 3 km, il fallait écrire 3
+		   dans les km. » ne serait que l'énoncé répété. `explicationRangVide` prend le relais avec
+		   « Pense aux 0 des unités intermédiaires », et l'enfant lit une phrase, pas deux. */
+		expect(noteOubli(colonnes(CAS[0]), 'km', 'm', saisieVide(CAS[0]), true)).toBe('');
+	});
+
+	it('fragment ou phrase : les deux exigences de ponctuation sont inverses, et justes toutes les deux', () => {
+		/* À lire avec le test « elle s'insère dans la phrase du runner » de `ecritureAttendue`, qui
+		   exige exactement le contraire — ni majuscule, ni point. Les deux ne se contredisent pas,
+		   ils décrivent deux POSITIONS du même contenu :
+		   - `ecritureAttendue` est un FRAGMENT, inséré après « … il en manquait un : » ; une
+		     majuscule y tomberait au milieu d'une phrase, et son point la doublerait ;
+		   - la branche sans compliment est la phrase ENTIÈRE, seule à l'écran ; sans majuscule ni
+		     point, elle s'afficherait en minuscule juste avant « La bonne réponse était… ».
+		   Supprimer l'un des deux tests parce qu'il « contredit » l'autre relâche la moitié de la
+		   règle — d'où ce troisième, qui les montre ensemble. */
+		expect(ecritureAttendue(colonnes(CAS[2]), 'cm', 'm')).toBe(
+			'pour 456 cm, il fallait écrire 4 dans les m, 5 dans les dm et 6 dans les cm',
+		);
+		expect(noteOubli(colonnes(CAS[2]), 'cm', 'm', saisieVide(CAS[2]), true)).toBe(
+			'Pour 456 cm, il fallait écrire 4 dans les m, 5 dans les dm et 6 dans les cm.',
+		);
+	});
+
+	it('la phrase est une phrase : majuscule, point final, et la langue du projet', () => {
+		/* Elle est composée AVANT « La bonne réponse était… », contrairement à `ecritureAttendue`
+		   qui s'insère après un deux-points : c'est donc elle qui porte la ponctuation. Les DEUX
+		   branches y passent — celle qui complimente et celle qui se contente de montrer —, parce
+		   que la seconde compose sa majuscule au lieu de l'avoir écrite. */
+		const phrases = [
+			noteOubli(colonnes(CAS[1]), 'mm', 'cm', ['', '', '', '', '', '6', ''], true),
+			noteOubli(colonnes(CAS[2]), 'cm', 'm', ['', '', '', '4', '', '', ''], true),
+			noteOubli(colonnes(CAS[0]), 'km', 'm', ['3', '', '', '', '', '', ''], true),
+			noteOubli(colonnes(CAS[2]), 'cm', 'm', saisieVide(CAS[2]), true),
+		];
+		const fautes: string[] = [];
+		for (const p of phrases) {
+			if (!/^[A-ZÀ-Þ]/u.test(p)) fautes.push(`« ${p} » ne commence pas par une majuscule`);
+			if (!p.endsWith('.')) fautes.push(`« ${p} » ne se termine pas par un point`);
+			for (const f of apostrophesCourbes(p))
+				fautes.push(`apostrophe courbe dans « ${f} » — la convention du projet est la droite`);
+			for (const f of vouvoiements(p))
+				fautes.push(`vouvoiement dans « ${f} » — l'appli parle À l'enfant`);
+			for (const f of signesCites(p)) fautes.push(`signe cité au lieu d'être nommé dans « ${f} »`);
+		}
+		expect(fautes, `Phrases fautives :\n${fautes.join('\n')}`).toEqual([]);
 	});
 });
 

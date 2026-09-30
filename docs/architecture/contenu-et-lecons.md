@@ -1151,8 +1151,9 @@ répondait juste à 100 % des items sans lire un seul nom d'unité. Avec une tra
 l'enfant doit décider lui-même **où commencer à écrire** et **où lire la réponse**. La
 quantité s'étale un chiffre par colonne **à son rang**, la colonne de tête absorbant les
 chiffres de poids fort (1-2 chiffres) et valant « 0 » quand la quantité n'atteint pas ce
-rang : l'enfant remplit **toutes** les cases, zéros de tête compris (pas de case à
-laisser vide — un seul geste inédit à la fois). Un **bord subsiste** sur une seule
+rang. Depuis le lot 5 de #711, le tableau n'exige **que les cases de la question**
+(de la donnée à la colonne demandée) : hors de cette zone, vide et zéro sont tous deux
+justes — règle dans [Rendu & interactions](ui.md), « Ce que le tableau exige ». Un **bord subsiste** sur une seule
 leçon-niveau, assumé et écrit dans le code : les masses au CE2 n'ont qu'une relation au
 programme (1 kg = 1 000 g), donc la tranche s'y réduit à la paire. Les unités de la
 tranche non étudiées au niveau sont des **colonnes de transit** (en-tête démoté + case

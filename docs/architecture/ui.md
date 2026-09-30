@@ -495,10 +495,13 @@ pure](core.md)) pour les formats composites :
   (`lecon-qcm-multi.ts:journaliserPasseMulti`, verdict tout-ou-rien via `selectionJuste`).
   Les helpers de ces deux runners reçoivent l'état coché / sélectionné **en paramètre** (et ne
   lisent plus une variable de module) : la même lecture sert à l'écran et au journal, et ne
-  peut plus se dédoubler. **Exception assumée** : le tableau de conversion (`lecon-tableau.ts`)
-  reste `sansTentative` inconditionnel — sa réponse est la **lecture de toutes les cases
-  ensemble**, donc inexistante tant qu'il en manque une, et un nombre reconstruit sur des
-  cases vides ferait croire à une conversion fausse jamais proposée. Branché sur la fiche en saisie (`session.ts:verify`), le QCM
+  peut plus se dédoubler. **Exception assumée** : sur le chemin « Je ne sais pas,
+  montre-moi », le tableau de conversion (`lecon-tableau.ts`) reste `sansTentative`
+  inconditionnel (`capterPasse`) — un nombre reconstruit sur des cases non remplies ferait
+  croire à une conversion fausse jamais proposée. Le chemin « Vérifier », lui, relit les
+  cases (`saisiesPourJournal`, `core/tableau-verdict.ts`) : une case vide EXIGÉE par la
+  question apparaît comme `_` dans la réponse journalisée, une case vide hors question
+  comme `0`. Branché sur la fiche en saisie (`session.ts:verify`), le QCM
   (`lecon-qcm.ts`), le QCM multi-sélection (`lecon-qcm-multi.ts` — une entrée par
   question, propositions cochées listées dans l'ordre d'affichage), le sprint
   (`sprint.ts`), les tuiles de numération (`lecon-tuiles.ts` — libellé de la tuile
@@ -1289,8 +1292,9 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   `TableauColonne[]` de l'exercice, tête à 2 chiffres déployée en 2 cases) via un
   **pavé de chiffres externe** dédié (jamais de clavier natif ni de tap direct dans
   une case étroite) — case active surlignée, **avance automatique**, navigation
-  clavier ← →, validation bloquée tant qu'une case est vide ; corrigé **case par
-  case** (comme la grille posée). Colonnes de transit (unité non étudiée au
+  clavier ← →, « Vérifier » **actif dès l'apparition de la question** et jamais
+  désactivé ; corrigé **case par case** (comme la grille posée), sur les seules cases
+  que la question exige (voir « Ce que le tableau exige » ci-dessous). Colonnes de transit (unité non étudiée au
   niveau) signalées par un en-tête démoté + case en pointillés (jamais
   grisées/désactivées), et une virgule fixe insérée par l'app pour les paires
   décimales CM1 (`virguleApres`). Parité `recordLessonRun` (XP/étoiles) et aide
@@ -1308,9 +1312,10 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   chiffres d'une colonne de tête (`virguleCase` est toujours la DERNIÈRE case d'une
   colonne). Une pression au même endroit la retire ; le curseur n'avance pas après la
   pose (elle marque un bord, pas une case). Chaque frontière de colonne porte un
-  **emplacement visible** (`.tc-fente`) tant qu'aucune virgule n'est posée — ce qui rend
-  lisible un bouton « Vérifier » encore gris (avis specialiste-troubles-apprentissage :
-  un blocage sans cause visible est un obstacle qu'on ne peut ni voir ni raisonner).
+  **emplacement visible** (`.tc-fente`) tant qu'aucune virgule n'est posée — la virgule
+  attendue se voit avant toute vérification (avis specialiste-troubles-apprentissage).
+  Une virgule non posée n'empêche plus de vérifier : c'est une erreur de virgule comme
+  une autre, dite par le même canal.
   **Correction dissociée** (avis pedagogue-primaire / specialiste-troubles-apprentissage) :
   la virgule porte son propre verdict (`.tc-fente--juste/--fausse`, + l'emplacement
   ATTENDU montré après une erreur), distinct de celui des cases — des chiffres tous
@@ -1356,6 +1361,29 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   configuration où elles cessent d'être neutres est le paysage bas et large — qu'aucune
   spec Playwright (Chromium) ne couvre. À passer au lecteur d'écran sur un iPad ou un
   iPhone tenu à plat avant de considérer le rendu paysage acquis.
+  **Cadrage sur la question (#711 lot 5).** À chaque nouvelle question, le cadre défilant
+  (`.tc-wrap`) s'ouvre sur l'INTERVALLE de la question (colonne de l'unité donnée à colonne de
+  l'unité demandée, intermédiaires comprises), au lieu de sa première colonne. Quand
+  l'intervalle ne tient pas dans le cadre, il s'aligne sur l'unité DONNÉE, côté du sens de
+  remplissage. Le runner mesure (`offsetLeft`, `clientWidth`), `core/tableau-cadrage.ts`
+  (`scrollPourCadrer`) décide. Recalculé par un **`ResizeObserver` sur le cadre**, pas par
+  `window.resize` : une barre d'adresse mobile qui se replie émet un `resize` sans que la
+  largeur change et effacerait le défilement fait à la main ; l'observateur, lui, voit aussi
+  le zoom texte. Le cadrage vaut partout (nul quand le tableau ne déborde pas). Le SCSS du lot,
+  lui, est confiné aux petits écrans et à ce seul runner : le cadre sort de la gouttière de la
+  scène, les en-têtes de colonne se resserrent (8 → 6 px).
+  **Ce que le tableau exige (#711 lot 5) — la règle de correction.** Un tableau de
+  conversion **n'exige plus toutes ses cases**, et « Vérifier » n'attend donc plus un tableau
+  complet. Seule la **zone obligatoire** compte : de la colonne du premier chiffre non nul
+  de la donnée jusqu'à la plus lointaine des colonnes « unité donnée » et « unité demandée »
+  (`zoneObligatoire`, `core/tableau-verdict.ts`). Dans la zone, une case vide est fausse.
+  Hors zone, **vide et zéro sont tous deux justes** (jamais un ✗). Le cas qui décide : sur
+  « 60 mm = ? cm », le `0` des mm est obligatoire (chiffre de la DONNÉE, qui dit 60 et non 6),
+  alors que les zéros des km aux dm ne le sont pas. Une case laissée vide hors zone n'a ni ✓
+  ni ✗ (`neutre`). Quand la seule erreur est un oubli dans la zone, le retour le nomme
+  (`noteOubli` : « Tes chiffres sont bons, mais il en manquait un : pour 60 mm, il fallait
+  écrire 6 dans les cm et 0 dans les mm. »). Le journal encadrant distingue le vide exigé (`_`)
+  du vide toléré (`0`) via `saisiesPourJournal`.
   **REJET ÉCRIT — la taille des cases (40 × 46 px).** Elle est sous le repère de confort de
   44 px pour un doigt d'enfant, et un relecteur le remonte à chaque passage sur cet écran.
   Ce n'est ni causé ni aggravé par #711 (le critère 14 de l'issue ne demande que de ne pas
@@ -2233,3 +2261,14 @@ saisie au clavier physique. Un lecteur d'écran en mode navigation intercepte le
 toute façon ; le chemin accessible est le pavé à l'écran. Une touche **maintenue** est en
 revanche neutralisée (`e.repeat`) : là où un chiffre maintenu réécrit la même valeur, une
 virgule maintenue clignoterait entre posée et retirée.
+
+### Tableau de conversion : une seule recherche des colonnes de la question (#711 lot 5)
+
+**REJET ÉCRIT — réécrire à la main un `findIndex` d'unité.** Les modules `core/tableau-*`
+et `ui/lecon-tableau.ts` partagent
+`indicesQuestion(colonnes, uniteConnue, uniteDemandee)` (`core/tableau-verdict.ts`), qui rend
+la paire **donnée / demandée**. On n'écrit pas sa propre recherche. La raison : une paire
+**triée gauche / droite** se substitue sans bruit à une paire donnée / demandée, et tout
+continue de marcher sur les conversions vers la droite (le cas le plus fréquent), le défaut
+n'apparaissant que sur les conversions vers la gauche. `bornesColonnes` existe pour qui veut
+explicitement l'ordre du tableau ; il passe lui-même par `indicesQuestion`.

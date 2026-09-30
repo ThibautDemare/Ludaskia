@@ -1612,6 +1612,31 @@ niveau, sans DOM ni stockage :
   autre exercice. La narration nomme l'unité de chaque colonne vide et ne dit JAMAIS
   « on ajoute des zéros » ni « on décale la virgule » — raccourcis qui marchent sur les
   entiers et cassent au premier décimal.
+- **`tableau-virgule.ts`** (#711 lot 4) — la traduction case ↔ colonne du mode « virgule »
+  du tableau de conversion : **`derniereCaseDe`**, **`colonneDeCase`**, **`caseVirguleAttendue`**.
+  `virguleApres` est un index de COLONNE, la position du runner un index de CASE, et les
+  confondre décale la virgule d'un rang sur les seules têtes à deux chiffres. Piège :
+  `caseVirguleAttendue` rend `-1` sans virgule attendue, ne jamais l'enchaîner à
+  `colonneDeCase` sans garde.
+- **`tableau-cadrage.ts`** (#711 lot 5) — **`scrollPourCadrer(donnee, demandee,
+  largeurVisible, largeurTotale, marge)`** : le `scrollLeft` qui ouvre le cadre du tableau sur
+  l'intervalle de la question (segments en pixels, mesurés par le runner). L'intervalle tient
+  entièrement dans le cadre quand c'est possible (la marge de 8 px cède devant cette
+  contrainte) ; sinon le cadre s'aligne sur l'unité DONNÉE, selon le sens du remplissage.
+  Résultat toujours borné à `[0, largeurTotale - largeurVisible]`.
+- **`tableau-verdict.ts`** (#711 lot 5) — **ce que le tableau de conversion exige et
+  comment il juge**. Un tableau **n'exige plus toutes ses cases** : **`zoneObligatoire`** /
+  **`casesObligatoires`** bornent la zone (écriture de la donnée, du premier chiffre non nul
+  à la colonne de l'unité donnée, étendue jusqu'à la colonne demandée) ; **`verdictsCases`**
+  rend `juste` / `faux` / `neutre` par case (vide hors zone = `neutre`, ni ✓ ni ✗ ; vide dans
+  la zone = `faux` ; zéro hors zone reste juste) et tout `neutre` si une unité de l'énoncé
+  manque à la tranche (défaut du catalogue, pas de l'enfant). **`noteOubli`** compose le
+  retour quand la seule erreur est un oubli dans la zone ; **`ecritureAttendue`** en fournit
+  la phrase (« pour 60 mm, il fallait écrire 6 dans les cm et 0 dans les mm ») ;
+  **`saisiesPourJournal`** relit le vide exigé comme `_` (`TROU`) et le vide toléré comme `0`
+  pour l'espace encadrant. **`indicesQuestion`** / **`bornesColonnes`** sont l'unique recherche
+  des colonnes donnée / demandée, cf. [Rendu & interactions](ui.md). Règle et rendu dans
+  ui.md, « Ce que le tableau exige ».
 - **`etayage-droite.ts`** — le placement sur la droite graduée. Trois pas, jamais plus :
   la tâche est une décision perceptive, pas une accumulation, et la découper davantage
   produirait du bavardage (avis `pedagogue-primaire`). L'ordre est celui du raisonnement

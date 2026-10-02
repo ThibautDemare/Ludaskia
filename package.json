@@ -38,13 +38,13 @@
 		"french-verbs-lefff": "^3.4.0",
 		"happy-dom": "^20.14.5",
 		"husky": "^9.1.7",
-		"prettier": "^3.9.8",
+		"prettier": "^3.9.9",
 		"sass": "^1.105.0",
 		"typescript": "^6.0.3",
-		"typescript-eslint": "^8.70.1",
-		"vite": "^8.3.0",
+		"typescript-eslint": "^8.71.0",
+		"vite": "^8.3.1",
 		"vite-plugin-pwa": "^1.3.0",
-		"vitest": "^5.0.1",
+		"vitest": "^5.0.2",
 		"workbox-window": "^7.4.1"
 	}
 }

@@ -47,6 +47,12 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
   (célébration, passage de niveau, choix de mode).
 - **Structure & lecture** : hiérarchie de titres cohérente, libellés de champs,
   alternatives textuelles, `lang="fr"`.
+- **Glyphes décoratifs muets** : un chevron, une puce ou une flèche posés en
+  contenu généré (`::before { content: '▸' }`) ou en caractère dans le texte sont
+  **lus** par plusieurs lecteurs d'écran (« triangle pointant vers la droite »)
+  et polluent le nom accessible. Exiger une icône `icon(…)` (décorative,
+  `aria-hidden` par défaut) ou un `<span aria-hidden="true">`. Cas d'origine : le
+  `<summary>` de la zone « Déjà terminés pour cette liste » (2026-10-07).
 - **Audio / TTS** : le bouton « Écouter la consigne » (`ui/consigne-tts.ts`,
   `core/tts-text.ts`) reste un **appui** (jamais imposé, absent sans voix FR), et
   le texte parlé ne **trahit pas** la réponse (règle du champ `parle`).

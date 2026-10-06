@@ -180,7 +180,7 @@ le curseur de la séance précédente ; une fois tous validés pour ce mode, la 
 en entretien sur tous les mots (`indiceProchainMotCible`, détail dans
 [design-orthographe](../design-orthographe.md)) ; l'écran
 range plus bas les modes **terminés pour cette liste** (tous ses mots les ont validés)
-sans les désactiver, et annonce le **coût** (`8 activités`) sur tous les boutons de
+sans les désactiver, dans une zone **repliée par défaut** (`<details>`, 2026-10-07), et annonce le **coût** (`8 activités`) sur tous les boutons de
 séance. Sur une liste **déjà entièrement acquise**, ce bouton de tête ne relance plus le
 parcours complet mais un **tour de révision** qui repasse chaque mot une fois via sa
 marche la plus haute jouable (dictée ou mot caché, jamais un mode tiré au hasard) : il

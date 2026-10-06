@@ -277,8 +277,12 @@ function teteHTML(marche: ModeOrtho | null, nbMots: number): SafeHtml {
    plus bas ce qui est déjà terminé pour cette liste (tous ses mots l'ont validé). Un mode
    terminé ne disparaît pas — il rapporte toujours des points et reste un entraînement
    valable — mais il cesse de capter le geste par défaut d'un enfant qui va au plus étayé,
-   ce qui est le point de départ de l'issue. La zone basse reste toujours DÉPLIÉE (choix du
-   mainteneur) : un repli en cacherait l'existence à qui ne sait pas qu'il faut chercher.
+   ce qui est le point de départ de l'issue. La zone basse est un `<details>` natif REPLIÉ à
+   chaque rendu (choix du mainteneur, 2026-10-07, à rebours du « toujours dépliée » de #641) :
+   à l'usage, l'enfant ne comprenait pas qu'un mode terminé ne fait plus avancer la liste, et
+   y allait parce qu'il le jugeait plus facile. Cacher la zone à qui ne sait pas qu'il faut
+   la chercher, c'est précisément l'effet voulu. Aucune mémoire de l'état : replié par défaut,
+   c'est à chaque arrivée.
 
    Cas limite tenu par le critère 11 : sur une liste entièrement acquise, la zone principale
    n'a plus de mode ciblé, mais l'écran ne se vide pas (parcours complet + relecture y sont
@@ -313,10 +317,12 @@ export function renderOrthoModeChoice(host: HTMLElement, lessonId: string, label
 		location.hash = 'ortho-' + lessonId;
 	};
 	const zoneTermines = termines.length
-		? html`<div class="mode-choice-epuises">
-      <p class="mode-choice-epuises-sep">Déjà terminés pour cette liste</p>
-      ${joindre(termines.map((m) => modeBtnHTML(m, true)))}
-    </div>`
+		? html`<details class="mode-choice-epuises">
+      <summary class="mode-choice-epuises-sep">Déjà terminés pour cette liste${icon('caret-down')}</summary>
+      <div class="mode-choice-epuises-list">
+        ${joindre(termines.map((m) => modeBtnHTML(m, true)))}
+      </div>
+    </details>`
 		: VIDE;
 	host.innerHTML = html`<div class="mode-choice">
     <h2 class="mode-choice-title">Comment veux-tu t'entraîner ?</h2>

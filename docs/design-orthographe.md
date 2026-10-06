@@ -549,17 +549,32 @@ l'indice 0 à chaque séance : sur une liste plus longue que la pause de séance
 (`SEANCE_MAX = 8`), les mêmes premiers mots — déjà validés — étaient resservis en boucle,
 les suivants n'étaient jamais atteints. L'écran répartit les modes en deux zones :
 - **zone principale** — ce qui reste à faire ;
-- **zone basse** (`.mode-choice-epuises`, toujours dépliée) — les modes **terminés pour
-  cette liste** (tous les mots les ont validés), badge « Terminé pour cette liste · donne
-  toujours des points ». Ils restent **pleinement actifs** et rapportent toujours de l'XP :
-  jamais le style `.programme-tuile--inactive`, que l'enfant lit comme « pas cliquable ».
+- **zone basse** (`.mode-choice-epuises`, **repliée par défaut**) — les modes **terminés
+  pour cette liste** (tous les mots les ont validés), badge « Terminé pour cette liste ·
+  donne toujours des points ». Ils restent **pleinement actifs** et rapportent toujours de
+  l'XP : jamais le style `.programme-tuile--inactive`, que l'enfant lit comme « pas
+  cliquable ».
 
-**Écarté (#641)** : la zone basse n'a pas de `role="group"`/`aria-labelledby` reliant son
-titre « Déjà terminés pour cette liste » aux boutons qu'elle coiffe — même schéma, non
-groupé, que la zone « étude » (`.mode-choice-etude-sep`) déjà en place. Chaque bouton porte
-déjà l'information dans son propre nom accessible (le badge « Terminé pour cette liste ·
-donne toujours des points » est DANS le `<button>`) : aucune perte d'information mesurée à
-laisser le regroupement implicite.
+**Zone basse repliée (2026-10-07, revient sur le « toujours dépliée » de #641)** : la zone
+est un `<details>` natif dont le `<summary>` porte le titre « Déjà terminés pour cette
+liste », replié à **chaque** rendu (aucune mémoire de l'état). #641 l'avait voulue dépliée
+au motif qu'un repli « en cacherait l'existence à qui ne sait pas qu'il faut chercher ». À
+l'usage, c'est l'effet recherché : l'enfant ne comprenait pas qu'un mode terminé ne fait
+plus avancer la liste, et y allait parce qu'il le jugeait plus facile. Le titre garde le
+registre discret de l'ancien intertitre (`--grey`, sans accent), sur une cible de 44 px et
+avec un focus explicite. Tenu par `e2e/ortho-choix-mode.spec.ts` (bloc « zone basse
+repliable »).
+
+**Écarté (2026-10-07)** : remplacer le `display: flex` du `<summary>` par un bloc, par
+crainte d'un support inégal sous Firefox/GeckoView (l'appareil de l'enfant), que les e2e
+Chromium ne verraient pas. Le bilan enfant pose déjà `display: flex` sur un `<summary>`
+(`.bc-group-head`, `bilan.scss`), en production sur cette tablette sans défaut constaté ;
+et au pire, le titre retomberait en bloc centré, sans perte d'accès.
+
+Le `role="group"`/`aria-labelledby` écarté par #641 pour l'ancien intertitre n'a plus
+d'objet : `<details>` expose nativement un groupe, et l'état replié/déplié est annoncé par
+son `<summary>`. Chaque bouton garde en plus l'information dans son propre nom accessible
+(le badge est DANS le `<button>`).
 
 **Écarté (#641)** : `.mode-btn` n'a pas de `:focus-visible` dédié et s'appuie sur l'anneau
 natif du navigateur, contrairement à d'autres boutons du runner de leçon (`.lecon-passer`,

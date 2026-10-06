@@ -105,17 +105,59 @@
    entre le bouton d'action plein de la zone principale et l'accès « étude » : fond de carte
    et liseré d'accent, comme `.etude-btn`. Ce qu'il ne faut SURTOUT pas reprendre, c'est
    `.programme-tuile--inactive` (pointillé + --muted), que l'enfant a appris ailleurs comme
-   « pas cliquable » : ces boutons sont pleinement actifs et rapportent toujours des points. */
+   « pas cliquable » : ces boutons sont pleinement actifs et rapportent toujours des points.
+   Repliée par défaut (2026-10-07, cf. `renderOrthoModeChoice`) : le titre devient le
+   <summary> d'un <details> natif. Il garde le registre discret de l'ancien intertitre (--grey,
+   13 px, pas d'accent) puisque le but est de ne PAS attirer l'œil, mais sur une cible tactile
+   de 44 px et avec un focus explicite : c'est désormais une commande. */
 .mode-choice-epuises {
 	margin-top: 22px;
+}
+.mode-choice-epuises-sep {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	width: fit-content;
+	min-height: 44px;
+	margin: 0 auto;
+	padding: 0 12px;
+	font-size: 13px;
+	color: var(--grey);
+	cursor: pointer;
+	/* Marqueur natif retiré, remplacé par l'icône `caret-down` (décorative, donc muette) :
+	   un chevron en `::before { content: '▸' }` serait lu « triangle pointant vers la
+	   droite » par plusieurs lecteurs d'écran (avis a11y). Même geste que le bilan. */
+	list-style: none;
+	&::-webkit-details-marker {
+		display: none;
+	}
+	.ph-icon {
+		width: 16px;
+		height: 16px;
+		transition: transform 0.15s ease;
+	}
+	/* `--accent-dark` et non `--accent` : l'anneau se dessine sur le fond de page, couple
+	   déjà tenu sur les six thèmes par tests/contraste-tokens.test.ts (focus de la recherche). */
+	&:focus-visible {
+		outline: 2px solid var(--accent-dark);
+		outline-offset: 2px;
+		border-radius: 8px;
+	}
+}
+.mode-choice-epuises[open] > .mode-choice-epuises-sep .ph-icon {
+	transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+	.mode-choice-epuises-sep .ph-icon {
+		transition: none;
+	}
+}
+.mode-choice-epuises-list {
+	margin-top: 8px;
 	display: flex;
 	flex-direction: column;
 	gap: 14px;
-}
-.mode-choice-epuises-sep {
-	font-size: 13px;
-	color: var(--grey);
-	margin: 0;
 }
 .mode-btn[data-epuise='1'] {
 	background: var(--paper);
@@ -131,13 +173,10 @@
 	.mode-btn {
 		flex: 1 1 240px;
 	}
-	.mode-choice-epuises {
+	.mode-choice-epuises-list {
 		flex-direction: row;
 		flex-wrap: wrap;
 		justify-content: center;
-	}
-	.mode-choice-epuises-sep {
-		flex: 1 0 100%;
 	}
 }
 

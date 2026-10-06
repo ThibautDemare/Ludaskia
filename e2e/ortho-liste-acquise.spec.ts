@@ -201,6 +201,11 @@ const SEED_VERBE_BANQUE = {
 	motIdParForme: { chat: 'm1', lion: 'm2' },
 };
 
+/* Déplie la zone basse « Déjà terminés pour cette liste » (<details> replié par défaut). */
+async function deplierTermines(page: Page): Promise<void> {
+	await page.locator('summary.mode-choice-epuises-sep').click();
+}
+
 test.describe('Orthographe : écran de choix, liste entièrement acquise (#658)', () => {
 	test('critères 1,2,4,5,6,10 : sans voix, la marche haute promue en tête est « mot caché »', async ({
 		page,
@@ -229,6 +234,7 @@ test.describe('Orthographe : écran de choix, liste entièrement acquise (#658)'
 		await expect(page.locator('.mode-choice-epuises .mode-btn[data-mode="motCache"]')).toHaveCount(
 			0,
 		);
+		await deplierTermines(page);
 		const tuilesEpuise = page.locator('.mode-choice-epuises .mode-btn[data-mode="tuiles"]');
 		await expect(tuilesEpuise).toBeVisible();
 		await expect(tuilesEpuise).toContainText('Terminé pour cette liste');
@@ -259,6 +265,7 @@ test.describe('Orthographe : écran de choix, liste entièrement acquise (#658)'
 
 		// La dictée quitte la zone basse ; les deux autres modes y restent.
 		await expect(page.locator('.mode-choice-epuises .mode-btn[data-mode="dictee"]')).toHaveCount(0);
+		await deplierTermines(page);
 		await expect(page.locator('.mode-choice-epuises .mode-btn[data-mode="tuiles"]')).toBeVisible();
 		await expect(
 			page.locator('.mode-choice-epuises .mode-btn[data-mode="motCache"]'),

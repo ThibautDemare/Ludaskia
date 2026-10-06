@@ -32,6 +32,9 @@
           même quand le geste vient de la zone basse (mode terminé, nouveau
           chemin d'entrée introduit par #641).
 
+   - repli de la zone basse, 2026-10-07 : « Déjà terminés pour cette liste »
+          est un <details> replié par défaut (voir le bloc dédié plus bas).
+
    Libellés ARRÊTÉS (contrat §F, avis redacteur-contenu-francais) : le texte
    exact du coût est « 8 activités », le badge d'un mode terminé est
    « Terminé pour cette liste · donne toujours des points », le titre de la
@@ -173,6 +176,12 @@ const SEED_SEANCE_MOTCACHE = {
 
 /* ---------- Gestes ---------- */
 
+/* Déplie la zone basse « Déjà terminés pour cette liste » (<details> replié par défaut),
+   JUSTE avant l'assertion ou le clic qui a besoin d'un bouton terminé. */
+async function deplierTermines(page: Page): Promise<void> {
+	await page.locator('summary.mode-choice-epuises-sep').click();
+}
+
 /* Complète une activité TUILES avec succès (clique chaque lettre du bac dans l'ordre du
    mot, vérifie, attend le « Bravo », enchaîne). Reprend le geste de
    frise-composition-listes.spec.ts / paliers-journal-ortho.spec.ts. */
@@ -276,7 +285,14 @@ test.describe('sans voix (dictée indisponible, stub)', () => {
 		).toBeVisible();
 		// … et les TUILES aussi, alors qu'elles n'ont JAMAIS été jouées directement :
 		// c'est la moitié de la règle qu'un test qui ne vérifierait que le mode
-		// réellement joué raterait.
+		// réellement joué raterait. (Zone basse repliée par défaut : on la déplie d'abord.
+		// La réussite qui vient d'étoiler la liste laisse ses modales de récompense ouvertes
+		// par-dessus l'écran : on les ferme, sinon elles interceptent le clic.)
+		for (const ok of ['#levelupOk', '#celebrateOk']) {
+			const bouton = page.locator(ok);
+			if (await bouton.isVisible()) await bouton.click();
+		}
+		await deplierTermines(page);
 		await expect(
 			page.locator('.mode-choice-epuises .mode-btn[data-mode="tuiles"][data-epuise="1"]'),
 		).toBeVisible();
@@ -298,7 +314,8 @@ test.describe('sans voix (dictée indisponible, stub)', () => {
 		// Tuiles est validé sur les 2 mots : absent de la zone principale…
 		await expect(page.locator('.mode-choice-list .mode-btn[data-mode="tuiles"]')).toHaveCount(0);
 
-		// … mais accessible dans la zone basse, dépliée, marqué comme terminé.
+		// … mais accessible dans la zone basse (repliée par défaut : on la déplie), marqué comme terminé.
+		await deplierTermines(page);
 		const epuise = page.locator(
 			'.mode-choice-epuises .mode-btn[data-mode="tuiles"][data-epuise="1"]',
 		);
@@ -398,7 +415,8 @@ test.describe('sans voix (dictée indisponible, stub)', () => {
 		).toBeVisible();
 		await expect(page.locator('#btnRevoir')).toBeVisible();
 
-		// Tuiles, l'autre mode terminé, reste accessible plus bas…
+		// Tuiles, l'autre mode terminé, reste accessible plus bas (une fois la zone dépliée)…
+		await deplierTermines(page);
 		await expect(
 			page.locator('.mode-choice-epuises .mode-btn[data-mode="tuiles"][data-epuise="1"]'),
 		).toBeVisible();
@@ -450,6 +468,7 @@ test.describe('sans voix (dictée indisponible, stub)', () => {
 		// Liste déjà découverte (atelierFait) : startOrthoLecon mène droit à l'écran de choix.
 		await expect(page).toHaveURL(/#ortho-mode-/);
 		await expect(page.locator('.mode-choice-list .mode-btn[data-mode="tuiles"]')).toHaveCount(0);
+		await deplierTermines(page);
 		await expect(
 			page.locator('.mode-choice-epuises .mode-btn[data-mode="tuiles"][data-epuise="1"]'),
 		).toBeVisible();
@@ -546,6 +565,7 @@ test.describe('sans voix (dictée indisponible, stub)', () => {
 		await seedAideVue(page);
 		await gotoHash(page, 'ortho-mode-' + LESSON_PARTIEL);
 
+		await deplierTermines(page);
 		const epuise = page.locator(
 			'.mode-choice-epuises .mode-btn[data-mode="tuiles"][data-epuise="1"]',
 		);
@@ -570,6 +590,169 @@ test.describe('sans voix (dictée indisponible, stub)', () => {
 		await carte.locator('.enc-err-sum').click();
 		await expect(carte.locator('.enc-err-donnee').first()).toHaveText(/Réponse donnée\s*:\s*\S/);
 		await expect(carte.locator('.enc-err-bonne').first()).toHaveText(/Réponse attendue\s*:\s*\S/);
+
+		expect(errors).toEqual([]);
+	});
+});
+
+/* ============================================================
+   Repli de la zone basse (2026-10-07) : « Déjà terminés pour cette liste » est
+   un <details> natif replié par défaut, pour que l'enfant n'aille pas vers des
+   modes qui ne font plus avancer la liste parce qu'ils semblent plus faciles.
+   Écrits AVANT l'implémentation. Critère 8 de ce lot (non-régression #658,
+   marche promue visible sans rien déplier) : déjà tenu par « critère 11 »
+   plus haut, qui ne déplie jamais la zone (non redoublé ici).
+   ============================================================ */
+test.describe('zone basse repliable (modes terminés, stub sans voix)', () => {
+	const SOMMAIRE = 'summary.mode-choice-epuises-sep';
+	const TERMINES = '.mode-choice-epuises .mode-btn[data-epuise="1"]';
+
+	test.beforeEach(async ({ page }) => {
+		await page.addInitScript(STUB_SANS_VOIX);
+	});
+
+	test('repli 1 + 2 : repliée à l’arrivée (titre visible, boutons masqués), le clic sur le titre déplie puis replie', async ({
+		page,
+	}) => {
+		const errors = watchErrors(page);
+		await seedOrtho(page, SEED_PARTIEL);
+		await gotoHash(page, 'ortho-mode-' + LESSON_PARTIEL);
+
+		const sommaire = page.locator(SOMMAIRE);
+		const termines = page.locator(TERMINES);
+		await expect(sommaire).toBeVisible();
+		await expect(sommaire).toContainText('Déjà terminés pour cette liste');
+		await expect(termines).toHaveCount(1);
+		await expect(termines).toBeHidden();
+
+		await sommaire.click();
+		await expect(termines).toBeVisible();
+		// Le badge accompagne le bouton déplié.
+		await expect(termines).toContainText('Terminé pour cette liste · donne toujours des points');
+
+		await sommaire.click();
+		await expect(termines).toBeHidden();
+
+		expect(errors).toEqual([]);
+	});
+
+	test('repli 3 : clavier, le titre prend le focus au Tab et s’ouvre à Entrée ; replié, aucun bouton terminé ne le reçoit', async ({
+		page,
+	}) => {
+		const errors = watchErrors(page);
+		await seedOrtho(page, SEED_PARTIEL);
+		await gotoHash(page, 'ortho-mode-' + LESSON_PARTIEL);
+		await expect(page.locator('.mode-choice-list')).toBeVisible();
+
+		const sommaire = page.locator(SOMMAIRE);
+		const termines = page.locator(TERMINES);
+		await expect(sommaire).toBeVisible();
+
+		// Parcours complet au clavier, borné : on atteint le titre, et à aucun pas
+		// le focus n'est sur un bouton terminé (la zone est repliée).
+		let atteint = false;
+		for (let i = 0; i < 40 && !atteint; i++) {
+			await page.keyboard.press('Tab');
+			const surBoutonTermine = await page.evaluate(
+				(sel) => !!document.activeElement?.closest(sel),
+				TERMINES,
+			);
+			expect(
+				surBoutonTermine,
+				'un bouton terminé a reçu le focus alors que la zone est repliée',
+			).toBe(false);
+			atteint = await sommaire.evaluate((el) => el === document.activeElement);
+		}
+		expect(atteint, 'le titre de la zone n’est pas atteignable au Tab').toBe(true);
+
+		// Un Tab de plus depuis le titre : toujours aucun bouton terminé.
+		await page.keyboard.press('Tab');
+		expect(await page.evaluate((sel) => !!document.activeElement?.closest(sel), TERMINES)).toBe(
+			false,
+		);
+
+		// Retour sur le titre puis Entrée : la zone s'ouvre.
+		await page.keyboard.press('Shift+Tab');
+		await expect(sommaire).toBeFocused();
+		await page.keyboard.press('Enter');
+		await expect(termines).toBeVisible();
+
+		expect(errors).toEqual([]);
+	});
+
+	test('repli 4 : zone dépliée, un bouton terminé lance son mode comme avant', async ({ page }) => {
+		const errors = watchErrors(page);
+		await seedOrtho(page, SEED_PARTIEL);
+		await seedAideVue(page);
+		await gotoHash(page, 'ortho-mode-' + LESSON_PARTIEL);
+
+		await page.locator(SOMMAIRE).click();
+		const tuiles = page.locator(
+			'.mode-choice-epuises .mode-btn[data-mode="tuiles"][data-epuise="1"]',
+		);
+		await expect(tuiles).toBeVisible();
+		await tuiles.click();
+
+		await expect(page).toHaveURL(new RegExp('#ortho-' + LESSON_PARTIEL + '$'));
+		await expect(page.locator('#bac .tuile[data-i]').first()).toBeVisible();
+
+		expect(errors).toEqual([]);
+	});
+
+	test('repli 5 (négatif) : après avoir déplié, revenir sur l’écran le présente de nouveau replié', async ({
+		page,
+	}) => {
+		const errors = watchErrors(page);
+		await seedOrtho(page, SEED_PARTIEL);
+		await gotoHash(page, 'ortho-mode-' + LESSON_PARTIEL);
+
+		await page.locator(SOMMAIRE).click();
+		await expect(page.locator(TERMINES)).toBeVisible();
+
+		// Sortie puis retour (rendu neuf, pas un simple re-clic).
+		await gotoHash(page, 'encadrant');
+		await gotoHash(page, 'ortho-mode-' + LESSON_PARTIEL);
+		await expect(page.locator(SOMMAIRE)).toBeVisible();
+		await expect(page.locator(TERMINES)).toBeHidden();
+
+		expect(errors).toEqual([]);
+	});
+
+	test('repli 6 (négatif) : liste sans aucun mode terminé, ni zone ni titre', async ({ page }) => {
+		const errors = watchErrors(page);
+		const LESSON_NEUVE = 'l-e2e-choix-neuve';
+		await seedOrtho(page, {
+			banque: { m1: motVierge('m1', 'chat'), m2: motVierge('m2', 'lion') },
+			listes: [
+				{
+					id: LESSON_NEUVE,
+					label: 'Liste neuve',
+					motIds: ['m1', 'm2'],
+					createdAt: 1,
+					updatedAt: 1,
+				},
+			],
+			motIdParForme: { chat: 'm1', lion: 'm2' },
+		});
+		await gotoHash(page, 'ortho-mode-' + LESSON_NEUVE);
+
+		await expect(page.locator('.mode-choice-list .mode-btn').first()).toBeVisible();
+		await expect(page.locator('.mode-choice-epuises')).toHaveCount(0);
+		await expect(page.getByText('Déjà terminés pour cette liste')).toHaveCount(0);
+
+		expect(errors).toEqual([]);
+	});
+
+	test('repli 7 : le titre fait au moins 44 px de haut', async ({ page }) => {
+		const errors = watchErrors(page);
+		await seedOrtho(page, SEED_PARTIEL);
+		await gotoHash(page, 'ortho-mode-' + LESSON_PARTIEL);
+
+		const sommaire = page.locator(SOMMAIRE);
+		await expect(sommaire).toBeVisible();
+		const box = await sommaire.boundingBox();
+		expect(box, 'le titre n’a pas de boîte').not.toBeNull();
+		expect(box!.height).toBeGreaterThanOrEqual(44);
 
 		expect(errors).toEqual([]);
 	});

@@ -281,6 +281,19 @@
 	background: var(--ko-soft);
 	color: var(--ko);
 }
+/* Le chiffre qu'il FALLAIT écrire, posé par la correction dans une case exigée restée vide
+   (#711 lot 5, critère 36). Il doit se lire comme une indication et jamais comme une saisie
+   de l'enfant, sinon la case rouge devient incompréhensible : « j'ai écrit le bon chiffre et
+   c'est faux ». Trois marques, parce qu'une seule serait soit invisible soit ambiguë, et
+   AUCUNE n'est la couleur (WCAG 1.4.1) : l'italique, un poids plus faible, et une opacité
+   qui le pose en arrière-plan de la case. La couleur reste celle de l'erreur, qui porte déjà
+   son contraste mesuré. */
+.tc-cell.wrong.tc-cell--attendu {
+	font-style: italic;
+	font-weight: 600;
+	opacity: 0.75;
+}
+
 .tc-cell.correct::after,
 .tc-cell.wrong::after {
 	position: absolute;

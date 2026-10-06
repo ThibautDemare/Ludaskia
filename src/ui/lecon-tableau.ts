@@ -82,7 +82,7 @@ import {
 	revelerSolution,
 	wirePasser,
 } from './lecon-passer';
-import { nombreTableauSaisi } from '../core/erreur-representation';
+import { nombreTableauSaisi, entreeTentativePassee } from '../core/erreur-representation';
 import { conversionDepuisTableau } from '../core/etayage-conversion';
 // Traduction index-de-case ↔ index-de-colonne (#711 lot 4) : pure, donc dans `core/` où
 // un test la joue sur un tableau fabriqué — le cas qui casse (colonne de tête à deux
@@ -864,6 +864,17 @@ function verifier(): void {
 			}
 			const ok = v === 'juste';
 			b.classList.add(ok ? 'correct' : 'wrong');
+			/* Case EXIGÉE restée vide : on y écrit le chiffre attendu (critère 36). Une croix
+			   sur une case vide ne dit pas ce qu'il fallait mettre, et c'est précisément ce que
+			   l'enfant a besoin de lire à ce moment-là. Le chiffre est marqué comme n'étant pas
+			   de lui (`--attendu`), sans quoi il croirait l'avoir écrit et ne comprendrait plus
+			   pourquoi sa case est rouge. Une case REMPLIE fausse garde, elle, le chiffre de
+			   l'enfant : le sien et l'attendu ne tiennent pas tous les deux dans une case, et
+			   c'est le sien qui lui dit ce qu'il a fait. */
+			if (!ok && c.valeur === '') {
+				b.textContent = c.attendu;
+				b.classList.add('tc-cell--attendu');
+			}
 			// Justesse exposée aux technologies d'assistance (le ✓/✗ CSS ::after ne l'est pas) :
 			// la réponse est déjà révélée dans le feedback, donc `attendu` ne « fuite » rien.
 			b.setAttribute('aria-invalid', String(!ok));
@@ -1038,24 +1049,41 @@ function passer(): void {
 	// Même graphie que dans le feedback de correction (#501) : le journal, la ligne révélée
 	// et l'annonce lisent la MÊME variable, donc disent le même nombre.
 	const attendueTexte = `${formatReponseRevelee(ex.answer)} ${ex.answerUnit}`;
-	// Une entrée « n'a pas essayé » pour le tableau, jamais le nombre relu dans les cases : un
-	// tableau incomplet ne se relit pas en nombre (il manque des chiffres), et un « 3,07 km »
-	// reconstruit sur des cases vides ferait croire à une erreur de conversion inexistante.
-	// EXCEPTION ASSUMÉE, et non un oubli : les autres formats à saisie contrainte journalisent
-	// bien la tentative commencée (un repère déjà placé sur la droite graduée, des cases déjà
-	// cochées d'un QCM multi, une sous-question de problème déjà remplie — cf.
-	// core/probleme-etapes.ts).
-	// La raison A CHANGÉ au lot 5, et l'ancienne ne tient plus : on disait que la lecture du
-	// tableau « n'existe pas tant qu'il manque une case », ce qui était vrai quand toutes
-	// étaient exigées. `saisiesPourJournal` sait désormais relire un tableau incomplet, et le
-	// chemin « Vérifier » s'en sert. Ce qui reste vrai ici, c'est autre chose : l'enfant a dit
-	// qu'il ne savait pas. Journaliser sa transcription partielle comme une réponse donnée
-	// montrerait au parent une erreur de conversion là où il y a eu un renoncement.
-	capterPasse({
-		text: ex.question,
-		attendue: attendueTexte,
-		lessonId: lesson.id,
+	/* Le tableau journalise désormais CE QUI AVAIT ÉTÉ COMMENCÉ (#711 lot 5, critère 40), par
+	   la même primitive que les autres formats à saisie contrainte (`entreeTentativePassee`,
+	   cf. lecon-droite-graduee). Il en était le seul à faire exception, au motif que la lecture
+	   d'un tableau « n'existe pas tant qu'il manque une case » : c'était vrai quand toutes
+	   étaient exigées, ça ne l'est plus, et `saisiesPourJournal` sait relire un tableau
+	   incomplet en montrant ses trous. Un parent qui voyait « n'a pas essayé » sur une
+	   transcription à moitié écrite perdait le seul indice utile : jusqu'où l'enfant était
+	   allé avant de renoncer.
+
+	   « Tenté » se juge sur les cases EXIGÉES : un chiffre posé dans une colonne que la
+	   question ne demande pas ne prouve pas qu'on ait commencé à répondre. Et une
+	   transcription complète et juste ne produit aucune entrée — demander la réponse après
+	   l'avoir trouvée n'est pas une erreur à montrer au parent. */
+	const exigees = casesExigees(ex);
+	const saisies = cells.map((c) => c.valeur);
+	const pourJournal = saisiesPourJournal(ex.colonnes, ex.uniteConnue, ex.answerUnit, saisies);
+	const entree = entreeTentativePassee({
+		tentee: exigees.some((exigee, i) => exigee && saisies[i] !== ''),
+		juste: !verdictsCases(ex.colonnes, ex.uniteConnue, ex.answerUnit, saisies).includes('faux'),
+		donnee: `${nombreTableauSaisi(
+			cells.map((c, i) => ({ unite: c.col.unite, valeur: pourJournal[i] })),
+			ex.answerUnit,
+			virguleCase ?? undefined,
+		)} ${ex.answerUnit}`,
 	});
+	if (entree?.sansTentative)
+		capterPasse({ text: ex.question, attendue: attendueTexte, lessonId: lesson.id });
+	else if (entree)
+		capterErreur({
+			text: ex.question,
+			donnee: entree.donnee,
+			attendue: attendueTexte,
+			lessonId: lesson.id,
+			mode: 'lecon',
+		});
 	paintAll(); // retire la surbrillance de la case active (plus de saisie en cours)
 	marquerVirgule(ex, null); // montre OÙ la virgule allait, sans juger celle qui est posée
 	const explication = explicationRangVide(ex);

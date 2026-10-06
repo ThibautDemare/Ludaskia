@@ -215,7 +215,8 @@ test('mes-longueurs (#711 critère 36) : chaque case porte le verdict de ce que 
 		// Le point de l'issue : JAMAIS un ✓ sur une case restée vide.
 		await expect(cible).not.toHaveClass(/correct/);
 		expect(await pastille(page, c.i), `case ${c.i} vide : pastille ✓ affichée`).not.toBe('"✓"');
-		await expect(cible).toHaveText('');
+		// Exigée vide : elle porte désormais le chiffre attendu (cf. test suivant) ; hors zone : rien.
+		if (!faux) await expect(cible).toHaveText('');
 	}
 	expect(exigees.length, 'aucune case vide exigée : le tableau ne demande rien ?').toBeGreaterThan(
 		0,
@@ -366,10 +367,9 @@ test('mes-longueurs (#711 critère 34) : le journal encadrant relit un tableau i
 	await page.locator('#tcVerif').click();
 	await expect(page.locator('#tcFeedback')).toContainText('La bonne réponse');
 
-	// Cases exigées restées vides : celles que la correction marque ✗ sans que rien y soit écrit.
-	const exigeesVides = await page
-		.locator('.tc-cell.wrong')
-		.evaluateAll((els) => els.filter((e) => !e.textContent).length);
+	// Cases exigées restées vides : celles où la correction a posé le chiffre attendu (marque `--attendu`,
+	// puisque leur texte n'est plus vide).
+	const exigeesVides = await page.locator('.tc-cell.wrong.tc-cell--attendu').count();
 	expect(exigeesVides, 'aucune case exigée vide : le test ne compare rien').toBeGreaterThan(0);
 
 	await gotoHash(page, 'encadrant');
@@ -534,5 +534,165 @@ test('mes-longueurs (#711 critère 39, négatif) : avant la correction, les case
 			ancien?.colonne,
 		);
 	}
+	expect(errors).toEqual([]);
+});
+
+/* ------------------------------------------------------------------ */
+/* Critère 36, suite : une case exigée restée vide DIT ce qu'il fallait y mettre, à l'écran et pas
+   seulement dans l'aria-label. Ce qui est exigé : le bon chiffre est lu, et il se distingue d'une
+   saisie de l'enfant par AU MOINS DEUX propriétés non chromatiques (WCAG 1.4.1 : la couleur seule
+   ne porte pas l'information). Les valeurs (italique, 0,75…) sont du design : elles ne sont pas
+   figées. */
+const PROPRIETES_NON_CHROMATIQUES = [
+	'fontStyle',
+	'fontWeight',
+	'opacity',
+	'fontSize',
+	'textDecorationLine',
+	'letterSpacing',
+] as const;
+
+test('mes-longueurs (#711 critère 36) : une case exigée vide affiche le bon chiffre, distinct d’une saisie autrement que par la couleur', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await ouvrir(page);
+	const q = await lireQuestion(page);
+	const A = premiereCaseNonNulle(q);
+	const B = q.cellules[0].i !== A.i ? q.cellules[0] : q.cellules[q.cellules.length - 1];
+	const faux = String((Number(B.answer) + 1) % 10);
+	await ecrire(page, A.i, A.answer);
+	await ecrire(page, B.i, faux);
+	await page.locator('#tcVerif').click();
+	await expect(page.locator('#tcFeedback')).toContainText('La bonne réponse');
+
+	// Cases exigées restées vides : celles que la correction marque ✗ sans saisie de l'enfant.
+	const exigees: Cellule[] = [];
+	for (const c of q.cellules) {
+		if (c.i === A.i || c.i === B.i) continue;
+		const classe = (await page.locator(`.tc-cell[data-i="${c.i}"]`).getAttribute('class')) ?? '';
+		if (classe.includes('wrong')) exigees.push(c);
+	}
+	expect(exigees.length, 'aucune case exigée vide : le test ne compare rien').toBeGreaterThan(0);
+
+	const rendu = (i: number) =>
+		page.locator(`.tc-cell[data-i="${i}"]`).evaluate((el, props) => {
+			const cs = getComputedStyle(el);
+			return {
+				texte: (el.textContent ?? '').trim(),
+				style: Object.fromEntries(props.map((p) => [p, (cs as never)[p] as string])),
+			};
+		}, PROPRIETES_NON_CHROMATIQUES);
+	await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
+	const saisieFausse = await rendu(B.i);
+
+	for (const c of exigees) {
+		const r = await rendu(c.i);
+		expect(r.texte, `case exigée vide ${c.i} : le chiffre attendu n'est pas lu à l'écran`).toBe(
+			c.answer,
+		);
+		const differentes = PROPRIETES_NON_CHROMATIQUES.filter(
+			(p) => r.style[p] !== saisieFausse.style[p],
+		);
+		expect(
+			differentes.length,
+			`case ${c.i} : le chiffre attendu ne se distingue d'une saisie que par ${differentes.join(',') || 'rien de non chromatique'}`,
+		).toBeGreaterThanOrEqual(2);
+	}
+
+	// Négatif : la case remplie fausse garde le chiffre de l'enfant, pas l'attendu.
+	expect(saisieFausse.texte, 'la case fausse remplie a perdu le chiffre de l’enfant').toBe(faux);
+	expect(saisieFausse.texte).not.toBe(B.answer);
+	expect(errors).toEqual([]);
+});
+
+/* ------------------------------------------------------------------ */
+/* Critère 40 : « Je ne sais pas » après une saisie partielle. Le libellé « n'a pas essayé » est
+   intentionnel ici : c'est lui l'objet du test (ce que lit le parent), repris de
+   encadrant-erreurs.ts. */
+async function passerPuisLireJournal(page: Page): Promise<{ essaye: boolean; donnee: string }> {
+	await page.locator('#leconPasser').click();
+	await expect(page.locator('#tcFeedback')).toContainText(/réponse/i);
+	await gotoHash(page, 'encadrant');
+	const carte = page.locator('.enc-err-lecon');
+	await expect(carte, 'aucune entrée dans le journal').toHaveCount(1);
+	await carte.locator('.enc-err-sum').click();
+	const item = carte.locator('.enc-err-item');
+	await expect(item).toHaveCount(1);
+	const sans = await item.locator('.enc-err-passe').count();
+	const donnee = sans
+		? ''
+		: (await item.locator('.enc-err-donnee').innerText()).replace(/^[^:]*:/, '').trim();
+	if (sans) await expect(item.locator('.enc-err-passe')).toContainText(/n'a pas essayé/i);
+	return { essaye: !sans, donnee };
+}
+
+test('mes-longueurs (#711 critère 40) : « Je ne sais pas » après une case exigée remplie journalise la transcription partielle, pas « n’a pas essayé »', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await ouvrir(page);
+	const q = await lireQuestion(page);
+	const A = premiereCaseNonNulle(q); // exigée par construction
+	await ecrire(page, A.i, A.answer);
+	const r = await passerPuisLireJournal(page);
+	expect(r.essaye, '« n’a pas essayé » sur un tableau commencé').toBe(true);
+	expect(r.donnee, 'la transcription partielle est vide').not.toBe('');
+	// Partielle : ce n'est pas la bonne réponse (des trous restent, ou il n'y aurait pas d'entrée).
+	expect(
+		r.donnee.replace(/[\d\s.,]/g, '').length,
+		`trous absents de « ${r.donnee} »`,
+	).toBeGreaterThan(0);
+	expect(errors).toEqual([]);
+});
+
+test('mes-longueurs (#711 critère 40, négatif) : « Je ne sais pas » sans aucun geste journalise « n’a pas essayé »', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	await ouvrir(page);
+	const r = await passerPuisLireJournal(page);
+	expect(r.essaye, 'un tableau intact est journalisé comme tenté').toBe(false);
+	expect(errors).toEqual([]);
+});
+
+test('mes-longueurs (#711 critère 40, négatif) : un chiffre posé hors zone seulement ne vaut pas tentative', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(CLEAR_PIN);
+	// Une case hors zone : colonne hors de l'intervalle qui va du premier chiffre non nul de la
+	// donnée à l'unité demandée (zone lue à ses bords, jamais recalculée). Cherchée sur des
+	// questions fraîches ; si le tirage n'en offre aucune, le test le dit au lieu de passer à vide.
+	let horsZone: Cellule | undefined;
+	for (let serie = 0; serie < 3 && !horsZone; serie++) {
+		await ouvrir(page);
+		for (let k = 0; k < 9 && !horsZone; k++) {
+			const q = await lireQuestion(page);
+			const bas = Math.min(q.iPremier, q.iDemandee);
+			const haut = Math.max(q.iDonnee, q.iDemandee);
+			const colonnes = await page
+				.locator('.tc-col')
+				.evaluateAll((cols) =>
+					cols.map((c) =>
+						[...c.querySelectorAll<HTMLElement>('.tc-cell')].map((x) => Number(x.dataset.i)),
+					),
+				);
+			const idx = colonnes.findIndex((cs, ci) => (ci < bas || ci > haut) && cs.length > 0);
+			if (idx >= 0) {
+				const i = colonnes[idx][0];
+				horsZone = q.cellules.find((c) => c.i === i);
+			} else {
+				await repondreJusteEtContinuer(page);
+			}
+		}
+	}
+	if (!horsZone)
+		throw new Error('Aucune case hors zone trouvée en 3 séries : le test ne prouverait rien');
+	await ecrire(page, horsZone.i, '0');
+	const r = await passerPuisLireJournal(page);
+	expect(r.essaye, 'un chiffre hors zone a compté comme une tentative').toBe(false);
 	expect(errors).toEqual([]);
 });

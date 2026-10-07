@@ -45,7 +45,9 @@ import { renderFigure } from '../../core/figures';
 import type { AngleSpec } from '../../core/figures';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice, sample } from '../../core/utils';
-import { type SafeHtml, html } from '../../core/html';
+import { type SafeHtml } from '../../core/html';
+import { suite } from '../../core/recette-fragment';
+import { aideFigure } from '../../core/aides-figure';
 
 const MODES: ModeOption[] = [MODE_QCM_POINT];
 
@@ -97,13 +99,11 @@ function figureAngle(cat: Categorie): SafeHtml {
 	return renderFigure({ kind: 'angle', opening: ouverture(cat), bisector: bissectrice() });
 }
 
-/* Bulles d'aide (apostrophe droite — convention projet ; `screen-only` : retirées
-   à l'impression #290, sinon elles fuiteraient la réponse sur un bilan). */
-// Nommage (temps 3) : les deux termes, ancrés sur la comparaison à l'angle droit.
-const AIDE_NOMMER = html`<p class="angle-aide screen-only">plus petit que l'angle droit → aigu · plus grand → obtus</p>`;
-// Oui/Non « aigu » : aide RÉDUITE à UN seul terme (avis specialiste-troubles : ne
-// pas nommer « obtus » ici, la marche binaire ne porte qu'un mot neuf à la fois).
-const AIDE_AIGU = html`<p class="angle-aide screen-only">aigu = plus petit que l'angle droit</p>`;
+/* Bulles d'aide sous la figure : leur texte et leurs raisons vivent dans
+   `core/aides-figure.ts` (#734), pour qu'une figure accompagnée de sa bulle puisse
+   voyager dans un lien partagé. `suite` garde la recette des deux morceaux. */
+const AIDE_NOMMER = aideFigure('angle-nommer');
+const AIDE_AIGU = aideFigure('angle-aigu');
 
 /* ---------- Familles Oui/Non « est-ce un angle droit ? » (estDroit / poserCarre /
    coinReel) : 50 % droit (sinon aigu ou obtus) pour ne pas récompenser un « Non »
@@ -149,7 +149,7 @@ function genAiguOuiNon(): { ex: Exercise; cat: Categorie } {
 			question: choice(ENONCES.aiguOuiNon),
 			answer: estAigu ? 'Oui' : 'Non',
 			choices: sample(['Oui', 'Non'], 2),
-			figure: html`${figureAngle(cat)}${AIDE_AIGU}`,
+			figure: suite(figureAngle(cat), AIDE_AIGU),
 			explication: estAigu
 				? "Oui : il est plus petit que l'angle droit, c'est un angle aigu."
 				: "Non : il n'est pas plus petit que l'angle droit.",
@@ -191,7 +191,7 @@ function genNommer(): { ex: Exercise; cat: Categorie } {
 			question: choice(ENONCES.nommer),
 			answer,
 			choices: sample(['Aigu', 'Droit', 'Obtus'], 3),
-			figure: html`${figureAngle(cat)}${AIDE_NOMMER}`,
+			figure: suite(figureAngle(cat), AIDE_NOMMER),
 			explication:
 				cat === 'aigu'
 					? "Plus petit que l'angle droit, c'est un angle aigu."

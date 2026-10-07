@@ -35,7 +35,7 @@ import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
 import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
-import { html } from '../../core/html';
+import { surligner } from '../../core/surlignage';
 
 /** Genre × nombre du participe. */
 export type Forme = 'ms' | 'fs' | 'mp' | 'fp';
@@ -166,12 +166,15 @@ const PATRONS: Patron[] = [
 /** Forme complète du participe pour un verbe et un genre/nombre. */
 export const forme = (v: VerbeEtre, f: Forme): string => v.base + v.terminaisons[f];
 
-/* Affichage riche d'une option (#200) : radical + terminaison SURLIGNÉE. On
-   échappe chaque morceau (les balises injectées sont sûres) ; le libellé parlé
+/* Affichage riche d'une option (#200) : radical + terminaison SURLIGNÉE. `surligner`
+   échappe chaque morceau et garde de quoi redessiner la vue (#734) ; le libellé parlé
    reste la forme nue (lecteur d'écran). */
 function vue(v: VerbeEtre, f: Forme): ChoiceView {
 	return {
-		html: html`${v.base}<span class="term">${v.terminaisons[f]}</span>`,
+		html: surligner([
+			[v.base, false],
+			[v.terminaisons[f], true],
+		]),
 		label: forme(v, f),
 	};
 }

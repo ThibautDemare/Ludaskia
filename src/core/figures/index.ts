@@ -56,6 +56,7 @@ export * from './angles';
 export * from './groupes';
 export * from './graphiques';
 import { brut, type SafeHtml } from '../html';
+import { marquer } from '../recette-fragment';
 
 import { renderHorloge } from './horloge';
 import {
@@ -181,9 +182,12 @@ export type FigureSpec =
    le gabarit HTML ne modélise pas. La limite est assumée et écrite — cf.
    docs/architecture/rendu-et-echappement.md. Ce que ce marquage APPORTE : tout ce
    qui consomme une figure (`Item.figure`, `figureBlock`, les runners) est désormais
-   typé, donc plus personne ne peut y glisser une chaîne quelconque. */
+   typé, donc plus personne ne peut y glisser une chaîne quelconque.
+
+   Le fragment garde aussi sa SPEC (#734) : c'est elle, et non le SVG, qui voyage
+   dans un lien partagé, validée à l'arrivée par `core/partage/figures.ts`. */
 export function renderFigure(spec: FigureSpec): SafeHtml {
-	return brut(renderFigureSvg(spec));
+	return marquer(brut(renderFigureSvg(spec)), { k: 'figure', spec });
 }
 
 function renderFigureSvg(spec: FigureSpec): string {

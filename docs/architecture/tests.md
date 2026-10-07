@@ -434,6 +434,18 @@ la forme `X.balisage`.
 
 Quatre gardes, détaillés dans [Liens partagés](liens-partages.md).
 
+Côté enfant (PR 2) : `tests/partage-passage.test.ts` (Vitest : préparation et refus,
+capture lisible, statuts, seuil de 60 %, premier passage figé et son stockage, plafond
+`MAX_PASSAGES_GARDES`, critère 26 par instantané du stockage) et
+`e2e/partage-seance.spec.ts` (Playwright, liens fabriqués par `e2e/partage-fixtures.ts`
+avec le vrai encodeur : dérogation assumée à « pas d'import de `src/` dans une spec », comme
+`journal-couverture.ts`). Trois gardes existants sont adaptés :
+`couverture-e2e-gate` lit désormais l'aiguillage dans la table `RUNNERS` de
+`navigation.ts` ; `revision-marche-due` (critère 22, « une bonne réponse = un point »)
+déclare l'exception `addXP(XP_PARTICIPATION)` de `passage.ts` (participation fixe, sans
+lien avec les bonnes réponses) ; `contraste-tokens` garde le couple `--cat-partage` sur
+`--paper` (segment du graphe d'activité, 3:1).
+
 - `tests/partage-gate.test.ts` : (1) les clés des tables `exercices.ts` / `figures.ts`
   sont **exactement** celles des unions `Exercise['type']` et `FigureSpec['kind']`, lues
   dans le **source** (il survit à un `as`, un `Partial<>` ou un `@ts-expect-error` posé

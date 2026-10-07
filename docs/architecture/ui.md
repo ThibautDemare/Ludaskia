@@ -1007,6 +1007,14 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
 
 ## Runners d'exercice
 
+**Aiguillage (#734).** `navigation.ts:runLecon` choisit le runner par la table `RUNNERS`,
+typée `Record<TypeRunner, …>`. `TypeRunner` est dérivé de `JEU_PAR_TYPE`
+(`core/exercise.ts`, avec `seJoueEnRunner`) : un type déclaré « runner » sans lanceur ne
+compile pas. **Un nouveau runner `lecon-*` s'enregistre dans cette table**, et
+`tests/couverture-e2e-gate.test.ts` la lit pour exiger qu'une spec le joue. La séance
+partagée (`partage.ts`) consulte la même `JEU_PAR_TYPE` pour savoir ce qui ne se joue
+pas en fiche.
+
 - **`lecon-runner-shared.ts`** (#344) — **squelette commun** des cinq runners
   ci-dessous : `leconProgressHTML(idx, total, libellé?)` (barre de progression, libellé
   surchargeable, ex. « Problème i / n »), **`leconTitreHTML(lesson)`** (#436 — bandeau
@@ -2078,6 +2086,12 @@ Tab avant est donc un **compromis assumé, écrit ici pour ne pas être relu com
 oubli**. Ne pas détourner pour ça la région `#revStatus` de la révision espacée, réservée
 au verdict de l'item en cours (annoncé puis vidé) : deux responsabilités dans une même
 région finissent par se marcher dessus.
+
+**Règle (checklist) : une région vivante (`role="status"` / `aria-live`) vide ne passe
+jamais par `display: none`.** Son premier message n'y est alors pas annoncé de façon
+fiable : la région doit rester dans l'arbre d'accessibilité, vide mais présente (la
+masquer visuellement sans la retirer, ou ne rien styler quand elle est vide). Cas posé
+par `#partageSeuil` et `#partageCopie` (#734).
 
 **Cohérence typographique d'un nombre groupé révélé, à surveiller (avis
 `relecteur-accessibilite`, #501).** Tout nombre groupé révélé (`formatReponseRevelee`, cf.

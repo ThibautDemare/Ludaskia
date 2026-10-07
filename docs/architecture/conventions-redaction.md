@@ -627,6 +627,17 @@ lequel. Le glyphe est en plus presque invisible à l'écran entre deux guillemet
 bouton (« le bouton virgule du pavé »), quitte à ce que le bouton, lui, n'affiche que son
 signe. Cas posé par l'aide du mode « virgule » (#711 lot 4).
 
+## Un écran qui fait transmettre quelque chose (#734)
+
+Deux lignes de checklist, posées par l'écran de fin de la séance partagée :
+
+- **Un seul verbe pour l'action de transmettre**, et une action concrète plutôt qu'un
+  état : « renvoie ton lien à la personne qui t'a donné cet exercice », pas « dernière
+  étape ». L'enfant ne sait pas ce qu'on attend de lui avec un état.
+- **Un signe de ponctuation n'est jamais cité seul dans un libellé** : il s'écrit en mots
+  (« des apostrophes et des tirets »), pour la même raison que le glyphe d'un bouton
+  (voir plus haut).
+
 ## Le retour d'un tableau de conversion : quoi écrire, quoi ne pas ancrer (#711 lot 5)
 
 Trois lignes de checklist pour tout retour de correction qui décrit ce que l'enfant devait

@@ -63,7 +63,8 @@ de conception initial est `docs/design-multi-subject.md`.
   limite assumée du moteur de figures SVG.
 - [Liens partagés (#734)](architecture/liens-partages.md) — `src/core/partage/` :
   séance figée dans un lien (format binaire versionné, schémas bidirectionnels,
-  recettes de fragments), un lien étant traité comme une donnée hostile.
+  recettes de fragments), un lien étant traité comme une donnée hostile ; côté
+  enfant, le passage d'un envoi (`#envoi/<code>`).
 
 ### Fonctionnement
 

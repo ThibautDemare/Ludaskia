@@ -2,6 +2,18 @@
 <html lang="fr">
 	<head>
 		<meta charset="utf-8" />
+		<!-- Politique de sécurité du contenu (#734). Un lien partagé porte des textes que
+		     n'importe qui peut forger ; ils sont échappés à l'affichage (#614), et cette
+		     politique est le FILET si un échappement sautait : aucun script en ligne ni
+		     gestionnaire `onerror=` injecté ne s'exécute. Elle ne vise que les scripts —
+		     les attributs `style=` des gabarits et les feuilles injectées par Vite en
+		     développement restent permis. Pas de `'unsafe-inline'` ni de `'unsafe-eval'` :
+		     l'application n'en a besoin nulle part, et `tests/securite-liens-gate.test.ts`
+		     le garde. -->
+		<meta
+			http-equiv="Content-Security-Policy"
+			content="script-src 'self'; object-src 'none'; base-uri 'self'"
+		/>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Ludaskia — s'exercer en s'amusant</title>
 		<!-- Description propre à l'APPLICATION (#631), volontairement différente de

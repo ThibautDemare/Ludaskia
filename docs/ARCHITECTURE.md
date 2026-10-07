@@ -59,7 +59,11 @@ de conception initial est `docs/design-multi-subject.md`.
   d'exercice, thèmes d'affichage, **Accessibilité (#42)**.
 - [Rendu & échappement HTML (#614)](architecture/rendu-et-echappement.md) — le
   gabarit `html`, le type `SafeHtml`, l'échappement **par position d'insertion**, la
-  règle ESLint sur `.innerHTML`, et la limite assumée du moteur de figures SVG.
+  règle ESLint sur `.innerHTML` / `.outerHTML` / `insertAdjacentHTML`, la CSP, et la
+  limite assumée du moteur de figures SVG.
+- [Liens partagés (#734)](architecture/liens-partages.md) — `src/core/partage/` :
+  séance figée dans un lien (format binaire versionné, schémas bidirectionnels,
+  recettes de fragments), un lien étant traité comme une donnée hostile.
 
 ### Fonctionnement
 

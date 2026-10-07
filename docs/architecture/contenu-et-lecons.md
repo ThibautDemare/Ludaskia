@@ -19,6 +19,14 @@ suffit. Contrairement à `ORDRE_LECONS`, l'absence d'une leçon dans `PREREQUIS`
 > partagé (`core/`) et les runners (`ui/`) sont décrits dans
 > [Logique pure](core.md) et [Rendu & interactions](ui.md).
 
+## Checklist d'un générateur
+
+- Un générateur qui assemble une `figure` ou une `choicesView[].html` passe par
+  `renderFigure`, `fractionInlineHTML`, `surligner`, `aideFigure` ou `suite` ; sinon
+  `tests/partage-gate.test.ts` rougit. Ces fabriques attachent à leur fragment la
+  recette qui permet de le faire voyager dans un lien partagé
+  ([Liens partagés](liens-partages.md)).
+
 ## Déclarations mutualisées (`src/data/`)
 
 ### `src/data/_shared.ts` (#347)

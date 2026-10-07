@@ -418,9 +418,17 @@ export function recordLessonStats(
    inattribuables autrement que par type. */
 export const ACTIVITY_KEY = 'ludaskia_activity';
 const ACTIVITY_MAX = 200;
-export type ActivityKind = 'lecon' | 'bilan' | 'sprint' | 'revision' | 'dictee'; // enregistrables
+// `partage` : séance partagée par lien (#734), terminée au premier passage.
+export type ActivityKind = 'lecon' | 'bilan' | 'sprint' | 'revision' | 'dictee' | 'partage'; // enregistrables
 export type ActivityKindStored = ActivityKind | 'inconnu'; // + héritage (ancien format)
-const ACTIVITY_KINDS: readonly ActivityKind[] = ['lecon', 'bilan', 'sprint', 'revision', 'dictee'];
+const ACTIVITY_KINDS: readonly ActivityKind[] = [
+	'lecon',
+	'bilan',
+	'sprint',
+	'revision',
+	'dictee',
+	'partage',
+];
 export interface ActivityEntry {
 	t: number; // horodatage (ms)
 	k: ActivityKindStored;
@@ -477,6 +485,9 @@ function recordActivity(now: number, kind: ActivityKind, ref?: string, progressi
 	// stat de leçon et l'étoile ne s'obtenant que par celui qui en écrit (cf. recordLessonRun) :
 	// entre une telle borne et la première session de leçon, aucun état ne peut avoir bougé.
 	marquerDebutSuivi(now);
+	ajouterActivite(now, kind, ref, progressive);
+}
+function ajouterActivite(now: number, kind: ActivityKind, ref?: string, progressive = true) {
 	const a = loadActivity(); // normalisé : réécrit aussi l'éventuel héritage au format objet
 	const entry: ActivityEntry = ref ? { t: now, k: kind, ref } : { t: now, k: kind };
 	if (!progressive) entry.progressive = false; // absent = « oui » (#641)
@@ -493,6 +504,14 @@ function recordActivity(now: number, kind: ActivityKind, ref?: string, progressi
    comportement d'avant. */
 export function recordSessionActivity(kind: ActivityKind, ref?: string, progressive = true): void {
 	recordActivity(Date.now(), kind, ref, progressive);
+}
+/* Séance partagée terminée (#734, critère 24) : un point d'activité daté, sans score.
+   Contrairement aux autres sessions, elle NE POSE PAS la borne des paliers
+   (`marquerDebutSuivi`) : le critère 26 veut que rien d'autre que l'XP, l'activité et le
+   journal ne bouge, et cette séance n'écrit aucune stat de leçon dont la borne daterait
+   le suivi. */
+export function recordActivitePartage(now: number): void {
+	ajouterActivite(now, 'partage');
 }
 
 /* ---------- Premier passage par leçon (objectif « nouvelle leçon », #178) ----------

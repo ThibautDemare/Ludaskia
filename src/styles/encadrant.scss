@@ -850,6 +850,11 @@ $plot-h: 140px;
 .enc-act-sprint {
 	--k: var(--cat-sprint);
 }
+/* Séance partagée par lien (#734) : ambre, distinct du vert des leçons. Token tenu à 3:1
+   sur --paper dans les six thèmes (`tests/contraste-tokens.test.ts`). */
+.enc-act-partage {
+	--k: var(--cat-partage);
+}
 .enc-act-inconnu {
 	/* gris neutre dédié (≠ --muted, sous 3:1 sur fond clair) : segment legacy lisible (WCAG 1.4.11). */
 	--k: #6b7280;

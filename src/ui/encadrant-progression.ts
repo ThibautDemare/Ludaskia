@@ -83,13 +83,27 @@ let vueActivite: 'total' | 'type' = 'total'; // graphe d'activité : « Total »
 
 /* Types de session du graphe d'activité (#319). Couleurs reprises des tokens
    sémantiques de l'app (cohérence : sprint = corail, bilan = violet, leçon = bleu).
-   `mot` = singulier pour le détail inline ; `legende` = libellé de la légende. */
-const TYPES_ACTIVITE: { k: keyof JourActivite; mot: string; legende: string; cls: string }[] = [
+   `mot` = singulier pour le détail inline (`pluriel` quand il ne prend pas un simple « s ») ;
+   `legende` = libellé de la légende. */
+const TYPES_ACTIVITE: {
+	k: keyof JourActivite;
+	mot: string;
+	pluriel?: string;
+	legende: string;
+	cls: string;
+}[] = [
 	{ k: 'lecon', mot: 'leçon', legende: 'Leçons', cls: 'enc-act-lecon' },
 	{ k: 'revision', mot: 'révision', legende: 'Révisions', cls: 'enc-act-revision' },
 	{ k: 'dictee', mot: 'dictée', legende: 'Dictées', cls: 'enc-act-dictee' },
 	{ k: 'bilan', mot: 'bilan', legende: 'Bilans', cls: 'enc-act-bilan' },
 	{ k: 'sprint', mot: 'sprint', legende: 'Sprints', cls: 'enc-act-sprint' },
+	{
+		k: 'partage',
+		mot: 'séance partagée',
+		pluriel: 'séances partagées',
+		legende: 'Séances partagées',
+		cls: 'enc-act-partage',
+	},
 ];
 // Sessions de l'ancien format (sans type) : segment neutre, affiché seulement si présent.
 const TYPE_INCONNU = {
@@ -137,7 +151,8 @@ function repartitionTexte(j: JourActivite): string {
 	return [...TYPES_ACTIVITE, TYPE_INCONNU]
 		.map((t) => {
 			const c = j[t.k];
-			return c ? `${c} ${t.mot}${c > 1 ? 's' : ''}` : '';
+			const mot = c > 1 ? ('pluriel' in t && t.pluriel) || `${t.mot}s` : t.mot;
+			return c ? `${c} ${mot}` : '';
 		})
 		.filter(Boolean)
 		.join(', ');
@@ -231,9 +246,10 @@ function activiteHTML(recap: RecapProfil): SafeHtml {
 			sprint: acc.sprint + j.sprint,
 			revision: acc.revision + j.revision,
 			dictee: acc.dictee + j.dictee,
+			partage: acc.partage + j.partage,
 			inconnu: acc.inconnu + j.inconnu,
 		}),
-		{ total: 0, lecon: 0, bilan: 0, sprint: 0, revision: 0, dictee: 0, inconnu: 0 },
+		{ total: 0, lecon: 0, bilan: 0, sprint: 0, revision: 0, dictee: 0, partage: 0, inconnu: 0 },
 	);
 	const synthese = `${total} session${total > 1 ? 's' : ''} sur la semaine${
 		parType ? ` — ${repartitionTexte(totalParType)}` : ''

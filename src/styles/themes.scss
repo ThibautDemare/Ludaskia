@@ -105,6 +105,7 @@
    Le thème auto n'est PAS résolu en JS : `@media (prefers-color-scheme: dark)`
    applique la même palette à `[data-theme='auto']`, donc bascule en direct. */
 @mixin nuit-palette {
+	--cat-partage: #d9a440; /* ambre relevé : segment du graphe d'activité sur --paper sombre (#734) */
 	--ink: #e9edf3;
 	--grey: #aeb7c4;
 	--muted: #969eac; /* relevé vs #8c94a2 pour garder ≥ 4,5:1 sur --paper avec marge */

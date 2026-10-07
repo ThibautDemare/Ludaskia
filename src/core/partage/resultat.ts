@@ -12,7 +12,7 @@
 import type { ExerciseMode } from '../exercise';
 import type { SchoolLevel } from '../catalog';
 import { decoder, encoder, type Decodage } from './codec';
-import { chaine, entier, facultatif, liste, objet, parmi } from './schema';
+import { chaine, entier, facultatif, liste, objet, parmi, valeurSimple } from './schema';
 import { identifiant, idLeconResultat, idMode, libelle, niveauScolaire, pseudo } from './textes';
 import { MAX_ITEMS } from './envoi';
 
@@ -64,14 +64,24 @@ const reponse = objet<ReponseItem>({
 	statut: parmi('juste', 'faux', 'jnsp', 'vide'),
 });
 
-const schemaResultat = objet<Resultat>({
+const champsResultat = {
 	id: identifiant,
 	// Le libellé repasse par sa liste blanche : un lien de résultat se forge aussi bien
 	// qu'un envoi, et ce libellé titre la vue de l'encadrant.
-	envoi: objet({ id: identifiant, libelle, niveau: facultatif(niveauScolaire) }),
+	envoi: objet<Resultat['envoi']>({ id: identifiant, libelle, niveau: facultatif(niveauScolaire) }),
 	pseudo,
 	date: entier(0, DATE_MAX),
 	reponses: liste(reponse, { max: MAX_ITEMS }),
+};
+
+const schemaResultat = objet<Resultat>(champsResultat);
+
+/** Le résultat tel que le PROFIL le garde (premier passage, #734) : le même, sauf que le
+ *  pseudo peut y être vide — l'enfant ne l'a peut-être pas encore choisi, et le prénom du
+ *  profil n'est pas toujours un pseudo valide. Le lien, lui, exige un pseudo. */
+export const schemaResultatGarde = objet<Resultat>({
+	...champsResultat,
+	pseudo: valeurSimple((v, chemin) => (v === '' ? '' : pseudo.lire(v, chemin))),
 });
 
 export async function encoderResultat(resultat: Resultat): Promise<string> {

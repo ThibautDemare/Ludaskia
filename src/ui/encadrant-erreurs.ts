@@ -77,6 +77,7 @@ const MODE_LABEL: Record<string, string> = {
 	sprint: 'sprint',
 	dictee: 'dictée',
 	revision: 'révision',
+	partage: 'séance partagée', // #734
 };
 const modeLabel = (m: string): string => MODE_LABEL[m] ?? m;
 

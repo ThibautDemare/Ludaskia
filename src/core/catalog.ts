@@ -1263,8 +1263,9 @@ export function genLessonSession(
 /* Conversion `Exercise` → `Item` : le point où chaque format se replie en une question à
    champ unique (fiche, bilan, impression, révision). Extrait de `genLessonItem` (#717)
    pour que la génération PAR SESSION passe exactement par le même repli — un second
-   chemin de conversion aurait divergé au premier champ ajouté. */
-function itemDepuisExercice(lesson: LessonDef, ex: Exercise): Item {
+   chemin de conversion aurait divergé au premier champ ajouté. Exporté pour la séance
+   partagée (#734), dont les exercices arrivent FIGÉS dans le lien et se replient ici. */
+export function itemDepuisExercice(lesson: LessonDef, ex: Exercise): Item {
 	// Rangement d'une suite (ordre alphabétique #108, ordre des nombres #448) :
 	// l'interaction tuiles vit dans son runner d'écran. Ici (fiche/bilan), repli TEXTE
 	// non interactif : on liste les éléments mélangés et on attend la suite rangée. La

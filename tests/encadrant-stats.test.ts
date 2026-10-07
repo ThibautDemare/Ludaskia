@@ -128,6 +128,7 @@ describe('activiteParJourParType (répartition par type, #319)', () => {
 			sprint: 1,
 			revision: 1,
 			dictee: 1,
+			partage: 0,
 			inconnu: 0,
 		});
 		expect(j[5]).toEqual({
@@ -137,11 +138,14 @@ describe('activiteParJourParType (répartition par type, #319)', () => {
 			sprint: 0,
 			revision: 0,
 			dictee: 0,
+			partage: 0,
 			inconnu: 0,
 		});
 		// Invariant : total == somme des types, pour chaque jour.
 		for (const d of j)
-			expect(d.total).toBe(d.lecon + d.bilan + d.sprint + d.revision + d.dictee + d.inconnu);
+			expect(d.total).toBe(
+				d.lecon + d.bilan + d.sprint + d.revision + d.dictee + d.partage + d.inconnu,
+			);
 	});
 	it('tolère l’ANCIEN format (nombres) → type « inconnu »', () => {
 		const j = activiteParJourParType([NOW, NOW], NOW);
@@ -152,6 +156,7 @@ describe('activiteParJourParType (répartition par type, #319)', () => {
 			sprint: 0,
 			revision: 0,
 			dictee: 0,
+			partage: 0,
 			inconnu: 2,
 		});
 	});
@@ -183,6 +188,7 @@ describe('activiteParJourParType (répartition par type, #319)', () => {
 			sprint: 1,
 			revision: 0,
 			dictee: 0,
+			partage: 0,
 			inconnu: 1,
 		});
 	});

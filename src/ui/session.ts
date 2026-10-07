@@ -5,7 +5,7 @@ import { fmt } from '../core/utils';
 import { icon } from './icon';
 import { focaliserChamp } from './anti-suggestion';
 import { scoreItems } from '../core/scoring';
-import type { ScoredInput } from '../core/scoring';
+import type { ItemStatus, ScoredInput } from '../core/scoring';
 import type { Trophy } from '../core/rewards';
 import { buildPrintableDOM } from '../core/lessons';
 import type { PrintScope } from '../core/lessons';
@@ -48,6 +48,7 @@ import {
 } from '../core/erreur-representation';
 import { html, brut, VIDE, type SafeHtml } from '../core/html';
 import { enNombre, libelleRegleRomaine, regleEnfreinte } from '../core/chiffres-romains';
+import { MODE_PARTAGE } from '../core/partage/passage';
 
 /* Règle enfreinte par une écriture romaine fausse (#717, critère 5). Révéler la bonne
    écriture ne suffit pas : l'enfant qui a écrit `XXXXIIII` lit « → XLIV » sans savoir
@@ -154,35 +155,32 @@ function annoncerVerdict(
 	}, DELAI_ANNONCE);
 }
 
-/* ---------- Vérification (arrête le chrono) ---------- */
-export function verify() {
-	const inputs = document.querySelectorAll<HTMLInputElement>('#sheets input.ans');
-	const sessionItems = getRenderCtx().items;
-	// Saisie illisible : une réponse qui n'est pas un nombre là où un nombre est attendu
-	// (« 3- ») n'est pas une MAUVAISE réponse, c'est une erreur de FORMAT. On bloque la
-	// vérification AVANT d'arrêter le chrono et de corriger quoi que ce soit, et on renvoie
-	// l'enfant au champ concerné : rien n'est compté, rien n'est journalisé, aucune étoile
-	// ni aucun record ne se joue. Un champ VIDE ne bloque pas — ne pas répondre reste permis
-	// (c'est déjà compté comme « non rempli » par le score).
-	const aCorriger = [...inputs].filter((inp) => {
-		const item = sessionItems[inp.id];
+/* Saisie illisible : une réponse qui n'est pas un nombre là où un nombre est attendu
+   (« 3- ») n'est pas une MAUVAISE réponse, c'est une erreur de FORMAT. Un champ VIDE
+   n'en est pas une — ne pas répondre reste permis. Partagé avec la séance partagée
+   (#734), qui doit refuser la même saisie au même endroit (critère 11). */
+export function champsIllisibles(
+	inputs: Iterable<HTMLInputElement>,
+	items: Record<string, Item>,
+): HTMLInputElement[] {
+	return [...inputs].filter((inp) => {
+		const item = items[inp.id];
 		return (
 			!!item && itemEstNumerique(item) && inp.value.trim() !== '' && !saisieEstNombre(inp.value)
 		);
 	});
-	if (aCorriger.length) {
-		signalerSaisiesIllisibles(aCorriger);
-		return;
-	}
-	const ms = stopChrono();
-	const currentMode = getCurrentMode();
-	const currentLessonId = getCurrentLessonId();
-	// Lecture DOM → descripteurs purs (#349). Saisie de l'heure (#88) : on FUSIONNE
-	// les 2 champs en « H h MM » (minutes sur 2 chiffres) AVANT correction → champ
-	// heures vide = non répondu ; minutes vide = « 00 » (heure pile). checkItemAnswer
-	// reste inchangé (la fusion produit sa forme canonique texte).
+}
+
+/* Lecture DOM → descripteurs purs (#349). Saisie de l'heure (#88) : on FUSIONNE les 2
+   champs en « H h MM » (minutes sur 2 chiffres) AVANT correction → champ heures vide =
+   non répondu ; minutes vide = « 00 » (heure pile). checkItemAnswer reste inchangé (la
+   fusion produit sa forme canonique texte). */
+export function lireSaisies(
+	inputs: Iterable<HTMLInputElement>,
+	items: Record<string, Item>,
+): ScoredInput[] {
 	const scored: ScoredInput[] = [];
-	inputs.forEach((inp) => {
+	for (const inp of inputs) {
 		let saisie = inp.value.trim();
 		const minFieldId = inp.dataset.minField;
 		if (minFieldId) {
@@ -193,65 +191,41 @@ export function verify() {
 		}
 		scored.push({
 			id: inp.id,
-			item: sessionItems[inp.id] ?? null,
+			item: items[inp.id] ?? null,
 			saisie,
 			answer: inp.dataset.answer,
 			lesson: inp.dataset.lesson ?? null,
 		});
-	});
+	}
+	return scored;
+}
+
+/* ---------- Vérification (arrête le chrono) ---------- */
+export function verify() {
+	// Séance partagée (#734) : terminer FIGE le premier passage, ce qu'aucune touche ne
+	// doit faire par mégarde. Entrée sur le dernier champ mène donc au bouton « J'ai
+	// fini », que l'enfant appuie lui-même.
+	if (getCurrentMode() === MODE_PARTAGE) {
+		document.getElementById('partageFini')?.focus();
+		return;
+	}
+	const inputs = document.querySelectorAll<HTMLInputElement>('#sheets input.ans');
+	const sessionItems = getRenderCtx().items;
+	// On bloque la vérification AVANT d'arrêter le chrono et de corriger quoi que ce soit,
+	// et on renvoie l'enfant au champ concerné : rien n'est compté, rien n'est journalisé,
+	// aucune étoile ni aucun record ne se joue (cf. `champsIllisibles`).
+	const aCorriger = champsIllisibles(inputs, sessionItems);
+	if (aCorriger.length) {
+		signalerSaisiesIllisibles(aCorriger);
+		return;
+	}
+	const ms = stopChrono();
+	const currentMode = getCurrentMode();
+	const currentLessonId = getCurrentLessonId();
+	const scored = lireSaisies(inputs, sessionItems);
 	// Calcul du score (logique pure, testée sans DOM — cf. core/scoring.ts).
 	const { ok, total, vides, errors, perLesson, statuses } = scoreItems(scored);
-	// Marquage DOM selon les verdicts : on efface l'ancien marquage puis on pose
-	// ✓ / ✗ (avec révélation de la bonne réponse à côté de l'erreur) ; un champ
-	// laissé vide reste neutre.
-	inputs.forEach((inp) => {
-		const mark = document.querySelector<HTMLElement>(`.mark[data-for="${inp.id}"]`);
-		inp.classList.remove('correct', 'wrong');
-		if (mark) {
-			mark.className = 'mark';
-			mark.textContent = '';
-		}
-		const status = statuses[inp.id];
-		// Validité exposée aux technologies d'assistance : le ✓/✗ est une marque VISUELLE,
-		// elle ne dit rien à un lecteur d'écran. C'est ce qui rend le détail atteignable
-		// champ par champ, une fois la synthèse annoncée (relecture a11y #717).
-		if (status === 'correct' || status === 'wrong') {
-			inp.setAttribute('aria-invalid', String(status === 'wrong'));
-		} else {
-			inp.removeAttribute('aria-invalid');
-		}
-		if (status === 'correct') {
-			inp.classList.add('correct');
-			if (mark) {
-				mark.className = 'mark correct';
-				mark.textContent = '✓';
-			}
-		} else if (status === 'wrong') {
-			inp.classList.add('wrong');
-			if (mark) {
-				mark.className = 'mark wrong';
-				// Révélation : la BANDE acceptée quand l'item est corrigé par intervalle
-				// (`data-attendue`, posé par renderItem — intercaler #446), sinon la réponse
-				// unique. Sur une intercalation, révéler « → 457 » laissait croire à une réponse
-				// unique dans le mode le plus joué, alors que la consigne annonçait le contraire.
-				// Mise en forme partagée (#501) : le nombre révélé s'écrit comme dans les énoncés
-				// (groupé, virgule française) ; une bande déjà rédigée en ressort intacte.
-				const revelee = formatReponseRevelee(inp.dataset.attendue ?? inp.dataset.answer ?? '');
-				// La réponse révélée RATTACHÉE au champ (relecture a11y #717) : la marque suit bien
-				// l'input dans l'ordre du document, mais le parcours que l'application encourage est
-				// Tab de champ en champ — et en mode formulaire, un lecteur d'écran saute le texte
-				// statique interposé. Sans ce lien, l'enfant apprend que son champ est faux sans
-				// jamais entendre ce qui était attendu. Aucune collision avec
-				// `signalerSaisiesIllisibles`, qui pose aussi `aria-describedby` : elle sort de
-				// `verify()` AVANT cette boucle (`return` sur `aCorriger.length`), les deux ne se
-				// posent donc jamais sur le même champ au même moment.
-				mark.id = `${inp.id}-mark`;
-				inp.setAttribute('aria-describedby', mark.id);
-				mark.innerHTML =
-					html`✗ <span class="sol">→ ${revelee}</span>${regleRomaineHTML(sessionItems[inp.id], inp.value)}`.balisage;
-			}
-		}
-	});
+	marquerChamps(inputs, statuses, sessionItems);
 	setLastErrors(errors);
 	// Étayage de la notion (#490) : à côté de chaque grille posée ratée, l'offre d'expliquer
 	// LE calcul qui vient d'être raté. Proposé, jamais imposé ni automatique — un affichage
@@ -454,6 +428,64 @@ export function verify() {
 	else window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+/* Marquage DOM selon les verdicts : on efface l'ancien marquage puis on pose ✓ / ✗ (avec
+   révélation de la bonne réponse à côté de l'erreur) ; un champ laissé vide reste neutre.
+   Partagé avec la séance partagée (#734) : la correction s'y lit exactement comme ici. */
+export function marquerChamps(
+	inputs: Iterable<HTMLInputElement>,
+	statuses: Record<string, ItemStatus>,
+	sessionItems: Record<string, Item>,
+): void {
+	for (const inp of inputs) {
+		const mark = document.querySelector<HTMLElement>(`.mark[data-for="${inp.id}"]`);
+		inp.classList.remove('correct', 'wrong');
+		if (mark) {
+			mark.className = 'mark';
+			mark.textContent = '';
+		}
+		const status = statuses[inp.id];
+		// Validité exposée aux technologies d'assistance : le ✓/✗ est une marque VISUELLE,
+		// elle ne dit rien à un lecteur d'écran. C'est ce qui rend le détail atteignable
+		// champ par champ, une fois la synthèse annoncée (relecture a11y #717).
+		if (status === 'correct' || status === 'wrong') {
+			inp.setAttribute('aria-invalid', String(status === 'wrong'));
+		} else {
+			inp.removeAttribute('aria-invalid');
+		}
+		if (status === 'correct') {
+			inp.classList.add('correct');
+			if (mark) {
+				mark.className = 'mark correct';
+				mark.textContent = '✓';
+			}
+		} else if (status === 'wrong') {
+			inp.classList.add('wrong');
+			if (mark) {
+				mark.className = 'mark wrong';
+				// Révélation : la BANDE acceptée quand l'item est corrigé par intervalle
+				// (`data-attendue`, posé par renderItem — intercaler #446), sinon la réponse
+				// unique. Sur une intercalation, révéler « → 457 » laissait croire à une réponse
+				// unique dans le mode le plus joué, alors que la consigne annonçait le contraire.
+				// Mise en forme partagée (#501) : le nombre révélé s'écrit comme dans les énoncés
+				// (groupé, virgule française) ; une bande déjà rédigée en ressort intacte.
+				const revelee = formatReponseRevelee(inp.dataset.attendue ?? inp.dataset.answer ?? '');
+				// La réponse révélée RATTACHÉE au champ (relecture a11y #717) : la marque suit bien
+				// l'input dans l'ordre du document, mais le parcours que l'application encourage est
+				// Tab de champ en champ — et en mode formulaire, un lecteur d'écran saute le texte
+				// statique interposé. Sans ce lien, l'enfant apprend que son champ est faux sans
+				// jamais entendre ce qui était attendu. Aucune collision avec
+				// `signalerSaisiesIllisibles`, qui pose aussi `aria-describedby` : elle sort de
+				// `verify()` AVANT cette boucle (`return` sur `aCorriger.length`), les deux ne se
+				// posent donc jamais sur le même champ au même moment.
+				mark.id = `${inp.id}-mark`;
+				inp.setAttribute('aria-describedby', mark.id);
+				mark.innerHTML =
+					html`✗ <span class="sol">→ ${revelee}</span>${regleRomaineHTML(sessionItems[inp.id], inp.value)}`.balisage;
+			}
+		}
+	}
+}
+
 /* ---------- Impression (issue #40) ----------
    Deux chemins :
    - A (printAll) : imprimer l'écran courant tel quel. Les champs de réponse
@@ -482,7 +514,7 @@ const HINT_ILLISIBLE = 'verifyHint';
      le focus, `focus()` ne fait rien, aucun évènement de focus n'est émis et la
      description ne serait jamais relue — le refus resterait totalement silencieux
      dans le cas le plus fréquent. */
-function signalerSaisiesIllisibles(champs: HTMLInputElement[]): void {
+export function signalerSaisiesIllisibles(champs: HTMLInputElement[]): void {
 	document.getElementById(HINT_ILLISIBLE)?.remove();
 	const hint = document.createElement('p');
 	hint.id = HINT_ILLISIBLE;
@@ -605,9 +637,11 @@ export function initSession() {
 		)
 			return;
 		e.preventDefault();
+		// Le `.ans` CACHÉ d'un QCM joué en séance partagée (#734) n'est pas une étape : le
+		// viser rendrait Entrée muette juste avant la question.
 		const all = [
 			...document.querySelectorAll<HTMLInputElement>(
-				'#sheets input.ans, #sheets input.ans-free, #sheets input.heure-min',
+				'#sheets input.ans:not([type="hidden"]), #sheets input.ans-free, #sheets input.heure-min',
 			),
 		];
 		const i = all.indexOf(t);

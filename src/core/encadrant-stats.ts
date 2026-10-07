@@ -319,6 +319,7 @@ export interface JourActivite {
 	sprint: number;
 	revision: number;
 	dictee: number;
+	partage: number; // séance partagée par lien (#734)
 	inconnu: number;
 }
 
@@ -355,6 +356,7 @@ export function activiteParJourParType(
 		sprint: 0,
 		revision: 0,
 		dictee: 0,
+		partage: 0,
 		inconnu: 0,
 	}));
 	for (const e of normalizeActivity(activity)) {

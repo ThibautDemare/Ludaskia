@@ -22,6 +22,7 @@ import './styles/recap-seance.scss';
 import './styles/mots-difficiles.scss';
 import './styles/print.scss';
 import './styles/bilan.scss';
+import './styles/partage.scss';
 import './styles/catalog.scss';
 import './styles/recherche-lecon.scss';
 import './styles/francais.scss';
@@ -81,6 +82,7 @@ import { verify, printAll, initSession } from './ui/session';
 import { captureResume } from './ui/resume';
 import { isSprintRunning } from './ui/sprint';
 import { isRevisionRunning } from './ui/revision';
+import { partageEnCours } from './ui/partage-seance';
 import { hideCelebration, hideLevelUp } from './ui/effects';
 import { openRecompenses, openTrophees, hideUnlockModals } from './ui/unlocks-view';
 import {
@@ -103,8 +105,9 @@ import { initEggs, mountForestEgg, recordCookieEgg } from './ui/eggs';
 import { fillFooterYear, initFooterCookie } from './ui/footer';
 import { brut } from './core/html';
 
-// Quitter ces modes (non reprenables) perd la progression → on confirme (#63).
-const quittingLosesProgress = () => isSprintRunning() || isRevisionRunning();
+// Quitter ces modes (non reprenables) perd la progression → on confirme (#63). La séance
+// partagée en cours en est (#734) : rien n'y est repris, et le premier passage reste à faire.
+const quittingLosesProgress = () => isSprintRunning() || isRevisionRunning() || partageEnCours();
 
 /* Rend le focus à un bouton d'action de la carte profil après re-rendu (le
    déclencheur d'origine a été recréé par renderProfiles). Repli sur « Nouveau

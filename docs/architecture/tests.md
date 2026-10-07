@@ -427,7 +427,37 @@ jour », révision QCM et problème) : c'est la limite propre à un gate par
 échantillon, qui ne prouve que les écrans qu'il visite.
 
 La règle ESLint, elle, vit dans `eslint.config.js` et exige que toute affectation à
-`.innerHTML` soit de la forme `X.balisage`.
+`.innerHTML` ou `.outerHTML`, et tout second argument d'`insertAdjacentHTML`, soit de
+la forme `X.balisage`.
+
+### Séance partagée par lien (#734)
+
+Quatre gardes, détaillés dans [Liens partagés](liens-partages.md).
+
+- `tests/partage-gate.test.ts` : (1) les clés des tables `exercices.ts` / `figures.ts`
+  sont **exactement** celles des unions `Exercise['type']` et `FigureSpec['kind']`, lues
+  dans le **source** (il survit à un `as`, un `Partial<>` ou un `@ts-expect-error` posé
+  sur la table) ; (2) **aller-retour de tout le catalogue** : chaque leçon × niveau ×
+  mode proposable, trois tirages à graines fixes, encodés puis décodés, doivent revenir
+  identiques (comparés après `JSON.parse(JSON.stringify(…))`, l'attendu figé **avant**
+  l'encodage). Un générateur qui assemble sa `figure` ou son `choicesView[].html` à la
+  main y rougit. Les échecs sont collectés et signalés en une assertion, une ligne par
+  combinaison.
+- `tests/partage-references.test.ts` : un **lien de référence commité** par format, qui
+  doit décoder à l'identique. Le code est commité, jamais régénéré par le test. Un rouge
+  se traite par une nouvelle `VERSION_FORMAT`, pas en recopiant un code neuf.
+- `tests/securite-liens-gate.test.ts` : la règle ESLint voit `outerHTML` et
+  `insertAdjacentHTML` (extraits lintés avec la configuration réelle, sous `src/ui/` et
+  `src/core/`), et la CSP de `app.html` est présente, bien placée et sans
+  `'unsafe-inline'`. Chaque détecteur a ses témoins (un cas refusé, un cas accepté).
+- `e2e/csp.spec.ts` : la CSP **mord** pour de vrai (une injection brute ne s'exécute
+  pas et le navigateur relève une violation `script-src*`), sur le serveur de dev
+  **et** sur le build de production.
+
+Les schémas, le codec, la capture et le tirage ont leurs tests unitaires
+(`tests/partage-codec`, `-schemas`, `-resultat`, `-tirage`). `tests/recette-balisage.test.ts`
+fige le balisage des trois producteurs migrés vers les fabriques à recette, comparé à la
+formule d'avant la migration : la recette ne doit rien changer à ce que voit l'enfant.
 
 ### Commentaires SCSS qui avalent du code (36bf465)
 

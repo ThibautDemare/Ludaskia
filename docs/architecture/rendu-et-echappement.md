@@ -79,16 +79,38 @@ l'élément sans rien y injecter. Sa **liste d'exemptions est vide** : la conver
 été faite en un seul lot (décision de cadrage du 22/08/2026), contrairement au patron
 incrémental de #580 et #511.
 
-Elle ne couvre pas `insertAdjacentHTML`, `outerHTML` ni `document.write` : aucun n'est
-utilisé dans `src/` aujourd'hui, et les interdire reviendrait à refuser des formes que
-personne n'écrit.
+Elle couvre aussi `outerHTML` et `insertAdjacentHTML` (#734), avec la même exigence
+(`X.balisage` ; pour `insertAdjacentHTML`, c'est le **second argument**), y compris par
+accès calculé (`el['outerHTML']`). Elle ne les couvrait pas au départ, sur l'argument
+qu'aucun n'était utilisé : c'était faux pour `outerHTML` (appariement, clic sur le mot,
+segment, tuiles). Ces sites étaient sûrs, mais par discipline, et les liens partagés
+font entrer dans l'application des textes que n'importe qui peut forger. Elle est
+appliquée sous `src/ui/` et sous `src/core/` (deux blocs de configuration).
+
+Elle ne couvre pas `document.write`, absent de `src/` : aucune écriture d'application
+moderne n'a de raison de l'employer. `tests/securite-liens-gate.test.ts` lint des
+extraits avec la configuration réelle du dépôt, pour que la règle ne perde pas ces
+formes sans que rien ne rougisse.
 
 ## Limite assumée : le moteur de figures SVG
 
 `src/core/figures/` compose du SVG à partir de `FigureSpec`, une donnée **fermée**
-construite par l'application (nombres, énumérations, libellés de leçon) — jamais une
-saisie d'enfant ni un contenu importé. Les rares figures qui interpolent du texte
-libre (droite graduée, diagramme, tableau de données) l'échappent chez elles.
+(nombres, énumérations, libellés de leçon), jamais une saisie d'enfant. Depuis #734,
+une spec peut aussi **arriver d'un lien forgé**. Ce n'est plus une donnée construite
+par l'application seule, et c'est tenu ainsi (cf. [Liens partagés](liens-partages.md)) :
+
+- la spec est **validée et bornée** par `core/partage/figures.ts` (une table typée sur
+  `FigureSpec['kind']`) : nombres finis dans des bornes, énumérations fermées, clé
+  inconnue refusée ;
+- les **textes** portés par une figure passent par `texteFigure` (`partage/textes.ts`),
+  qui refuse à l'entrée les caractères capables de sortir d'un attribut, parce que le
+  moteur n'échappe pas toutes les valeurs d'attribut (`attrs`) ;
+- c'est **l'application qui redessine** la figure à partir de la spec : un lien ne
+  transporte jamais de SVG ni de balisage, seulement la recette qui le produit ;
+- la **CSP** reste le filet si, malgré cela, un échappement sautait.
+
+Les rares figures qui interpolent du texte libre (droite graduée, diagramme, tableau
+de données) l'échappent chez elles.
 
 On marque donc sa SORTIE, plutôt que de convertir 3 000 lignes de composition.
 Convertir le moteur serait une réécriture, pas un garde-fou, et le SVG a ses propres
@@ -108,7 +130,7 @@ vert. C'est ce que garde la classe 4 de `tests/html-positions-gate.test.ts`.
 
 **C'est un rejet écrit, pas un oubli** (règle #585) : inutile de le re-remonter en
 relecture. Ce qui le ferait rouvrir : une figure qui accepterait un jour du texte
-saisi par un enfant.
+saisi par un enfant, ou un texte de figure venu d'un lien sans passer par `texteFigure`.
 
 ## Ce que le gabarit ne promet PAS (rejets écrits)
 
@@ -242,7 +264,9 @@ Deux leçons qui dépassent l'incident :
 | Garde | Ce qu'il attrape |
 | --- | --- |
 | Le **type** | Une fonction de rendu qui renvoie du texte brut ; du texte passé à `wrapGrandsNombres` / `stackFractions`. |
-| La **règle ESLint** | Une affectation `.innerHTML` dont la valeur n'est pas un fragment. |
+| La **règle ESLint** | Une affectation `.innerHTML` ou `.outerHTML`, ou un `insertAdjacentHTML`, dont la valeur n'est pas un fragment (`tests/securite-liens-gate.test.ts` la garde). |
+| La **CSP** (`<meta>` de `app.html`, #734) | Le filet si un échappement saute : `script-src 'self'; object-src 'none'; base-uri 'self'`, sans `'unsafe-inline'` ni `'unsafe-eval'`. Un `onerror=` ou un `<script>` injecté ne s'exécute pas. Elle ne vise que les scripts : les `style=` des gabarits restent permis. Partie statique tenue par `tests/securite-liens-gate.test.ts`, effet réel (violation relevée, code non exécuté, dev **et** build de production) par `e2e/csp.spec.ts`. |
+| `core/partage/` (#734) | Un lien forgé : jamais de balisage transporté, spec de figure bornée, textes filtrés, redessin par l'application ([Liens partagés](liens-partages.md)). |
 | `tests/html-positions-gate.test.ts` | Les fautes 1 et 2 ci-dessus (interpolation à une position refusée, balisage écrit en chaîne), plus la frontière du moteur de figures, sur tout `src/`. |
 | `tests/fuites-gabarit-html-gate.test.ts` | La faute 3 (fragment sorti de son gabarit — `+`, `+=`, gabarit non balisé, `.join()`, `String()`, `.toString()`) et le jeton technique (`html`…) resté collé dans le balisage statique — vérifié contre un échantillon fautif pour qu'un trou dans le détecteur échoue bruyamment plutôt que de rester silencieusement vert. |
 | `tests/html-gabarit.test.ts` | Le contrat du gabarit, position par position. |

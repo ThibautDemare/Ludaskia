@@ -58,23 +58,42 @@ const STOCKAGE_PAR_MEMBRE = {
    aurait passé un contrôle limité à la forme littérale. Sa liste d'exemptions est
    VIDE — décision de cadrage : la conversion est faite en un seul lot.
 
-   Ce qu'elle ne couvre pas : `insertAdjacentHTML`, `outerHTML`, `document.write`.
-   Aucun n'est utilisé dans `src/` aujourd'hui ; les ajouter reviendrait à interdire
-   des formes que personne n'écrit. */
+   Elle couvre aussi `outerHTML` et `insertAdjacentHTML` (#734), avec la même
+   exigence (`X.balisage`). La première version affirmait qu'aucun des deux n'était
+   utilisé : c'était faux pour `outerHTML` (appariement, clic sur le mot, segment,
+   tuiles), qui passait donc sans contrôle. Ces sites étaient sûrs, mais par
+   discipline — et les liens partagés font entrer dans l'appli des textes que
+   n'importe qui peut forger. L'accès CALCULÉ (`el['outerHTML']`) est couvert aussi.
+
+   Ce qu'elle ne couvre pas : `document.write`, absent de `src/`, qu'aucune écriture
+   d'application moderne n'a de raison d'employer. */
 const MESSAGE_ECHAPPEMENT =
-	'Affecter un SafeHtml à `.innerHTML` : `el.innerHTML = html`<p>${valeur}</p>`.balisage`. ' +
+	'Passer un SafeHtml à `.innerHTML`, `.outerHTML` ou `insertAdjacentHTML` : ' +
+	'`el.innerHTML = html`<p>${valeur}</p>`.balisage`. ' +
 	'Le gabarit `html` (src/core/html.ts) échappe chaque interpolation SELON SA POSITION ' +
 	"(texte, valeur d'attribut, URL). Une chaîne construite à la main n'offre aucune de ces " +
 	'garanties : le `${}` qu’on oublie ne fait rougir ni le typechecker ni les tests, et ' +
 	"n'apparaît qu'à l'exécution. Fragment de confiance : `brut()`, avec sa raison en commentaire.";
 
-const ECHAPPEMENT_INNERHTML = {
+/* `name` pour `el.outerHTML`, `value` pour l'accès calculé `el['outerHTML']`. */
+const PROPRIETE_HTML = '/^(inner|outer)HTML$/';
+
+const ECHAPPEMENT_AFFECTATION = {
 	selector:
-		"AssignmentExpression[left.type='MemberExpression'][left.property.name='innerHTML']" +
+		"AssignmentExpression[left.type='MemberExpression']" +
+		`:matches([left.property.name=${PROPRIETE_HTML}], [left.property.value=${PROPRIETE_HTML}])` +
 		":not([right.type='MemberExpression'][right.property.name='balisage'])" +
 		// `el.innerHTML = ''` VIDE l'élément : rien n'y est injecté, donc rien à garder.
 		// L'interdire n'apporterait aucune sûreté et forcerait un `VIDE.balisage` illisible.
 		":not([right.type='Literal'][right.value=''])",
+	message: MESSAGE_ECHAPPEMENT,
+};
+
+/* `el.insertAdjacentHTML(position, X)` : c'est le SECOND argument qui porte le balisage. */
+const ECHAPPEMENT_INSERTION = {
+	selector:
+		"CallExpression:matches([callee.property.name='insertAdjacentHTML'], [callee.property.value='insertAdjacentHTML'])" +
+		":not([arguments.1.type='MemberExpression'][arguments.1.property.name='balisage'])",
 	message: MESSAGE_ECHAPPEMENT,
 };
 
@@ -145,7 +164,12 @@ export default tseslint.config(
 		ignores: ['src/core/**', 'src/data/**', 'src/vitrine.ts'],
 		rules: {
 			'no-restricted-globals': ['error', STOCKAGE_CONFINE],
-			'no-restricted-syntax': ['error', STOCKAGE_PAR_MEMBRE, ECHAPPEMENT_INNERHTML],
+			'no-restricted-syntax': [
+				'error',
+				STOCKAGE_PAR_MEMBRE,
+				ECHAPPEMENT_AFFECTATION,
+				ECHAPPEMENT_INSERTION,
+			],
 		},
 	},
 
@@ -156,7 +180,12 @@ export default tseslint.config(
 	{
 		files: ['src/core/**/*.ts', 'src/data/**/*.ts', 'src/vitrine.ts'],
 		rules: {
-			'no-restricted-syntax': ['error', STOCKAGE_PAR_MEMBRE, ECHAPPEMENT_INNERHTML],
+			'no-restricted-syntax': [
+				'error',
+				STOCKAGE_PAR_MEMBRE,
+				ECHAPPEMENT_AFFECTATION,
+				ECHAPPEMENT_INSERTION,
+			],
 		},
 	},
 );

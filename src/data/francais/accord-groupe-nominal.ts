@@ -38,7 +38,7 @@ import { checkAnswer } from '../../core/exercise';
 import { choice, sample } from '../../core/utils';
 import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
-import { html, joindre, type SafeHtml } from '../../core/html';
+import { surligner } from '../../core/surlignage';
 
 /** Sens de la transformation demandée à l'enfant. */
 export type SensGN = 'pluriel' | 'feminin';
@@ -232,15 +232,17 @@ function prefixeCommun(a: string, b: string): string {
    préfixe commun départ/cible (le radical reste nu). Échappe le HTML (#200). On
    surligne UNIFORMÉMENT sur tous les choix : un suffixe vide (forme de départ
    laissée non accordée) garde un `<span class="term">` vide, donc le surlignage ne
-   trahit pas la bonne réponse. */
-function vueConstituant(c: Constituant, valeur: string): SafeHtml {
-	if (c.marque === 'mot') {
-		return html`<span class="term">${valeur}</span>`;
-	}
+   trahit pas la bonne réponse. Rendu par `surligner` (#734), qui garde de quoi
+   redessiner la vue dans un lien partagé. */
+function morceauxConstituant(c: Constituant, valeur: string): [string, boolean][] {
+	if (c.marque === 'mot') return [[valeur, true]];
 	const racine = prefixeCommun(c.depart, c.cible);
 	// `valeur` commence toujours par la racine (départ et cible la partagent).
 	const suffixe = valeur.slice(racine.length);
-	return html`${racine}<span class="term">${suffixe}</span>`;
+	return [
+		[racine, false],
+		[suffixe, true],
+	];
 }
 
 /* Une proposition de QCM : la valeur nue (clé de correction) et sa vue riche. Une
@@ -256,10 +258,14 @@ interface Proposition {
    en laisse exactement un à sa forme de départ (une seule marque cassée). */
 function proposition(g: GroupeNominal, accordes: boolean[]): Proposition {
 	const valeurs = g.constituants.map((c, i) => (accordes[i] ? c.cible : c.depart));
-	const vues = g.constituants.map((c, i) => vueConstituant(c, valeurs[i]));
+	// Les constituants séparés d'une espace, comme dans la valeur nue.
+	const morceaux = g.constituants.flatMap((c, i): [string, boolean][] => [
+		...(i > 0 ? [[' ', false] as [string, boolean]] : []),
+		...morceauxConstituant(c, valeurs[i]),
+	]);
 	return {
 		valeur: valeurs.join(' '),
-		vue: { html: joindre(vues, html` `), label: valeurs.join(' ') },
+		vue: { html: surligner(morceaux), label: valeurs.join(' ') },
 	};
 }
 

@@ -11,6 +11,7 @@
 import { brut, html, type SafeHtml } from './html';
 import { nombreEnMots } from './nombres';
 import type { ChoiceView } from './exercise';
+import { marquer } from './recette-fragment';
 
 // Noms du dénominateur au SINGULIER : 2,3,4 sont spéciaux (demi/tiers/quart) ;
 // au-delà, ordinal en « -ième ». Couvre les dénominateurs du périmètre CE2, plus
@@ -44,9 +45,14 @@ export function nomFraction(num: number, den: number): string {
 }
 
 /** Fraction empilée (barre horizontale) accessible : `role="img"` + `aria-label`
-    verbal (« six huitièmes »), pour ne jamais faire lire « six slash huit ». */
+    verbal (« six huitièmes »), pour ne jamais faire lire « six slash huit ».
+    Porte sa recette (#734) : une vue de choix faite d'une fraction voyage dans un
+    lien partagé sous forme de deux nombres, pas de balisage. */
 export function fractionInlineHTML(num: number, den: number): SafeHtml {
-	return html`<span class="frac" role="img" aria-label="${nomFraction(num, den)}"><span class="frac-num">${num}</span><span class="frac-den">${den}</span></span>`;
+	return marquer(
+		html`<span class="frac" role="img" aria-label="${nomFraction(num, den)}"><span class="frac-num">${num}</span><span class="frac-den">${den}</span></span>`,
+		{ k: 'fraction', num, den },
+	);
 }
 
 /** Remplace les fractions « num/den » d'un fragment par leur rendu empilé.

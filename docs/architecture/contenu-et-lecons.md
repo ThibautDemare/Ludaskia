@@ -157,7 +157,15 @@ mono-leçon partagé par les sept autres (`MODE_CLIC`, id `clic`).
   vocabulaire vit là parce que les garde-fous **CE2** se définissent sur les mêmes
   ensembles de formes que les leçons **CM1** : c'était le couplage qui rendait le
   découpage non mécanique, et le copier par module aurait laissé un garde-fou accepter
-  au CE2 ce que l'autre refuse au CM1.
+  au CE2 ce que l'autre refuse au CM1. Depuis #731 il porte aussi le type
+  **`PatronGN`** (`DN` / `DNA` / `DAN`) et le champ **`patron?`** de `PhraseClicMot` :
+  le patron était jusque-là *déclaré* à `gn()`, utilisé pour vérifier le nombre de mots,
+  puis **jeté** — si bien que la donnée ne disait plus quel mot du groupe était le nom et
+  lequel l'adjectif (« la lune » se déduit, « le petit chien » et « un manteau chaud »
+  non). Le **retenir** ne change rien à #716, qui ne le lit pas, et évite à la leçon
+  « Nomme les mots du groupe » de redériver les rôles avec un lexique d'adjectifs — liste
+  finie, donc faillible. Même raison que `DET_SETS` pour l'emplacement : deux banques le
+  lisent, il appartient donc au moteur.
 - **`grammaire-clic-mot-verbe.ts`** — banques CE2/CM1 du verbe + `clicVerbeType` (seule
   leçon dont la banque CM1 **contient** celle du CE2).
 - **`grammaire-clic-mot-cm1.ts`** — les 5 natures CM1 (#437) : conjonction,
@@ -219,7 +227,8 @@ Les 8 leçons :
 
 **Niveaux** : conjonction, groupe nominal et sujet restent `['cm1']` (câblées après
 `fr-gram-clic-verbe` dans `ORDRE_LECONS.francais.cm1`, ordre : déterminant →
-conjonction → pronom → **groupe nominal** → nom noyau → sujet — le groupe nominal
+conjonction → pronom → **groupe nominal** → **nommer ses mots** (#731,
+`fr-gram-gn-nommer`, cf. plus bas) → nom noyau → sujet — le groupe nominal
 avant son noyau : l'étayage du nom noyau suppose déjà une frontière de groupe tracée,
 que rien n'apprenait avant #716) ;
 déterminant, pronom et nom sont `['ce2', 'cm1']` et l'adjectif `['ce2']`. Au CE2
@@ -322,6 +331,68 @@ les sept premières, relus par l'agent pédagogue et le rédacteur FR ; le group
 `grammaire-groupe-nominal.ts` (cf. ci-dessus) et écartés par le rédacteur langue sur un
 point : pas de plafond chiffré à la densité lexicale d'une banque (cf. [Conventions
 rédactionnelles](conventions-redaction.md)).
+
+#### `francais/grammaire-gn-nommer.ts` (#731, CM1)
+
+catégorie **Grammaire**, **seconde** leçon du groupe nominal : **« Nomme les mots du
+groupe »** (`fr-gram-gn-nommer`, **CM1 seule**). #716 fait **délimiter** le groupe ;
+celle-ci, le groupe étant donné, fait **nommer** chacun de ses mots — la seconde moitié
+de l'attendu du programme CM1 §5.1. Les leçons voisines vont toutes de l'**étiquette
+vers le mot** (« clique sur l'adjectif ») : une tâche de **recherche**, réussissable par
+élimination. Celle-ci va du **mot vers l'étiquette**, et elle est **exhaustive**.
+
+**Format `appariement`**, pas `clicMot` : l'énoncé porte le groupe (`Relie chaque mot du
+groupe « un grand tableau » : est-ce un déterminant, un nom ou un adjectif ?`), la colonne
+de gauche ses mots, celle de droite les étiquettes `déterminant` / `nom` / `adjectif`.
+**Une paire par mot et aucun `intrus`** — une étiquette en trop à écarter ferait une tâche
+de tri, et le nombre d'emplacements soufflerait déjà la taille du groupe. Joué par le
+runner partagé `ui/lecon-appariement.ts` (qui journalise l'erreur paire par paire, #391) ;
+`exerciseKind: 'appariement'` l'exclut du sprint. **Mode d'id propre `nommer`** (et non
+le `relier` des familles de mots) : l'id de mode est la maille de couverture e2e, cf.
+[Tests](tests.md).
+
+**La question énumère ses trois réponses**, et c'est un choix : « à ce qu'il est » a été
+jugé **flottant** pour cet âge (`redacteur-contenu-francais` — rien n'y dit qu'on parle de
+la classe du mot), et « à sa nature », le terme du programme, **prématuré** au CM1 (avis
+`pedagogue-primaire` ; l'application ne l'introduit nulle part). La forme retenue est celle
+qui tourne déjà dans `classes-mots.ts`.
+
+La manche porte **`colonneDroite: 'etiquettes'`** (#731) : à droite, l'enfant ne touche pas
+un mot « qui va avec » mais une **étiquette** qu'il pose sur le mot. Le runner et la
+révision en dérivent une **aide contextuelle dédiée** (`appariementEtiquettes`, cf.
+[Core](core.md) et [UI](ui.md)) — l'aide d'origine, écrite pour « Familles de mots à
+relier », décrivait une colonne de mots qui n'existe pas ici. Le drapeau n'accorde que la
+formulation, jamais la correction.
+
+**Les rôles viennent de la donnée**, jamais d'un lexique : la table `ROLES` traduit les
+trois patrons du programme en positions (`DN` = Dét+Nom, `DNA` = Dét+Nom+Adj, `DAN` =
+Dét+Adj+Nom) et `constituants(groupe)` en dérive l'étiquette de chaque mot. C'est ce qui
+a motivé le champ `patron?` de `PhraseClicMot` (cf. plus haut).
+
+**Banque : 78 groupes** = les **48** groupes distincts de `PHRASES_GN` (#716 réutilisée
+**en lecture seule** — reprise intégrale, l'enfant doit retrouver ce qu'il vient de
+délimiter ; les 49 phrases en visent 48, deux ciblent « les oiseaux ») **+ 30 neufs**.
+Répartition servie : **DN 32 / DNA 18 / DAN 28**. Le lot neuf sur-échantillonne
+**Dét + Adj + Nom** (18 de ses 30 items), parce que c'est là que l'erreur se produit —
+l'enfant qui a retenu « le petit mot, puis le nom » étiquette comme nom le mot qui *suit*
+le déterminant. Le seuil « au moins autant de DAN que de DNA » vient du **cadrage** de
+#731, pas du `pedagogue-primaire`, qui a dit « sur-échantillonner » sans fixer de rapport
+(réserve écrite dans l'issue).
+
+**Garde-fous de construction** (`gnMots`, `gnDepuisPhrase`, `assembler`), qui lèvent à
+l'import plutôt qu'en relecture : nombre de mots conforme au patron, déterminant
+article/possessif/démonstratif en tête et **jamais élidé**, **aucun second déterminant**
+dans le groupe (groupe emboîté — ou, bien plus probable, patron mal déclaré, la faute
+que le rôle-par-position rendrait muette), aucun mot répété (le widget indexe par le
+texte), et **aucun groupe en double** entre le lot neuf et les reprises. Une phrase sans
+`patron` est refusée au lieu d'être devinée.
+
+L'énoncé montre le **groupe seul**, jamais la phrase dont #716 l'avait extrait : l'enfant
+n'a aucun mot à étiqueter hors du groupe, et un mot répété dans la phrase rendrait le
+groupe montré ambigu. Vocabulaire **proscrit** par l'issue et tenu en test : « nom
+noyau » (dans 2 ou 3 mots il n'y a qu'un nom), toute **fonction** (épithète, sujet,
+complément — la leçon ne demande que la **nature**) et tout nom de patron montré à
+l'enfant (« Dét + Adj + Nom » est un outil d'auteur).
 
 #### `francais/phrases.ts` (#204, CM1 #245)
 

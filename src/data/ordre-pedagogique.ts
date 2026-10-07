@@ -462,6 +462,14 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			// il suppose une frontière que rien n'apprenait jusqu'ici à tracer. La leçon du
 			// noyau n'en change pas pour autant — elle recule d'un cran dans le fil.
 			'fr-gram-groupe-nominal',
+			// Puis NOMMER les mots du groupe qu'on vient d'apprendre à délimiter (#731).
+			// L'arc entre les deux leçons est porté ICI et nulle part ailleurs : l'option
+			// « un second mode sur Repère le groupe nominal » a été écartée au cadrage
+			// (partout ailleurs, deux modes sont deux façons de travailler la même notion,
+			// pas deux étapes successives). Placée AVANT le nom noyau : nommer les trois
+			// classes dans un groupe borné de deux ou trois mots prépare le repérage du
+			// seul nom dans un groupe plus long, où des noms se font concurrence.
+			'fr-gram-gn-nommer',
 			'fr-gram-clic-noyau',
 			'fr-gram-clic-sujet',
 			// Orthographe — accord de TOUT le groupe nominal (#243) : chaîne d'accord

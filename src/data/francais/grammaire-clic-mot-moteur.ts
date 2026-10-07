@@ -31,6 +31,16 @@ import type { SchoolLevel } from '../../core/catalog';
 import { choice, enumererFr } from '../../core/utils';
 import { LEVEL_ORDER, closestSupported } from '../../core/levels';
 
+/** Les trois patrons de groupe nominal du programme CM1 (§5.1) : `DN` fait 2 mots
+    (Dét + Nom), `DNA` et `DAN` en font 3 (Dét + Nom + Adj ; Dét + Adj + Nom).
+
+    Le type vit ICI, et non dans la banque qui l'a introduit (#716) : deux leçons s'en
+    servent désormais — « Repère le groupe nominal » pour borner ce qu'elle s'autorise à
+    construire, « Nomme les mots du groupe » (#731) pour savoir QUEL mot est le nom et
+    quel mot est l'adjectif. Même raison que `DET_SETS` (cf. en-tête) : un vocabulaire
+    partagé par deux banques appartient au moteur, sinon l'une importe l'autre. */
+export type PatronGN = 'DN' | 'DNA' | 'DAN';
+
 /** Une phrase annotée prête à jouer. `tokens` = la phrase mot à mot (mots +
     ponctuation) ; `cibleIndices` = l'ensemble EXACT des indices attendus (1, 2 ou
     plus — adjacents ou non) ; `explication` = justification courte affichée après
@@ -65,6 +75,16 @@ export interface PhraseClicMot {
 	    suivent : une cible contiguë par hasard — le verbe « a mangé » — reste une
 	    sélection libre. Absent ⇒ comportement historique. */
 	segment?: boolean;
+	/** Patron du groupe nominal ciblé (#731), posé par le constructeur de la banque du
+	    groupe nominal (`gn`). Jusqu'ici le patron était DÉCLARÉ à la construction, servait
+	    à vérifier le nombre de mots du groupe, puis il était jeté — si bien que la donnée
+	    ne disait plus quel mot était le nom et lequel l'adjectif. « la lune » se déduit,
+	    « le petit chien » et « un grand tableau » non : c'est exactement ce que la leçon
+	    « Nomme les mots du groupe » doit savoir pour fabriquer ses paires, et ce qu'elle ne
+	    peut pas redeviner sans un lexique d'adjectifs (liste finie, donc faillible).
+	    Le RETENIR ne change rien au comportement de #716, qui ne le lit pas. Absent ⇒ la
+	    cible n'est pas un groupe nominal (toutes les autres banques de la famille). */
+	patron?: PatronGN;
 }
 
 /* Découpage : une suite de lettres/chiffres (avec apostrophe droite ou trait

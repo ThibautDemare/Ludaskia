@@ -15,6 +15,9 @@
    - `tableau`→ tableau de conversion (ui/lecon-tableau, #394) : un chiffre par case,
      zéros de transit compris (les cases en pointillés se remplissent aussi) ;
    - `appariement` → relier des paires (ui/lecon-appariement) : tap mot puis tap son correspondant ;
+   - `appariementEtiquettes` → même runner, même geste, mais la colonne de droite porte des
+     ÉTIQUETTES et non des mots (#731, nommer les mots du groupe nominal) : dire « touche le
+     mot qui va avec » y décrirait une colonne qui n'existe pas ;
    - `clicMot` → clique sur le mot (ui/lecon-clic-mot, #259, #437) : toucher le(s) bon(s)
      mot(s), parfois deux mots (adjacents — verbe au passé composé — ou non — sujet composé).
    - `droiteGraduee` → placer sur la droite graduée (ui/lecon-droite-graduee, #256) : toucher
@@ -36,6 +39,7 @@ export type TypeAide =
 	| 'tableau'
 	| 'tableauVirgule'
 	| 'appariement'
+	| 'appariementEtiquettes'
 	| 'clicMot'
 	| 'segmentMot'
 	| 'droiteGraduee';
@@ -147,6 +151,21 @@ export const AIDES: Record<TypeAide, AideContenu> = {
 	appariement: {
 		titre: 'Comment relier les mots ?',
 		etapes: ['Touche un mot à gauche.', 'Touche le mot qui va avec à droite.'],
+		reparation: "Tu t'es trompé ? Touche un mot relié, le trait s'efface.",
+	},
+	// Même geste que `appariement`, mais la colonne de droite ne porte pas des mots qui
+	// « vont avec » : elle porte les étiquettes qu'on pose SUR les mots de gauche (#731).
+	// Deux choses sont volontaires ici :
+	// - l'aide reste au niveau du GESTE : elle ne cite pas « déterminant, nom, adjectif »,
+	//   qui sont à l'écran de toute façon et qui ne valent que pour cette leçon-ci. Une
+	//   notice de geste qui énumère une notion vieillirait dès la leçon d'étiquetage
+	//   suivante, et personne ne penserait à la relire ;
+	// - la réparation est la MÊME que celle de l'appariement de mots, parce que le geste de
+	//   rectification est le même (retoucher un mot relié efface son trait). C'est tout
+	//   l'intérêt de garder un seul widget.
+	appariementEtiquettes: {
+		titre: 'Comment poser les étiquettes ?',
+		etapes: ['Touche un mot à gauche.', "Touche à droite l'étiquette de ce mot."],
 		reparation: "Tu t'es trompé ? Touche un mot relié, le trait s'efface.",
 	},
 	clicMot: {

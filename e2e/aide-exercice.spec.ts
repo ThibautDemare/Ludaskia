@@ -346,6 +346,67 @@ test('aide appariement : bouton .aide-btn présent et rouvre la modale', async (
 	expect(errors).toEqual([]);
 });
 
+/* ----------------------------------------------------------------
+   6 bis. Appariement d'ÉTIQUETTES — fr-gram-gn-nommer (#731, CM1)
+   Même runner, même geste que « appariement », mais la colonne de droite porte des
+   étiquettes de classe : bulle dédiée (`appariementEtiquettes`).
+
+   PIÈGE : la scène garde volontairement `.aide-anim--appariement` (animations et repli
+   « mouvement réduit » hérités). Cette classe ne discrimine donc PAS : c'est le
+   modificateur `.aide-anim--etiquettes` qui dit que c'est la bonne bulle. Les titres sont
+   assertés au mot près parce qu'ils sont l'objet du test (intitulé de la bulle).
+   ---------------------------------------------------------------- */
+
+/* Profil CM1 (la leçon n'est servie qu'à ce niveau), SANS aide vue. */
+const SEED_CM1 = `(() => {
+  localStorage.setItem('ludaskia_profiles', JSON.stringify({ list: [{ uuid: 'e2e', name: 'E2E', emoji: '\\uD83E\\uDD8A', updatedAt: 1, niveauReference: 'cm1' }], active: 'e2e' }));
+  localStorage.setItem('e2e/ludaskia_tour_seen', 'true');
+  localStorage.setItem('e2e/ludaskia_parents_seen', 'true');
+})();`;
+
+test('aide étiquettes : la leçon des groupes nominaux ouvre SA bulle, pas celle des mots', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(SEED_CM1);
+	await gotoHash(page, 'lecon-fr-gram-gn-nommer');
+	await page.locator('.lapp-mot').first().waitFor();
+
+	await expect(page.locator('#aideOverlay')).toBeVisible();
+	await expect(page.locator('#aideTitle')).toHaveText('Comment poser les étiquettes ?');
+	// Le modificateur discrimine ; la classe de base est héritée et ne prouve rien.
+	await expect(page.locator('.aide-anim--appariement.aide-anim--etiquettes')).toBeVisible();
+	await expect(page.locator('ol.aide-etapes')).toBeVisible();
+	// Négatif : le titre de l'aide générique n'apparaît pas.
+	await expect(page.locator('#aideTitle')).not.toHaveText('Comment relier les mots ?');
+
+	await page.locator('.aide-ok').click();
+	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+
+	// Le bouton ampoule rouvre la même bulle.
+	await page.locator('button.aide-btn').click();
+	await expect(page.locator('#aideTitle')).toHaveText('Comment poser les étiquettes ?');
+	await expect(page.locator('.aide-anim--etiquettes')).toBeVisible();
+	await page.locator('.aide-close').click();
+	await expect(page.locator('#aideOverlay')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});
+
+test('aide appariement : les familles de mots gardent leur aide, sans le modificateur étiquettes', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'lecon-fr-vocab-familles-relier');
+	await page.locator('.lapp-mot').first().waitFor();
+
+	await expect(page.locator('#aideTitle')).toHaveText('Comment relier les mots ?');
+	await expect(page.locator('.aide-anim--appariement')).toBeVisible();
+	await expect(page.locator('.aide-anim--etiquettes')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});
+
 /* ================================================================
    7. Runner « clique sur le mot » — fr-gram-clic-verbe (#259/#435)
       Mono-mode → lancement direct du runner (même schéma que « tri »

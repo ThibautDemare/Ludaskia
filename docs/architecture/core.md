@@ -309,9 +309,13 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   du widget / de l'aide / des listes écrites — séparateur via **`separateurSuite(nature)`**,
   source unique du repli texte du catalogue ET du journal d'erreurs) | `tuilesTri` (champs
   lexicaux #114 : tuiles + thème correct de chacune) | `appariement` (relier des
-  paires #392 : `{question, paires: {gauche, droite}[], intrus?, parle?}` — `paires`
-  porte les correspondances correctes, `intrus?` des mots décoys côté droite sans
-  correspondance) | `posed` (calcul posé #97 : op + opérandes) | `tableauConversion`
+  paires #392 : `{question, paires: {gauche, droite}[], intrus?, parle?, colonneDroite?}` —
+  `paires` porte les correspondances correctes, `intrus?` des mots décoys côté droite sans
+  correspondance ; **`colonneDroite?: 'mots' | 'etiquettes'`** (#731) dit ce qu'on relie à
+  droite — des mots qui « vont avec » (défaut) ou des **étiquettes** qu'on pose sur eux
+  (déterminant / nom / adjectif) —, et n'accorde, comme `nature` pour `tuilesOrdre`, que
+  la **formulation** de l'aide contextuelle, en leçon comme en révision ; jamais la
+  correction) | `posed` (calcul posé #97 : op + opérandes) | `tableauConversion`
   (tableau de conversion #394 : colonnes **`TableauColonne[]`** —
   `{unite, nom, transit, chiffres, tete?}`, TOUJOURS grande→petite unité —,
   `virguleApres?` (position de la virgule) et `virguleLibre?` (#711 lot 4, DEUX régimes) :
@@ -587,12 +591,16 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (`ui/session.ts`) — un `text-transform` CSS ne changerait que l'affiché.
 - **`aide.ts`** (#272) — **aide contextuelle** des runners à interaction non intuitive,
   module **pur** : porte le **contenu** des aides (`AIDES` : titre + étapes courtes ≤ 3 +
-  voie alternative + filet anti-erreur) pour 12 types (`tuiles`, `ordre`, `ordreNombres`
+  voie alternative + filet anti-erreur) pour 13 types (`tuiles`, `ordre`, `ordreNombres`
   #448 — même geste que `ordre`, formulation accordée aux nombres —, `tri`, `atelier`,
   `lettres`, `tableau` #394, `tableauVirgule` #711 lot 4 — aide DISTINCTE du mode « la
   virgule est à placer », et non une phrase de plus dans celle de `tableau` : c'est elle
   qui porte la règle (« juste après la colonne de l'unité demandée »), jamais la légende
-  permanente sous le tableau —, `appariement` #392, `clicMot`, `segmentMot` #716 —
+  permanente sous le tableau —, `appariement` #392, `appariementEtiquettes` #731 — même
+  runner et même geste, mais la colonne de droite porte des **étiquettes** et non des
+  mots : « touche le mot qui va avec » y décrirait une colonne qui n'existe pas ; choisi
+  sur `colonneDroite` de la 1re manche (`aideDuGeste`), comme `segmentMot` l'est sur
+  `segment` —, `clicMot`, `segmentMot` #716 —
   délimiter un segment par ses deux bornes plutôt que cocher des mots —, `droiteGraduee`
   #256) et la
   **mémoire « aide déjà vue »** par profil (`ludaskia_aide_vue`, via `lsGet/lsSet`). Le

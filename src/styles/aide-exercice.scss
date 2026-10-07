@@ -786,6 +786,19 @@
 	}
 }
 
+/* ---- appariement « étiquettes » (#731) : même scène, même geste, même trait — seule la
+   cible de droite change de NATURE. Elle est dessinée en pointillés sur fond accentué,
+   comme une vignette qu'on vient poser sur le mot ; sans cet écart, « nom » se lirait
+   comme un second mot, et l'aide ne montrerait pas ce qui la distingue de l'autre.
+   Le couple --accent sur --accent-soft est déjà celui de `.ltri-col-titre` (tenu sur les
+   six thèmes par tests/contraste-tokens.test.ts) : aucune teinte nouvelle n'est posée
+   ici. La classe `aide-anim--appariement` est CONSERVÉE sur la scène, donc les
+   animations et les replis « mouvement réduit » restent les mêmes sans être redits. ---- */
+.aide-anim--etiquettes .an-mot--d {
+	border-style: dashed;
+	background: var(--accent-soft);
+}
+
 /* ---- clicMot (clique sur le mot) : mini-phrase « Léa a chanté hier ». Le doigt tape
    « a » puis « chanté », les deux jetons restent sélectionnés ENSEMBLE (moment « deux
    mots collés »). Les jetons sont stylés comme les VRAIS boutons .lclic-mot du jeu

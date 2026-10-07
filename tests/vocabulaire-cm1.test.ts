@@ -322,8 +322,8 @@ describe('Vocabulaire CM1 — catalogue & ordre (#244)', () => {
 		const ordre = ORDRE_LECONS.francais.cm1!;
 		// +1 : « Clique sur le verbe » (#259, partagée CE2/CM1) ; +5 : natures « clique sur
 		// le mot » CM1 (#437 : déterminant, conjonction, pronom, nom noyau, sujet) ;
-		// +1 : « Repère le groupe nominal » (#716).
-		expect(ordre).toHaveLength(72);
+		// +1 : « Repère le groupe nominal » (#716) ; +1 : « Nomme les mots du groupe » (#731).
+		expect(ordre).toHaveLength(73);
 		const i = (id: string) => ordre.indexOf(id);
 		for (const id of [
 			'fr-vocab-contraires-cm1',

@@ -13,7 +13,8 @@
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
-import type { ExerciseMode } from '../core/exercise';
+import type { ColonneDroiteAppariement, ExerciseMode } from '../core/exercise';
+import type { TypeAide } from '../core/aide';
 import { ttsAttr } from '../core/tts-text';
 import { bindConsigneTts } from './consigne-tts';
 import { goHome } from './navigation';
@@ -47,6 +48,9 @@ interface MancheAppariement {
 	question: string;
 	paires: { gauche: string; droite: string }[];
 	intrus: string[];
+	/** Ce que porte la colonne de droite (#731) : des mots (défaut) ou des étiquettes.
+	    Sert UNIQUEMENT à choisir la bulle d'aide, cf. `aideDuGeste`. */
+	colonneDroite?: ColonneDroiteAppariement;
 }
 
 let lesson: LessonDef;
@@ -75,7 +79,12 @@ function genManches(l: LessonDef, m: ExerciseMode, n: number): MancheAppariement
 		const out: MancheAppariement[] = [];
 		for (const ex of session) {
 			if (ex.type !== 'appariement') continue; // ce runner n'a de sens que pour ce type
-			out.push({ question: ex.question, paires: ex.paires, intrus: ex.intrus ?? [] });
+			out.push({
+				question: ex.question,
+				paires: ex.paires,
+				intrus: ex.intrus ?? [],
+				colonneDroite: ex.colonneDroite,
+			});
 		}
 		return out;
 	}
@@ -91,7 +100,12 @@ function genManches(l: LessonDef, m: ExerciseMode, n: number): MancheAppariement
 			continue;
 		}
 		seen.add(key);
-		out.push({ question: ex.question, paires: ex.paires, intrus: ex.intrus ?? [] });
+		out.push({
+			question: ex.question,
+			paires: ex.paires,
+			intrus: ex.intrus ?? [],
+			colonneDroite: ex.colonneDroite,
+		});
 		misses = 0;
 	}
 	return out;
@@ -99,6 +113,16 @@ function genManches(l: LessonDef, m: ExerciseMode, n: number): MancheAppariement
 
 /* Nom du runner dans le registre de reprise (#498) — stable, il vit dans les instantanés. */
 const RUNNER = 'appariement';
+
+/* Quelle bulle d'aide expliquer (#731). Le geste est le même dans les deux cas, mais ce
+   qu'on touche à droite ne l'est pas : un mot de la même famille (#392) ou une étiquette
+   de classe grammaticale. « Touche le mot qui va avec à droite » décrirait alors une
+   colonne de mots là où l'enfant n'a que trois étiquettes sous les yeux. Les manches d'une
+   leçon sont homogènes (la banque entière relie des mots ou des étiquettes), donc la
+   première suffit à trancher — même raisonnement qu'`aideDuGeste` de lecon-clic-mot. */
+function aideDuGeste(): TypeAide {
+	return manches[0]?.colonneDroite === 'etiquettes' ? 'appariementEtiquettes' : 'appariement';
+}
 
 /* Démarre l'écran sur un jeu de manches donné, à l'index et au score voulus. Chemin
    COMMUN au lancement neuf (0/0) et à la reprise, pour que les deux ne divergent pas. */
@@ -120,7 +144,7 @@ function demarrer(
 		mode: m ?? null,
 		etat: () => ({ questions: manches, idx, score }),
 		render: renderManche,
-		aide: 'appariement',
+		aide: aideDuGeste(),
 	});
 }
 
@@ -179,7 +203,7 @@ function renderManche(): void {
 	verif.addEventListener('click', () => verifier());
 	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
 	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
-	monterBoutonAide(sheets().querySelector('.sprint-stage'), 'appariement'); // bouton « ? » (#272)
+	monterBoutonAide(sheets().querySelector('.sprint-stage'), aideDuGeste()); // bouton « ? » (#272)
 }
 
 /* Bonnes paires RÉVÉLÉES (une par ligne) : servies après une erreur ET après un passage

@@ -120,7 +120,12 @@ import {
 	attendueIntervalle,
 } from '../core/erreur-representation';
 import { joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
-import type { ProblemeEtape, ProbLexique, NatureOrdre } from '../core/exercise';
+import type {
+	ProblemeEtape,
+	ProbLexique,
+	NatureOrdre,
+	ColonneDroiteAppariement,
+} from '../core/exercise';
 import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
 import { formatReponseRevelee } from '../core/nombres';
 import { attenduEtapeTexte } from '../core/probleme-etapes';
@@ -186,6 +191,9 @@ type RevItem = { groupLabel: string; consigne?: string; niveau?: SchoolLevel } &
 			question: string;
 			paires: { gauche: string; droite: string }[];
 			intrus: string[];
+			// Mots ou ÉTIQUETTES à droite (#731) : seule l'aide contextuelle en dépend, mais
+			// elle en dépend ici comme en leçon — la révision monte le même widget.
+			colonneDroite?: ColonneDroiteAppariement;
 	  }
 	// Problème : board complet (énoncé + TOUTES les sous-questions + brouillon), corrigé
 	// étape par étape — perdre les étapes intermédiaires ou le brouillon dénaturait la
@@ -380,6 +388,7 @@ export function runRevisionEspacee(): void {
 					question: ex.question,
 					paires: ex.paires,
 					intrus: ex.intrus ?? [],
+					colonneDroite: ex.colonneDroite,
 				});
 				continue;
 			}
@@ -548,7 +557,10 @@ function typeAideItem(it: RevItem): TypeAide | undefined {
 		case 'tri':
 			return 'tri';
 		case 'appariement':
-			return 'appariement';
+			// Même raison qu'au `clicMot` ci-dessous : le widget est le même, mais la colonne de
+			// droite ne l'est pas (#731). Lire « touche le mot qui va avec » devant trois
+			// étiquettes de classe grammaticale enverrait chercher une colonne qui n'existe pas.
+			return it.colonneDroite === 'etiquettes' ? 'appariementEtiquettes' : 'appariement';
 		case 'clicMot':
 			// Le rendu branche déjà sur `it.segment` (cf. renderClicMot) : l'aide doit suivre,
 			// sinon l'enfant voit le widget à deux bornes et lit la notice de l'autre geste.

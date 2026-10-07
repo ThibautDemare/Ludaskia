@@ -41,6 +41,7 @@ import {
 	DET_SETS,
 	libelleCible,
 	phraseSegment,
+	type PatronGN,
 	type PhraseClicMot,
 } from './grammaire-clic-mot-moteur';
 
@@ -48,10 +49,12 @@ import {
     font 3 — c'est ce compte que le constructeur vérifie. Quelle POSITION occupe
     l'adjectif ne se vérifie pas ici (il faudrait un lexique, donc une liste finie et
     faillible) : le patron est déclaré par l'auteur de la banque, et c'est
-    `tests/groupe-nominal.test.ts` qui confronte la déclaration au contenu réel. */
-export type PatronGN = 'DN' | 'DNA' | 'DAN';
+    `tests/groupe-nominal.test.ts` qui confronte la déclaration au contenu réel.
+    Le TYPE vit désormais dans le moteur (deux banques le lisent, cf. #731) ; il reste
+    ré-exporté d'ici, qui est le module où on vient le chercher. */
+export type { PatronGN };
 
-const MOTS_ATTENDUS: Record<PatronGN, number> = { DN: 2, DNA: 3, DAN: 3 };
+export const MOTS_ATTENDUS: Record<PatronGN, number> = { DN: 2, DNA: 3, DAN: 3 };
 
 /** Déterminants nommés par le programme CM1 : l'union des trois sous-catégories que
     le moteur tient déjà (article, possessif, démonstratif). Lue d'ici plutôt que
@@ -147,6 +150,11 @@ export function gn(
 		cibleLabel: CIBLE_GN,
 		explicationNommeCible: true,
 	});
+	// Le patron est RETENU dans la donnée (#731) au lieu d'être jeté après le contrôle de
+	// longueur ci-dessus : c'est lui, et lui seul, qui dit quel mot du groupe est le nom et
+	// quel mot est l'adjectif (« le petit chien » contre « un manteau chaud »). #716 ne le
+	// lit pas — son comportement est inchangé.
+	p.patron = patron;
 
 	const tete = p.tokens[p.cibleIndices[0]];
 	if (estElide(tete)) {

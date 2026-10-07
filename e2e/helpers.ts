@@ -117,7 +117,7 @@ export async function gotoHash(page: Page, hash: string): Promise<void> {
    évidente. Complétés ici plutôt que signalés seuls : l'ajout est purement additif
    (marquer une aide « déjà vue » ne peut faire échouer aucune spec existante). */
 export function seedAideVueScript(uuid = 'e2e'): string {
-	return `localStorage.setItem('${uuid}/ludaskia_aide_vue', '{"tuiles":true,"ordre":true,"ordreNombres":true,"tri":true,"atelier":true,"lettres":true,"tableau":true,"tableauVirgule":true,"appariement":true,"clicMot":true,"segmentMot":true,"droiteGraduee":true}');`;
+	return `localStorage.setItem('${uuid}/ludaskia_aide_vue', '{"tuiles":true,"ordre":true,"ordreNombres":true,"tri":true,"atelier":true,"lettres":true,"tableau":true,"tableauVirgule":true,"appariement":true,"appariementEtiquettes":true,"clicMot":true,"segmentMot":true,"droiteGraduee":true}');`;
 }
 
 /* Surcharge pratique : injecte directement le script sur la page.

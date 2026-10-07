@@ -549,6 +549,43 @@ export function defaultMode(type: ExerciseType): ExerciseMode | undefined {
 	return (ms.find((m) => m.recommended) ?? ms[0]).id;
 }
 
+/** Comment un exercice d'une LEÇON se joue à l'écran (#734) : en fiche, ou dans un
+ *  runner d'écran dédié — toujours (`runner`), ou dès qu'un mode est retenu
+ *  (`runnerSiMode` : un type mono-mode reste en fiche). Table typée sur l'union : un
+ *  nouveau `type` qui ne s'y déclare pas fait échouer le typecheck. Lue par `runLecon`
+ *  (jeu libre) et par la séance partagée, qui doivent aiguiller pareil. */
+export const JEU_PAR_TYPE = {
+	text: 'fiche',
+	posed: 'fiche',
+	motCache: 'fiche',
+	tuiles: 'fiche',
+	dictee: 'fiche',
+	probleme: 'runner',
+	clicMot: 'runner',
+	droiteGraduee: 'runner',
+	qcm: 'runnerSiMode',
+	qcmMulti: 'runnerSiMode',
+	tuilesNombre: 'runnerSiMode',
+	tuilesOrdre: 'runnerSiMode',
+	tuilesTri: 'runnerSiMode',
+	tableauConversion: 'runnerSiMode',
+	appariement: 'runnerSiMode',
+} as const satisfies Record<Exercise['type'], 'fiche' | 'runner' | 'runnerSiMode'>;
+
+/** Types qu'un runner d'écran dédié sait jouer. */
+export type TypeRunner = {
+	[K in keyof typeof JEU_PAR_TYPE]: (typeof JEU_PAR_TYPE)[K] extends 'fiche' ? never : K;
+}[keyof typeof JEU_PAR_TYPE];
+
+/** Le type, dans ce mode, se joue-t-il dans un runner dédié plutôt qu'en fiche ? */
+export function seJoueEnRunner(
+	type: Exercise['type'],
+	mode: ExerciseMode | undefined,
+): type is TypeRunner {
+	const jeu = JEU_PAR_TYPE[type];
+	return jeu === 'runner' || (jeu === 'runnerSiMode' && !!mode);
+}
+
 /* Vérification générique pour les exercices texte (hors math).
    Normalisation partagée (`normalizeText`) : trim + espaces internes réduits + NFC.
    Accents et apostrophes exigés. Couvre tous les types : comparaison à `answer`

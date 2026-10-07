@@ -1,0 +1,372 @@
+/* ============================================================
+   Séance partagée (#734) — écrans enfant d'un envoi reçu par lien.
+
+   Couleurs : uniquement des couples déjà tenus sur les six thèmes par
+   `tests/contraste-tokens.test.ts` (--ink/--grey/--muted sur --paper,
+   --page-bg et --accent-soft ; --ink sur --warn-bg ; --on-accent sur --accent
+   et --accent-dark). Un couple nouveau se mesure d'abord, puis s'ajoute à la table.
+   ============================================================ */
+
+/* ---------- Écrans (accueil, déjà fait, refus, fin) ---------- */
+.partage-ecran {
+	max-width: 34rem;
+	margin: 24px auto;
+	padding: 24px;
+	border-radius: 16px;
+	background: var(--paper);
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
+	font-family: var(--ui);
+	color: var(--ink);
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+.partage-surtitre {
+	margin: 0;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 15px;
+	font-weight: 700;
+	color: var(--grey);
+}
+.partage-titre {
+	margin: 0;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 24px;
+	line-height: 1.25;
+	overflow-wrap: anywhere;
+}
+.partage-titre:focus {
+	outline: none;
+}
+.partage-titre .ph-icon,
+.partage-encart .ph-icon,
+.partage-surtitre .ph-icon {
+	flex-shrink: 0;
+	width: var(--icon-lg);
+	height: var(--icon-lg);
+	color: var(--accent-dark);
+}
+.partage-texte {
+	margin: 0;
+	font-size: 17px;
+	line-height: 1.45;
+}
+/* L'information qui compte (« verra tes réponses ») : un encart, pas un petit gris. */
+.partage-encart {
+	margin: 0;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 14px 16px;
+	border-radius: 12px;
+	border-left: 4px solid var(--accent);
+	background: var(--accent-soft);
+	font-size: 17px;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+/* ---------- Boutons : un principal par écran ---------- */
+.partage-btn {
+	font: inherit;
+	font-family: var(--ui);
+	font-size: 18px;
+	font-weight: 700;
+	min-height: 56px;
+	width: 100%;
+	padding: 12px 20px;
+	border-radius: 14px;
+	cursor: pointer;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	transition:
+		box-shadow 0.15s ease,
+		transform 0.08s ease;
+}
+.partage-btn .ph-icon {
+	width: var(--icon);
+	height: var(--icon);
+}
+.partage-btn:not(:disabled):active {
+	transform: translateY(1px);
+}
+.partage-btn:disabled {
+	cursor: not-allowed;
+	opacity: 0.55;
+}
+.partage-btn-principal {
+	border: 0;
+	background: var(--accent);
+	color: var(--on-accent);
+}
+.partage-btn-principal:not(:disabled):hover {
+	background: var(--accent-dark);
+}
+.partage-btn-secondaire {
+	border: 2px solid var(--accent);
+	background: var(--paper);
+	color: var(--ink);
+}
+.partage-btn-lien {
+	min-height: 48px;
+	border: 0;
+	background: transparent;
+	color: var(--ink);
+	font-weight: 600;
+	text-decoration: underline;
+}
+.partage-btn-sous {
+	font-size: 14px;
+	font-weight: 500;
+}
+.partage-pile {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+.partage-boutons {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+/* Cause technique d'un refus : repliée, pour l'adulte. */
+.partage-adulte {
+	font-size: 15px;
+	color: var(--grey);
+}
+.partage-adulte summary {
+	min-height: 44px;
+	display: flex;
+	align-items: center;
+	cursor: pointer;
+	font-weight: 600;
+}
+
+/* ---------- Repère de séance (critère 7) ---------- */
+.partage-repere {
+	position: sticky;
+	top: var(--toolbar-h, 60px);
+	z-index: 8;
+	max-width: 210mm;
+	margin: 0 auto 12px;
+	padding: 8px 16px;
+	min-height: 40px;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	border-radius: 0 0 12px 12px;
+	background: var(--accent-soft);
+	color: var(--ink);
+	font-family: var(--ui);
+	font-size: 15px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.partage-repere .ph-icon {
+	flex-shrink: 0;
+	color: var(--accent-dark);
+}
+.partage-repere-quoi {
+	font-weight: 700;
+	white-space: nowrap;
+}
+.partage-repere-libelle {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.partage-repere-libelle::before {
+	content: '· ';
+}
+/* Smartphone en paysage : un bandeau collant mangerait l'exercice. */
+@media (orientation: landscape) and (max-height: 500px) {
+	.partage-repere {
+		position: static;
+	}
+}
+
+/* ---------- Questions ---------- */
+/* Marges de défilement : le champ focalisé ne passe ni sous le repère collant (en haut,
+   WCAG 2.4.11) ni sous le clavier virtuel (en bas, la case reste visible). */
+.partage-item {
+	scroll-margin-top: calc(var(--toolbar-h, 60px) + 56px);
+	scroll-margin-bottom: 120px;
+}
+/* Cible limitée au libellé (pas toute la ligne) : un appui en bord de ligne, en faisant
+   défiler au doigt, ne doit pas cocher la case et vider la saisie. */
+.partage-jnsp {
+	display: inline-flex;
+	width: fit-content;
+	align-items: center;
+	gap: 10px;
+	min-height: 48px;
+	margin-top: 8px;
+	padding: 0 4px;
+	font-family: var(--ui);
+	font-size: 16px;
+	color: var(--grey);
+	cursor: pointer;
+}
+.partage-jnsp input {
+	width: 24px;
+	height: 24px;
+	margin: 0;
+	accent-color: var(--accent);
+	cursor: pointer;
+}
+.partage-item-jnsp .partage-jnsp {
+	color: var(--ink);
+	font-weight: 700;
+}
+/* État « je ne sais pas » : un fond teinté, pas une opacité (qui ferait passer le texte
+   d'indication sous 4,5:1). */
+.partage-item-jnsp {
+	background: var(--accent-soft);
+	border-radius: 10px;
+}
+.partage-item-jnsp input.ans::placeholder {
+	color: var(--grey);
+	opacity: 1;
+}
+
+/* Réponse révélée d'une question passée par « je ne sais pas » : sans croix. */
+.mark.revelee {
+	font-size: 15px;
+}
+.mark.revelee .sol {
+	color: var(--ok);
+	font-weight: 700;
+}
+.partage-correction-entete {
+	max-width: 210mm;
+	margin: 0 auto 12px;
+	font-family: var(--ui);
+}
+
+/* QCM joué dans la fiche : choix en grandes cibles. */
+.partage-question {
+	margin: 0 0 8px;
+}
+.partage-choix {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+.partage-choix-opt {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 48px;
+	padding: 6px 14px;
+	border: 2px solid var(--line);
+	border-radius: 12px;
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--ui);
+	cursor: pointer;
+}
+.partage-choix-opt:has(input:checked) {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+}
+.partage-choix-opt input {
+	width: 20px;
+	height: 20px;
+	margin: 0;
+	accent-color: var(--accent);
+}
+
+/* ---------- Fin de séance ---------- */
+.partage-astuce {
+	margin-top: 4px;
+}
+.partage-actions {
+	max-width: 210mm;
+	margin: 8px auto 32px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+.partage-seuil {
+	margin: 0;
+	padding: 12px 16px;
+	border-radius: 12px;
+	border-left: 4px solid var(--warn-bd);
+	background: var(--warn-bg);
+	color: var(--ink);
+	font-family: var(--ui);
+	font-size: 16px;
+}
+/* Région vivante VIDE : repliée, jamais `display: none`, sinon son premier message
+   (qui la fait apparaître) n'est pas annoncé de façon fiable. */
+.partage-seuil:empty,
+.partage-copie:empty {
+	padding: 0;
+	border: 0;
+	min-height: 0;
+	margin: 0;
+	overflow: hidden;
+}
+.partage-label {
+	font-weight: 700;
+	font-size: 16px;
+	margin-bottom: -8px;
+}
+.partage-pseudo,
+.partage-lien {
+	font: inherit;
+	font-family: var(--ui);
+	font-size: 18px;
+	min-height: 48px;
+	padding: 8px 12px;
+	border: 2px solid var(--field-line);
+	border-radius: 10px;
+	background: var(--paper);
+	color: var(--ink);
+	box-sizing: border-box;
+	width: 100%;
+}
+.partage-lien {
+	font-size: 15px;
+	text-overflow: ellipsis;
+}
+/* Erreur : bordure FONCÉE et plus épaisse (--warn-bd est sous 3:1 sur --paper), et
+   surtout le texte d'aide qui change : jamais la couleur seule. */
+.partage-pseudo[aria-invalid='true'] {
+	border-color: var(--ink);
+	border-width: 3px;
+}
+.partage-aide {
+	margin: 0;
+	font-size: 15px;
+	color: var(--grey);
+}
+.partage-aide-erreur {
+	padding: 8px 12px;
+	border-radius: 10px;
+	background: var(--warn-bg);
+	color: var(--ink);
+}
+.partage-copie {
+	margin: 0;
+	font-weight: 700;
+	font-size: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.partage-btn {
+		transition: none;
+	}
+}

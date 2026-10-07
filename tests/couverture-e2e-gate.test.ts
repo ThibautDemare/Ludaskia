@@ -144,9 +144,13 @@ for (const m of NAVIGATION.matchAll(/import \{([^}]*)\} from '\.\/(lecon-[\w-]+)
 		.filter(Boolean))
 		IMPORTS.set(symbole, `${m[2]}.ts`);
 
-/** Aiguillage réel : `if (t === 'type') { runLeconXxx(` → type -> fichier de runner. */
+/** Aiguillage réel : la table `RUNNERS` de `navigation.ts` (#734), une entrée par type,
+ *  `type: runLeconXxx` ou `type: (id, mode) => runLeconXxx(id, mode!)` → type -> fichier
+ *  de runner. Lue dans le BLOC de la table seulement : une autre table du fichier ne doit
+ *  pas passer pour un aiguillage. */
+const TABLE_RUNNERS = /const RUNNERS\b[^{]*\{([^}]*)\}/.exec(NAVIGATION)?.[1] ?? '';
 const AIGUILLAGE = new Map<string, { symbole: string; fichier: string | undefined }>();
-for (const m of NAVIGATION.matchAll(/t === '(\w+)'\)\s*\{\s*(run\w+)\(/g))
+for (const m of TABLE_RUNNERS.matchAll(/^\s*(\w+):\s*(?:\([^)]*\)\s*=>\s*)?(run\w+)\b/gm))
 	AIGUILLAGE.set(m[1], { symbole: m[2], fichier: IMPORTS.get(m[2]) });
 
 const FICHIERS_AIGUILLES = new Set(
@@ -187,7 +191,7 @@ describe('Couverture e2e des runners de leçon (#598)', () => {
 		expect(RUNNERS.length, 'aucun src/ui/lecon-*.ts trouvé').toBeGreaterThanOrEqual(10);
 		expect(
 			AIGUILLAGE.size,
-			'aucun aiguillage `t === …` lu dans navigation.ts : la forme du dispatch a changé, ' +
+			'aucun aiguillage lu dans la table `RUNNERS` de navigation.ts : la forme du dispatch a changé, ' +
 				'et ce gate ne verrait plus aucun runner.',
 		).toBeGreaterThanOrEqual(8);
 	});

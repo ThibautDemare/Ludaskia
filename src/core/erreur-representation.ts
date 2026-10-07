@@ -18,9 +18,38 @@
    PASSÉE, selon ce que l'enfant avait déjà posé — voir la section ci-dessous.
    ============================================================ */
 import { separateurSuite } from './exercise';
-import type { NatureOrdre } from './exercise';
+import type { ChoiceView, NatureOrdre } from './exercise';
 import { formatNombre, formatReponseRevelee } from './nombres';
 import type { Item } from './items';
+
+/* ---------- Énoncé et choix lisibles hors de l'appli (#391) ---------- */
+
+/* Suffixe signalant qu'un énoncé s'appuie sur un dessin : hors de l'appli, la
+   question textuelle seule (« Quelle heure est-il ? ») serait énigmatique — on
+   invite alors à refaire l'exercice ensemble (avis designer). */
+const MARQUEUR_FIGURE = ' (exercice avec dessin)';
+
+/* Énoncé lisible pour le journal : l'emplacement de réponse `@` devient « … »
+   (une question, pas un gabarit à trou), et une figure est signalée. Renvoie ''
+   si rien d'affichable (énoncé vide sans figure → l'appelant n'enregistre pas). */
+export function questionPourJournal(text: string, hasFigure = false): string {
+	const t = text.replace(/@/g, '…').replace(/\s+/g, ' ').trim();
+	if (!t) return hasFigure ? 'Exercice avec un dessin' : '';
+	return hasFigure ? t + MARQUEUR_FIGURE : t;
+}
+
+/* Libellé LISIBLE d'un choix de QCM pour le journal : la vue riche (#200) si elle
+   existe (fraction empilée, symbole de ponctuation…), sinon la valeur brute (déjà
+   lisible en QCM texte). `valeur` sert à retrouver l'index dans `choices` (aligné
+   sur `choicesView`) ; les choix d'un QCM étant distincts, `indexOf` est fiable.
+   Fallback sur `valeur` si le choix est introuvable (jamais en pratique). */
+export function libelleChoix(
+	choices: string[],
+	choicesView: ChoiceView[] | undefined,
+	valeur: string,
+): string {
+	return choicesView?.[choices.indexOf(valeur)]?.label ?? valeur;
+}
 
 /* ---------- Question PASSÉE : ce qu'une tentative laisse au journal (#467) ---------- */
 

@@ -10,8 +10,8 @@
    history.pushState) pour rester compatible avec file://.
    ============================================================ */
 import { getAllLessons, getLessonById } from '../core/catalog';
-import { defaultMode, modesPourNiveau } from '../core/exercise';
-import type { ExerciseMode } from '../core/exercise';
+import { defaultMode, modesPourNiveau, seJoueEnRunner } from '../core/exercise';
+import type { ExerciseMode, TypeRunner } from '../core/exercise';
 
 import { buildLessonFiche } from '../core/build';
 import { runLeconQcm } from './lecon-qcm';
@@ -66,6 +66,8 @@ import {
 	type OrigineActivite,
 } from './retour-activite';
 import { html, joindre } from '../core/html';
+import { lireFragment } from '../core/partage/liens';
+import { afficherEnvoi, partageCleanup } from './partage-seance';
 
 // Icône de matière pour les cartes de reprise (#63).
 const SUBJECT_ICON: Record<string, string> = { math: 'calculator', francais: 'book-open' };
@@ -312,7 +314,10 @@ export function route() {
 	// bootstrap et chaque bascule de profil, qui passent toutes par route()).
 	applyPreferences();
 	const h = (location.hash || '').replace(/^#/, '');
-	if (h === 'sprint-config') showSprintConfigView();
+	// Séance partagée (#734) : `#envoi/<code>`. Le code ne se lit qu'ici, jamais ailleurs.
+	const lien = lireFragment(location.hash);
+	if (lien?.type === 'envoi') showEnvoiView(lien.code);
+	else if (h === 'sprint-config') showSprintConfigView();
 	else if (h === 'sprint') runSprint();
 	else if (h === 'bilan-custom') showBilanCustomView();
 	else if (h.startsWith('bilan-cat-')) {
@@ -440,6 +445,7 @@ function resetSessionUI() {
 	sprintCleanup(); // stoppe un éventuel sprint en cours (compte à rebours)
 	revisionCleanup(); // remet à zéro le drapeau « révision en cours » (#63)
 	leconTableauCleanup(); // retire les listeners hors #sheets du runner tableau (clavier #394, redimensionnement #711)
+	partageCleanup(); // séance partagée (#734) : oublie la séance et annule un décodage en vol
 	currentMode = null;
 	currentLessonId = null;
 	document.getElementById('sheets')!.innerHTML = '';
@@ -500,6 +506,15 @@ export function showSeanceView() {
 	hideMenus();
 	renderSeance(document.getElementById('seanceContent')!);
 	document.getElementById('seance')!.style.display = '';
+	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+/* Séance partagée reçue par lien (#734). Le décodage est asynchrone : l'écran se remplit
+   quand il aboutit, et un changement d'écran entre-temps l'annule (`partageCleanup`). */
+export function showEnvoiView(code: string) {
+	resetSessionUI();
+	setToolbar({ verify: false, home: true, profile: false });
+	hideMenus();
+	void afficherEnvoi(code, document.getElementById('sheets')!);
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function showProfilesView() {
@@ -649,6 +664,21 @@ export function showBilanCustomView(categoryId?: string) {
 	document.getElementById('bilan-custom')!.style.display = '';
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+/* Runner d'écran dédié de chaque type qui en a un (#734 : table typée sur `TypeRunner`,
+   un type déclaré « runner » sans son lanceur ne compile pas). Les runners « dès qu'un
+   mode est retenu » ne sont appelés qu'avec un mode (`seJoueEnRunner`), d'où le `!`. */
+const RUNNERS: Record<TypeRunner, (id: string, mode: ExerciseMode | undefined) => void> = {
+	probleme: runLeconProbleme,
+	clicMot: runLeconClicMot,
+	droiteGraduee: runLeconDroiteGraduee,
+	qcm: (id, mode) => runLeconQcm(id, mode!),
+	qcmMulti: (id, mode) => runLeconQcmMulti(id, mode!),
+	tuilesNombre: (id, mode) => runLeconTuiles(id, mode!),
+	tuilesOrdre: (id, mode) => runLeconOrdre(id, mode!),
+	tuilesTri: (id, mode) => runLeconTri(id, mode!),
+	tableauConversion: (id, mode) => runLeconTableau(id, mode!),
+	appariement: (id, mode) => runLeconAppariement(id, mode!),
+};
 export function runLecon(id: string) {
 	const lesson = getLessonById(id);
 	if (!lesson) {
@@ -664,56 +694,13 @@ export function runLecon(id: string) {
 	// Type effectif du mode retenu (un type mono-mode passe `mode` = undefined et
 	// génère son unique type). Sert à aiguiller vers le runner d'écran dédié.
 	const t = lesson.exerciseType.generate({ mode }).type;
-	// Résolution de problèmes (#199) et division avec reste (#95) : runner « problème »
-	// dédié (énoncé + sous-questions corrigées par champ). Sensible au mode — un type
-	// mono-mode garde son comportement d'origine (mode = undefined).
-	if (t === 'probleme') {
-		runLeconProbleme(id, mode);
+	// Formats à runner d'écran dédié (problème, « clique sur le mot », droite graduée,
+	// QCM, tuiles, tableau, appariement…) : aiguillage par la table `JEU_PAR_TYPE`, la même
+	// que celle de la séance partagée (#734). Un type mono-mode (mode = undefined) qui
+	// produit un QCM ou des tuiles reste en fiche, comme avant.
+	if (seJoueEnRunner(t, mode)) {
+		RUNNERS[t](id, mode);
 		return;
-	}
-	// « Clique sur le mot » (#259) : runner d'écran dédié (phrase découpée en mots
-	// cliquables, sélection multiple). Mode unique, hors sprint — comme le problème.
-	if (t === 'clicMot') {
-		runLeconClicMot(id, mode);
-		return;
-	}
-	// « Droite graduée » (#256) : runner d'écran dédié (placer un repère sur une graduation
-	// aimantée). Mode unique, hors sprint — comme « clique sur le mot ».
-	if (t === 'droiteGraduee') {
-		runLeconDroiteGraduee(id, mode);
-		return;
-	}
-	// Un mode produisant un QCM ou des tuiles se joue « une question à la fois »
-	// (pas une fiche grille) — chacun son runner d'écran dédié.
-	if (mode) {
-		if (t === 'qcm') {
-			runLeconQcm(id, mode);
-			return;
-		}
-		if (t === 'qcmMulti') {
-			runLeconQcmMulti(id, mode);
-			return;
-		}
-		if (t === 'tuilesNombre') {
-			runLeconTuiles(id, mode);
-			return;
-		}
-		if (t === 'tuilesOrdre') {
-			runLeconOrdre(id, mode);
-			return;
-		}
-		if (t === 'tuilesTri') {
-			runLeconTri(id, mode);
-			return;
-		}
-		if (t === 'tableauConversion') {
-			runLeconTableau(id, mode);
-			return;
-		}
-		if (t === 'appariement') {
-			runLeconAppariement(id, mode);
-			return;
-		}
 	}
 	currentMode = 'lecon';
 	currentLessonId = id;

@@ -351,6 +351,11 @@ const PAIRES_TEXTE: Paire[] = [
  *  → 3:1 (WCAG 1.4.11). Voir l'en-tête pour ce qui en est délibérément exclu. */
 const PAIRES_NON_TEXTE: Paire[] = [
 	{
+		avant: '--cat-partage',
+		arriere: '--paper',
+		ou: 'encadrant.scss .enc-act-partage — segment « séance partagée » du graphe d’activité (#734)',
+	},
+	{
 		avant: '--field-line',
 		arriere: '--paper',
 		ou: 'sheets.scss .ans — la ligne qui dit OÙ écrire',

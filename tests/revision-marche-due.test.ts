@@ -912,8 +912,13 @@ describe('#640 — gardes statiques (critères 22 et 23)', () => {
 		// La règle « une bonne réponse = un point » ne se lit dans aucun état : elle se lit aux
 		// APPELS. Le lot mutualise les trois rendus, donc le point d'attribution peut se
 		// déplacer : on balaie tout `src/` plutôt que les deux fichiers d'aujourd'hui.
-		// Exception DÉCLARÉE : le bilan de leçon crédite la somme de ses bonnes réponses.
-		const EXCEPTIONS = ['src/core/lesson-run.ts: addXP(p.ok)'];
+		// Exceptions DÉCLARÉES : le bilan de leçon crédite la somme de ses bonnes réponses ; la
+		// séance partagée (#734, critère 23) crédite une participation FIXE, sans lien avec le
+		// nombre de bonnes réponses (aucun point par réponse n'y est donné).
+		const EXCEPTIONS = [
+			'src/core/lesson-run.ts: addXP(p.ok)',
+			'src/core/partage/passage.ts: addXP(XP_PARTICIPATION)',
+		];
 		const appels: string[] = [];
 		for (const f of fichiersTs('src')) {
 			for (const m of lire(f).matchAll(/(?<!function )\baddXP\(([^)]*)\)/g)) {

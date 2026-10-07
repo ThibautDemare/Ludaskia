@@ -119,7 +119,9 @@ aucun énoncé (seulement des nombres et deux identifiants), garde aussi les
 **réussites** (sans elles aucun taux n'est calculable), et sert à juger la
 **planification** de la révision plutôt qu'à comprendre une erreur précise ; base du
 taux de réussite par tranche de retard de l'espace encadrant, cf. [Espace
-encadrant](espace-encadrant.md)), `ludaskia_aide_vue` (#272 : aides d'exercice déjà vues, une par type de
+encadrant](espace-encadrant.md)), `ludaskia_partagesRecus` (#734 : premiers passages
+des envois reçus par lien, par identifiant d'envoi, 30 au plus, cf. [Liens
+partagés](liens-partages.md)), `ludaskia_aide_vue` (#272 : aides d'exercice déjà vues, une par type de
 runner — voir `core/aide.ts`), `ludaskia_eggs` (#331 : ids des **easter eggs** trouvés,
 album de l'accueil — clé **dédiée et disjointe** de l'XP et des trophées, les eggs étant
 hors de l'économie de jeu, cf. `core/eggs.ts`), `ludaskia_tour_seen` et `ludaskia_parents_seen`

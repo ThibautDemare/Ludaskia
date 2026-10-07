@@ -15,7 +15,8 @@ d'une SÉLECTION de mots posée en mémoire par un écran de fin de séance, jam
 hash — renvoie à l'accueil si aucune sélection n'est en attente) · `#revision-espacee` ·
 `#seance` (programme du jour composé par l'encadrant, #440) · `#profils` ·
 `#encadrant` / `#encadrant/<onglet>` (espace encadrant en onglets, #234/#459) ·
-`#revision`
+`#revision` · `#envoi/<code>` (séance reçue par lien, #734 : lu par `lireFragment`
+avant le reste du routage, cf. [Liens partagés](liens-partages.md))
 (l'ancien sélecteur plat `#lecons` a été **supprimé** — #560 : sa fonction d'accès
 `showLessons()` n'était plus appelée depuis la refonte multi-matières, aucune spec ne
 l'atteignait, et son rendu itérait le seul `LESSONS` (CE2), donc il aurait affiché un

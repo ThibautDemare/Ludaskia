@@ -33,6 +33,11 @@ défaut et le préfixe actif. Le **rendu** n'a plus d'état de module à réinit
   auteur distinct passait quand même avec ou sans la garde qu'il prétendait tenir, parce
   qu'il était posé sur un écran où la condition ne pouvait pas se produire. Ni
   l'antériorité ni l'indépendance ne protègent de ça ; seule la mutation le dit.
+- **Un inventaire s'énumère depuis la source, il ne se recopie pas.** Pour tester « chaque
+  type d'aide / leçon / mode… », itérer sur `Object.keys(AIDES)`, `getAllLessons()`, etc.,
+  et poser un **plancher** sur la taille énumérée pour qu'un inventaire effondré ne rende
+  pas le test vert à vide. Cas constaté (#731) : `aide.test.ts` ne couvrait que 5 des 13
+  aides. Voir `docs/architecture/tests.md`.
 - **Nouvelle leçon** : pas besoin d'écrire à la main les invariants structurels de base
   (`generate()` ne lève pas, round-trip de correction, QCM bien formé, générateur non
   figé) — `catalogue-invariants.test.ts` les éprouve automatiquement pour **toute**

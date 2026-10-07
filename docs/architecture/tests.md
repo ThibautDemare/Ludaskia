@@ -1362,6 +1362,51 @@ que la spec croit ») pour que le nom du fichier, seul lu au premier coup d'œil
 (cf. `e2e/README.md`) ouvre bien l'overlay à couvrir — seulement que la liste manuelle est
 à jour vis-à-vis du code.
 
+### Gate du balisage lu à voix haute (#731)
+
+`tests/tts-balisage-gate.test.ts` fait respecter « **ce que le moteur vocal reçoit ne contient
+aucun marqueur d'affichage** ». Le défaut : un repli de fiche ou de bilan peut mettre un
+énoncé en **gras** avec des astérisques (`**…**`). `texteParle` (`core/tts-text.ts`) nettoie
+les balises HTML, les entités et le `@`, mais **pas** les astérisques, parce que le gras n'est
+posé qu'en aval, par `enonceTexte` (`core/items.ts`) : à l'instant où le texte est nettoyé, il
+est encore balisé. Un item qui ne fournit pas de texte parlé propre fait donc dicter à
+l'enfant la ponctuation du balisage, et la colle aussi dans l'`aria-label` de son champ de
+réponse. Le défaut est **muet** (rien ne casse, l'écran est correct) ; il ne s'entend que sur
+l'appareil, par l'enfant qui utilise « Écouter ».
+
+La surface est plus large qu'il n'y paraît : **184 items répartis sur 16 leçons** servent un
+énoncé en gras (problèmes, division euclidienne, durées, synonymes et contraires, participe
+passé avec « être », appariements). Tous sont conformes aujourd'hui ; la dix-septième qui
+oubliera doit rougir.
+
+Le gate vérifie la **propriété**, non le mécanisme : il lit le texte via `texteItemParle`, le
+point unique qui dit ce qu'un item donne à lire (#630), donc il couvre aussi l'`aria-label` du
+champ de réponse, et il balaie chaque leçon × niveau × mode (`genLessonItem` et
+`genLessonSession`, graines fixes). Il accepte les **trois remèdes** existants sans en imposer
+un : un `parle` propre, un `parle` vide (homophones, muets à dessein), ou un énoncé sans gras.
+Un `parle` qui recopie le balisage est, lui, signalé.
+
+Deux témoins le tiennent honnête : un marqueur n'est inscrit dans la table que s'il est
+**interprété** par le rendu **et ignoré** par `texteParle` (si `texteParle` se mettait à
+retirer les astérisques, le gate le dit au lieu de rester vert à vide) ; et retirer le `parle`
+de chacun des items réellement balisés doit les faire signaler.
+
+**Ce qu'il ne prouve pas** : que le texte lu est *bien dit* (une prononciation, une fraction
+en valeur brute relèvent d'autres gardes) ; seuls les marqueurs de la table sont surveillés,
+un nouveau marqueur d'affichage doit y être ajouté.
+
+### Repli texte des appariements (#731)
+
+`tests/appariement-repli.test.ts` tient la règle **partagée** du repli non interactif d'une
+manche d'appariement (fiche, bilan) : hors du widget, le mot de gauche est servi seul, et
+« Quel mot va avec « le » ? » n'a pas de réponse (« le » peut être un pronom). Le repli doit
+donc reprendre l'**énoncé de la manche**, le placer **avant** le champ de réponse, et poser la
+question sur la **même paire** que la réponse attendue. L'inventaire est **lu du catalogue**
+(`isPairingLesson`) : une troisième leçon d'appariement est couverte sans que personne y pense.
+Les trois propriétés sont jouées aussi sur des replis fabriqués (dont la forme d'avant #731)
+pour montrer qu'elles mordent. **Ce qu'il ne prouve pas** : qu'un énoncé suffit à un enfant de
+CM1 (jugement `pedagogue-primaire`).
+
 ## Rejet écrit : la galerie capture un RUNNER, pas chaque mode (#711 lot 4)
 
 Le mode « la virgule est à placer » n'a pas d'entrée dans la galerie visuelle, et n'en aura
@@ -1392,3 +1437,23 @@ Cas constaté par `relecteur-qualite` : `verdictAttendu` dans `tests/tableau-ver
 reprend les règles de `verdictsCases` (`core/tableau-verdict.ts`). Il est **laissé en place**,
 les cas écrits à la main autour de lui portant l'essentiel de la preuve, mais le motif ne
 doit pas se propager à un nouveau test.
+
+## Un test sur un inventaire l'énumère depuis la source, il ne le recopie pas (#731)
+
+**RÈGLE.** Un test qui porte sur un inventaire (types d'aide, formats d'exercice, leçons,
+modes, clés) lit cet inventaire **dans le code** (`Object.keys(AIDES)`, `getAllLessons()`,
+`isPairingLesson`…), jamais dans une liste écrite à la main. Une liste recopiée ne bouge pas
+quand la source bouge, et le test reste vert en ne regardant plus que ce qu'il a recopié.
+
+**Cas constaté.** `tests/aide.test.ts` portait depuis sa création (#272) une liste de cinq types
+d'aide écrite à la main. `TypeAide` est passé à treize : le test ne regardait plus que le tiers
+des aides, et **aucune** de celles rédigées depuis (ni la règle des trois étapes, ni les
+autres). Il était vert **parce qu'il ne regardait pas**. Les deux autres fichiers qui lisent le
+même inventaire énuméraient déjà `Object.keys(AIDES)` (`langue-enfant.test.ts`,
+`aide-vue-seed-gate.test.ts`) ; celui-là était l'exception, et c'est ce qui rendait l'écart
+invisible.
+
+**Garde-fou associé.** Une énumération qui s'effondrerait (inventaire vide) rendrait le test
+vert à vide : on pose un **plancher sur la taille de l'inventaire** (ici ≥ 10 types), plus un
+témoin qui nomme quelques entrées récentes pour qu'on ne re-fige pas la liste en silence. Le
+plancher attrape l'effondrement de la détection, pas le retrait d'une entrée.

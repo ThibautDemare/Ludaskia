@@ -197,6 +197,10 @@ export const SCHEMAS_EXERCICE: SchemasExercice = {
 		question,
 		paires: liste(objet({ gauche: nonVide(60), droite: nonVide(60) }), { min: 1, max: 12 }),
 		intrus: facultatif(liste(nonVide(60), { max: 12 })),
+		// Ce que porte la colonne de droite (#731) : des mots, ou des étiquettes de classe.
+		// N'accorde que la formulation de l'aide, jamais la correction — un lien partagé qui
+		// l'omettrait reste jouable, l'enfant lirait seulement la notice de l'autre geste.
+		colonneDroite: facultatif(parmi('mots', 'etiquettes')),
 		parle: facultatif(parle),
 	}),
 	clicMot: objet<Ex<'clicMot'>>(

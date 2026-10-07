@@ -110,6 +110,14 @@ export function separateurSuite(nature?: NatureOrdre): string {
 	return nature === 'nombres' ? ' ; ' : ', ';
 }
 
+/** Ce que porte la colonne DROITE d'un appariement (#731) : des MOTS qui vont avec ceux
+ *  de gauche (familles de mots, #392 — le défaut) ou des ÉTIQUETTES qu'on pose sur eux
+ *  (les classes du groupe nominal : déterminant, nom, adjectif). Même geste, même widget,
+ *  mais pas la même phrase à dire à l'enfant : « touche le mot qui va avec » décrirait
+ *  une colonne de mots là où il n'y a que trois étiquettes. Pilote donc la FORMULATION
+ *  (aide contextuelle du runner et de la révision), jamais la correction. */
+export type ColonneDroiteAppariement = 'mots' | 'etiquettes';
+
 // `parle` (#42) : texte LU à voix haute par le bouton « Écouter », quand
 // l'énoncé affiché est télégraphique/symbolique et ne se lit pas tel quel
 // (ex. « pouvoir · présent — je @ » → « Conjugue le verbe pouvoir au présent,
@@ -248,12 +256,16 @@ export type Exercise =
 	// deux colonnes est mélangé à l'affichage (jamais aligné). `intrus` = mots en
 	// trop côté droite, sans correspondance (décoys, neutralise la réussite par
 	// élimination). Corrigé par son runner (ui/lecon-appariement.ts), lien par lien.
+	// `colonneDroite` (#731) dit CE QU'ON RELIE à droite — des mots (défaut) ou des
+	// étiquettes de classe grammaticale —, sur le modèle de `nature` pour `tuilesOrdre` :
+	// le runner et la révision en dérivent leur aide contextuelle, rien d'autre.
 	| {
 			type: 'appariement';
 			question: string;
 			paires: { gauche: string; droite: string }[];
 			intrus?: string[];
 			parle?: string;
+			colonneDroite?: ColonneDroiteAppariement;
 	  }
 	// Grammaire (#259) — « Clique sur le mot » : l'enfant lit une phrase découpée en
 	// TOKENS (mots + ponctuation) et SÉLECTIONNE le(s) mot(s) répondant à la consigne

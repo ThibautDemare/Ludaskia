@@ -26,6 +26,7 @@ import {
 	joindrePhrase,
 	libelleCible,
 } from '../data/francais/grammaire-clic-mot';
+import { GN_NOMMER_LESSONS } from '../data/francais/grammaire-gn-nommer';
 import { PHRASES_LESSONS } from '../data/francais/phrases';
 import { ACCORD_LESSONS, ACCORD_CM1_LESSONS } from '../data/francais/accords';
 import { ACCORD_GN_LESSONS } from '../data/francais/accord-groupe-nominal';
@@ -977,6 +978,17 @@ const CLIC_MOT_LESSONS_DEFS: LessonDef[] = toLessonDefs(CLIC_MOT_LESSONS, {
 	labelNiveau: (d) => d.labelNiveau,
 });
 
+/* ---------- Grammaire — « Nomme les mots du groupe » (#731, CM1) ----------
+   Seconde leçon du groupe nominal : #716 fait DÉLIMITER le groupe, celle-ci fait NOMMER
+   chacun de ses mots (déterminant / nom / adjectif). Format APPARIEMENT, donc un autre
+   runner que les leçons « clique sur le mot » voisines (ui/lecon-appariement.ts, hors
+   sprint) — d'où un bloc à part plutôt qu'une entrée de CLIC_MOT_LESSONS. */
+const GN_NOMMER_LESSONS_DEFS: LessonDef[] = toLessonDefs(GN_NOMMER_LESSONS, {
+	subject: 'francais',
+	category: 'fr-grammaire',
+	levels: (d) => d.exerciseType.levels ?? ['cm1'],
+});
+
 /* ---------- Grammaire — les phrases : ponctuation finale & types (#204) ----------
    2 leçons QCM regroupées sous la rubrique « Les phrases » : F1 « Quel point à la
    fin ? » (boutons-symboles `. ? !`) et F2 « Quel type de phrase ? ». Hors sprint
@@ -1090,6 +1102,7 @@ const ALL_LESSONS: LessonDef[] = [
 	...GRAMMAIRE_SUJET_LESSONS_DEFS,
 	...CLASSES_LESSONS_DEFS,
 	...CLIC_MOT_LESSONS_DEFS,
+	...GN_NOMMER_LESSONS_DEFS,
 	...PHRASES_LESSONS_DEFS,
 ];
 
@@ -1133,7 +1146,9 @@ export function isProblemeLesson(lesson: LessonDef): boolean {
    mots dans un diagramme à deux colonnes : interaction d'écran dédiée
    (ui/lecon-appariement.ts), incompatible avec le sprint « une réponse à la fois »
    → exclue de son tirage. Reste jouable en bilan/fiche/révision via le repli texte
-   de genLessonItem (une paire → « quel mot va avec X ? »). */
+   de genLessonItem : l'énoncé de la manche, puis une paire → « quel mot va avec X ? ».
+   L'énoncé n'y est pas décoratif — sans lui, le mot de gauche est servi seul et la
+   question peut n'avoir aucune réponse (cf. le commentaire du repli lui-même). */
 export function isPairingLesson(lesson: LessonDef): boolean {
 	return lesson.exerciseType.exerciseKind === 'appariement';
 }
@@ -1309,12 +1324,30 @@ function itemDepuisExercice(lesson: LessonDef, ex: Exercise): Item {
 	// (ui/lecon-appariement.ts). Repli TEXTE non interactif pour fiche/bilan (la révision
 	// monte le vrai widget de liaison, #466) : une paire tirée au sort → « quel mot va
 	// avec X ? », réponse = le mot droite.
+	//
+	// L'énoncé de la manche est REPRIS en tête (#731), et ce n'est pas de la décoration :
+	// hors du widget, le mot de gauche est servi SEUL, sans les autres mots ni le contexte
+	// que la colonne entière lui donnait. « Quel mot va avec « le » ? » n'a alors
+	// littéralement pas de réponse — « le » peut être un pronom, et rien à l'écran ne dit
+	// qu'on parlait du groupe « le petit chien ». La question de la manche porte ce qui
+	// manque (elle montre le groupe), elle est déjà dans l'`Exercise`, et elle est la seule
+	// chose qui soit vraie pour TOUTES les leçons d'appariement : pour « Familles de mots à
+	// relier », c'est la consigne (« Relie chaque mot à un mot de sa famille. »), qui
+	// replace la question dans sa tâche sans rien changer à sa réponse.
+	// La question réellement posée passe en GRAS, comme pour le repli d'un problème
+	// (plus haut) : deux phrases à la suite, c'est la seconde qu'il faut distinguer.
 	if (ex.type === 'appariement') {
 		const p = ex.paires[0]; // l'ordre des paires est déjà mélangé à la génération
 		return {
-			text: `Quel mot va avec « ${p.gauche} » ? @`,
+			text: `${ex.question} **Quel mot va avec « ${p.gauche} » ?** @`,
 			answer: p.droite,
 			kind: 'text',
+			// Texte lu aligné sur l'AFFICHÉ, et SURTOUT sans les astérisques : `texteParle`
+			// (core/tts-text.ts) nettoie les balises HTML, les entités et le `@`, mais pas le
+			// `**`, puisque le gras n'est posé qu'en aval par `enonceTexte`. Sans ce `parle`,
+			// l'enfant qui écoute s'entendrait dicter la ponctuation du balisage. Même remède
+			// que le repli d'un problème, plus haut, pour la même raison.
+			parle: `${ex.question} Quel mot va avec ${p.gauche} ?`,
 			_lesson: lesson.id,
 		};
 	}

@@ -138,6 +138,23 @@ function illustrationHTML(type: TypeAide): SafeHtml {
 				<span class="an-lien"></span>
 				${FINGER}
 			</div>`;
+		case 'appariementEtiquettes':
+			// MÊME scène que `appariement` (même geste, même trait qui se trace, donc mêmes
+			// animations et mêmes règles de mouvement réduit — la classe est conservée, sur le
+			// modèle de `ordreNombres` qui réemploie la scène de `ordre`). Seul change ce que
+			// porte la colonne de droite : une ÉTIQUETTE, dessinée en pointillés et sur fond
+			// accentué pour qu'on la lise comme une vignette à poser, et non comme un second
+			// mot. L'exemple (« lapin » → « nom ») est pris HORS de la banque de la leçon : une
+			// aide ne doit jamais souffler un item qui peut tomber à la question suivante.
+			return html`<div
+				class="aide-anim aide-anim--appariement aide-anim--etiquettes is-anim"
+				id="aideAnim"
+			>
+				<span class="an-mot an-mot--g">lapin</span>
+				<span class="an-mot an-mot--d">nom</span>
+				<span class="an-lien"></span>
+				${FINGER}
+			</div>`;
 		case 'clicMot':
 			// Mini-phrase « Léa a chanté hier » : le doigt tape « a » puis « chanté » (le verbe
 			// au passé composé = 2 mots collés). Les deux jetons restent sélectionnés ENSEMBLE

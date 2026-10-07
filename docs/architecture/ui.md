@@ -691,8 +691,11 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   `prefers-reduced-motion`) et TTS à la demande.
   L'aide suit le **widget**, pas seulement le runner de leçon : la **révision espacée**
   (`revision.ts`), qui monte les mêmes widgets (#186/#345/#466), pose l'aide du geste de
-  l'item courant (`typeAideItem` : `tuiles`, `ordre`/`ordreNombres`, `tri`, `appariement`,
-  `clicMot` ; rien pour une saisie ou un QCM, qui n'ont pas de geste à apprendre). Le
+  l'item courant (`typeAideItem` : `tuiles`, `ordre`/`ordreNombres`, `tri`,
+  `appariement`/`appariementEtiquettes` #731, `clicMot`/`segmentMot` ; rien pour une saisie
+  ou un QCM, qui n'ont pas de geste à apprendre — et, dans les trois cas à variante, le
+  **même** critère qu'en leçon, sinon la révision sert le widget d'un geste avec la notice
+  de l'autre). Le
   bouton est reposé à chaque item — `#revStage` est réécrit à chaque rendu, donc le bouton
   ne « colle » pas au type précédent — et la carte porte alors `.rev-stage--aide`, qui
   réserve le couloir latéral du bouton. Sans ce câblage, la révision servait des gestes
@@ -1402,10 +1405,16 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   le bouton « Vérifier » fige chaque lien (✓/✗) et révèle les bonnes paires en TEXTE
   sous le widget en cas d'erreur ; parité `recordLessonRun`. Structure calquée sur
   `lecon-tri.ts`. **Exclu du sprint** (`isPairingLesson`, comme la posée/l'ordre/le
-  tri/le problème), avec un **repli texte** en bilan/fiche (`genLessonItem` : une paire
-  tirée au sort → « quel mot va avec X ? ») — **en révision**, c'est désormais le **vrai
-  widget** `appariement.ts` qui est monté, comme en leçon (#466). Aide contextuelle dédiée
-  (`monterBoutonAide`/`maybeAutoAide`, type `'appariement'` #272).
+  tri/le problème), avec un **repli texte** en bilan/fiche (`genLessonItem` : l'**énoncé de
+  la manche**, puis une paire tirée au sort → « **quel mot va avec X ?** » en gras).
+  Le repli fournit un `parle` **sans astérisques** (gate `tts-balisage-gate`, cf. [Tests](tests.md)).
+  L'énoncé est repris en tête depuis #731 : hors du widget, le mot de gauche est servi seul,
+  et « quel mot va avec « le » ? » n'a alors **pas de réponse** (« le » peut être un
+  pronom) ; la question de la manche porte le contexte qui manque (le groupe pour #731, la
+  consigne de la tâche pour les familles de mots). **En révision**, c'est le **vrai widget**
+  `appariement.ts` qui est monté, comme en leçon (#466). Aide contextuelle **choisie sur la
+  1re manche** (`aideDuGeste`, #272) : `'appariement'` par défaut, `'appariementEtiquettes'`
+  quand `colonneDroite === 'etiquettes'` (#731).
 - **`lecon-probleme.ts`** — runner **« Résolution de problèmes »** (#199), un
   problème à la fois. L'énoncé (`Exercise` `type: 'probleme'` : `enonce`, `etapes[]`,
   `parle`, `figure?` #95) reste visible avec **son bouton « Écouter »** (#42, `data-tts` = `parle`) ;

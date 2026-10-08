@@ -681,12 +681,18 @@ describe('Génération par niveau — jamais la banque de l’autre classe (#436
 });
 
 describe('Catalogue — les leçons CE2 de #436', () => {
-	it('« Clique sur l’adjectif » : leçon NEUVE, grammaire française, CE2 seulement', () => {
+	it('« Clique sur l’adjectif » : grammaire française, servie au CE2 puis au CM1', () => {
 		const def = lecon('fr-gram-clic-adj');
 		expect(def.subject).toBe('francais');
 		expect(def.category).toBe('fr-grammaire');
-		expect(def.levels).toEqual(['ce2']); // l'adjectif reste hors du CM1
-		expect(def.label).toBe("Clique sur l'adjectif"); // apostrophe DROITE (choix acté)
+		// Leçon NEUVE au CE2 avec #436, étendue au CM1 par #528 (critère 1 : la FONCTION de
+		// l'adjectif — épithète ou attribut — que le CE2 ne nomme pas). Ce que ce fichier garde,
+		// c'est le CE2 : sa banque et sa consigne sont vérifiées inchangées plus haut.
+		expect(def.levels).toEqual(['ce2', 'cm1']);
+		// `label` porte la formulation NEUTRE, juste aux deux classes ; le titre CM1 (« épithète
+		// ou attribut ») passe par `labelNiveau`, pour qu'un CE2 ne lise jamais ce mot (critère 7,
+		// tenu par `clic-mot-adjectif-cm1.test.ts`). Apostrophe DROITE (choix acté).
+		expect(def.label).toBe("Clique sur l'adjectif");
 		expect(def.exerciseType.exerciseKind).toBe('clicMot');
 		expect(isClicMotLesson(def)).toBe(true);
 		expect(CLIC_MOT_LESSONS.map((l) => l.id)).toContain('fr-gram-clic-adj');

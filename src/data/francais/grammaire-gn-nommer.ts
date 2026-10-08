@@ -56,7 +56,7 @@
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { choice } from '../../core/utils';
 import { etayageRedige, type LessonInput } from '../_shared';
-import { DET_SETS, type PatronGN, type PhraseClicMot } from './grammaire-clic-mot-moteur';
+import { DET_TOUS, type PatronGN, type PhraseClicMot } from './grammaire-clic-mot-moteur';
 import { MOTS_ATTENDUS, PHRASES_GN } from './grammaire-groupe-nominal';
 
 /** Les trois classes de mots que le programme CM1 fait nommer dans un groupe nominal. */
@@ -88,11 +88,9 @@ export interface GroupeNomme {
 	patron: PatronGN;
 }
 
-const DETERMINANTS = new Set<string>([
-	...DET_SETS.article,
-	...DET_SETS.possessif,
-	...DET_SETS.demonstratif,
-]);
+/* L'union des trois sous-catégories, prise au moteur (`DET_TOUS`) et non recomposée ici :
+   quatre banques en tenaient chacune une copie identique, que rien n'obligeait à le rester. */
+const DETERMINANTS = DET_TOUS;
 
 const estDeterminant = (t: string): boolean => DETERMINANTS.has(t.toLowerCase());
 const estElide = (t: string): boolean => t.toLowerCase().startsWith("l'");

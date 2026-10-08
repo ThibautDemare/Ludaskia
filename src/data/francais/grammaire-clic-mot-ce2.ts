@@ -14,10 +14,12 @@
    refuse là — cf. l'en-tête de `grammaire-clic-mot-moteur.ts`.
    ============================================================ */
 import {
-	DET_SETS,
+	ADJ_INTERDITS,
+	DET_TOUS,
 	PRON_SUJET,
 	enumererFr,
 	phraseMots,
+	radicalAdj,
 	tokeniser,
 	type PhraseClicMot,
 } from './grammaire-clic-mot-moteur';
@@ -50,13 +52,11 @@ function listeMots(mots: string[]): string {
 }
 
 /* Les déterminants du CE2, EN BLOC (articles + possessifs + démonstratifs) : la
-   sous-catégorisation est un attendu CM1, on réutilise donc juste les ensembles du
-   vocabulaire partagé (`DET_SETS`, moteur) pour ne pas tenir deux listes. */
-const DET_CE2 = new Set<string>([
-	...DET_SETS.article,
-	...DET_SETS.possessif,
-	...DET_SETS.demonstratif,
-]);
+   sous-catégorisation est un attendu CM1. L'union vient du moteur (`DET_TOUS`), elle n'est
+   pas refaite ici : ce module la recomposait à l'identique, comme trois autres banques, et
+   quatre listes identiques par chance ne le restent pas. L'alias local garde le NOM qui
+   parle au CE2, sans dupliquer le contenu. */
+const DET_CE2 = DET_TOUS;
 
 /* Mots dont la présence ferait de la phrase un contre-exemple dans les banques CE2 à
    base de déterminants : partitifs/contractés (hors périmètre, comme au CM1), « leur »
@@ -413,87 +413,10 @@ export const PHRASES_DET_CE2: PhraseClicMot[] = [
 export const CONSIGNE_ADJ_CE2 = "Clique sur l'adjectif de la phrase.";
 export const CIBLE_ADJ_CE2 = "l'adjectif";
 
-/* Garde-fou, pas une liste exhaustive : les formes qu'on refuse de voir apparaître dans
-   cette banque (participes passés adjectivaux + nationalités substantivables). */
-const ADJ_CE2_INTERDITS = new Set([
-	'fatigué',
-	'fatiguée',
-	'fatigués',
-	'fatiguées',
-	'cassé',
-	'cassée',
-	'cassés',
-	'cassées',
-	'fermé',
-	'fermée',
-	'ouvert',
-	'ouverte',
-	'rempli',
-	'remplie',
-	'mouillé',
-	'mouillée',
-	'trempé',
-	'trempée',
-	'endormi',
-	'endormie',
-	'assis',
-	'assise',
-	'couché',
-	'couchée',
-	'allumé',
-	'allumée',
-	'éteint',
-	'éteinte',
-	'rangé',
-	'rangée',
-	'perdu',
-	'perdue',
-	'blessé',
-	'blessée',
-	'gelé',
-	'gelée',
-	'sucré',
-	'sucrée',
-	'salé',
-	'salée',
-	'coloré',
-	'colorée',
-	'doré',
-	'dorée',
-	'poli',
-	'polie',
-	'cuit',
-	'cuite',
-	'brûlé',
-	'brûlée',
-	'déchiré',
-	'déchirée',
-	'fané',
-	'fanée',
-	'français',
-	'française',
-	'anglais',
-	'anglaise',
-	'espagnol',
-	'espagnole',
-	'italien',
-	'italienne',
-	'chinois',
-	'chinoise',
-	'allemand',
-	'allemande',
-]);
-
-/* Radical GROSSIER (minuscule, marque du pluriel puis du féminin retirées) : sert
-   uniquement à repérer, dans une même phrase, deux mots de la même famille que
-   l'adjectif visé (« grand » / « grande », « calme » / « calmement »). Heuristique
-   assumée, pas une analyse morphologique. */
-function radicalAdj(mot: string): string {
-	let r = mot.toLowerCase();
-	if (r.endsWith('s')) r = r.slice(0, -1);
-	if (r.endsWith('e')) r = r.slice(0, -1);
-	return r;
-}
+/* Les formes interdites (participes passés adjectivaux, nationalités substantivables) et
+   l'heuristique de radical sont celles du MOTEUR, partagées avec la banque CM1 (#528) :
+   deux listes qui divergeraient reviendraient à refuser ici ce qu'on accepte là.
+   Garde-fou, pas une liste exhaustive. */
 
 /* Banque AUTORÉE (phrase, adjectif) : les FORMES employées comme cibles servent ensuite
    de détecteur de second adjectif, d'où la construction en deux temps. */
@@ -572,7 +495,7 @@ const ADJ_CE2_FORMES = new Set(ADJ_CE2_ITEMS.map(([, a]) => a.toLowerCase()));
    d'adjectifs de la banque (`ADJ_CE2_FORMES`), d'où la construction en deux temps. */
 export function adjCE2(texte: string, adjectif: string): PhraseClicMot {
 	const cible = adjectif.toLowerCase();
-	if (ADJ_CE2_INTERDITS.has(cible)) {
+	if (ADJ_INTERDITS.has(cible)) {
 		throw new Error(
 			`grammaire-clic-mot (adjectif CE2) : « ${adjectif} » est un participe passé ou une ` +
 				`forme nom/adjectif ambiguë — hors périmètre CE2.`,
@@ -589,7 +512,7 @@ export function adjCE2(texte: string, adjectif: string): PhraseClicMot {
 	p.tokens.forEach((t, k) => {
 		if (k === cibleIdx) return;
 		const b = t.toLowerCase();
-		if (ADJ_CE2_INTERDITS.has(b)) {
+		if (ADJ_INTERDITS.has(b)) {
 			throw new Error(
 				`grammaire-clic-mot (adjectif CE2) : « ${t} » (participe passé / forme ambiguë) ` +
 					`ne doit pas apparaître dans « ${texte} ».`,

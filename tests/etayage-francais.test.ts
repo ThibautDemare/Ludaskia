@@ -162,6 +162,11 @@ describe('« clique sur le mot » — chaque classe reçoit la méthode de SA t�
 		'fr-gram-clic-det',
 		'fr-gram-clic-pron',
 		'fr-gram-clic-noyau',
+		// #528 : l'adjectif a rejoint la liste. La TÂCHE y change avec la classe, pas seulement
+		// sa difficulté — au CE2 on reconnaît la NATURE (« clique sur l'adjectif »), au CM1 on
+		// désigne la FONCTION demandée item par item. Un panneau CE2 servi à un CM1 décrirait
+		// donc un autre exercice, et l'inverse ferait lire « épithète » à un CE2.
+		'fr-gram-clic-adj',
 	];
 
 	it('les deux niveaux reçoivent bien deux contenus DISTINCTS', () => {

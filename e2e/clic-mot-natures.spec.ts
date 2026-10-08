@@ -469,3 +469,192 @@ test('round-trip encadrant : la réponse à 3 mots est énumérée « à la fran
 	expect(texte.match(/ et /g)?.length ?? 0).toBe(1); // un SEUL « et », jamais « a et b et c »
 	expect(errors).toEqual([]);
 });
+
+/* ============================================================
+   « Clique sur l'adjectif » (#528) — servie aux DEUX niveaux, avec deux TÂCHES :
+   au CE2 une nature à reconnaître (consigne unique), au CM1 une FONCTION à
+   désigner, épithète ou attribut, la consigne changeant d'un item à l'autre.
+   ============================================================ */
+
+const ID_ADJ = 'fr-gram-clic-adj';
+const FONCTION = /épithète|attribut/i;
+
+/* Joue jusqu'à 3 séries de 8 phrases en lisant la consigne PERSISTANTE de chacune ;
+   s'arrête dès que les deux fonctions ont été demandées. Aucune supposition sur le
+   tirage : une seule série pourrait, rarement, ne demander qu'une fonction. Renvoie
+   aussi, pour chaque phrase, la fonction nommée par la consigne et celle que
+   l'explication nomme après Vérifier. */
+async function consignesAdjCM1(
+	page: Page,
+): Promise<{ consignes: Set<string>; explications: Array<[string, string]> }> {
+	const consignes = new Set<string>();
+	const explications: Array<[string, string]> = [];
+	for (let run = 0; run < 3 && consignes.size < 2; run++) {
+		await gotoCM1(page, `lecon-${ID_ADJ}`);
+		for (let q = 0; q < NB_QUESTIONS; q++) {
+			const mots = page.locator('.lclic-mot');
+			await mots.first().waitFor();
+			if (run === 0 && q === 0) await fermerAideSiPresente(page);
+			const consigne = (await page.locator('.lclic-consigne').textContent()) ?? '';
+			const fonction = consigne.match(FONCTION)?.[0].toLowerCase() ?? '';
+			consignes.add(fonction);
+			await mots.first().click();
+			await page.locator('#lclicVerif').click();
+			const expl = (await page.locator('.lqcm-expl').textContent()) ?? '';
+			explications.push([fonction, expl.match(FONCTION)?.[0].toLowerCase() ?? '']);
+			if (q < NB_QUESTIONS - 1) await page.locator('#lclicActions button').click();
+		}
+	}
+	return { consignes, explications };
+}
+
+test('#528 critère 10 : au CM1, la consigne demande tantôt l’épithète, tantôt l’attribut, et la correction suit', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	const { consignes, explications } = await consignesAdjCM1(page);
+	// Échec : consigne unique (« Clique sur l'adjectif »), ou une seule fonction jamais variée.
+	expect([...consignes].sort()).toEqual(['attribut', 'épithète']);
+	// La fonction demandée est celle que la correction explique : la consigne n'est pas
+	// décorative. (Mot de la notion, pas une phrase : l'explication peut se reformuler.)
+	for (const [demandee, expliquee] of explications) expect(expliquee).toBe(demandee);
+	expect(errors).toEqual([]);
+});
+
+test('#528 : libellé de carte par niveau (CM1 nomme les deux fonctions, CE2 garde « adjectif »)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoHash(page, 'categorie-fr-grammaire'); // ce2
+	// Libellés testés au mot près : ce sont EUX l'objet (critère 7, `labelNiveau`).
+	await expect(page.locator(`[data-id="${ID_ADJ}"] .lz-title`)).toHaveText("Clique sur l'adjectif");
+	await gotoCM1(page, 'categorie-fr-grammaire');
+	await expect(page.locator(`[data-id="${ID_ADJ}"] .lz-title`)).toHaveText(
+		"Clique sur l'adjectif épithète ou attribut",
+	);
+	expect(errors).toEqual([]);
+});
+
+test('#528 critère 7 : un CE2 ne lit jamais « épithète » ni « attribut » (carte, consigne, correction, aide)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	const texteVisible = async (): Promise<string> =>
+		page.evaluate(() => document.body.innerText + ' ' + document.body.innerHTML);
+
+	await gotoHash(page, 'categorie-fr-grammaire');
+	await page.locator(`[data-id="${ID_ADJ}"]`).waitFor();
+	expect(await texteVisible()).not.toMatch(FONCTION);
+
+	await gotoHash(page, `lecon-${ID_ADJ}`);
+	await page.locator('.lclic-mot').first().waitFor();
+	await fermerAideSiPresente(page);
+	// Panneau d'étayage : la version CE2 (non vide), sans le vocabulaire CM1.
+	await page.locator('.etayage-btn').click();
+	await expect(page.locator('#etayageOverlay')).toBeVisible();
+	await expect(page.locator('#etayEtapes')).not.toHaveText('');
+	expect(await texteVisible()).not.toMatch(FONCTION);
+	await page.locator('#etaySuivant').click();
+	await expect(page.locator('#etayageOverlay')).toHaveCount(0);
+	// Plusieurs phrases : la fuite pourrait ne venir que d'un tirage (consigne CM1 servie
+	// à un CE2 sur certains items seulement).
+	for (let q = 0; q < NB_QUESTIONS; q++) {
+		expect(await texteVisible()).not.toMatch(FONCTION);
+		await page.locator('.lclic-mot').first().click();
+		await page.locator('#lclicVerif').click();
+		await page.locator('.lqcm-expl').waitFor();
+		expect(await texteVisible()).not.toMatch(FONCTION);
+		if (q < NB_QUESTIONS - 1) await page.locator('#lclicActions button').click();
+	}
+
+	expect(errors).toEqual([]);
+});
+
+test('#528 critère 8 : le panneau d’étayage CM1 nomme les deux fonctions et montre un exemple pour chacune', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await gotoCM1(page, `lecon-${ID_ADJ}`);
+	await page.locator('.lclic-mot').first().waitFor();
+	await fermerAideSiPresente(page);
+	await page.locator('.etayage-btn').click();
+
+	const overlay = page.locator('#etayageOverlay');
+	await expect(overlay).toBeVisible();
+	// Version CM1 et non CE2 : les deux fonctions sont nommées.
+	await expect(overlay).toContainText(/épithète/i);
+	await expect(overlay).toContainText(/attribut/i);
+	// Exemples travaillés : phrases intentionnelles (écrites hors banque, #528), donc
+	// testées telles quelles. Elles ne doivent jamais se retrouver dans un tirage.
+	await expect(page.locator('#etayEtapes')).toContainText('Le pain devient dur');
+	await expect(page.locator('#etayEtapes')).toContainText('Le pain dur craque');
+	expect(errors).toEqual([]);
+});
+
+test('#528 : une erreur en CM1 est journalisée sous le libellé CM1 de la leçon', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(`localStorage.removeItem('ludaskia_encadrant_lock');`);
+	await gotoCM1(page, `lecon-${ID_ADJ}`);
+	const mots = page.locator('.lclic-mot');
+	await mots.first().waitFor();
+	await fermerAideSiPresente(page);
+	// Cible unique : deux mots cliqués = erreur certaine, sans connaître la réponse.
+	await mots.nth(0).click();
+	await mots.nth(1).click();
+	await page.locator('#lclicVerif').click();
+	await expect(page.locator('.lqcm-ko')).toBeVisible();
+
+	await gotoCM1(page, 'encadrant');
+	const lecon = page.locator('.enc-err-lecon').first();
+	await expect(lecon).toBeVisible();
+	await expect(lecon.locator('.enc-err-lecon-lab')).toHaveText(
+		"Clique sur l'adjectif épithète ou attribut",
+	);
+	expect(errors).toEqual([]);
+});
+
+/* Gate de FOCUS de la famille (#528) : `renderQuestion()` reconstruit tout `sheets()`, donc
+   le bouton « Continuer ▶ » qui portait le focus est détruit. Sans `focus()` sur la
+   consigne en fin de rendu, le focus retombe sur <body> et un lecteur d'écran ne
+   re-annonce rien (au CM1 la consigne change d'un item à l'autre). Le runner est PARTAGÉ :
+   le gate est joué sur chaque leçon de la famille, aux deux niveaux pour l'adjectif. */
+const FAMILLE_FOCUS: Array<{ id: string; cm1?: boolean }> = [
+	{ id: 'fr-gram-clic-verbe' },
+	{ id: 'fr-gram-clic-det' },
+	{ id: 'fr-gram-clic-adj' },
+	{ id: 'fr-gram-clic-adj', cm1: true },
+	{ id: 'fr-gram-clic-conj', cm1: true },
+	{ id: 'fr-gram-clic-pron' },
+	{ id: 'fr-gram-clic-noyau' },
+	{ id: 'fr-gram-clic-sujet', cm1: true },
+];
+
+for (const { id, cm1 } of FAMILLE_FOCUS) {
+	test(`focus : après « Continuer », le focus reste dans la question (${id}${cm1 ? ', CM1' : ''})`, async ({
+		page,
+	}) => {
+		const errors = watchErrors(page);
+		if (cm1) await gotoCM1(page, `lecon-${id}`);
+		else await gotoHash(page, `lecon-${id}`);
+		const mots = page.locator('.lclic-mot');
+		await mots.first().waitFor();
+		await fermerAideSiPresente(page);
+
+		for (let q = 0; q < 2; q++) {
+			await mots.first().click();
+			await page.locator('#lclicVerif').click();
+			await page.locator('#lclicActions button').click();
+			await expect(page.locator('#lclicVerif')).toBeVisible(); // question suivante rendue
+			// Exigence : le focus n'est pas tombé sur <body> avec la destruction du bouton ;
+			// il est sur la CONSIGNE de la question suivante (`tabindex="-1"`), seul moyen
+			// pour qu'un lecteur d'écran l'annonce quand elle change d'un item à l'autre.
+			await expect(
+				page.locator('.lclic-consigne'),
+				`focus perdu après Continuer (${id})`,
+			).toBeFocused();
+		}
+		expect(errors).toEqual([]);
+	});
+}

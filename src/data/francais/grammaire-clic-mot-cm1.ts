@@ -1,5 +1,5 @@
 /* ============================================================
-   Grammaire — « Clique sur le mot » : les cinq natures du CM1 (#437).
+   Grammaire — « Clique sur le mot » : cinq des six natures du CM1 (#437).
    ------------------------------------------------------------
    Une section par nature, chacune avec sa banque, sa consigne, son libellé de cible et
    ses INTERDITS D'AMBIGUÏTÉ documentés au fil du texte :
@@ -9,6 +9,11 @@
    - pronom personnel sujet vs complément (tâche variable elle aussi) ;
    - nom noyau d'un groupe nominal développé ;
    - sujet, sujet composé de deux noms propres compris (cible double non adjacente).
+   La SIXIÈME nature, l'adjectif épithète ou attribut (#528), a son module à elle,
+   `grammaire-clic-mot-adjectif.ts` : seule de la famille à porter une fabrique à
+   garde-fous et des dérivations d'explication, elle pesait à elle seule autant que les
+   cinq autres réunies. Même découpe que le verbe (`grammaire-clic-mot-verbe.ts`), et
+   même agrégation par `grammaire-clic-mot.ts`.
    Les natures CE2 des mêmes classes de mots vivent dans `grammaire-clic-mot-ce2.ts` ;
    moteur, garde-fous génériques et vocabulaire partagé (`DET_SETS`, `PRON_*`) dans
    `grammaire-clic-mot-moteur.ts`.

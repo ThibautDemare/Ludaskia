@@ -472,6 +472,13 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'fr-gram-gn-nommer',
 			'fr-gram-clic-noyau',
 			'fr-gram-clic-sujet',
+			// L'adjectif, non plus comme NATURE (c'est la leçon CE2) mais comme FONCTION —
+			// épithète ou attribut (#528). Placée en clôture du fil « clique sur le mot » parce
+			// qu'elle suppose les deux leçons juste au-dessus : le nom noyau (l'épithète se
+			// définit par le groupe qu'elle complète) et le sujet (l'attribut est attribut DU
+			// SUJET, mot qui ne veut rien dire tant qu'on ne sait pas le trouver). Avant
+			// l'accord du groupe nominal, qui en est le prolongement écrit.
+			'fr-gram-clic-adj',
 			// Orthographe — accord de TOUT le groupe nominal (#243) : chaîne d'accord
 			// (déterminant + adjectif + nom), APEX de l'accord au CM1, signalé « plus
 			// difficile ». Placé tard : il suppose l'accord d'un mot isolé (fr-accords-cm1, plus haut).

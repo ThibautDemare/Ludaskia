@@ -192,7 +192,7 @@ function renderQuestion(): void {
       <div class="sprint-stage lclic-stage">
         <div class="lclic-col">
           ${leconTitreHTML(lesson)}
-          <p class="lclic-consigne"${ttsAttr(q.consigne)}>${q.consigne}</p>
+          <p class="lclic-consigne" tabindex="-1"${ttsAttr(q.consigne)}>${q.consigne}</p>
           <div data-tuile-mount></div>
           ${decisionHTML('lclicVerif')}
           <div class="sprint-correction" id="lclicFeedback" hidden></div>
@@ -226,6 +226,20 @@ function renderQuestion(): void {
 	// Bouton « ? » d'aide (#272) : renderQuestion() reconstruit tout le sheets() à chaque
 	// question, donc on le re-monte à chaque rendu (l'appel est idempotent).
 	monterBoutonAide(sheets().querySelector('.lclic-col'), aideDuGeste());
+	// FOCUS sur la consigne de la nouvelle question (#528). `renderQuestion()` reconstruit
+	// TOUT le `sheets()`, donc le bouton « Continuer ▶ » qui portait le focus (posé par
+	// `wireNext` / `revelerSolution`) est détruit : sans ce rattrapage, le navigateur rabat
+	// le focus sur `<body>` et RIEN n'annonce la question suivante. `demarrerRunner` ne
+	// couvre que la PREMIÈRE (il focalise `#sheets` juste après ce rendu, et gagne donc à
+	// bon droit : à l'ouverture de l'écran, c'est tout le contexte qu'il faut annoncer).
+	// Pourquoi la consigne et non `#sheets` à chaque fois : dans trois des huit leçons du
+	// runner (déterminant, pronom, adjectif CM1), la TÂCHE change d'un item à l'autre —
+	// « clique sur l'article » puis « sur le possessif », « sur l'épithète » puis « sur
+	// l'attribut ». Un enfant au lecteur d'écran répondrait sinon à la consigne
+	// précédente. Pour les cinq leçons à consigne constante, le gain est moindre mais réel
+	// (le focus repart de la question, pas du haut du document).
+	// `preventScroll` parce que le défilement est décidé juste en dessous, et d'un seul tenant.
+	sheets().querySelector<HTMLElement>('.lclic-consigne')?.focus({ preventScroll: true });
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

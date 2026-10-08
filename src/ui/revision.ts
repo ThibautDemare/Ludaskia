@@ -480,7 +480,10 @@ export function runRevisionEspacee(): void {
       <span class="rev-prog" id="revProg"></span>
       <span class="rev-cat" id="revCat"></span>
     </div>
-    <div class="rev-stage" id="revStage"></div>
+    <!-- tabindex -1 : la carte reçoit le focus à chaque question (cf. focaliserQuestion).
+         Le NŒUD survit à la séance, son CONTENU est remplacé — « Continuer ▶ » compris,
+         qui portait le focus — donc sans ce rattrapage le focus retombe sur le body. -->
+    <div class="rev-stage" id="revStage" tabindex="-1"></div>
     <!-- Région live FIXE (#467) : elle porte le VERDICT d'un item — révélé à la demande comme
          juste ou faux — pour les formats dont le widget n'annonce rien (saisie, QCM, mot,
          opération posée, tuile, rangement).
@@ -542,7 +545,39 @@ function renderCurrent() {
 	else if (it.item.kind === 'posed') renderPosed(it);
 	else renderNum(it);
 	bindConsigneTts(document.getElementById('revStage')!); // bouton « Écouter » (#42)
+	focaliserQuestion();
+	// APRÈS le focus, jamais avant — même ordre que `demarrerRunner` et pour la même
+	// raison : la bulle d'aide est une modale qui prend le focus et le rend à la fermeture.
+	// Focaliser la carte ensuite le lui volerait et casserait son piège de focus.
 	monterAide(it);
+}
+
+/* Pose le focus sur la question qu'on vient de rendre (#528). MÊME défaut qu'au runner de
+   leçon, en pire : `renderCurrent` remplace tout le contenu de `#revStage`, « Continuer ▶ »
+   (`#revNext`, rendu DANS `#revAfter`, lui-même dans le stage) y compris — or c'est lui qui
+   portait le focus. Mesuré avant correctif : le focus retombait sur `<body>` à CHAQUE
+   question, la première comprise, puisque la révision n'a pas d'équivalent du
+   `demarrerRunner` qui focalise `#sheets` à l'ouverture d'un écran de leçon.
+
+   Et le coût est plus élevé ici qu'en leçon : une séance de révision enchaîne des items de
+   LEÇONS et de FORMATS différents, donc la consigne change presque à chaque question
+   (« Clique sur l'adjectif », puis « Clique sur tous les déterminants »…). Un enfant au
+   lecteur d'écran répondait à la consigne précédente. La région live `#revStatus` ne
+   rattrapait rien : elle est VIDÉE à chaque question (`viderStatut`), exprès, pour ne pas
+   relire la réponse révélée de la question d'avant.
+
+   On focalise la CARTE et non la seule consigne (contrairement au runner, qui vise
+   `.lclic-consigne`) : en révision, c'est le FORMAT lui-même qui change d'une question à
+   l'autre, pas seulement le libellé — il n'y a donc pas de nœud de consigne commun aux dix
+   mécaniques, et il faut de toute façon annoncer plus que la phrase de consigne.
+
+   RESPECTE LE FOCUS DÉJÀ POSÉ par le rendu : la saisie (`focaliserChamp(#revInput)`) et le
+   problème (premier `.prob-input`) mettent le curseur dans leur champ, ce qui vaut mieux
+   que la carte — l'enfant peut taper tout de suite. On ne le leur reprend pas. */
+function focaliserQuestion(): void {
+	const stage = document.getElementById('revStage');
+	if (!stage || stage.contains(document.activeElement)) return;
+	stage.focus({ preventScroll: true });
 }
 
 /* Aide contextuelle du geste (#272) — type d'aide correspondant à l'item, ou `undefined`

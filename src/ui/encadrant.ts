@@ -32,6 +32,7 @@ import {
 	setConsulteUuid,
 	activeTab,
 	setActiveTab,
+	prendreProfilAConsulter,
 	type EncTab,
 } from './encadrant-commun';
 import {
@@ -56,6 +57,7 @@ import {
 import { revisionHTML, revisionClick } from './encadrant-revision';
 import { seanceHTML, seanceClick, seanceChange } from './encadrant-seance';
 import { seanceInput } from './encadrant-seance-dictees';
+import { envoisHTML, envoisClick, envoisChange, envoisInput } from './encadrant-envois';
 import {
 	reglagesHTML,
 	reglagesChange,
@@ -68,10 +70,12 @@ import { segmentKeydown } from './segment';
 import { html, type SafeHtml, joindre, drapeau, attribut } from '../core/html';
 
 /* Onglets de l'espace (#459), dans l'ordre de fréquence d'usage décroissante :
-   observer (Suivi) → préparer (Programme) → configurer (Réglages) → gérer (Profils). */
+   observer (Suivi) → préparer (Programme) → transmettre (Envois, #734) → configurer (Réglages)
+   → gérer (Profils). */
 const TABS: { id: EncTab; label: string; icon: IconName }[] = [
 	{ id: 'suivi', label: 'Suivi', icon: 'eye' },
 	{ id: 'programme', label: 'Programme', icon: 'calendar' },
+	{ id: 'envois', label: 'Envois', icon: 'paper-plane' },
 	{ id: 'reglages', label: 'Réglages', icon: 'gear' },
 	{ id: 'profils', label: 'Profils', icon: 'users' },
 ];
@@ -90,8 +94,11 @@ function tabFromHash(): EncTab {
 export function enterEncadrant(el: HTMLElement): void {
 	initEncadrantCommun(el, rerender, renderEspace);
 	wireOnce(el);
-	// Profil consulté par défaut = l'enfant actif (celui qui a passé l'appareil).
-	setConsulteUuid(activeProfile()?.uuid ?? null);
+	// Profil consulté par défaut = l'enfant actif (celui qui a passé l'appareil), sauf si
+	// l'écran d'où l'on vient en désigne un autre (résultat ajouté à un suivi, #734).
+	const demande = prendreProfilAConsulter();
+	const existe = demande !== null && listProfiles().some((p) => p.uuid === demande);
+	setConsulteUuid(existe ? demande : (activeProfile()?.uuid ?? null));
 	setActiveTab(tabFromHash()); // onglet initial (lien direct / rechargement, #459)
 	resetPin(); // réinitialise l'état transitoire du verrou + calcule la vue initiale
 	rerender();
@@ -218,6 +225,8 @@ function tabPanelHTML(
 			const recap: RecapProfil = progressionProfil(consulte, Date.now());
 			return html`${seanceHTML(consulte)}${aRevoirHTML(recap, consulte)}${dicteesProposeesHTML(consulte)}`;
 		}
+		case 'envois':
+			return envoisHTML(consulte);
 		case 'reglages':
 			return reglagesHTML(consulte, pinPanelHTML());
 		case 'profils':
@@ -247,6 +256,7 @@ function onClick(e: Event): void {
 	if (profilsClick(act, el)) return;
 	if (revisionClick(act, el)) return;
 	if (seanceClick(act, el)) return;
+	if (envoisClick(act, el)) return;
 	progressionClick(act, el);
 }
 
@@ -268,6 +278,7 @@ function onChange(e: Event): void {
 	}
 	if (reglagesChange(act, t)) return;
 	if (seanceChange(act, t)) return;
+	if (envoisChange(act, t)) return;
 	pinChange(act, t);
 }
 
@@ -279,6 +290,7 @@ function onInput(e: Event): void {
 	const act = t.dataset.act ?? '';
 	if (selecteurInput(act, t)) return;
 	if (seanceInput(act, t)) return;
+	if (envoisInput(act, t)) return;
 	progressionInput(act, t);
 }
 

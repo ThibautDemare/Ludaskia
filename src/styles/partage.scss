@@ -370,3 +370,159 @@
 		transition: none;
 	}
 }
+
+/* ---------- Vue d'un résultat, pour l'adulte (#734, `#resultat/<code>`) ---------- */
+.resultat-ecran {
+	max-width: 46rem;
+}
+.resultat-infos {
+	margin: 0;
+	display: grid;
+	gap: 6px;
+}
+.resultat-infos div {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0 8px;
+}
+.resultat-infos dt {
+	font-weight: 700;
+	color: var(--grey);
+}
+.resultat-infos dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+.resultat-score {
+	margin: 0;
+	font-size: 20px;
+}
+.resultat-detail {
+	margin-top: -8px;
+}
+.resultat-h2 {
+	margin: 8px 0 0;
+	font-size: 19px;
+}
+.resultat-items {
+	margin: 0;
+	padding-left: 1.6em;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+.resultat-item {
+	padding: 10px 12px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+.resultat-item p {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+.resultat-item .resultat-lecon {
+	margin-bottom: 6px;
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--grey);
+}
+.resultat-enonce {
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+.resultat-cle {
+	color: var(--grey);
+	font-weight: 600;
+}
+.resultat-aucune {
+	font-style: italic;
+	color: var(--grey);
+}
+.resultat-statut {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 4px;
+	font-weight: 700;
+}
+.resultat-statut .ph-icon {
+	flex-shrink: 0;
+}
+/* Couleur EN PLUS du mot (« Juste », « Faux »), jamais à sa place. */
+.resultat-statut-juste {
+	color: var(--ok);
+}
+.resultat-statut-faux {
+	color: var(--ko);
+}
+.resultat-statut-jnsp,
+.resultat-statut-vide {
+	color: var(--grey);
+}
+.resultat-import {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.resultat-import-panneau,
+.resultat-pin {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+.resultat-label {
+	font-weight: 700;
+	font-size: 16px;
+}
+.resultat-cibles {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.resultat-cibles legend {
+	margin-bottom: 6px;
+	padding: 0;
+}
+.resultat-cible {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 48px;
+	padding: 0 10px;
+	border: 2px solid var(--line);
+	border-radius: 12px;
+	cursor: pointer;
+	overflow-wrap: anywhere;
+}
+.resultat-cible:has(input:checked) {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+}
+.resultat-cible input {
+	flex-shrink: 0;
+	width: 22px;
+	height: 22px;
+	margin: 0;
+	accent-color: var(--accent);
+}
+.resultat-pin-code {
+	max-width: 10em;
+}
+.resultat-erreur:not(:empty) {
+	padding: 8px 12px;
+	border-radius: 10px;
+	background: var(--warn-bg);
+	color: var(--ink);
+}
+.resultat-statut-import {
+	font-weight: 700;
+	color: var(--ink);
+}
+.resultat-erreur:empty,
+.resultat-statut-import:empty {
+	min-height: 0;
+	overflow: hidden;
+}

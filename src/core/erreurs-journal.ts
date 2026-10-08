@@ -18,7 +18,7 @@
    profil (les plus anciennes sont purgées) pour ne pas faire grossir
    indéfiniment le localStorage.
    ============================================================ */
-import { lsGet, lsSet, lsGetRaw } from './storage';
+import { lsGet, lsSet, lsGetRaw, lsSetRaw } from './storage';
 import { debutJourLocal } from './utils';
 
 /* Clé de stockage (préfixée par le profil actif en écriture ; lue en brut par UUID). */
@@ -89,6 +89,24 @@ export function journaliserErreur(e: Omit<ErreurEntry, 'ts'>): void {
 	const brut = lsGet(ERREURS_KEY, []);
 	const liste = Array.isArray(brut) ? (brut.filter(estErreurValide) as ErreurEntry[]) : [];
 	lsSet(ERREURS_KEY, ajouterErreur(liste, { ...e, ts: Date.now() }));
+}
+
+/* Ajoute des erreurs au journal d'un profil donné par UUID, actif ou non : import d'un
+   résultat de séance partagée (#734), écrit depuis l'espace encadrant. Les entrées gardent
+   LEUR date (celle du passage), mais passent EN TÊTE, comme toute erreur qu'on vient de
+   consigner : triées par date, des erreurs vieilles de trois jours seraient évincées
+   aussitôt d'un journal plein, et l'encadrant ne verrait rien de ce qu'il a importé. Les
+   lecteurs ne supposent pas la liste triée (filtre de période, regroupement). L'appelant
+   date le profil (`touchProfile`). Rend le nombre d'erreurs ajoutées. */
+export function journaliserErreursFor(uuid: string, entrees: readonly ErreurEntry[]): number {
+	// Même garde que la capture (`capterErreur`) : sans leçon ni énoncé, rien à montrer.
+	const valides = entrees.filter((e) => estErreurValide(e) && e.lessonId && e.question);
+	if (!valides.length) return 0;
+	const liste = [...valides, ...chargerErreursFor(uuid)].slice(0, MAX_ERREURS);
+	lsSetRaw(uuid + '/' + ERREURS_KEY, JSON.stringify(liste));
+	// Au-delà du plafond, seules les MAX_ERREURS premières entrent : c'est ce compte-là
+	// que l'écran annonce à l'encadrant.
+	return Math.min(valides.length, MAX_ERREURS);
 }
 
 /* Journal d'un profil donné par UUID (consultation côté encadrant), le plus

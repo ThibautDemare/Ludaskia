@@ -206,7 +206,10 @@ export function setActiveProfile(uuid: string) {
 	saveProfilesMeta(m);
 	applyActive(m);
 }
-export function addProfile(name: string, emoji?: string) {
+/* `activer: false` (#734) : le profil est créé SANS devenir actif. L'encadrant qui ajoute
+   un résultat reçu au suivi d'un nouveau profil ne doit pas faire jouer l'appareil sous ce
+   nom ; le profil s'activera comme les autres, quand un enfant le choisira. */
+export function addProfile(name: string, emoji?: string, { activer = true } = {}) {
 	const m = loadProfilesMeta() || initProfiles();
 	const used = new Set(m.list.map((p) => p.emoji));
 	const e = emoji || PROFILE_EMOJIS.find((x) => !used.has(x)) || choice(PROFILE_EMOJIS);
@@ -217,6 +220,10 @@ export function addProfile(name: string, emoji?: string) {
 		updatedAt: Date.now(),
 	};
 	m.list.push(p);
+	if (!activer) {
+		saveProfilesMeta(m);
+		return p;
+	}
 	m.active = p.uuid;
 	saveProfilesMeta(m);
 	applyActive(m);

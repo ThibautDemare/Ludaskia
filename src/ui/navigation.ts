@@ -68,6 +68,7 @@ import {
 import { html, joindre } from '../core/html';
 import { lireFragment } from '../core/partage/liens';
 import { afficherEnvoi, partageCleanup } from './partage-seance';
+import { afficherResultat, resultatCleanup } from './partage-resultat';
 
 // Icône de matière pour les cartes de reprise (#63).
 const SUBJECT_ICON: Record<string, string> = { math: 'calculator', francais: 'book-open' };
@@ -314,9 +315,11 @@ export function route() {
 	// bootstrap et chaque bascule de profil, qui passent toutes par route()).
 	applyPreferences();
 	const h = (location.hash || '').replace(/^#/, '');
-	// Séance partagée (#734) : `#envoi/<code>`. Le code ne se lit qu'ici, jamais ailleurs.
+	// Séance partagée (#734) : `#envoi/<code>` (l'enfant joue), `#resultat/<code>` (l'adulte
+	// lit). Le code ne se lit qu'ici, jamais ailleurs.
 	const lien = lireFragment(location.hash);
 	if (lien?.type === 'envoi') showEnvoiView(lien.code);
+	else if (lien?.type === 'resultat') showResultatView(lien.code);
 	else if (h === 'sprint-config') showSprintConfigView();
 	else if (h === 'sprint') runSprint();
 	else if (h === 'bilan-custom') showBilanCustomView();
@@ -446,6 +449,7 @@ function resetSessionUI() {
 	revisionCleanup(); // remet à zéro le drapeau « révision en cours » (#63)
 	leconTableauCleanup(); // retire les listeners hors #sheets du runner tableau (clavier #394, redimensionnement #711)
 	partageCleanup(); // séance partagée (#734) : oublie la séance et annule un décodage en vol
+	resultatCleanup(); // résultat reçu (#734) : annule un décodage en vol
 	currentMode = null;
 	currentLessonId = null;
 	document.getElementById('sheets')!.innerHTML = '';
@@ -515,6 +519,16 @@ export function showEnvoiView(code: string) {
 	setToolbar({ verify: false, home: true, profile: false });
 	hideMenus();
 	void afficherEnvoi(code, document.getElementById('sheets')!);
+	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+/* Résultat d'une séance partagée (#734), lu par l'adulte. Cet écran n'écrit RIEN tant
+   qu'on n'importe pas (critère 43) : ni programme du jour ni rappel de sauvegarde à
+   rafraîchir, contrairement à l'accueil. La barre ne montre pas le profil actif (critère 18). */
+export function showResultatView(code: string) {
+	resetSessionUI();
+	setToolbar({ verify: false, home: true, profile: false });
+	hideMenus();
+	void afficherResultat(code, document.getElementById('sheets')!);
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 export function showProfilesView() {

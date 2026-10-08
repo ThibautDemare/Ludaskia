@@ -77,8 +77,8 @@ export function nombreItems(envoi: Envoi): number {
 /** Plafonds d'un envoi : de quoi composer un bilan complet de catégorie, pas davantage.
  *  Au-delà, le lien deviendrait trop long pour être collé dans un message, et la
  *  séance trop longue pour un enfant. */
-const MAX_EXERCICES_PAR_BLOC = 40;
-const MAX_BLOCS = 30;
+export const MAX_EXERCICES_PAR_BLOC = 40;
+export const MAX_BLOCS = 30;
 export const MAX_ITEMS = 300;
 
 const bloc = objet<BlocEnvoi>({

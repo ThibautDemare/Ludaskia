@@ -30,6 +30,16 @@ let pinPanel: 'none' | 'saisie' | 'secret' = 'none'; // sous-panneau « code » 
 let pinSecret: string | null = null; // secret de récupération à afficher une fois
 let secretConserve = false; // case « j'ai conservé ma clé »
 
+/* Le code d'accès protège-t-il encore l'espace dans cette page ? Partagé avec la vue d'un
+   résultat (#734), dont l'import est derrière le même code : le saisir là déverrouille aussi
+   l'espace, et inversement, comme deux portes d'une même pièce. */
+export function accesVerrouille(): boolean {
+	return pinActif() && !deverrouille;
+}
+export function marquerDeverrouille(): void {
+	deverrouille = true;
+}
+
 /* Vue courante, lue par l'orchestrateur pour aiguiller le re-rendu. */
 export function pinView(): 'gate' | 'recovery' | 'espace' {
 	return vue;

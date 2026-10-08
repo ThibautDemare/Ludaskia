@@ -67,6 +67,7 @@ import {
 	seedRappelSauvegardeScript,
 	settleAnimations,
 } from './helpers';
+import { codeResultatDe } from './partage-fixtures';
 import { scanA11y, formatA11yReport } from './axe';
 import type { NodeResult } from 'axe-core';
 
@@ -261,6 +262,27 @@ const VIEWS: View[] = [
 			await page.addInitScript(CLEAR_PIN);
 			await gotoHash(page, 'encadrant/reglages');
 			await page.locator('.enc-tab.active .enc-tab-lab').waitFor({ state: 'visible' });
+		},
+	},
+	{
+		// Onglet ENVOIS (#734) : composer un envoi, source « Une leçon » ouverte pour scanner
+		// aussi le sélecteur de leçon et le formulaire.
+		name: 'Espace encadrant — envois',
+		hash: 'encadrant/envois',
+		open: async (page) => {
+			await page.addInitScript(CLEAR_PIN);
+			await gotoHash(page, 'encadrant/envois');
+			await page.locator('button[data-act="envoi-source"][data-source="lecon"]').click();
+			await page.locator('.enc-sel').first().waitFor({ state: 'visible' });
+		},
+	},
+	{
+		// Vue de lecture d'un RÉSULTAT (#734) : liste d'items à statuts, sans profil.
+		name: 'Résultat partagé (lecture)',
+		hash: 'resultat',
+		open: async (page) => {
+			await gotoHash(page, `resultat/${await codeResultatDe()}`);
+			await page.locator('#resultatItems').waitFor({ state: 'visible' });
 		},
 	},
 	{

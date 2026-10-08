@@ -618,6 +618,33 @@ Deux gardes contre le test à vide : toute leçon déclarée doit être atteinte
 sélection, et un test de **saturation** échoue si l'échantillon (1200 tirages par couple
 leçon/niveau) cesse de couvrir toute la banque — le message dit alors quoi faire.
 
+### Étayage « clique sur le mot » : ce que le panneau promet reste vrai de sa banque (#528)
+
+`tests/clic-mot-etayage-gate.test.ts` tient deux défauts trouvés en relecture, que la règle
+de sortie veut gate plutôt que correction silencieuse.
+
+- **A. Une liste fermée dans un panneau doit suivre sa banque.** Le panneau CM1 de l'adjectif
+  énumère les verbes d'état ; le gate **dérive** ceux que la banque emploie (y compris
+  « avoir l'air », « demeurer ») et exige que chacun soit nommé. Le panneau suit la banque,
+  jamais l'inverse.
+- **B. Aucun mot d'un exemple d'étayage n'est une réponse de sa banque** (règle de #490, que rien
+  ne tenait). Appliqué à **toute la famille clic-mot**, chaque couple (leçon, niveau), sur la
+  banque **réellement servie** par `generate({level})` (échantillon sous graine, saturation
+  vérifiée) et non sur une table écrite à la main. La règle porte sur les **mots**, pas sur la
+  phrase : « Le vieux loup hurle » n'était pas dans la banque, mais « vieux » en était la
+  réponse. Comparaison par radical grossier pour attraper la variante d'accord (« grandes » /
+  « grands »). Frontière mécanique de « exemple » : une **citation entre guillemets « … »** ; les
+  classes fermées énoncées en texte courant (sept conjonctions, neuf pronoms sujets) restent
+  hors gate, exception assumée en tête de la section d'étayage de `grammaire-clic-mot.ts`.
+
+Un troisième test exige que le panneau CM1 **montre** un exemple (phrase d'au moins trois mots)
+pour chacune des deux fonctions : énoncer la règle ne suffit pas à une notion qui a un an
+d'avance sur le programme. Chaque détecteur est éprouvé sur une violation **fabriquée** et un
+témoin qui ne doit pas être signalé (`tests/gardes-adjectif-cm1.ts`, détecteurs partagés avec
+`clic-mot-adjectif-cm1.test.ts`, eux-mêmes éprouvés par `gardes-adjectif-cm1.test.ts`).
+**Ce qu'il ne prouve pas** : qu'un exemple est pédagogiquement bon, ni que l'étayage se
+**dit** bien (cf. [Conventions rédactionnelles](conventions-redaction.md)).
+
 ### Découvrabilité par les moteurs — balisage des trois pages (#631)
 
 `tests/seo-decouvrabilite.test.ts` (27 tests) éprouve le balisage SEO des trois
@@ -1348,6 +1375,18 @@ rédactionnelles](conventions-redaction.md), pas mécanisable) ; qu'il apporte q
 chose (un mot-clé qui recopie le libellé passe le gate sans rendre rien de plus
 trouvable) ; rien sur les dictées de mots, qui ne sont pas des leçons du catalogue et
 sont cherchées par leur nom.
+
+**Vocabulaire réservé à une classe : écarté, et il ne se re-remonte pas (#528).** Un gate avait
+été écrit pour interdire qu'un mot que le `labelNiveau` d'une leçon multi-niveaux cache au
+niveau bas (« épithète », « attribut », « noyau ») soit posé en `motsCles`, ces derniers n'étant
+pas scopés par niveau. **Arbitrage du mainteneur, 2026-10-08 : ce n'est pas un défaut, et le
+gate a été retiré.** Un mot-clé n'est jamais AFFICHÉ, contrairement au libellé : il ne porte le
+vocabulaire du niveau haut qu'à l'enfant qui le tape déjà, donc il n'enseigne rien à personne.
+Et l'interdire coûte quelque chose de réel, parce que la recherche indexe le libellé **par
+niveau** : un CE2 qui connaît « épithète » ne trouverait plus `fr-gram-clic-adj`, dont le
+libellé CE2 reste « Clique sur l'adjectif ». Le critère 7 de #528 porte sur ce que l'enfant
+LIT, pas sur ce qu'il peut chercher. C'est pourquoi `fr-gram-clic-adj` et `fr-gram-clic-noyau`
+gardent tous deux ces mots-clés.
 
 ### Gate d'égalité label/titre du calcul mental (#722)
 

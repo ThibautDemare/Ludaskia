@@ -431,3 +431,116 @@ export const PRON_COMPL = new Set(['me', 'te', 'lui', 'leur', 'se', 'nous', 'vou
 /* Formes NON ambiguës (un seul rôle) — nous/vous exclus (partagés par les deux rôles). */
 export const PRON_SUJET_STRICT = new Set(['je', 'tu', 'il', 'elle', 'on', 'ils', 'elles']);
 export const PRON_COMPL_STRICT = new Set(['me', 'te', 'lui', 'leur', 'se']);
+
+/* ---------- Adjectif : vocabulaire partagé CE2 / CM1 (#436, #528) ----------
+   Au CE2 l'adjectif est une NATURE à reconnaître ; au CM1 on lui demande sa FONCTION
+   (épithète ou attribut, programme §5.1). Les deux banques se défendent des mêmes
+   formes trompeuses et comparent les mots avec la même heuristique de radical : ces
+   deux briques-LÀ vivent ici, par la règle énoncée en tête de ce module. Deux listes
+   d'interdits qui divergeraient reviendraient à accepter au CM1 ce qu'on refuse au CE2 —
+   et c'est le CM1 qui en pâtirait, lui qui doit en plus NOMMER la fonction.
+
+   CE QUI N'Y EST PLUS, et la raison vaut pour le prochain ajout : `FonctionAdj` et
+   `VERBES_ETAT_FORMES` ont vécu ici un temps, alors qu'aucune banque CE2 ne les lit. Ils
+   sont descendus dans `grammaire-clic-mot-adjectif.ts`, où ils servent. Une règle
+   « vocabulaire PARTAGÉ entre classes » ne tient que si on ne la relâche pas au cas par
+   cas : le jour où elle admet « partagé ou pas, c'est du vocabulaire », elle ne dit plus
+   rien sur ce qu'on trouve ici, et chaque banque reprend l'habitude de copier. */
+
+/* Garde-fou, pas une liste exhaustive : les formes qu'aucune banque d'adjectif ne veut
+   voir apparaître — participes passés à valeur adjectivale (ils rouvrent la confusion
+   avec le passé composé, auxiliaire invisible) et nationalités, qui se substantivent
+   (« un Anglais »). Vaut pour la cible comme pour un simple distracteur de la phrase. */
+export const ADJ_INTERDITS = new Set([
+	'fatigué',
+	'fatiguée',
+	'fatigués',
+	'fatiguées',
+	'cassé',
+	'cassée',
+	'cassés',
+	'cassées',
+	'fermé',
+	'fermée',
+	'ouvert',
+	'ouverte',
+	'rempli',
+	'remplie',
+	'mouillé',
+	'mouillée',
+	'trempé',
+	'trempée',
+	'endormi',
+	'endormie',
+	'assis',
+	'assise',
+	'couché',
+	'couchée',
+	'allumé',
+	'allumée',
+	'éteint',
+	'éteinte',
+	'rangé',
+	'rangée',
+	'perdu',
+	'perdue',
+	'blessé',
+	'blessée',
+	'gelé',
+	'gelée',
+	'sucré',
+	'sucrée',
+	'salé',
+	'salée',
+	'coloré',
+	'colorée',
+	'doré',
+	'dorée',
+	'poli',
+	'polie',
+	'cuit',
+	'cuite',
+	'brûlé',
+	'brûlée',
+	'déchiré',
+	'déchirée',
+	'fané',
+	'fanée',
+	'français',
+	'française',
+	'anglais',
+	'anglaise',
+	'espagnol',
+	'espagnole',
+	'italien',
+	'italienne',
+	'chinois',
+	'chinoise',
+	'allemand',
+	'allemande',
+]);
+
+/** Radical GROSSIER (minuscule, marque du pluriel puis du féminin retirées) : sert
+    uniquement à rapprocher, dans une même phrase, deux mots de la même famille que
+    l'adjectif visé (« grand » / « grande », « calme » / « calmement »). Heuristique
+    assumée, pas une analyse morphologique. */
+export function radicalAdj(mot: string): string {
+	let r = mot.toLowerCase();
+	if (r.endsWith('s')) r = r.slice(0, -1);
+	if (r.endsWith('e')) r = r.slice(0, -1);
+	return r;
+}
+
+/** Tous les déterminants reconnus : l'UNION des trois sous-catégories, et la SEULE
+    source de cette union. Quatre banques en ont besoin pour des raisons différentes —
+    l'adjectif CM1 (un adjectif collé derrière un déterminant ouvre un groupe nominal, il
+    ne peut donc pas être attribut), les déterminants CE2 (qui les travaillent EN BLOC,
+    la sous-catégorisation étant un attendu CM1), « Repère le groupe nominal » et
+    « Nomme les mots du groupe » (où le déterminant ouvre le groupe à délimiter). Les
+    quatre recopiaient le même `new Set([...article, ...possessif, ...demonstratif])` :
+    quatre listes identiques par chance, que rien n'obligeait à le rester. */
+export const DET_TOUS = new Set<string>([
+	...DET_SETS.article,
+	...DET_SETS.possessif,
+	...DET_SETS.demonstratif,
+]);

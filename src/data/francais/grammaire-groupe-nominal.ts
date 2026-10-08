@@ -38,7 +38,7 @@
    sans `ancre` : l'oubli remonte à l'écriture de la banque, pas à l'usage.
    ============================================================ */
 import {
-	DET_SETS,
+	DET_TOUS,
 	libelleCible,
 	phraseSegment,
 	type PatronGN,
@@ -56,15 +56,13 @@ export type { PatronGN };
 
 export const MOTS_ATTENDUS: Record<PatronGN, number> = { DN: 2, DNA: 3, DAN: 3 };
 
-/** Déterminants nommés par le programme CM1 : l'union des trois sous-catégories que
-    le moteur tient déjà (article, possessif, démonstratif). Lue d'ici plutôt que
-    recopiée — deux listes de déterminants qui divergent se traduiraient par un
-    garde-fou qui accepte ici ce qu'il refuse ailleurs. */
-const DETERMINANTS = new Set<string>([
-	...DET_SETS.article,
-	...DET_SETS.possessif,
-	...DET_SETS.demonstratif,
-]);
+/** Déterminants nommés par le programme CM1 : l'union des trois sous-catégories, prise
+    telle quelle au moteur (`DET_TOUS`). Le commentaire précédent promettait déjà qu'elle
+    était « lue d'ici plutôt que recopiée » — elle ne l'était pas : seules les trois
+    sous-catégories venaient du moteur, l'UNION était refaite ici, et à l'identique dans
+    trois autres banques. Deux listes de déterminants qui divergent, c'est un garde-fou
+    qui accepte ici ce qu'il refuse ailleurs. */
+const DETERMINANTS = DET_TOUS;
 
 /* Prépositions susceptibles d'ouvrir un complément du nom au bord du groupe. Liste
    volontairement courte : elle ne sert qu'à examiner les DEUX tokens qui touchent le

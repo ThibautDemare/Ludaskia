@@ -60,8 +60,10 @@ describe('core/ordre — helpers', () => {
 		// (#254) + 1 leçon « Clique sur le verbe » (#259, partagée CE2/CM1) + 5 natures
 		// « clique sur le mot » CM1 (#437 : déterminant, conjonction, pronom, nom noyau,
 		// sujet) + 1 leçon « Repère le groupe nominal » (#716, geste à deux bornes)
-		// + 1 leçon « Nomme les mots du groupe » (#731, appariement mot ↔ étiquette) = 73.
-		expect(ordreLecons('francais', 'cm1')).toHaveLength(73);
+		// + 1 leçon « Nomme les mots du groupe » (#731, appariement mot ↔ étiquette)
+		// + 1 leçon « Clique sur l'adjectif » (#528, partagée CE2/CM1 — au CM1 c'est la
+		// FONCTION, épithète ou attribut, qui est demandée) = 74.
+		expect(ordreLecons('francais', 'cm1')).toHaveLength(74);
 		// Niveau sans ordre défini → liste vide (fallback ordre de déclaration).
 		expect(ordreLecons('math', 'cp')).toEqual([]);
 		expect(ordreLecons('inconnue' as SubjectId, 'ce2')).toEqual([]);

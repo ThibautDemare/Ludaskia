@@ -48,6 +48,7 @@ function leconTest(
 }
 
 const NOYAU = 'fr-gram-clic-noyau';
+const ADJ = 'fr-gram-clic-adj'; // #528 : second porteur de `labelNiveau` (épithète / attribut)
 const lecon = (id: string): LessonDef => getLessonById(id)!;
 
 describe('labelLecon — nom de la leçon par niveau (#436)', () => {
@@ -97,8 +98,11 @@ describe('labelLecon — nom de la leçon par niveau (#436)', () => {
 			for (const lvl of LEVEL_ORDER) expect(labelLecon(l, lvl), `${l.id}@${lvl}`).toBe(l.label);
 			expect(labelLecon(l), l.id).toBe(l.label);
 		}
-		// Le mécanisme est OPT-IN : une seule leçon en a besoin aujourd'hui (#436).
-		expect(porteurs).toEqual([NOYAU]);
+		// Le mécanisme reste OPT-IN : deux leçons en ont besoin aujourd'hui, et toutes deux pour
+		// la même raison — leur titre contient un mot du programme CM1 qu'un CE2 ne doit pas
+		// lire (« noyau », #436 ; « épithète » / « attribut », #528). Le compte EXACT est le
+		// gate : une troisième leçon qui s'en dote devra passer par ici, donc le justifier.
+		expect([...porteurs].sort()).toEqual([ADJ, NOYAU].sort());
 	});
 
 	it('un `labelNiveau` ne déclare que des niveaux servis, et jamais un libellé vide', () => {

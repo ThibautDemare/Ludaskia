@@ -520,6 +520,30 @@ chercher des mots plus rares uniquement pour le satisfaire — ce qui déplacera
 difficulté de la notion vers le décodage, exactement l'inverse du but. La densité reste
 un **jugement de relecture**, item par item, pas un seuil.
 
+## Un étayage rédigé se dicte tel quel : pas de « ? » en milieu d'étape, « Exemple : » en phrase séparée (#528)
+
+Le texte d'un panneau d'étayage est lu par la synthèse vocale **sans retouche** : `lire()`
+passe après `texteParle`, qui ne touche ni aux guillemets ni aux deux-points. Les « … » sont
+donc **muets**. Deux conséquences, qui relèvent du jugement (pas de test) :
+
+- **Pas de point d'interrogation en milieu d'étape.** Il se dicte comme une fin de phrase
+  montante, puis l'étape continue. Tourner en « Si …, c'est … ».
+- **Un exemple cité s'annonce par « Exemple : » en phrase séparée.** Sans cela, « C'est
+  l'attribut : « Le pain devient dur » » s'entend « c'est l'attribut le pain devient dur » :
+  l'exemple se fond dans la conclusion. Gabarit retenu : « Si …, c'est l'attribut. Exemple :
+  « … ». »
+
+Le versant mécanisable (un exemple ne donne pas la réponse d'une banque) est tenu par
+`tests/clic-mot-etayage-gate.test.ts`, cf. [Tests](tests.md).
+
+## Une phrase de banque reste plausible lue à voix haute (#528)
+
+Une phrase de banque ne contredit pas son propre contenu (« le ciel gris reste noir ») et ne
+tourne pas à la tautologie (« la nuit devient sombre » : l'attribut redit ce que le sujet
+contient déjà). L'enfant qui lit ou écoute une phrase absurde cherche le sens, pas la fonction
+grammaticale demandée. Aucun test n'en juge : c'est un contrôle de **relecture**
+(`redacteur-contenu-francais`), au même titre que la densité lexicale ci-dessus.
+
 ## Une reprise anaphorique doit couvrir TOUTES les natures introduites par « ou » (#722)
 
 Quand une phrase introduit deux natures coordonnées par « ou » (« une leçon **ou** une

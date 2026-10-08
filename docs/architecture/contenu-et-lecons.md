@@ -165,10 +165,31 @@ mono-leçon partagé par les sept autres (`MODE_CLIC`, id `clic`).
   non). Le **retenir** ne change rien à #716, qui ne le lit pas, et évite à la leçon
   « Nomme les mots du groupe » de redériver les rôles avec un lexique d'adjectifs — liste
   finie, donc faillible. Même raison que `DET_SETS` pour l'emplacement : deux banques le
-  lisent, il appartient donc au moteur.
+  lisent, il appartient donc au moteur. Depuis #528 il porte de même la part **partagée**
+  du vocabulaire de l'adjectif : `ADJ_INTERDITS` (participes passés adjectivaux et
+  nationalités substantivables) et `radicalAdj`, que les **deux** banques d'adjectif (CE2
+  et CM1) lisent — deux listes qui divergeraient reviendraient à accepter au CM1 ce qu'on
+  refuse au CE2. **`DET_TOUS`** (l'union des trois sous-catégories de déterminant) y vit
+  pour la même raison, et c'en est le **seul** exemplaire depuis #528 : quatre banques
+  recomposaient chacune `new Set([...article, ...possessif, ...demonstratif])`, soit
+  quatre listes identiques *par chance*, que rien n'obligeait à le rester.
+  **Ce qui n'y est PAS**, et la règle vaut pour le prochain ajout : `FonctionAdj` et
+  `VERBES_ETAT_FORMES` y ont vécu un temps alors qu'aucune banque CE2 ne les lit ; ils
+  sont descendus dans la banque de l'adjectif. Une règle « vocabulaire **partagé entre
+  classes** » ne dit quelque chose sur le contenu de ce module que tant qu'on ne la
+  relâche pas au cas par cas.
 - **`grammaire-clic-mot-verbe.ts`** — banques CE2/CM1 du verbe + `clicVerbeType` (seule
   leçon dont la banque CM1 **contient** celle du CE2).
-- **`grammaire-clic-mot-cm1.ts`** — les 5 natures CM1 (#437) : conjonction,
+- **`grammaire-clic-mot-adjectif.ts`** (#528, CM1) — banque de **l'adjectif épithète ou
+  attribut**, sortie de `grammaire-clic-mot-cm1.ts` : des six natures CM1, c'est la seule à
+  porter une fabrique à garde-fous (`adj`, `adjPaire`), des **dérivations d'explication** et
+  un lexique d'interdits propre, soit ~400 lignes — autant que les cinq autres réunies.
+  Même découpe que le verbe, même agrégation par `grammaire-clic-mot.ts`. Elle porte aussi
+  `FonctionAdj` et `VERBES_ETAT_FORMES`, qui ne servent qu'à elle. La banque **CE2** de
+  l'adjectif, elle, reste dans `grammaire-clic-mot-ce2.ts` : les réunir se défend, mais le
+  critère 14 de #528 est gelé sur « aucun diff dans `PHRASES_ADJ_CE2` » et un déplacement
+  en est un.
+- **`grammaire-clic-mot-cm1.ts`** — les 5 autres natures CM1 (#437) : conjonction,
   sous-catégories de déterminant, pronom sujet/complément, nom noyau, sujet.
 - **`grammaire-clic-mot-ce2.ts`** — les 4 natures CE2 (#436) : noms, déterminants,
   adjectif, pronom personnel sujet.
@@ -201,12 +222,39 @@ Les 8 leçons :
 - **« Clique sur le nom »** (`fr-gram-clic-noyau`, #437 CM1, #436 CE2) — au CM1 le nom
   principal d'un groupe nominal développé (un seul GN par phrase, jamais un second nom) ;
   au CE2 **tous** les noms de la phrase, cible **plurielle**, nom propre compris
-  (`PHRASES_NOM_CE2`, 55). Seule leçon à **libellé par niveau** (`labelNiveau`, #436) :
-  « Clique sur le nom » au CE2, « Clique sur le nom noyau » au CM1 — « noyau » est le mot du
-  programme CM1, que le CE2 ne doit pas lire.
-- **« Clique sur l'adjectif »** (`fr-gram-clic-adj`, #436, **CE2 seule**) — l'unique
+  (`PHRASES_NOM_CE2`, 55). **Libellé par niveau** (`labelNiveau`, #436) : « Clique sur le
+  nom » au CE2, « Clique sur le nom noyau » au CM1 — « noyau » est le mot du programme CM1,
+  que le CE2 ne doit pas lire.
+- **« Clique sur l'adjectif »** (`fr-gram-clic-adj`, #436 CE2, #528 CM1) — au CE2 l'unique
   adjectif qualificatif de la phrase (`PHRASES_ADJ_CE2`, 60) ; participes passés
-  adjectivaux et nationalités substantivables **exclus**.
+  adjectivaux et nationalités substantivables **exclus**. Au CM1 ce n'est plus la
+  **nature** mais la **fonction** qui est demandée : épithète ou attribut, consigne et
+  `cibleLabel` **surchargés par item** (`PHRASES_ADJ_CM1`, 30 phrases → **60 items**, un
+  par fonction, via `adj()`/`adjPaire()`). Programme §5.1 : « distinguer les notions de
+  nature et de fonction », « aborder la notion d'épithète » — l'attribut est nommé un an
+  avant les repères de progressivité, **décision assumée** (une fonction ne s'aborde pas
+  sans son contraire ; cf. l'en-tête de `grammaire-clic-mot-adjectif.ts`).
+  **Second libellé par niveau** après le nom : « Clique sur l'adjectif épithète ou
+  attribut » au CM1. Garde-fous propres au CM1, tous à la **construction** : chaque phrase
+  porte deux adjectifs distracteurs l'un de l'autre, l'attribut réclame un **verbe d'état**
+  devant lui (être, sembler, paraître, rester, devenir) et jamais un déterminant,
+  l'épithète réclame un **groupe nominal** et jamais un verbe d'état ; adjectifs verbaux en
+  -ant, couleurs issues de noms, comparatifs et mots à classe débattue **exclus** en plus
+  des interdits partagés. Le dernier mot est un épithète dans dix phrases et un attribut
+  dans dix autres : **la position ne départage rien**. L'explication **nomme son
+  référent** — le nom qu'un épithète accompagne, le groupe sujet et le verbe d'état qui
+  relient un attribut —, et ces trois mots sont **dérivés de la phrase** par les mêmes
+  repères que les garde-fous : une phrase dont ils ne se dérivent pas sans ambiguïté est
+  **refusée à la construction** (sujet qui n'ouvre pas la phrase, groupe sujet qui n'est
+  pas un groupe nominal simple — coordination, négation, clitique —, mot-outil là où un
+  nom est attendu, mot non adverbial intercalé entre le verbe d'état et son attribut),
+  parce qu'une explication qui nomme le mauvais mot enseigne une fausseté. **Limite
+  assumée, et elle ne se rattrape pas sans lexique d'adjectifs** : la dérivation couvre
+  les phrases à **sujet simple** et **ne protège pas d'un second adjectif antéposé** —
+  « Un vieux petit chien » lui ferait nommer le nom « petit ». Les trente phrases
+  n'empilent jamais deux épithètes antéposées, mais c'est la forme de la banque qui
+  l'évite, pas le garde-fou ; une phrase future qui en aurait besoin devra **déclarer**
+  son nom à l'appel au lieu de le faire dériver.
 - **« Repère le groupe nominal »** (`fr-gram-groupe-nominal`, #716, **CM1 seule**) —
   seule leçon de la famille à cibler un **SEGMENT** plutôt qu'un ensemble de mots :
   l'enfant délimite par ses deux bornes le bloc Dét(+Adj)+Nom(+Adj) (widget dédié

@@ -33,7 +33,9 @@
      SUJET (aucun pronom complément dans la banque).
    - « Clique sur le nom » (#437 CM1, #436 CE2) — au CM1 le nom noyau d'un GN
      développé ; au CE2 TOUS les noms de la phrase (cible PLURIELLE).
-   - « Clique sur l'adjectif » (#436, CE2) — l'unique adjectif qualificatif de la phrase.
+   - « Clique sur l'adjectif » (#436 CE2, #528 CM1) — au CE2 l'unique adjectif
+     qualificatif de la phrase ; au CM1 sa FONCTION, épithète ou attribut, demandée par
+     item (deux adjectifs par phrase, distracteurs l'un de l'autre).
    - « Clique sur le sujet » (#437, CM1) — noyau(x) du groupe sujet, sujet composé
      de deux noms propres compris (cible DOUBLE non adjacente, « Paul … Léa »).
 
@@ -59,6 +61,7 @@ import { etayageRedige, type LessonInput } from '../_shared';
 import { clicMotType, MODE_SEGMENT } from './grammaire-clic-mot-moteur';
 import { CONSIGNE_GN, CIBLE_GN, PHRASES_GN } from './grammaire-groupe-nominal';
 import { clicVerbeType } from './grammaire-clic-mot-verbe';
+import { CONSIGNE_ADJ_CM1, PHRASES_ADJ_CM1 } from './grammaire-clic-mot-adjectif';
 import {
 	CONSIGNE_CONJ,
 	CIBLE_CONJ,
@@ -100,6 +103,7 @@ import {
 export {
 	cibleContigue,
 	clicMotType,
+	DET_SETS,
 	enumererFr,
 	estPonctuation,
 	joindrePhrase,
@@ -107,6 +111,7 @@ export {
 	phrase,
 	phraseMots,
 	phraseSegment,
+	tokeniser,
 	type PhraseClicMot,
 	type RolePron,
 	type SousCatDet,
@@ -114,6 +119,14 @@ export {
 } from './grammaire-clic-mot-moteur';
 export { PHRASES_CE2, PHRASES_CM1, clicVerbeType } from './grammaire-clic-mot-verbe';
 export { gn, CONSIGNE_GN, CIBLE_GN, PHRASES_GN, type PatronGN } from './grammaire-groupe-nominal';
+export {
+	adj,
+	adjPaire,
+	CONSIGNE_ADJ_CM1,
+	PHRASES_ADJ_CM1,
+	VERBES_ETAT_FORMES,
+	type FonctionAdj,
+} from './grammaire-clic-mot-adjectif';
 export {
 	det,
 	pron,
@@ -123,8 +136,14 @@ export {
 	PHRASES_NOYAU,
 	PHRASES_SUJET,
 } from './grammaire-clic-mot-cm1';
+// `CONSIGNE_ADJ_CE2` / `CIBLE_ADJ_CE2` sont ré-exportés bien que la façade les consomme
+// elle-même : sans eux, les tests de l'adjectif n'avaient d'autre choix que d'importer le
+// module interne, et l'en-tête de ce fichier énonçait alors une règle que le code
+// empêchait de suivre. Même raison pour `tokeniser` et `DET_SETS` au bloc du moteur.
 export {
 	adjCE2,
+	CIBLE_ADJ_CE2,
+	CONSIGNE_ADJ_CE2,
 	detsCE2,
 	nomsCE2,
 	pronSujetCE2,
@@ -143,12 +162,13 @@ export {
    est-ce qui » pour le sujet), jamais un mot de la banque : les phrases sont écrites
    une à une et un exemple emprunté ici servirait de réponse à un tirage futur.
 
-   Les quatre leçons servies aux DEUX niveaux portent DEUX entrées, parce que la
+   Les cinq leçons servies aux DEUX niveaux portent DEUX entrées, parce que la
    TÂCHE change avec la classe et pas seulement sa difficulté : au CE2 on clique sur
    TOUS les noms / TOUS les déterminants d'une phrase, au CM1 sur le seul nom noyau
    ou sur la sous-catégorie demandée ; le verbe gagne au CM1 le passé composé (cible
-   en deux mots) et le pronom, la distinction sujet / complément. Un panneau CE2
-   servi à un CM1 décrirait donc un autre exercice.
+   en deux mots), le pronom la distinction sujet / complément, et l'adjectif la
+   distinction épithète / attribut (#528). Un panneau CE2 servi à un CM1 décrirait
+   donc un autre exercice — et l'inverse ferait lire « épithète » à un CE2.
 
    Classes FERMÉES énoncées en toutes lettres (les sept conjonctions de coordination,
    les neuf pronoms personnels sujets) : c'est la notion elle-même, celle que l'école
@@ -172,7 +192,10 @@ export {
    grands classiques : le changement de temps (« hier… demain… ») ne marche pas sur les
    impératifs, nombreux au CE2, d'où l'encadrement par « ne… pas » ; et la suppression
    de l'adjectif casse la phrase quand il est attribut (« le ciel est bleu »), d'où un
-   repère de POSITION à la place.
+   repère de POSITION à la place — au CE2 seulement. Au CM1 (#528), cette même casse
+   DEVIENT le repère cherché : la tâche n'y est plus de trouver l'adjectif mais sa
+   fonction, et la phrase qui s'écroule signe l'attribut. Le défaut d'un niveau est le
+   discriminant de l'autre ; les deux panneaux de cette leçon ne se recopient donc pas.
    ============================================================ */
 const ETAYAGE_VERBE_CE2 = etayageRedige(
 	'Comment reconnaître le verbe ?',
@@ -218,7 +241,7 @@ const ETAYAGE_DET_CM1 = etayageRedige(
 	'cm1',
 );
 
-const ETAYAGE_ADJ = etayageRedige(
+const ETAYAGE_ADJ_CE2 = etayageRedige(
 	'Comment reconnaître un adjectif ?',
 	"L'adjectif dit comment est le nom : il le décrit.",
 	[
@@ -226,6 +249,76 @@ const ETAYAGE_ADJ = etayageRedige(
 		'Demande-toi quel mot dit comment il est.',
 		'Il peut être collé au nom, ou séparé de lui juste après le verbe être.',
 	],
+	'ce2',
+);
+
+/* Étayage CM1 de l'adjectif (#528) : le panneau qui a demandé le plus d'arbitrages de
+   toute la famille, trois contraintes s'y contrariant.
+
+   1. Il doit nommer les DEUX fonctions : un panneau qui n'en nommerait qu'une n'aiderait
+      pas à CHOISIR, ce qui est toute la tâche du CM1.
+   2. Il doit donner un repère de RÈGLE et non de POSITION, alors que le panneau CE2 juste
+      au-dessus donne, lui, un repère de position, et pour une raison écrite en tête de
+      cette section : la suppression de l'adjectif CASSE la phrase quand il est attribut,
+      donc elle ne vaut pas pour toute la banque CE2.
+   3. Il doit MONTRER et pas seulement énoncer. La notion est en avance d'un an sur le
+      programme (cf. les commentaires du 2026-10-08 sur l'issue), donc l'enfant ne peut pas
+      s'appuyer sur ce qu'il a vu en classe : d'où un exemple travaillé par fonction.
+
+   La manipulation « efface l'adjectif et relis » a été ÉCARTÉE, et c'est le point à ne pas
+   réintroduire : c'est le repère de TOUS les manuels de cycle 3, donc il reviendra. Il est
+   FAUX sur « rester » et « paraître », dont le sens plein survit à la suppression.
+   « Ce gros chien reste paisible » donne « Ce gros chien reste », qui tient debout au sens
+   « il demeure » ; « Le nouveau maître paraît gentil » donne « Le nouveau maître paraît »,
+   au sens « il se montre ». L'enfant conclurait « épithète » et serait compté faux par
+   l'aide elle-même (avis `pedagogue-primaire`, 2026-10-08). Le premier jet de ce panneau
+   en avait fait son repère principal, en croyant la banque écrite pour que la manipulation
+   reste vraie : elle ne l'était que pour les compléments de LIEU, pas pour le verbe nu.
+
+   Le repère retenu est la LISTE FERMÉE des cinq verbes d'état. Elle est exacte sur les 30
+   phrases, et pas par chance : `adj()` l'impose à la CONSTRUCTION (un attribut suit toujours
+   l'un des cinq, un épithète n'en suit jamais aucun). Énoncer une classe fermée en toutes
+   lettres est déjà la politique de cette section (les sept conjonctions, les neuf pronoms
+   sujets) : c'est la notion elle-même, que l'école fait apprendre par cœur, pas un item de
+   la banque. Un test exige que tout verbe d'état employé par la banque soit nommé ici, sans
+   quoi la liste vieillirait en silence au premier verbe ajouté.
+
+   Quatre formulations ont été ÉCARTÉES, et elles ne se réintroduisent pas :
+   - « l'adjectif vient APRÈS ce verbe » : c'était la rédaction du premier jet, et elle était
+     doublement fautive. Repère de position, d'abord, ce que le critère 8 refuse. Et surtout
+     elle ne discrimine rien : dans « Le vent semble froid sur ce chemin étroit », les DEUX
+     adjectifs suivent « semble ». Seul le lien « dit comment est le sujet grâce à ce verbe »
+     sépare les deux fonctions ;
+   - « l'attribut est après être » : faux (auxiliaire, autres verbes d'état, attribut
+     nominal), et c'est un repère de position déguisé ;
+   - « l'épithète est avant / après le nom » : repère de position, et la banque varie
+     justement les deux ;
+   - « l'attribut décrit le sujet » : l'épithète d'un nom sujet le décrit tout autant.
+
+   La FORME des étapes est contrainte par l'oral, pas par le goût : le panneau est dicté d'un
+   seul tenant par `lire()`, après `texteParle`, qui ne touche ni aux guillemets ni aux
+   deux-points. Les « … » sont donc MUETS. « C'est l'attribut : « Le pain devient dur » »
+   s'entend « c'est l'attribut le pain devient dur », l'exemple se fondant dans la conclusion.
+   D'où « Si … , c'est … . Exemple : … » : le « Si … alors » supprime le point d'interrogation
+   en milieu d'étape, et « Exemple : » fournit la frontière que les guillemets ne donnent pas
+   à l'oreille (avis `relecteur-accessibilite`, 2026-10-08).
+
+   Les deux exemples travaillés emploient le MÊME adjectif dans les deux fonctions : c'est la
+   démonstration que la fonction n'est pas une propriété du mot. « pain » et « dur » sont
+   ABSENTS de `PHRASES_ADJ_CM1`, et c'est la règle de toute cette section : un exemple
+   emprunté à la banque donnerait la réponse d'un tirage futur. Le premier jet l'avait
+   enfreinte sans le voir, en illustrant par « Le vieux loup » quand la banque tire « Le vieux
+   loup semble calme ce soir » en demandant justement « vieux ». Vérifier que la PHRASE
+   n'est pas dans la banque ne suffit donc pas : la règle porte sur les MOTS. */
+const ETAYAGE_ADJ_CM1 = etayageRedige(
+	'Épithète ou attribut ?',
+	"L'épithète est dans le groupe du nom. L'attribut est relié au sujet par un verbe d'état : être, sembler, devenir, paraître, rester.",
+	[
+		"Cherche d'abord ce verbe d'état : est, semble, devient, paraît, reste.",
+		"Si l'adjectif dit comment est le sujet grâce à ce verbe, c'est l'attribut. Exemple : « Le pain devient dur ».",
+		"Sinon il fait partie du groupe du nom : c'est l'épithète. Exemple : « Le pain dur craque ».",
+	],
+	'cm1',
 );
 
 const ETAYAGE_CONJ = etayageRedige(
@@ -346,18 +439,39 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 		etayage: [ETAYAGE_DET_CE2, ETAYAGE_DET_CM1],
 	},
 	{
-		// Leçon NEUVE (#436), CE2 uniquement : au CM1 l'adjectif est déjà travaillé comme
-		// distracteur du nom noyau et dans l'accord du groupe nominal.
+		// Deux classes, deux TÂCHES (#436 puis #528) : au CE2 on reconnaît une NATURE
+		// (« clique sur l'adjectif », cible unique, consigne unique) ; au CM1 on désigne une
+		// FONCTION (épithète ou attribut), demandée item par item. Libellé PAR NIVEAU comme
+		// pour le nom noyau : « épithète » est du vocabulaire CM1, qu'un CE2 ne doit pas lire.
+		// `label` porte la formulation neutre, servie aux rares écrans sans niveau.
 		id: 'fr-gram-clic-adj',
 		label: "Clique sur l'adjectif",
-		motsCles: ['adjectif qualificatif', 'qui décrit', 'comment est'],
+		// « épithète » et « attribut » SONT des mots-clés, et c'est voulu (arbitrage du
+		// mainteneur, 2026-10-08) alors même que le libellé CM1 les porte déjà, ce qui les y
+		// rend redondants au regard de #718. Ils servent à l'autre bout : la recherche indexe
+		// le libellé PAR NIVEAU (`libelleAffiche`), et le libellé CE2 reste « Clique sur
+		// l'adjectif ». Sans eux, un CE2 qui connaît le mot ne trouverait PLUS la leçon. Un
+		// mot-clé n'est jamais affiché : il ne porte le vocabulaire du niveau haut qu'à qui le
+		// tape déjà, donc il n'enseigne rien à personne et le critère 7 reste tenu.
+		motsCles: ['adjectif qualificatif', 'qui décrit', 'comment est', 'épithète', 'attribut'],
+		// « adjectif » n'est pas superflu : un attribut peut être un NOM (« il est médecin »),
+		// donc « clique sur l'attribut » promet plus large que ce que la leçon demande. Le
+		// libellé reste par ailleurs dans le patron « Clique sur… » des sept natures voisines.
+		labelNiveau: {
+			ce2: "Clique sur l'adjectif",
+			cm1: "Clique sur l'adjectif épithète ou attribut",
+		},
 		exerciseType: clicMotType({
-			banque: PHRASES_ADJ_CE2,
-			consigne: CONSIGNE_ADJ_CE2,
-			cibleLabel: CIBLE_ADJ_CE2,
-			levels: ['ce2'],
+			banque: PHRASES_ADJ_CM1,
+			consigne: CONSIGNE_ADJ_CM1,
+			levels: ['ce2', 'cm1'],
+			ce2: {
+				banque: PHRASES_ADJ_CE2,
+				consigne: CONSIGNE_ADJ_CE2,
+				cibleLabel: CIBLE_ADJ_CE2,
+			},
 		}),
-		etayage: [ETAYAGE_ADJ],
+		etayage: [ETAYAGE_ADJ_CE2, ETAYAGE_ADJ_CM1],
 	},
 	{
 		id: 'fr-gram-clic-conj',

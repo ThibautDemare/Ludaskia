@@ -1109,7 +1109,21 @@ pas en fiche.
   quoi le `pointer-events: none` du figeage déteint sur **toute la suite de la séance** :
   plus un choix de QCM ni même le lien de déblocage cliquables, seuls les boutons
   « Écouter » (exclus du figeage) répondant encore. Le mode leçon n'a pas ce besoin, sa
-  scène `.sprint-stage` étant reconstruite à chaque question. Cette région porte aussi les verdicts
+  scène `.sprint-stage` étant reconstruite à chaque question. **Focus de la question**
+  (#528) : `#revStage` porte `tabindex="-1"` et `renderCurrent` lui donne le focus
+  (`focaliserQuestion`, en `preventScroll`, **avant** `monterAide` dont la modale le prend
+  et le rend). Mesuré avant correctif, le focus retombait sur `<body>` à **chaque**
+  question, la première comprise : le « Continuer ▶ » qui le portait (`#revNext`, rendu
+  dans `#revAfter`, **à l'intérieur** du stage) disparaît avec le contenu, et la révision
+  n'a pas d'équivalent du `demarrerRunner` qui focalise `#sheets` à l'ouverture d'un écran
+  de leçon. Le coût y est plus élevé qu'en leçon : une séance enchaîne des items de
+  **leçons et de formats différents**, donc la consigne change presque à chaque question,
+  et `#revStatus` ne rattrape rien (il est **vidé** à chaque question par `viderStatut`,
+  exprès). On focalise la **carte** et non la consigne — contrairement au runner, qui vise
+  `.lclic-consigne` — parce qu'aucun nœud de consigne n'est commun aux dix mécaniques. Et
+  on **respecte un focus déjà posé** par le rendu (`focaliserChamp(#revInput)` en saisie,
+  premier `.prob-input` du problème) : le curseur dans le champ vaut mieux que la carte.
+  Cette région porte aussi les verdicts
   **ORDINAIRES** de la révision (`revision.ts: annoncerVerdict`, appelé par `grade` et par le
   chemin d'échec d'un mot d'orthographe) : « Bravo, c'est juste. » ou « Ce n'est pas ça. La
   bonne réponse : X. » (« Une réponse possible » sur un item corrigé par intervalle, #446 —
@@ -1510,7 +1524,15 @@ pas en fiche.
   `lecon-appariement.ts`/`lecon-probleme.ts` (état de module + `lecon-runner-shared.ts`).
   Aide contextuelle dédiée (`monterBoutonAide`/`maybeAutoAide`, type `'clicMot'` ou
   `'segmentMot'` selon le geste — `aideDuGeste()`, choisi sur la 1re question de la
-  série, #716 — #272).
+  série, #716 — #272). **Focus rendu à chaque question** (#528) : `renderQuestion()`
+  reconstruit tout `#sheets`, donc le « Continuer ▶ » qui portait le focus disparaît et
+  le navigateur le rabat sur `<body>` — rien n'annonçait alors la question suivante. La
+  consigne porte `tabindex="-1"` et reçoit le focus en `preventScroll` à chaque rendu
+  **sauf le premier**, où `demarrerRunner` focalise `#sheets` juste après (à l'ouverture
+  de l'écran, c'est tout le contexte qu'il faut annoncer). C'est la **consigne** et non
+  `#sheets` parce que trois des huit leçons font varier la TÂCHE d'un item à l'autre
+  (déterminant, pronom, adjectif CM1) : sans ce rattrapage, un enfant au lecteur d'écran
+  répondait à la consigne précédente.
 - **`lecon-droite-graduee.ts`** (#256) — runner **« Droite graduée »** (placer un
   nombre), une droite à la fois. Consomme l'`Exercise` `type: 'droiteGraduee'`
   (`data/maths/droite-graduee.ts`) : la droite est une **coquille SVG

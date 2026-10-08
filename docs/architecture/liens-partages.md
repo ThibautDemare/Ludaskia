@@ -8,9 +8,10 @@ part vers un serveur, le fragment n'est jamais transmis à celui qui sert la pag
 Deux routes : `#envoi/<code>` (l'enfant joue) et `#resultat/<code>` (l'encadrant lit).
 
 Le format est de la **logique pure** (testable sans DOM) et ne porte aucun écran. Les
-écrans de l'enfant (`#envoi/<code>`) existent, voir « Côté enfant » ; ceux de
-l'encadrant (composer un envoi, lire un résultat) restent à venir : tant qu'aucun écran
-ne compose un envoi, un lien ne peut s'obtenir qu'en le fabriquant à la main.
+écrans de l'enfant (`#envoi/<code>`) sont décrits à « Côté enfant » ; ceux de
+l'encadrant (composer un envoi, lire un résultat, l'ajouter à un suivi) à « Côté
+encadrant ». Aujourd'hui, un envoi se compose pour les leçons jouées en fiche et les
+bilans ; les leçons « une question à la fois » et les dictées n'ont pas encore leur écran.
 
 ## Principe : un lien est une donnée hostile
 
@@ -50,6 +51,9 @@ ce qu'un lien déjà émis affiche. Un envoi n'a ni date limite ni compteur.
 | `liens.ts` | `fragmentLien`, `lireFragment`, `nouvelIdentifiant` (72 bits aléatoires, ne dérive de rien). |
 | `tirage.ts` | `tirerExercices` : tirage d'exercices **distincts** d'une leçon, au niveau et dans le mode donnés. |
 | `passage.ts` | Le **passage** de l'enfant : envoi → items de fiche, statut par item, seuil, premier passage gardé. Voir « Côté enfant ». |
+| `composition.ts` | **Composer** un envoi (leçon ou bilan), niveau explicite, avec la garantie qu'il passe `preparerPassage`. Voir « Côté encadrant ». |
+| `envois-crees.ts` | « Vos envois » : les codes des liens déjà créés, clé globale `ludaskia_envois`. |
+| `import.ts` | **Ajouter** un résultat reçu au suivi d'un profil, par UUID. |
 
 Hors du dossier : `core/recette-fragment.ts` (le registre, voir plus bas),
 `core/surlignage.ts` (`surligner`) et `core/aides-figure.ts` (`aideFigure`), fabriques
@@ -194,9 +198,76 @@ que le journal encadrant affiche « séance partagée ». Quitter une séance **
 demande confirmation (`partageEnCours`, `main.ts` `quittingLosesProgress`, comme le
 sprint) : rien n'est repris.
 
-### Décisions
+## Côté encadrant
 
-Écrites une fois, pour que le prochain relecteur ne les remonte pas de nouveau.
+Deux surfaces : l'onglet **Envois** de l'espace (composer, retrouver) et la vue
+`#resultat/<code>` (lire, importer). Le code de lien, l'URL, la copie, l'annonce et les
+causes de refus (`causeRefus`, communes aux deux côtés) vivent dans `ui/lien-partage.ts`.
+
+**Composer (`core/partage/composition.ts`, `ui/encadrant-envois.ts`).**
+- `composerLecon` (une fiche, dans un mode) et `composerBilan` (une série par leçon, sans
+  mode : chaque format se replie en fiche). Le **niveau est toujours choisi** par l'adulte
+  (le profil consulté ne fait que le présélectionner) ; aucune fonction du module ne lit le
+  profil actif. Le tirage a lieu ici, une fois.
+- **Garantie** : un envoi `ok` passe `preparerPassage` (la fonction même qui le prépare chez
+  l'enfant, pas une seconde règle) **et** s'encode (`envoiEnJson`). Refus : `libelle`,
+  `vide`, `trop-grand` (`MAX_BLOCS`, `MAX_ITEMS`), `format`.
+- **Ce qu'on peut envoyer** : `modesEnvoyables(lesson, niveau)` ne garde que les modes qui
+  se jouent en fiche (mémorisé), `niveauxEnvoyables` les niveaux où il en reste un.
+- **Bilans** : `bilanCategorie` (express **sans pondération** par les statistiques, qui
+  sont celles d'un profil, ou complet), `bilanFavori` (favori du profil consulté ; les
+  leçons absentes au niveau choisi sont écartées et **comptées**, l'écran le dit) ;
+  `niveauxFavori`, car un favori ne garde pas de niveau.
+- **Libellé** : même liste blanche que le décodage (`libelleValide`), préremplie par
+  `libelleParDefaut`. Un libellé écrit par l'adulte survit aux changements de choix.
+- L'écran montre aussi ce que contiendra le **résultat** (critère 5), le lien, « Copier le
+  lien » et « Partager » (partage natif si le navigateur en a un). L'état de vue vit en
+  module ; le profil consulté changé invalide le favori retenu.
+
+**Envois créés (`envois-crees.ts`).** On garde le **code** du lien (jamais de quoi le
+refaire : un nouveau tirage serait un autre exercice), pour recopier un lien à
+l'identique. Clé **globale** `ludaskia_envois`, comme le code d'accès : elle appartient à
+l'adulte, pas à un profil, et la sauvegarde des profils ne la contient pas. `MAX_ENVOIS_GARDES`
+(50) ; relue champ par champ, une entrée illisible est oubliée ; `garderEnvoiCree` relit
+après écriture et rend `false` si le stockage refuse (l'écran dit alors que l'envoi n'est
+pas gardé). Oublier un envoi n'invalide pas son lien.
+
+**Vue d'un résultat (`ui/partage-resultat.ts`, route `#resultat/<code>`).**
+- Lecture **sans code d'accès** : le lien est déjà la trace complète. Rien du profil actif
+  (la barre d'outils masque XP et avatar), ni pourcentage ni note. Tout texte du résultat
+  passe par `html` (échappé).
+- **N'écrit rien** tant qu'on n'importe pas. `main.ts` n'affiche aucune modale d'accueil
+  (classe, tour) par-dessus un lien partagé (`lireFragment`).
+- `resultatCleanup` + jeton : un décodage arrivé après un changement d'écran est jeté ; un
+  échec devient l'écran de refus, jamais un écran blanc.
+
+**Import (`import.ts`).** Optionnel : l'encadrant choisit le profil, aucun identifiant
+d'enfant ne voyage ; `profilCorrespondant` (nom = pseudo, casse/accents/espaces près,
+jamais partiel) ne fait que **cocher d'avance**.
+- Ce qui entre dans le profil, et rien d'autre : les erreurs du résultat (`faux` et `jnsp`,
+  datées du passage, insérées **en tête** du journal), une entrée d'activité `partage`, et
+  l'id du résultat dans `ludaskia_resultatsImportes` (par profil, `MAX_IMPORTS_RETENUS` =
+  500). Ni XP, ni étoile, ni record, ni statistique, ni série, ni objectif, ni trophée.
+- Tout s'écrit **par UUID**, sans changer le profil actif : `journaliserErreursFor`,
+  `recordActivitePartageFor`, `touchProfile`.
+- **Refus** : `deja` (id déjà importé, **ou** `passageJoueIci` : ce profil a joué ce
+  passage lui-même, ses erreurs sont déjà au journal), `profil` (UUID inconnu), `stockage`.
+- **Un import à moitié écrit est défait** : le journal, l'activité et les ids sont
+  photographiés avant, restaurés si une écriture est refusée (sinon le nouvel essai
+  doublerait les erreurs). `lsSetRaw` taisant le refus, l'écriture est vérifiée par relecture.
+- **Code d'accès** : l'import passe derrière celui de l'espace (`accesVerrouille` /
+  `marquerDeverrouille` d'`encadrant-pin.ts`, partagés : un déverrouillage vaut pour les
+  deux). Le profil n'est écrit qu'à la **confirmation**.
+- `creerProfilImporte` : `addProfile(nom, emoji, { activer: false })`, donc le profil actif
+  ne bouge ; classe confirmée par l'adulte (préremplie par l'envoi). Si l'import échoue, le
+  profil créé est **retiré** (`deleteProfile`).
+- « Voir le suivi » ouvre l'espace sur ce profil : `consulterALaProchaineEntree` (lu une
+  fois, puis oublié, `prendreProfilAConsulter`).
+
+## Décisions
+
+Écrites une fois, pour que le prochain relecteur ne les remonte pas de nouveau. Les
+points 1 à 10 concernent le côté enfant, 11 à 15 le côté encadrant.
 
 1. **« Je ne sais pas » COMPTE comme répondu pour le seuil de 60 %** (avis
    `specialiste-troubles-apprentissage`) : c'est l'information la plus utile à l'adulte,
@@ -227,6 +298,17 @@ sprint) : rien n'est repris.
     (ex. « clique sur le mot ») : la consigne du type (« Clique sur… ») précède des
     items repliés en texte (« Recopie… »). Écart **préexistant**, identique dans le bilan
     complet ordinaire ; non corrigé ici.
+11. **Le sondage `modesEnvoyables` tire trois exercices par mode et avale une exception de
+    fabrique** : la garantie vient de `composerLecon`, qui vérifie chaque exercice tiré ;
+    un générateur cassé est attrapé par ses propres tests, pas ici.
+12. **Pas de test unitaire de `causeRefus`** : textes constants ; les refus des deux côtés
+    sont joués en e2e.
+13. **`encadrant-envois.ts` n'est pas découpé** (environ 750 lignes) : à découper si les
+    PR 4 et 5 le font grossir.
+14. **À 320 px de large, « Programme » se coupe sur deux lignes** dans la barre d'onglets :
+    repli voulu (zoom 200 %), largeur rare.
+15. **Le titre visible de l'espace est « Espace encadrants »** (pluriel) : les textes qui le
+    nomment suivent ce titre.
 
 ## Les gardes
 
@@ -244,4 +326,8 @@ figures).
 | `tests/securite-liens-gate.test.ts` | La règle ESLint qui ne voit plus `outerHTML` / `insertAdjacentHTML`, une CSP absente ou affaiblie. |
 | `tests/partage-passage.test.ts` | La préparation d'un envoi, les statuts, le seuil, le premier passage figé (XP, plafond, stockage corrompu). |
 | `e2e/partage-seance.spec.ts` | Le parcours enfant de bout en bout, sur de vrais liens fabriqués par `e2e/partage-fixtures.ts`. |
+| `tests/partage-composition.test.ts` | Un envoi composé qui ne passerait pas `preparerPassage`, un niveau pris ailleurs que dans le choix, un libellé hors liste blanche. |
+| `tests/partage-envois-crees.test.ts` | La liste « Vos envois » : plafond, entrées corrompues, refus du stockage. |
+| `tests/partage-import.test.ts` | L'import : ce qui entre dans le profil et rien d'autre, doublon, import à moitié écrit défait, profil correspondant. |
+| `e2e/partage-encadrant.spec.ts` | Le parcours encadrant : composer, retrouver un envoi, lire un résultat, l'importer, et la chaîne complète (créer, jouer, lire). |
 | `e2e/csp.spec.ts` | La CSP qui n'est pas appliquée pour de bon (dev **et** build). |

@@ -16,7 +16,13 @@ hash — renvoie à l'accueil si aucune sélection n'est en attente) · `#revisi
 `#seance` (programme du jour composé par l'encadrant, #440) · `#profils` ·
 `#encadrant` / `#encadrant/<onglet>` (espace encadrant en onglets, #234/#459) ·
 `#revision` · `#envoi/<code>` (séance reçue par lien, #734 : lu par `lireFragment`
-avant le reste du routage, cf. [Liens partagés](liens-partages.md))
+avant le reste du routage, cf. [Liens partagés](liens-partages.md)) ·
+`#resultat/<code>` (lecture d'un résultat renvoyé par l'enfant, #734 : `showResultatView`
+→ `afficherResultat`, `resultatCleanup` à chaque changement d'écran ; ne dépend pas du
+profil actif et n'écrit rien tant qu'on n'importe pas). **Aucune modale d'accueil** (choix
+de classe, mot aux parents, tour) n'est ouverte par-dessus un lien partagé : `main.ts` saute
+l'onboarding quand `lireFragment(location.hash)` reconnaît l'un des deux liens. L'onglet
+**Envois** de l'espace encadrant (`#encadrant/envois`) compose ces liens.
 (l'ancien sélecteur plat `#lecons` a été **supprimé** — #560 : sa fonction d'accès
 `showLessons()` n'était plus appelée depuis la refonte multi-matières, aucune spec ne
 l'atteignait, et son rendu itérait le seul `LESSONS` (CE2), donc il aurait affiché un

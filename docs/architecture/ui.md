@@ -106,7 +106,8 @@ unique. La logique de données (`core/encadrant-stats.ts`,
 `core/encadrant-lock.ts`, `core/seance.ts`) est inchangée. Voix « vous », accent
 neutre (`encadrant.scss`).
 
-L'orchestrateur compose désormais l'espace en **4 onglets** (#459, cf. [Espace
+L'orchestrateur compose désormais l'espace en **5 onglets** (#459, **Envois** ajouté par
+#734 ; cf. [Espace
 encadrant](espace-encadrant.md) pour la répartition détaillée des blocs) plutôt
 qu'en une page qui empile toutes les sections : `renderEspace` rend un en-tête
 de contexte (profil consulté) + une barre d'onglets + le panneau de l'onglet
@@ -119,6 +120,18 @@ ci-dessous.
   / espace via `pinView()` du module pin), `renderEspace` (en-tête de contexte +
   barre d'onglets + panneau de l'onglet actif, #459) et `tabPanelHTML` (répartit
   les fragments des modules ci-dessous par onglet).
+- **`encadrant-envois.ts`** (#734) — onglet **Envois** : composer un exercice figé (une
+  leçon dans un mode, un bilan de catégorie ou un favori du profil consulté), niveau
+  explicite, libellé validé à la frappe sans re-rendu, lien + copie + partage natif, liste
+  « Vos envois ». Exporte `envoisHTML` et ses trois gestionnaires (`envoisClick/Change/Input`)
+  que l'orchestrateur aiguille. Logique dans `core/partage/composition.ts` et
+  `envois-crees.ts` ; détail dans [Liens partagés](liens-partages.md).
+- **`partage-resultat.ts`** (#734) — vue `#resultat/<code>` (lecture d'un résultat, import
+  derrière le code d'accès de l'espace). Troisième surface adulte, voix « vous ».
+- **`lien-partage.ts`** (#734) — ce que **les deux côtés** d'un lien partagé se partagent :
+  `urlDuLien`, `copierTexte`, `annoncer` (région `aria-live`) et `causeRefus` (la phrase
+  d'un `RaisonRefus`, selon qu'on attendait un envoi ou un résultat). Importé par
+  `partage-seance.ts`, `encadrant-envois.ts` et `partage-resultat.ts`.
 - **`encadrant-commun.ts`** — module **feuille** (n'importe aucun autre module
   `encadrant-*`) : état de vue partagé (conteneur DOM, profil **consulté**,
   **onglet actif** `EncTab`/`ENC_TABS`, #459) + registre des callbacks

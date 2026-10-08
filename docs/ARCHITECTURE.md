@@ -64,7 +64,9 @@ de conception initial est `docs/design-multi-subject.md`.
 - [Liens partagés (#734)](architecture/liens-partages.md) — `src/core/partage/` :
   séance figée dans un lien (format binaire versionné, schémas bidirectionnels,
   recettes de fragments), un lien étant traité comme une donnée hostile ; côté
-  enfant, le passage d'un envoi (`#envoi/<code>`).
+  enfant, le passage d'un envoi (`#envoi/<code>`) ; côté encadrant, l'onglet Envois
+  (composer, « Vos envois ») et la lecture d'un résultat (`#resultat/<code>`) avec son
+  import dans le suivi d'un profil.
 
 ### Fonctionnement
 

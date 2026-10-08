@@ -45,6 +45,16 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
 - **Clavier & focus** : tout ce qui se clique se fait au clavier ; focus visible,
   ordre de tabulation logique, pas de piège au focus dans les modales
   (célébration, passage de niveau, choix de mode).
+  - **Après un re-rendu déclenché par un geste**, le focus va à ce qui porte la suite
+    du geste (le bouton cliqué, ou ce qu'il a produit : le titre du lien créé, la
+    leçon choisie, l'élément voisin d'un élément supprimé), jamais au premier champ
+    du formulaire ni en tête de page. Cas d'origine : l'import d'un résultat (#734)
+    rendait le focus au premier bouton radio, et l'annonce de réussite passait
+    derrière.
+  - **Boutons répétés dans une liste** (« Copier le lien », « Retirer » sur chaque
+    ligne) : chacun a un nom accessible distinct, qui CONTIENT son libellé visible
+    (« Copier le lien : Fiche du lundi », WCAG 2.5.3). Un `aria-describedby` donne
+    un contexte, pas un nom : le rotor de TalkBack montrerait N boutons identiques.
 - **Structure & lecture** : hiérarchie de titres cohérente, libellés de champs,
   alternatives textuelles, `lang="fr"`.
 - **Glyphes décoratifs muets** : un chevron, une puce ou une flèche posés en

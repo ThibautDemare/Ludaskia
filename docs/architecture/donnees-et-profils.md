@@ -121,7 +121,9 @@ aucun énoncé (seulement des nombres et deux identifiants), garde aussi les
 taux de réussite par tranche de retard de l'espace encadrant, cf. [Espace
 encadrant](espace-encadrant.md)), `ludaskia_partagesRecus` (#734 : premiers passages
 des envois reçus par lien, par identifiant d'envoi, 30 au plus, cf. [Liens
-partagés](liens-partages.md)), `ludaskia_aide_vue` (#272 : aides d'exercice déjà vues, une par type de
+partagés](liens-partages.md)), `ludaskia_resultatsImportes` (#734 : ids des résultats
+reçus **déjà ajoutés au suivi** de ce profil, 500 au plus, pour qu'un second import
+n'ajoute rien), `ludaskia_aide_vue` (#272 : aides d'exercice déjà vues, une par type de
 runner — voir `core/aide.ts`), `ludaskia_eggs` (#331 : ids des **easter eggs** trouvés,
 album de l'accueil — clé **dédiée et disjointe** de l'XP et des trophées, les eggs étant
 hors de l'économie de jeu, cf. `core/eggs.ts`), `ludaskia_tour_seen` et `ludaskia_parents_seen`
@@ -146,7 +148,10 @@ travaillée » et de la tendance par notion de l'espace encadrant, cf.
 [Espace encadrant](espace-encadrant.md)). **Clés GLOBALES** (non préfixées profil), comme
 `ludaskia_profiles` : `ludaskia_encadrant_lock` (#234 : `{pinHash, recoveryHash}`
 du verrou optionnel de l'espace encadrant — verrou de l'ESPACE, pas d'un profil,
-donc non exporté et survit à la réinitialisation/suppression d'un profil) et
+donc non exporté et survit à la réinitialisation/suppression d'un profil),
+`ludaskia_envois` (#734 : les **envois créés** par l'encadrant, « Vos envois » — le code
+de chaque lien, 50 au plus ; propre à l'adulte, donc non exporté et hors suppression d'un
+profil, cf. [Liens partagés](liens-partages.md)) et
 `ludaskia_sauvegarde` (#306 : état du rappel de sauvegarde de l'accueil —
 `EtatRappel {depuis?, dernierExport?, palier, prochain?}` — global comme
 l'export dont il dépend (il couvre TOUS les profils), donc lui aussi non
@@ -202,6 +207,11 @@ inventées quand la source n'en porte aucune. Base de la frise de COMPOSITION d'
   (`renderProfileMenu`) ; ses items basculent l'actif. Le menu propose aussi
   **« Mon espace »** (→ `#profils`) et **« Espace encadrants »** (→ `#encadrant`,
   gris + cadenas) — #234.
+- **`addProfile(nom, emoji?, { activer })`** : par défaut le profil créé **devient actif** ;
+  `{ activer: false }` (#734) le crée sans toucher au profil actif. L'import d'un résultat
+  reçu par lien l'utilise (`creerProfilImporte`) : l'appareil reste à l'enfant qui jouait.
+  Les écritures par UUID de cet import (`journaliserErreursFor`, `recordActivitePartageFor`)
+  suivent le modèle de `getXPFor` : clés brutes `uuid/ludaskia_…`, jamais le préfixe actif.
 - **Écran enfant `#profils` = « Mon espace »** (#234) : l'enfant ne gère que **son**
   profil (avatar + prénom) + thème + « Mon confort ». **La gestion des AUTRES profils**
   (créer / renommer / avatar / réinitialiser / **supprimer**) **et l'export/import**

@@ -432,7 +432,7 @@ la forme `X.balisage`.
 
 ### Séance partagée par lien (#734)
 
-Quatre gardes, détaillés dans [Liens partagés](liens-partages.md).
+Gardes détaillés dans [Liens partagés](liens-partages.md).
 
 Côté enfant (PR 2) : `tests/partage-passage.test.ts` (Vitest : préparation et refus,
 capture lisible, statuts, seuil de 60 %, premier passage figé et son stockage, plafond
@@ -465,6 +465,23 @@ lien avec les bonnes réponses) ; `contraste-tokens` garde le couple `--cat-part
 - `e2e/csp.spec.ts` : la CSP **mord** pour de vrai (une injection brute ne s'exécute
   pas et le navigateur relève une violation `script-src*`), sur le serveur de dev
   **et** sur le build de production.
+
+Côté encadrant (PR 3) : `tests/partage-composition.test.ts` (garantie `preparerPassage`,
+niveau explicite, bilans express/complet/favori, libellé), `tests/partage-envois-crees.test.ts`
+(plafond, entrées corrompues, refus du stockage), `tests/partage-import.test.ts` (ce qui
+entre dans le profil et rien d'autre, doublon, import défait si le stockage refuse,
+`profilCorrespondant`, `creerProfilImporte` sans changer le profil actif),
+`tests/ecritures-par-uuid.test.ts` (les trois primitives qui écrivent dans un profil par
+UUID : `journaliserErreursFor`, `recordActivitePartageFor`, `passageJoueIci`),
+`e2e/partage-encadrant.spec.ts` (composer, retrouver, lire, importer ; chaînes fiche et
+bilan de bout en bout, sur de vrais liens) et `e2e/partage-encadrant-suite.spec.ts` (bilan
+favori, changement de profil consulté, libellé refusé, retrait d'un envoi, « Voir le suivi »,
+bascule du panneau d'import, aucune modale d'accueil sur un lien partagé). `e2e/a11y-axe.spec.ts` couvre deux vues de
+plus (onglet Envois, vue d'un résultat) et `e2e/encadrant-onglets.spec.ts` compte
+maintenant **5** onglets. `voix-libelles-gate` admet la vue de résultat comme **troisième
+surface adulte** ; `contraste-tokens` garde `--field-line` sur `--paper` pour `.enc-input` /
+`.enc-select-niveau` (leur bordure passe de `--line` à `--field-line`) et `--admin-accent` sur
+`--paper` en non-texte.
 
 Les schémas, le codec, la capture et le tirage ont leurs tests unitaires
 (`tests/partage-codec`, `-schemas`, `-resultat`, `-tirage`). `tests/recette-balisage.test.ts`

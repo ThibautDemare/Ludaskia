@@ -126,6 +126,15 @@ faut.**
     déjà à la main dans huit règles (`encadrant.scss`, `lecon-mode.scss`,
     `orthographe.scss` ×4, `profiles.scss`, `vitrine.scss`), et #630 l'a reproduit
     une neuvième fois : à chaque nouvelle classe basculée par `hidden`, vérifier.
+- **Un chiffre affiché qui décrit un plafond vient de sa constante** (« 30 leçons et
+  300 questions au plus » s'écrit avec `MAX_BLOCS` et `MAX_ITEMS`). Écrit en dur, il
+  reste vrai jusqu'au jour où la constante bouge, et l'écran ment sans qu'aucun test
+  ne le voie. Cas d'origine : l'onglet « Envois » (#734).
+- **Un geste qui écrit en plusieurs fois défait ce qu'il a écrit si une écriture échoue.**
+  Les accès bruts (`lsSetRaw`) taisent un refus du stockage (quota) : relire, et en cas
+  d'échec revenir à l'état d'avant, sinon le nouvel essai qu'on propose double ce qui
+  était déjà passé. Même règle pour un objet créé au début du geste (un profil créé pour
+  un import qui échoue est retiré). Cas d'origine : l'import d'un résultat (#734).
 - **TypeScript strict, vraiment.** Repère les `any`, les `as` qui masquent un
   vrai problème, les `!` non-null hasardeux, les types trop larges. Le code doit
   passer `tsc --noEmit` sans contournement.

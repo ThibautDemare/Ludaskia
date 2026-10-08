@@ -12,9 +12,10 @@ permanent visible dans la barre de l'enfant.
 
 ## Organisation en onglets (#459)
 
-La vue est découpée en **4 onglets**, dans l'ordre de fréquence d'usage
+La vue est découpée en **5 onglets**, dans l'ordre de fréquence d'usage
 décroissante : **Suivi** (observer, onglet par défaut) → **Programme**
-(préparer) → **Réglages** (configurer) → **Profils** (gérer) — type `EncTab` /
+(préparer) → **Envois** (transmettre, #734) → **Réglages** (configurer) → **Profils**
+(gérer) — type `EncTab` /
 `ENC_TABS` et l'état d'onglet actif vivent dans `ui/encadrant-commun.ts`
 (module feuille, transverse à toutes les sections). Un **en-tête de contexte**
 persistant « Vous consultez : [profil ▾] » (`<select data-act="set-consulte">`,
@@ -45,6 +46,10 @@ Répartition des blocs par onglet :
   « Proposer une dictée à l'avance » :
   deux actes de **préparation**, sortis du récap de Suivi (qui garde un simple
   renvoi textuel vers cet onglet pour les dictées prédéfinies non commencées).
+- **Envois** (#734) — composer un exercice figé et le transmettre par lien (leçon jouée
+  en fiche, bilan de catégorie ou favori), puis « Vos envois ». Un résultat renvoyé par
+  l'enfant se lit dans `#resultat/<code>` et peut être ajouté au suivi d'un profil ; voir
+  [Liens partagés](liens-partages.md).
 - **Réglages** — classe scolaire, aménagements dys/attention, longueur d'une
   séance de révision, leçons déjà vues en classe (#478), code d'accès PIN.
 - **Profils** — liste/gestion des profils + sauvegarde.

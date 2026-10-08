@@ -629,7 +629,8 @@ signe. Cas posé par l'aide du mode « virgule » (#711 lot 4).
 
 ## Un écran qui fait transmettre quelque chose (#734)
 
-Deux lignes de checklist, posées par l'écran de fin de la séance partagée :
+Cinq lignes de checklist, les deux premières posées par l'écran de fin de la séance
+partagée, les trois dernières par l'onglet Envois et la vue de résultat :
 
 - **Un seul verbe pour l'action de transmettre**, et une action concrète plutôt qu'un
   état : « renvoie ton lien à la personne qui t'a donné cet exercice », pas « dernière
@@ -637,6 +638,12 @@ Deux lignes de checklist, posées par l'écran de fin de la séance partagée :
 - **Un signe de ponctuation n'est jamais cité seul dans un libellé** : il s'écrit en mots
   (« des apostrophes et des tirets »), pour la même raison que le glyphe d'un bouton
   (voir plus haut).
+- **Les options d'un même segment sont construites en parallèle** : « Un bilan de
+  catégorie » / « Un bilan favori », pas « Un bilan de catégorie » / « Favori ».
+- **Côté adulte aussi, un seul verbe de transmission** : « envoyer » (« Envoyez-le à
+  l'enfant »), pas « transmettre » ici et « partager » là.
+- **« de » s'élide devant un prénom à initiale vocalique** (« le suivi d'Élodie ») : passer
+  par `elisionDe` de `core/utils`, jamais « de » + prénom concaténé.
 
 ## Le retour d'un tableau de conversion : quoi écrire, quoi ne pas ancrer (#711 lot 5)
 

@@ -43,7 +43,7 @@ import {
 	type LeconArbre,
 	type MatiereArbre,
 } from '../core/catalogue-arbre';
-import type { SchoolLevel } from '../core/catalog';
+import type { LessonDef, SchoolLevel } from '../core/catalog';
 import { LEVEL_ORDER } from '../core/levels';
 import { listOrthoLecons } from '../core/orthographe/lessons';
 import { loadOrthoFor } from '../core/orthographe/store';
@@ -110,7 +110,15 @@ export interface ActionLigne {
 	etat: (lecon: LeconArbre) => { label: string; on: boolean };
 }
 
-export interface OptionsSelecteur {
+/** Ce que l'arbre propose. Par défaut : tout le catalogue, et les dictées du profil. */
+export interface CatalogueSelecteur {
+	/** Leçons proposables (#734 : seules celles qu'on peut envoyer par lien). */
+	lessons?: readonly LessonDef[];
+	/** Aucune dictée de mots dans l'arbre. */
+	sansDictees?: boolean;
+}
+
+export interface OptionsSelecteur extends CatalogueSelecteur {
 	/** Identifiant de l'instance : porte l'état de vue et rend les ids DOM uniques. */
 	id: string;
 	consulte: Profile;
@@ -216,12 +224,13 @@ function dicteesDe(consulte: Profile): DicteeArbreEntree[] {
 	}));
 }
 
-function vueCourante(id: string, consulte: Profile): VueSelecteur {
+function vueCourante(id: string, consulte: Profile, cat: CatalogueSelecteur): VueSelecteur {
 	const e = etat(id);
 	const arbre = arbreCatalogue(consulte, {
 		filtre: e.filtre,
 		recherche: e.recherche,
-		dictees: dicteesDe(consulte),
+		lessons: cat.lessons,
+		dictees: cat.sansDictees ? undefined : dicteesDe(consulte),
 	});
 	return tronquerArbre(arbre, e.recherche.trim() === '' ? 0 : e.limite);
 }
@@ -258,7 +267,7 @@ function texteResume(id: string, vue: VueSelecteur): string {
 export function selecteurLeconHTML(o: OptionsSelecteur): SafeHtml {
 	const { id, consulte, action } = o;
 	const e = etat(id);
-	const vue = vueCourante(id, consulte);
+	const vue = vueCourante(id, consulte, o);
 	const jetons = segmentHTML({
 		act: 'sel-niveau',
 		valAttr: 'niveau',
@@ -284,7 +293,7 @@ export function selecteurLeconHTML(o: OptionsSelecteur): SafeHtml {
 /* ---------- Handlers délégués (aiguillés par l'orchestrateur) ---------- */
 /* Le sélecteur ne connaît pas ses consommateurs : ceux-ci lui redonnent, à chaque
    rafraîchissement partiel, de quoi re-rendre son corps (profil + action de ligne). */
-type Fournisseur = () => { consulte: Profile; action: ActionLigne } | null;
+type Fournisseur = () => ({ consulte: Profile; action: ActionLigne } & CatalogueSelecteur) | null;
 const fournisseurs = new Map<string, Fournisseur>();
 
 /** Déclare comment re-rendre le corps d'un sélecteur à la frappe. Appelé par le
@@ -298,7 +307,7 @@ function rafraichirCorps(id: string): void {
 	const f = fournisseurs.get(id)?.();
 	const corps = container()?.querySelector(`#sel-corps-${CSS.escape(id)}`);
 	if (!f || !corps) return;
-	corps.innerHTML = corpsHTML(id, vueCourante(id, f.consulte), f.action).balisage;
+	corps.innerHTML = corpsHTML(id, vueCourante(id, f.consulte, f), f.action).balisage;
 	annoncer(id);
 }
 
@@ -311,7 +320,7 @@ function annoncer(id: string): void {
 	annonceTimer = window.setTimeout(() => {
 		const p = container()?.querySelector(`#sel-resume-${CSS.escape(id)}`);
 		const f = fournisseurs.get(id)?.();
-		if (p && f) p.textContent = texteResume(id, vueCourante(id, f.consulte));
+		if (p && f) p.textContent = texteResume(id, vueCourante(id, f.consulte, f));
 	}, DELAI_ANNONCE);
 }
 

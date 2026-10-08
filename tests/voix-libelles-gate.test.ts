@@ -80,6 +80,13 @@ const EXCEPTIONS: Exception[] = [
 		raison:
 			"« Un mot pour les parents » (#330) est la SECONDE surface adulte de l'application, hors espace encadrant : une fenêtre affichée au premier lancement, adressée au parent qui installe. Le vouvoiement y est donc voulu. Nuance à garder en tête en relisant la convention, qui ne mentionne que l'espace encadrant.",
 	},
+	{
+		fichier: 'src/ui/partage-resultat.ts',
+		extrait: "demandez à l'enfant de vous renvoyer",
+		occurrences: 1,
+		raison:
+			"la vue d'un résultat de séance partagée (#734, `#resultat/<code>`) est la TROISIÈME surface adulte, hors espace encadrant : l'adulte l'ouvre depuis le lien que l'enfant lui renvoie, et la lit sans code d'accès (critère 18). Elle vouvoie donc, comme l'espace.",
+	},
 ];
 
 /* ---------- Extraction des littéraux ---------- */

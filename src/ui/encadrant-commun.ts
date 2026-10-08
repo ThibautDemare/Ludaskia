@@ -24,7 +24,7 @@ import { html, type SafeHtml } from '../core/html';
 /* Onglets de l'espace (#459) : découpe la page en sections par INTENTION
    (observer / préparer / configurer / gérer). L'état vit ici — transverse à toutes
    les sections, comme le profil consulté — et non dans un module de section. */
-export type EncTab = 'suivi' | 'programme' | 'reglages' | 'profils';
+export type EncTab = 'suivi' | 'programme' | 'envois' | 'reglages' | 'profils';
 
 /* Mot affiché pour un niveau d'acquisition (échelle type LSU ; wording validé par
    pedagogue-primaire / redacteur-contenu-francais — la notion est qualifiée, pas l'enfant).
@@ -128,6 +128,18 @@ export function setConsulteUuid(uuid: string | null): void {
 	const change = consulte !== uuid;
 	consulte = uuid;
 	if (change) for (const fn of auChangementDeProfil) fn();
+}
+/* Profil à consulter à la PROCHAINE entrée dans l'espace, au lieu du profil actif : la vue
+   d'un résultat (#734) mène au suivi du profil où l'encadrant vient de l'ajouter. Lu une
+   fois, puis oublié. */
+let consulterEnsuite: string | null = null;
+export function consulterALaProchaineEntree(uuid: string): void {
+	consulterEnsuite = uuid;
+}
+export function prendreProfilAConsulter(): string | null {
+	const uuid = consulterEnsuite;
+	consulterEnsuite = null;
+	return uuid;
 }
 export function activeTab(): EncTab {
 	return tab;

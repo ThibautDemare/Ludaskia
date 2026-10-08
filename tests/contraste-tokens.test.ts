@@ -358,7 +358,12 @@ const PAIRES_NON_TEXTE: Paire[] = [
 	{
 		avant: '--field-line',
 		arriere: '--paper',
-		ou: 'sheets.scss .ans — la ligne qui dit OÙ écrire',
+		ou: 'sheets.scss .ans — la ligne qui dit OÙ écrire ; encadrant.scss .enc-input, .enc-select-niveau — le contour des champs de l’espace (#734)',
+	},
+	{
+		avant: '--admin-accent',
+		arriere: '--paper',
+		ou: 'encadrant.scss .enc-envoi-cree, .enc-envoi-mention — cadre du lien prêt et filet de la mention (#734)',
 	},
 	// `--accent-soft` comme BORDURE a disparu du dépôt avec #385 : c'était une teinte de
 	// surface employée comme trait (1,15 à 1,26:1). Les cinq boutons de choix qui la

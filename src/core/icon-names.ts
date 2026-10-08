@@ -46,6 +46,8 @@ export type IconName =
 	| 'timer'
 	| 'exam'
 	| 'bookmark'
+	// Envoi d'un exercice par lien (#734) : l'onglet « Envois » de l'espace encadrant.
+	| 'paper-plane'
 	// Recherche de leçon côté enfant (#718) : la loupe, seul picto que l'enfant associe
 	// déjà à « chercher » (barres de recherche, tablettes).
 	| 'magnifying-glass'

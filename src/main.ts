@@ -104,6 +104,7 @@ import { installPaveSignes } from './ui/pave-signes';
 import { initEggs, mountForestEgg, recordCookieEgg } from './ui/eggs';
 import { fillFooterYear, initFooterCookie } from './ui/footer';
 import { brut } from './core/html';
+import { lireFragment } from './core/partage/liens';
 
 // Quitter ces modes (non reprenables) perd la progression → on confirme (#63). La séance
 // partagée en cours en est (#734) : rien n'y est repris, et le premier passage reste à faire.
@@ -407,11 +408,16 @@ function wireDOM() {
 	//    callback re-rend la vue PUIS enchaîne sur le mot parents + le tour.
 	// 2) Sinon (classe déjà choisie / un seul niveau), on enchaîne tout de suite.
 	// `maybeOnboarding` se garde elle-même de chevaucher la modale de classe.
-	maybeShowClassChoice(() => {
-		route();
+	// Pas d'accueil par-dessus un lien partagé (#734) : l'enfant vient faire l'exercice
+	// qu'on lui a envoyé, l'adulte lire un résultat, et la vue d'un résultat ne doit rien
+	// écrire (critère 43). L'accueil attendra la prochaine visite ordinaire.
+	if (!lireFragment(location.hash)) {
+		maybeShowClassChoice(() => {
+			route();
+			maybeOnboarding();
+		});
 		maybeOnboarding();
-	});
-	maybeOnboarding();
+	}
 
 	// Bande décorative « forêt » de pied d'accueil : SVG pré-généré, inséré dans le
 	// DOM (pour que l'animation « vent » respecte l'option « animations réduites »).

@@ -1,6 +1,6 @@
 /* ============================================================
-   Espace encadrant (#459) — restructuration en 4 onglets : smoke tests e2e.
-   Couvre : rendu initial (4 onglets, Suivi actif par défaut), navigation par
+   Espace encadrant (#459) — restructuration en onglets (cinq depuis « Envois », #734) :
+   smoke tests e2e. Couvre : rendu initial (5 onglets, Suivi actif par défaut), navigation par
    clic entre onglets (contenu qui apparaît/disparaît, classe active),
    et lien direct par sous-route de hash (#encadrant/<onglet>).
    ============================================================ */
@@ -11,13 +11,13 @@ import { watchErrors, gotoHash } from './helpers';
    encadrant.spec.ts) : sans ça, la porte PIN masquerait les onglets. */
 const CLEAR_PIN = `localStorage.removeItem('ludaskia_encadrant_lock');`;
 
-/* 1. Ouverture par défaut : 4 onglets, Suivi actif, contenu Suivi visible. */
-test('4 onglets présents, Suivi actif par défaut, contenu Suivi visible', async ({ page }) => {
+/* 1. Ouverture par défaut : 5 onglets, Suivi actif, contenu Suivi visible. */
+test('5 onglets présents, Suivi actif par défaut, contenu Suivi visible', async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(CLEAR_PIN);
 	await gotoHash(page, 'encadrant');
 
-	await expect(page.locator('.enc-tab')).toHaveCount(4);
+	await expect(page.locator('.enc-tab')).toHaveCount(5);
 
 	const actif = page.locator('.enc-tab.active');
 	await expect(actif).toHaveCount(1);

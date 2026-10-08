@@ -17,7 +17,7 @@ import {
 import { labelLecon } from '../levels';
 import { attendueItem, libelleChoix, questionPourJournal } from '../erreur-representation';
 import { addXP, recordActivitePartage } from '../progress';
-import { lsGet, lsSet } from '../storage';
+import { lsGet, lsGetRaw, lsSet } from '../storage';
 import type { Envoi } from './envoi';
 import { figerResultat, type Capture, type ItemCapture } from './capture';
 import { schemaResultatGarde, type Resultat, type StatutReponse } from './resultat';
@@ -175,7 +175,10 @@ export function passageTermine(statuts: readonly StatutReponse[]): boolean {
    repasse par le schéma, et une `Map` évite qu'un identifiant comme `__proto__` ou
    `constructor` ne touche un prototype. Une entrée illisible est oubliée, sans lever. */
 function chargerPassages(): Map<string, Resultat> {
-	const brut: unknown = lsGet(PARTAGES_RECUS_KEY, {});
+	return lirePassages(lsGet(PARTAGES_RECUS_KEY, {}));
+}
+
+function lirePassages(brut: unknown): Map<string, Resultat> {
 	const passages = new Map<string, Resultat>();
 	if (!brut || typeof brut !== 'object' || Array.isArray(brut)) return passages;
 	for (const [id, valeur] of Object.entries(brut)) {
@@ -198,6 +201,16 @@ function enregistrerPassages(passages: Map<string, Resultat>): void {
 		PARTAGES_RECUS_KEY,
 		Object.fromEntries(gardes.map((r) => [r.envoi.id, schemaResultatGarde.ecrire(r)])),
 	);
+}
+
+/** Ce résultat est-il le premier passage que ce profil a lui-même joué sur cet appareil ?
+ *  Lu par UUID, sans changer le profil actif : l'import d'un résultat (#734) s'en sert pour
+ *  ne pas recopier dans son journal des erreurs que la séance y a déjà mises. */
+export function passageJoueIci(uuid: string, resultat: Resultat): boolean {
+	const passage = lirePassages(lsGetRaw(uuid + '/' + PARTAGES_RECUS_KEY, {})).get(
+		resultat.envoi.id,
+	);
+	return passage?.id === resultat.id;
 }
 
 /** Le premier passage de cet envoi sur le profil actif, ou `null`. */

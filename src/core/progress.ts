@@ -3,7 +3,15 @@
    étoiles et statistiques par leçon. (localStorage via lsGet/lsSet)
    ============================================================ */
 import { fmt, startOfDay } from './utils';
-import { lsGet, lsSet, lsSetQuiet, lsRemoveQuiet, lsGetRaw, lsSetRaw } from './storage';
+import {
+	lsGet,
+	lsSet,
+	lsSetQuiet,
+	lsRemoveQuiet,
+	lsGetRaw,
+	lsGetItemRaw,
+	lsSetRaw,
+} from './storage';
 import { getAllLessons, getLessonById } from './catalog';
 import type { SchoolLevel } from './catalog';
 import { LEVEL_ORDER, niveauInferieurImmediat } from './levels';
@@ -512,6 +520,22 @@ export function recordSessionActivity(kind: ActivityKind, ref?: string, progress
    le suivi. */
 export function recordActivitePartage(now: number): void {
 	ajouterActivite(now, 'partage');
+}
+/* Le même point d'activité, écrit dans un profil donné par UUID, actif ou non : import d'un
+   résultat de séance partagée par l'encadrant (#734, critère 21). Daté du PASSAGE, il est
+   rangé à sa place chronologique (le graphe d'activité compte par jour). L'appelant date le
+   profil (`touchProfile`). Rend `false` si le stockage a refusé l'écriture (`lsSetRaw` le
+   tait) : relu, le texte n'est pas celui écrit. Une entrée plus ancienne que toute une
+   activité pleine en tombe aussitôt, sans que rien ait été refusé : c'est le texte écrit
+   qu'on compare, pas la présence de l'entrée. */
+export function recordActivitePartageFor(uuid: string, t: number): boolean {
+	const a = normalizeActivity(lsGetRaw(uuid + '/' + ACTIVITY_KEY, []));
+	const apres = a.findIndex((e) => e.t > t);
+	a.splice(apres < 0 ? a.length : apres, 0, { t, k: 'partage' });
+	if (a.length > ACTIVITY_MAX) a.splice(0, a.length - ACTIVITY_MAX);
+	const json = JSON.stringify(a);
+	lsSetRaw(uuid + '/' + ACTIVITY_KEY, json);
+	return lsGetItemRaw(uuid + '/' + ACTIVITY_KEY) === json;
 }
 
 /* ---------- Premier passage par leçon (objectif « nouvelle leçon », #178) ----------

@@ -29,6 +29,10 @@ import type { Item, RenderContext } from './items';
 import { commKey } from './utils';
 import { html, joindre, VIDE, type SafeHtml } from './html';
 
+/** Questions d'une fiche de leçon en jeu libre. Partagé avec la séance partagée (#734),
+ *  dont la fiche envoyée doit compter autant de questions que celle du jeu libre. */
+export const QUESTIONS_PAR_FICHE = 8;
+
 /* Génère jusqu'à n items distincts pour une leçon (dédup par contenu).
    Si la leçon offre moins de n variantes (ex. une conjugaison = 6 personnes),
    on renvoie la série plus courte SANS doublon : une question répétée à
@@ -110,7 +114,7 @@ export function buildLessonFiche(
 	// `mode` (#717) : le mode retenu par l'enfant, quand il change ce que la fiche demande
 	// (écrire un nombre en chiffres romains / le lire). Absent partout ailleurs → mode par
 	// défaut du type, comportement d'origine.
-	const items = genItems(lesson, 8, lvl, mode);
+	const items = genItems(lesson, QUESTIONS_PAR_FICHE, lvl, mode);
 	const inner = withLessonId(ctx, lessonId, () => {
 		const lignes = joindre(
 			items.map((it) => html`<div class="conj-op">${renderItem(it, ctx)}</div>`),

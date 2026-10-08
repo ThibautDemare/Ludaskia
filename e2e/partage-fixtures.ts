@@ -116,3 +116,54 @@ export function envoiFicheDe(lecon: string, exercices: Exercise[]): Envoi {
 		blocs: [{ lecon, exercices }],
 	};
 }
+
+/* ---------- Résultats (PR 3 : lecture et import côté encadrant) ---------- */
+import { encoderResultat, type Resultat } from '../src/core/partage/resultat';
+
+export { encoderResultat };
+
+/** Quatre réponses, une de chaque statut, sur une leçon réelle. Énoncés sans `@`
+ *  pour que la vue de lecture les affiche tels quels. */
+export function resultatDe(over: Partial<Resultat> = {}): Resultat {
+	return {
+		id: nouvelIdentifiant(),
+		envoi: { id: nouvelIdentifiant(), libelle: LIBELLE_FICHE, niveau: 'ce2' },
+		pseudo: 'Léa',
+		date: Date.now() - 60 * 60 * 1000,
+		reponses: [
+			{
+				lecon: LECON_A,
+				enonce: 'je chante (chanter)',
+				saisie: 'chante',
+				attendue: 'chante',
+				statut: 'juste',
+			},
+			{
+				lecon: LECON_A,
+				enonce: 'tu danses (danser)',
+				saisie: 'zzz',
+				attendue: 'danses',
+				statut: 'faux',
+			},
+			{
+				lecon: LECON_A,
+				enonce: 'il mange (manger)',
+				saisie: '',
+				attendue: 'mange',
+				statut: 'jnsp',
+			},
+			{
+				lecon: LECON_A,
+				enonce: 'nous jouons (jouer)',
+				saisie: '',
+				attendue: 'jouons',
+				statut: 'vide',
+			},
+		],
+		...over,
+	};
+}
+
+export async function codeResultatDe(over: Partial<Resultat> = {}): Promise<string> {
+	return encoderResultat(resultatDe(over));
+}

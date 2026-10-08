@@ -31,7 +31,7 @@ import {
 	noterReponse,
 	type Capture,
 } from '../core/partage/capture';
-import { fragmentLien, nouvelIdentifiant } from '../core/partage/liens';
+import { nouvelIdentifiant } from '../core/partage/liens';
 import type { RaisonRefus } from '../core/partage/codec';
 import {
 	changerPseudo,
@@ -71,6 +71,7 @@ import { activeProfile } from '../core/profiles';
 import { icon } from './icon';
 import { capterErreur, libelleChoix } from './erreur-capture';
 import { bindConsigneTts } from './consigne-tts';
+import { annoncer, causeRefus, copierTexte, urlDuLien } from './lien-partage';
 import { champsIllisibles, lireSaisies, marquerChamps, signalerSaisiesIllisibles } from './session';
 import { goHome, setCurrentLessonId, setCurrentMode, setRenderCtx, setToolbar } from './navigation';
 
@@ -137,21 +138,17 @@ export async function afficherEnvoi(code: string, el: HTMLElement): Promise<void
 /* Cause du refus, pour l'adulte (repliée sous « Pour l'adulte ») : l'enfant n'y peut
    rien, l'adulte doit pouvoir diagnostiquer — le plus souvent un lien coupé par une
    messagerie. */
-const CAUSES: Record<RaisonRefus | RaisonInjouable, string> = {
-	navigateur:
-		'Ce navigateur ne sait pas ouvrir ce lien. Essayez avec un navigateur à jour (Firefox, Chrome, Safari).',
-	illisible:
-		"Le lien est incomplet ou a été modifié. C'est souvent une messagerie qui l'a coupé : recopiez-le en entier.",
-	controle: 'Le lien a été modifié ou recopié en partie : son contenu ne correspond plus.',
-	taille: 'Le lien est trop long pour être ouvert.',
-	version:
-		"Ce lien a été créé par une version de Ludaskia que celle-ci ne sait pas lire. Mettez l'application à jour.",
-	type: "Ce lien n'est pas un exercice à faire. C'est peut-être un lien de résultat.",
-	schema: "Le contenu du lien n'est pas valide.",
+const CAUSES_PASSAGE: Record<RaisonInjouable, string> = {
 	lecon:
 		"Une leçon de cet exercice n'existe pas dans cette version de Ludaskia. Mettez l'application à jour.",
 	format: "Ce type d'exercice ne peut pas encore être joué depuis un lien.",
 };
+
+function cause(raison: RaisonRefus | RaisonInjouable): string {
+	return raison === 'lecon' || raison === 'format'
+		? CAUSES_PASSAGE[raison]
+		: causeRefus(raison, 'envoi');
+}
 
 function afficherRefus(el: HTMLElement, raison: RaisonRefus | RaisonInjouable): void {
 	seance = null;
@@ -160,7 +157,7 @@ function afficherRefus(el: HTMLElement, raison: RaisonRefus | RaisonInjouable): 
       <p class="partage-texte">Ce n'est pas de ta faute. Demande à la personne qui te l'a envoyé de te le renvoyer.</p>
       <details class="partage-adulte">
         <summary>Pour l'adulte</summary>
-        <p>${CAUSES[raison]}</p>
+        <p>${cause(raison)}</p>
       </details>
       <button type="button" id="partageRetour" class="partage-btn partage-btn-principal">${icon('house')} Retour à l'accueil</button>
     </section>`.balisage;
@@ -634,7 +631,7 @@ function brancherLien(section: HTMLElement, resultat: Resultat): void {
 		try {
 			const code = await encoderResultat(r);
 			if (mienne !== version) return;
-			url = location.href.split('#')[0] + fragmentLien('resultat', code);
+			url = urlDuLien('resultat', code);
 			lien.value = url;
 			activer(true);
 		} catch {
@@ -653,25 +650,11 @@ function brancherLien(section: HTMLElement, resultat: Resultat): void {
 	void refaire();
 }
 
-/* Copie du lien. Le presse-papiers peut être refusé (contexte non sécurisé, navigateur
-   ancien) : on retombe sur la sélection du champ, puis sur la consigne d'appui long.
-   La confirmation RESTE affichée : un message qui s'efface en deux secondes, un enfant
-   ne le voit pas. */
+/* Copie du lien. Faute de presse-papiers, la consigne d'appui long. La confirmation RESTE
+   affichée : un message qui s'efface en deux secondes, un enfant ne le voit pas. */
 async function copierLien(url: string, lien: HTMLInputElement, copie: HTMLElement): Promise<void> {
 	if (!url) return;
-	let ok: boolean;
-	try {
-		await navigator.clipboard.writeText(url);
-		ok = true;
-	} catch {
-		lien.focus();
-		lien.select();
-		try {
-			ok = document.execCommand('copy');
-		} catch {
-			ok = false;
-		}
-	}
+	const ok = await copierTexte(url, lien);
 	annoncer(
 		copie,
 		ok
@@ -696,13 +679,4 @@ function afficherFinEntrainement(el: HTMLElement, fiche: HTMLElement | null): vo
 /* Focus sur le titre de chaque écran : un lecteur d'écran annonce où l'on est arrivé. */
 function focusTitre(racine: ParentNode): void {
 	racine.querySelector<HTMLElement>('.partage-titre')?.focus({ preventScroll: true });
-}
-
-/* Région vivante vidée puis remplie : un texte identique au précédent ne serait pas
-   réannoncé (même patron que le verdict de la fiche, `ui/session.ts`). */
-function annoncer(region: HTMLElement, texte: string): void {
-	region.textContent = '';
-	setTimeout(() => {
-		region.textContent = texte;
-	}, 50);
 }

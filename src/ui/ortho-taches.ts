@@ -649,6 +649,9 @@ function brancherEntree(e: KeyboardEvent, verifier: () => void): void {
 /** Clavier d'accents sous un champ de saisie d'orthographe. Une touche écrit dans le champ
     sans émettre `input` : un hôte qui suit la saisie écoute aussi les clics du conteneur. */
 export function renderAccentKb(container: HTMLElement, input: HTMLInputElement): void {
+	// Nommé : sans lui, quatorze boutons d'une lettre s'enchaînent sans dire à quoi ils servent.
+	container.setAttribute('role', 'group');
+	container.setAttribute('aria-label', 'Accents');
 	container.innerHTML = joindre(
 		ACCENTS.map((c) => html`<button type="button" class="accent-key" data-c="${c}">${c}</button>`),
 	).balisage;

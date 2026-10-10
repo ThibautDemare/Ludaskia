@@ -69,13 +69,15 @@ import { uiConfirm } from './ui-modal';
 import {
 	composerDicteeChoisie,
 	dicteeChange,
+	messageEcartes,
+	messageNonConjugues,
+	motsTexte,
 	dicteeClick,
 	dicteeDuProfil,
 	dicteeHTML,
 	libelleDictee,
 	sansChoixDictee,
 } from './encadrant-envois-dictee';
-import { NOMBRE_MAX_MOTS } from '../core/partage/textes';
 
 /* ---------- Libellés ---------- */
 
@@ -90,12 +92,8 @@ function messageRefus(raison: Exclude<Composition, { ok: true }>['raison']): str
 		case 'libelle':
 			return 'Le libellé est refusé. Corrigez-le, puis créez le lien.';
 		case 'vide':
-			return etat.source === 'dictee'
-				? "Aucun mot de cette liste ne peut voyager dans un lien : un mot n'y a droit qu'aux lettres, à l'apostrophe, au trait d'union et à l'espace. Corrigez la liste, puis créez le lien."
-				: 'Ce choix ne contient aucune question à ce niveau. Essayez un autre niveau.';
+			return 'Ce choix ne contient aucune question à ce niveau. Essayez un autre niveau.';
 		case 'trop-grand':
-			if (etat.source === 'dictee')
-				return `Cette liste est trop longue pour tenir dans un lien : ${NOMBRE_MAX_MOTS} mots au plus. Envoyez une liste plus courte.`;
 			return `Ce bilan est trop grand pour tenir dans un lien : ${MAX_BLOCS} leçons et ${MAX_ITEMS} questions au plus. ${
 				etat.bilan === 'categorie'
 					? 'Choisissez le bilan express.'
@@ -105,8 +103,6 @@ function messageRefus(raison: Exclude<Composition, { ok: true }>['raison']): str
 			return 'Cet exercice ne peut pas encore être envoyé par lien. Choisissez une autre leçon.';
 	}
 }
-const REFUS_COMPOSITION =
-	"L'exercice n'a pas pu être préparé. Vérifiez la connexion, puis créez le lien de nouveau.";
 const REFUS_ENCODAGE =
 	'Ce navigateur ne sait pas créer le lien. Essayez avec un navigateur à jour (Firefox, Chrome, Safari).';
 
@@ -132,8 +128,8 @@ interface Etat {
 	   écrit par l'adulte, il survit aux changements de choix : l'effacer en silence parce
 	   qu'il change de catégorie lui ferait perdre ce qu'il a tapé. */
 	libelle: string | null;
-	/* Lien créé ; `ecartes` : mots d'une liste que le lien refuse, absents de l'envoi. */
-	cree: { url: string; garde: boolean; ecartes: string[] } | null;
+	/* Lien créé ; `ecartes`, `nonConjugues` : mots et verbes d'une liste absents de l'envoi. */
+	cree: { url: string; garde: boolean; ecartes: string[]; nonConjugues: string[] } | null;
 }
 
 const etat: Etat = {
@@ -491,20 +487,28 @@ function creeHTML(): SafeHtml {
 			: VIDE;
 	const nonGarde = etat.cree.garde
 		? VIDE
-		: html`<p class="enc-hint enc-envoi-aide-refus">L'appareil n'a pas pu garder ce lien dans vos envois : copiez-le maintenant.</p>`;
-	const n = etat.cree.ecartes.length;
-	const ecartes = n
-		? html`<p class="enc-hint enc-envoi-aide-refus" id="envoiEcartes">${
-				n > 1
-					? `Ces ${n} mots de la liste ne sont pas dans l'envoi`
-					: "Ce mot de la liste n'est pas dans l'envoi"
-			} : ${etat.cree.ecartes.join(', ')}. Un lien n'accepte que les lettres, l'apostrophe, le trait d'union et l'espace.</p>`
+		: html`<p class="enc-hint enc-envoi-aide-refus" id="envoiNonGarde">L'appareil n'a pas pu garder ce lien dans vos envois : copiez-le maintenant.</p>`;
+	const ecartes = etat.cree.ecartes.length
+		? html`<p class="enc-hint enc-envoi-aide-refus" id="envoiEcartes">${messageEcartes(etat.cree.ecartes)}</p>`
 		: VIDE;
+	const nonConjugues = etat.cree.nonConjugues.length
+		? html`<p class="enc-hint enc-envoi-aide-refus" id="envoiNonConjugues">${messageNonConjugues(etat.cree.nonConjugues)}</p>`
+		: VIDE;
+	// Ces avertissements suivent le titre que le focus atteint : sans ce lien, une personne
+	// qui tabule vers le lien entend « Le lien est prêt » sans apprendre que des mots manquent.
+	const decrit = [
+		etat.cree.garde ? '' : 'envoiNonGarde',
+		etat.cree.ecartes.length ? 'envoiEcartes' : '',
+		etat.cree.nonConjugues.length ? 'envoiNonConjugues' : '',
+	]
+		.filter(Boolean)
+		.join(' ');
 	return html`<div class="enc-envoi-cree" id="envoiCree">
-      <h4 class="enc-envoi-cree-titre" id="envoiCreeTitre" tabindex="-1">${icon('check-circle')} Le lien est prêt</h4>
+      <h4 class="enc-envoi-cree-titre" id="envoiCreeTitre" tabindex="-1"${decrit ? attribut('aria-describedby', decrit) : VIDE}>${icon('check-circle')} Le lien est prêt</h4>
       <p class="enc-hint">Envoyez-le à l'enfant, par message ou par l'ENT de l'école. Il l'ouvre sur son appareil.</p>
       ${nonGarde}
       ${ecartes}
+      ${nonConjugues}
       <label class="sr-only" for="envoiLien">Lien de l'exercice</label>
       <input type="text" class="enc-input enc-envoi-lien" id="envoiLien" value="${etat.cree.url}" readonly />
       <div class="enc-envoi-actions">
@@ -584,8 +588,7 @@ function detailEnvoi(envoi: Envoi, titre: string, mode: string): string {
 		const lecons = `${envoi.blocs.length} leçon${envoi.blocs.length > 1 ? 's' : ''}`;
 		return `Bilan ${envoi.variante} : ${[titre, niveau, lecons, questions].join(', ')}`;
 	}
-	const mots = `${n} mot${n > 1 ? 's' : ''}`;
-	return `Dictée : ${[titre, niveau, mots].filter(Boolean).join(', ')}`;
+	return `Dictée : ${[titre, niveau, motsTexte(n)].filter(Boolean).join(', ')}`;
 }
 
 interface Composee {
@@ -593,6 +596,9 @@ interface Composee {
 	titre: string;
 	mode: string;
 	ecartes: string[];
+	nonConjugues: string[];
+	/** Refus déjà dit par la source (une dictée), à afficher tel quel. */
+	refus?: string;
 }
 
 async function composer(consulte: Profile, libelle: string, id: string): Promise<Composee | null> {
@@ -605,12 +611,12 @@ async function composer(consulte: Profile, libelle: string, id: string): Promise
 		if (!c) return null;
 		const compo = composerLecon({ lesson: c.lesson, niveau: c.niveau, mode: c.mode, libelle, id });
 		const mode = c.modes.length > 1 ? libelleMode(c.lesson, c.mode) : '';
-		return { compo, titre: labelLecon(c.lesson, c.niveau), mode, ecartes: [] };
+		return { compo, titre: labelLecon(c.lesson, c.niveau), mode, ecartes: [], nonConjugues: [] };
 	}
 	const b = choixBilan(consulte);
 	if (!b) return null;
 	const compo = composerBilan({ ...b, libelle, id });
-	return { compo, titre: b.titre, mode: '', ecartes: [] };
+	return { compo, titre: b.titre, mode: '', ecartes: [], nonConjugues: [] };
 }
 
 /* Ce qu'on dit quand rien n'est choisi. */
@@ -644,16 +650,7 @@ async function creerUnEnvoi(): Promise<void> {
 	if (!consulte) return;
 	const libelle = libelleCourant(consulte);
 	const id = nouvelIdentifiant();
-	let r: Composee | null;
-	try {
-		r = await composer(consulte, libelle, id);
-	} catch {
-		// Le lexique des verbes n'a pas pu être chargé (hors ligne, cache vide) : une liste à
-		// verbes ne se conjugue pas.
-		etat.cree = null;
-		signalerErreur(REFUS_COMPOSITION, '#envoiCreer');
-		return;
-	}
+	const r = await composer(consulte, libelle, id);
 	etat.cree = null;
 	if (!r) {
 		signalerErreur(sansChoix(consulte), '#envoiCreer');
@@ -661,7 +658,7 @@ async function creerUnEnvoi(): Promise<void> {
 	}
 	if (!r.compo.ok) {
 		signalerErreur(
-			messageRefus(r.compo.raison),
+			r.refus ?? messageRefus(r.compo.raison),
 			r.compo.raison === 'libelle' ? '#envoiLibelle' : '#envoiCreer',
 		);
 		return;
@@ -680,7 +677,12 @@ async function creerUnEnvoi(): Promise<void> {
 		detail: detailEnvoi(r.compo.envoi, r.titre, r.mode),
 		code,
 	});
-	etat.cree = { url: urlDuLien('envoi', code), garde, ecartes: r.ecartes };
+	etat.cree = {
+		url: urlDuLien('envoi', code),
+		garde,
+		ecartes: r.ecartes,
+		nonConjugues: r.nonConjugues,
+	};
 	rendre('#envoiCreeTitre');
 }
 

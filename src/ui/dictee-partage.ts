@@ -31,17 +31,16 @@ import { contexteHTML, ecouterCible, ecouterLabel, renderAccentKb } from './orth
 import {
 	brancherDecisionPartage,
 	decisionPartageHTML,
+	AIDE_DECISION,
 	enchainerPartage,
 	erreurPassee,
+	rangDit,
+	type JeuSeance,
 	type ReponseRunner,
-	type SeanceRunner,
 } from './runner-partage';
 
 /** La dictée qu'un envoi fait jouer à l'écran partagé. */
-export interface SeanceDictee extends Pick<
-	SeanceRunner,
-	'scene' | 'noter' | 'terminer' | 'annoncer'
-> {
+export interface SeanceDictee extends JeuSeance {
 	mots: readonly MotDictee[];
 	/** Leçon où ranger les erreurs : la source de l'envoi (cf. `preparerPassage`). */
 	lecon: string;
@@ -63,18 +62,24 @@ export function jouerPartageDictee(s: SeanceDictee): void {
 	rendreMot(s, exercices, 0);
 }
 
+const UNITE = 'Mot';
+
 function rendreMot(s: SeanceDictee, exercices: Exercise[], index: number): void {
 	const mot = s.mots[index];
 	const verbe = !!mot.contexte;
+	// Le focus va sur le champ, pas sur la carte : le rang, écrit dans la barre de
+	// progression hors de la carte, est donc dit par la carte NOMMÉE (dès le premier mot) et
+	// par le nom du champ lui-même, que le lecteur d'écran énonce à l'arrivée du focus.
+	const rang = rangDit({ unite: UNITE }, index + 1, s.mots.length);
 	s.scene.innerHTML = html`<div class="sprint sprint-lecon partage-dictee">
-      ${leconProgressHTML(index, s.mots.length, 'Mot')}
-      <div class="sprint-stage ortho-run">
+      ${leconProgressHTML(index, s.mots.length, UNITE)}
+      <div class="sprint-stage ortho-run" role="group" tabindex="-1" aria-label="${rang}">
         <p class="ortho-run-consigne">${verbe ? 'Écoute la phrase, puis écris seulement le verbe.' : 'Écoute le mot, puis écris-le.'}</p>
         ${contexteHTML(mot)}
         <button type="button" class="btn-primary ortho-ecouter" id="btnEcouter">${icon('speaker')} ${ecouterLabel(mot)}</button>
         <div class="ortho-saisie">
           <input class="ortho-input" id="orthoInput" ${TEXT_ANSWER_INPUT_ATTRS}
-                 aria-label="${verbe ? 'Écris le verbe' : 'Écris le mot'}" />
+                 aria-label="${rang} : ${verbe ? 'écris le verbe' : 'écris le mot'}" />
           <div class="accent-kb" id="accentKb"></div>
         </div>
         ${decisionPartageHTML(VALIDER_ID)}
@@ -100,7 +105,7 @@ function rendreMot(s: SeanceDictee, exercices: Exercise[], index: number): void 
 		repondu: () => input.value.trim() !== '',
 		onValider: () => {
 			const reponse = reponseDuMot(s, exercices[index], mot, input.value, decision.jnsp());
-			enchainerPartage({ ...s, exercices }, index, reponse, () =>
+			enchainerPartage({ ...s, exercices, unite: UNITE }, index, reponse, () =>
 				rendreMot(s, exercices, index + 1),
 			);
 		},
@@ -111,14 +116,16 @@ function rendreMot(s: SeanceDictee, exercices: Exercise[], index: number): void 
 	clavier.addEventListener('click', (e) => {
 		if ((e.target as Element).closest('.accent-key')) decision.widgetTouche();
 	});
-	// Entrée valide, comme en jeu libre, mais par « Valider » : il ne note qu'une fois, et
-	// ne fait rien tant qu'il n'y a rien à noter.
+	// Entrée valide, comme en jeu libre, mais par « Valider » : il ne note qu'une fois. Tant
+	// qu'il n'y a rien à noter, Entrée dit pourquoi elle n'agit pas : l'aide est visible,
+	// mais rien ne l'annonce à qui tape sans voir l'écran.
 	const valider = s.scene.querySelector<HTMLButtonElement>(`#${VALIDER_ID}`)!;
 	input.addEventListener('keydown', (e) => {
 		if (e.key !== 'Enter') return;
 		e.preventDefault();
 		e.stopPropagation();
-		if (!valider.disabled) valider.click();
+		if (valider.disabled) s.annoncer(AIDE_DECISION);
+		else valider.click();
 	});
 
 	// Lecture EN DERNIER, après le câblage : un échec immédiat appelle `silence`, qui

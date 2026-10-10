@@ -87,7 +87,7 @@ import {
 } from './session';
 import { goHome, setCurrentLessonId, setCurrentMode, setRenderCtx, setToolbar } from './navigation';
 import { itemsResultatHTML } from './partage-resultat';
-import type { ErreurRunner, SeanceRunner } from './runner-partage';
+import type { ErreurRunner, JeuSeance, SeanceRunner } from './runner-partage';
 import type { TypeRunner } from '../core/exercise';
 import { jouerPartageQcm } from './lecon-qcm';
 import { jouerPartageTuiles } from './lecon-tuiles';
@@ -100,7 +100,17 @@ import { jouerPartageTableau } from './lecon-tableau';
 import { jouerPartageDroiteGraduee } from './lecon-droite-graduee';
 import { jouerPartageProbleme } from './lecon-probleme';
 import { jouerPartageDictee } from './dictee-partage';
-import { dicteeDisponible, messageSansVoix, raisonSansVoix, surChangementVoix } from './tts';
+import {
+	annoncerVoix,
+	causeSansVoix,
+	focusRepris,
+	oublierVoix,
+	sansVoix,
+	sansVoixHTML,
+	statutVoixHTML,
+	surveillerVoix,
+} from './partage-voix';
+import { ID_DICTEE_ENVOYEE } from '../core/orthographe/lessons';
 
 /* Runner de chaque type, en séance partagée. Table typée sur `TypeRunner` : un type
    déclaré « runner » dans `JEU_PAR_TYPE` sans sa séance partagée ne compile pas, comme
@@ -142,13 +152,6 @@ let jeton = 0;
 /** Une séance est-elle en cours, non terminée ? La quitter perd ce qui a été répondu
  *  (rien n'est repris) : `main.ts` demande alors confirmation, comme pour le sprint. */
 export const partageEnCours = (): boolean => !!seance && !seance.finie;
-
-/* Écoute des voix d'un écran d'accueil de dictée : posée tant qu'il est affiché. */
-let desabonnerVoix: (() => void) | null = null;
-function oublierVoix(): void {
-	desabonnerVoix?.();
-	desabonnerVoix = null;
-}
 
 /** Oublie la séance et annule un décodage en vol (appelé à chaque changement d'écran). */
 export function partageCleanup(): void {
@@ -219,18 +222,19 @@ function afficherRefus(el: HTMLElement, raison: RaisonRefus | RaisonInjouable): 
 	focusTitre(el);
 }
 
-function afficherAccueil(el: HTMLElement, p: PassageOk): void {
-	const muet = sansVoix(p);
+function afficherAccueil(el: HTMLElement, p: PassageOk, annonce?: string): void {
+	const muet = sansVoix(!!p.dictee);
 	const consigne = p.dictee
-		? html`<p class="partage-texte">Mets le son : chaque mot va t'être dicté.</p>`
+		? html`<p class="partage-texte">Mets le son : tu vas entendre chaque mot.</p>`
 		: VIDE;
 	el.innerHTML = html`<section id="partageAccueil" class="partage-ecran">
       <p class="partage-surtitre">${icon('bookmark')} Exercice envoyé</p>
       <h2 class="partage-titre" tabindex="-1">${p.envoi.libelle}</h2>
       <p class="partage-encart">${icon('eye')}<span>La personne qui t'a envoyé cet exercice verra tes réponses.</span></p>
+      ${statutVoixHTML(!!p.dictee)}
       ${
 				muet
-					? html`${sansVoixHTML("Ton exercice t'attend : rouvre le lien quand le son marchera.")}
+					? html`${sansVoixHTML('Tu pourras le faire plus tard : rouvre le lien quand le son marchera.')}
       <button type="button" id="partageRetour" class="partage-btn partage-btn-principal">${icon('house')} Retour à l'accueil</button>`
 					: html`${consigne}
       <p class="partage-texte">Réponds comme tu peux. Si tu ne sais pas, coche « Je ne sais pas » : c'est une vraie réponse.</p>
@@ -239,17 +243,25 @@ function afficherAccueil(el: HTMLElement, p: PassageOk): void {
     </section>`.balisage;
 	el.querySelector('#partageCommencer')?.addEventListener('click', () => demarrer(el, p, false));
 	el.querySelector('#partageRetour')?.addEventListener('click', goHome);
-	surveillerVoix(p, () => afficherAccueil(el, p));
-	focusTitre(el);
+	surveillerVoix(el, !!p.dictee, (dispo) =>
+		afficherAccueil(el, p, dispo ? 'Le son marche : tu peux commencer.' : 'Le son ne marche plus.'),
+	);
+	apresRendu(el, annonce);
 }
 
-function afficherDejaFait(el: HTMLElement, p: PassageOk, resultat: Resultat): void {
+function afficherDejaFait(
+	el: HTMLElement,
+	p: PassageOk,
+	resultat: Resultat,
+	annonce?: string,
+): void {
 	// Sans voix, recopier le résultat reste possible ; s'entraîner à une dictée, non.
-	const muet = sansVoix(p);
+	const muet = sansVoix(!!p.dictee);
 	el.innerHTML = html`<section id="partageDejaFait" class="partage-ecran">
       <p class="partage-surtitre">${icon('bookmark')} Exercice envoyé</p>
       <h2 class="partage-titre" tabindex="-1">${p.envoi.libelle}</h2>
       <p class="partage-texte">Tu as déjà fait cet exercice.</p>
+      ${statutVoixHTML(!!p.dictee)}
       <div class="partage-pile">
         <button type="button" id="partageRecopier" class="partage-btn partage-btn-principal">
           <span>Recopier mon résultat</span>
@@ -272,40 +284,22 @@ function afficherDejaFait(el: HTMLElement, p: PassageOk, resultat: Resultat): vo
 		afficherFin(el, resultat, null);
 	});
 	el.querySelector('#partageEntrainer')?.addEventListener('click', () => demarrer(el, p, true));
-	surveillerVoix(p, () => afficherDejaFait(el, p, resultat));
-	focusTitre(el);
+	surveillerVoix(el, !!p.dictee, (dispo) =>
+		afficherDejaFait(
+			el,
+			p,
+			resultat,
+			dispo ? "Le son marche : tu peux t'entraîner." : 'Le son ne marche plus.',
+		),
+	);
+	apresRendu(el, annonce);
 }
 
-/* ---------- La voix d'une dictée (critère 12) ---------- */
-
-/* Une dictée sans voix française ne se joue pas : la voix EST l'exercice. */
-const sansVoix = (p: PassageOk): boolean => !!p.dictee && !dicteeDisponible();
-
-/* Les voix arrivent souvent APRÈS le premier rendu (`voiceschanged`), et la connexion peut
-   revenir : l'écran d'une dictée se refait quand la disponibilité change, pour ne pas
-   laisser l'enfant devant un « pas de son » qui n'est plus vrai. Un seul abonnement à la
-   fois, retiré au départ de l'écran (`partageCleanup`, `demarrer`). */
-function surveillerVoix(p: PassageOk, refaire: () => void): void {
-	oublierVoix();
-	if (!p.dictee) return;
-	let dispo = dicteeDisponible();
-	desabonnerVoix = surChangementVoix(() => {
-		const maintenant = dicteeDisponible();
-		if (maintenant === dispo) return;
-		dispo = maintenant;
-		refaire();
-	});
-}
-
-/* La cause, dite comme ailleurs dans l'appli (`messageSansVoix`). Une voix listée qui ne
-   parle pas (énoncé en échec) n'a pas de cause connue : le message générique dirait le
-   contraire (« disponible »). */
-function causeSansVoix(): string {
-	return raisonSansVoix() ? messageSansVoix() : 'La voix de cet appareil ne répond pas.';
-}
-
-function sansVoixHTML(suite: string): SafeHtml {
-	return html`<p id="partageSansVoix" class="partage-encart partage-encart-alerte">${icon('speaker')}<span>Cette dictée a besoin du son. ${causeSansVoix()} ${suite}</span></p>`;
+/* Fin du rendu d'un écran d'entrée : le focus sur son titre (sauf exception, cf.
+   `focusRepris`), puis l'annonce d'un changement de voix. */
+function apresRendu(el: HTMLElement, annonce?: string): void {
+	if (focusRepris(annonce)) focusTitre(el);
+	annoncerVoix(el, annonce);
 }
 
 /* La voix s'est tue PENDANT la dictée. Rien n'est figé ni journalisé : une saisie faite
@@ -317,7 +311,7 @@ function afficherSilence(el: HTMLElement, s: SeanceEnCours): void {
 	seance = null;
 	const suite = s.entrainement
 		? "Pour t'entraîner, rouvre le lien quand le son marchera."
-		: "Ton exercice n'est pas perdu : rouvre le lien quand le son marchera.";
+		: 'Tu pourras le recommencer : rouvre le lien quand le son marchera.';
 	el.innerHTML = html`<section id="partageSilence" class="partage-ecran">
       <h2 class="partage-titre" tabindex="-1">${icon('speaker')} La dictée a besoin du son</h2>
       <p class="partage-texte">${causeSansVoix()}</p>
@@ -638,7 +632,7 @@ function figerFiche(el: HTMLElement): void {
    (runner de leçon ou dictée). */
 interface CadreSeance {
 	s: SeanceEnCours;
-	jeu: Pick<SeanceRunner, 'scene' | 'noter' | 'terminer' | 'annoncer'>;
+	jeu: JeuSeance;
 }
 
 /* Le repère et la région d'annonce sont rendus ICI, hors du conteneur que le jeu réécrit
@@ -729,7 +723,7 @@ function demarrerDictee(
 	jouerPartageDictee({
 		...cadre.jeu,
 		mots: dictee.map((i) => i.mot),
-		lecon: dictee[0]?.capture.lecon ?? '',
+		lecon: (p.envoi.nature === 'dictee' && p.envoi.lecon) || ID_DICTEE_ENVOYEE,
 		silence: () => afficherSilence(el, cadre.s),
 	});
 	window.scrollTo({ top: 0, behavior: 'smooth' });

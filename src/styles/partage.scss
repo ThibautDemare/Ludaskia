@@ -252,42 +252,6 @@
 	font-family: var(--ui);
 }
 
-/* QCM joué dans la fiche : choix en grandes cibles. */
-.partage-question {
-	margin: 0 0 8px;
-}
-.partage-choix {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10px;
-	margin: 0;
-	padding: 0;
-	border: 0;
-}
-.partage-choix-opt {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	min-height: 48px;
-	padding: 6px 14px;
-	border: 2px solid var(--line);
-	border-radius: 12px;
-	background: var(--paper);
-	color: var(--ink);
-	font-family: var(--ui);
-	cursor: pointer;
-}
-.partage-choix-opt:has(input:checked) {
-	border-color: var(--accent);
-	background: var(--accent-soft);
-}
-.partage-choix-opt input {
-	width: 20px;
-	height: 20px;
-	margin: 0;
-	accent-color: var(--accent);
-}
-
 /* ---------- Fin de séance ---------- */
 .partage-astuce {
 	margin-top: 4px;
@@ -525,4 +489,49 @@
 .resultat-statut-import:empty {
 	min-height: 0;
 	overflow: hidden;
+}
+
+/* ---------- Séance partagée jouée dans un runner (#734, PR 4) ---------- */
+
+/* Bloc de décision : la case « Je ne sais pas » puis « Valider », rapprochés. L'écart de
+   32 px du jeu libre (`.lecon-decide`) isole un lien IRRÉVERSIBLE, « montre-moi » ; ici la
+   case est un état réversible de la question, comme sur la fiche. */
+.partage-decide {
+	gap: 12px;
+}
+.partage-decide .partage-jnsp {
+	margin-top: 0;
+}
+.partage-decide .partage-aide {
+	text-align: center;
+}
+
+/* Choix SÉLECTIONNÉ d'un QCM : toucher un choix ne valide plus (aucun verdict avant la
+   fin). Bordure épaisse et fond, jamais le vert ni le rouge du verdict, qui feraient croire
+   à une correction (avis designer). Même recette que le pavé de signes. */
+#partageRunner .sprint-choice[aria-pressed='true'] {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+	box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Correction d'une séance en runner : la liste des réponses, sous l'écran de fin. */
+.partage-correction-runner {
+	margin-top: 24px;
+}
+/* Coche du choix sélectionné : un second indice que la teinte, décoratif (l'état est dit
+   par `aria-pressed`). */
+#partageRunner .sprint-choice .partage-coche {
+	display: inline-flex;
+	margin-left: 8px;
+	vertical-align: middle;
+	color: var(--accent);
+}
+/* Contraste forcé : fond, ombre et couleur de bordure sont écrasés, la sélection
+   disparaîtrait. Un contour système la garde visible. */
+@media (forced-colors: active) {
+	#partageRunner .sprint-choice[aria-pressed='true'] {
+		outline: 3px solid Highlight;
+		outline-offset: 2px;
+	}
 }

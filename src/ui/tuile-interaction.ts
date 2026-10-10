@@ -19,7 +19,8 @@
 
    L'appelant garde le « chrome » (libellé de leçon / consigne, bouton Vérifier,
    feedback, enchaînement) : le binder n'expose que `verify()` (qui fige + marque
-   + renvoie la justesse) et notifie l'état de complétude via `onState`, pour que
+   + renvoie la justesse), `juste()` (la même justesse, sans rien figer : séance
+   partagée, #734) et notifie l'état de complétude via `onState`, pour que
    l'appelant active/désactive son propre bouton. Le runner affiche alors son
    résultat local ; la révision enregistre le grade dans sa session SR.
    ============================================================ */
@@ -69,6 +70,11 @@ export interface TuileController {
 	/* Fige le widget, applique les marques ✓/✗, renvoie si la réponse est juste.
 	   Idempotent : un second appel renvoie le même verdict sans re-marquer. */
 	verify(): boolean;
+	/* La réponse posée est-elle juste ? LA règle de correction du widget, celle dont
+	   `verify()` se sert, mais sans rien figer, marquer ni annoncer. La séance partagée
+	   (#734) note la réponse sans verdict visible (critère 17) et doit corriger comme le
+	   jeu libre (critère 11) : une seule règle, deux appelants. */
+	juste(): boolean;
 	/* Réponse posée par l'enfant (état courant), pour le journal d'erreurs (#391).
 	   Implémentée par tous les widgets journalisés (tuiles, ordre, tri, appariement) ;
 	   reste OPTIONNELLE pour qu'un futur widget puisse être monté avant d'avoir sa
@@ -142,6 +148,7 @@ function bindSlot(
 	let placed: string | null = null;
 	let verdict: boolean | null = null; // null tant que non validé
 	const frozen = () => verdict !== null;
+	const juste = () => placed === spec.answer; // libellés exacts (signe ou nombre)
 
 	function redraw() {
 		slot.textContent = placed ?? '';
@@ -181,10 +188,11 @@ function bindSlot(
 	return {
 		verify() {
 			if (frozen()) return verdict!;
-			verdict = placed === spec.answer; // libellés exacts (signe ou nombre)
+			verdict = juste();
 			redraw();
 			return verdict;
 		},
+		juste,
 		reponse: () => ({ kind: 'tuile', posee: placed }),
 	};
 }
@@ -214,6 +222,11 @@ function bindOrdre(
 
 	const placed: string[] = [];
 	let frozen = false;
+	// Rangée COMPLÈTE et dans l'ordre : `every` seul rendrait juste une rangée vide ou un
+	// début juste. Les écrans n'appellent qu'une rangée pleine, mais `juste()` est un
+	// contrat public (séance partagée, #734) : il ne doit pas dépendre de ce filtre.
+	const juste = () =>
+		placed.length === spec.ordre.length && placed.every((mot, i) => mot === spec.ordre[i]);
 
 	// Restauration du focus après un redraw (#360, même correctif que `bindTri` plus bas) :
 	// `redraw()` reconstruit `seq` ET `bac` par innerHTML, donc l'élément focalisé est
@@ -343,12 +356,13 @@ function bindOrdre(
 
 	return {
 		verify() {
-			if (frozen) return placed.every((mot, i) => mot === spec.ordre[i]);
+			if (frozen) return juste();
 			frozen = true;
-			const correct = placed.every((mot, i) => mot === spec.ordre[i]);
+			const correct = juste();
 			redraw(); // fige + marque chaque case (vert/alerte + ✓/✗)
 			return correct;
 		},
+		juste,
 		reponse: () => ({ kind: 'ordre', propose: [...placed] }),
 	};
 }
@@ -379,6 +393,7 @@ function bindTri(
 	const placed: Record<string, 0 | 1> = {};
 	let selected: string | null = null;
 	let frozen = false;
+	const juste = () => spec.mots.every((m) => placed[m.mot] === m.cat);
 
 	const motsDeColonne = (col: 0 | 1) =>
 		spec.mots.map((m) => m.mot).filter((mot) => placed[mot] === col);
@@ -516,13 +531,14 @@ function bindTri(
 
 	return {
 		verify() {
-			const correct = spec.mots.every((m) => placed[m.mot] === m.cat);
+			const correct = juste();
 			if (frozen) return correct;
 			frozen = true;
 			selected = null;
 			redraw(); // fige + marque chaque tuile (vert/alerte + ✓/✗)
 			return correct;
 		},
+		juste,
 		reponse: () => ({ kind: 'tri', placement: { ...placed } }),
 	};
 }

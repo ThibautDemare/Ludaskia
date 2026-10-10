@@ -156,7 +156,14 @@ export function restoreResume(snap: ResumeSnapshot): void {
 	// Réécrit les réponses saisies.
 	for (const [id, val] of Object.entries(snap.answers)) {
 		const inp = document.getElementById(id) as HTMLInputElement | null;
-		if (inp) inp.value = val;
+		if (!inp) continue;
+		inp.value = val;
+		// QCM de fiche : la valeur vit dans un champ caché, ce qu'on voit est le choix coché.
+		document
+			.querySelectorAll<HTMLInputElement>(
+				`fieldset.fiche-choix[data-for="${id}"] input[type="radio"]`,
+			)
+			.forEach((r) => (r.checked = r.value === val));
 	}
 	setSessionRecorded(false);
 	setSessionErreursLoggees(false); // reprise = même essai relancé → re-journalisable une fois (#391)
@@ -196,7 +203,12 @@ function maxInputId(items: Record<string, Item>): number {
 	return max;
 }
 function firstEmpty(root: HTMLElement): HTMLInputElement | null {
-	return [...root.querySelectorAll<HTMLInputElement>('input.ans')].find((i) => !i.value) ?? null;
+	// Le champ caché d'un QCM ne prend pas le focus : on vise le prochain champ à écrire.
+	return (
+		[...root.querySelectorAll<HTMLInputElement>('input.ans')].find(
+			(i) => !i.value && i.type !== 'hidden',
+		) ?? null
+	);
 }
 
 /* ---------- Relance d'un exercice déjà commencé ---------- */

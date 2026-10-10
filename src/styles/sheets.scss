@@ -638,3 +638,42 @@ html.anim-reduced .mark.correct {
 	padding: 8px 14px;
 	width: 100%;
 }
+
+/* QCM sans trou joué dans une fiche, un bilan ou une révision d'erreurs (`qcmChoixHTML`,
+   #734) : les choix en grandes cibles. Contour au repos `--control-line`, comme les autres
+   boutons de choix du dépôt (#385) ; le choix coché prend `--accent` ET un fond, jamais la
+   couleur seule. */
+.fiche-question {
+	margin: 0 0 8px;
+}
+.fiche-choix {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+.fiche-choix-opt {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 48px;
+	padding: 6px 14px;
+	border: 2px solid var(--control-line);
+	border-radius: 12px;
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--ui);
+	cursor: pointer;
+}
+.fiche-choix-opt:has(input:checked) {
+	border-color: var(--accent);
+	background: var(--accent-soft);
+}
+.fiche-choix-opt input {
+	width: 20px;
+	height: 20px;
+	margin: 0;
+	accent-color: var(--accent);
+}

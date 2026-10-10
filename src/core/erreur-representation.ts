@@ -21,6 +21,7 @@ import { separateurSuite } from './exercise';
 import type { ChoiceView, NatureOrdre } from './exercise';
 import { formatNombre, formatReponseRevelee } from './nombres';
 import type { Item } from './items';
+import { joindrePhrase } from '../data/francais/grammaire-clic-mot-moteur';
 
 /* ---------- Énoncé et choix lisibles hors de l'appli (#391) ---------- */
 
@@ -38,6 +39,50 @@ export function questionPourJournal(text: string, hasFigure = false): string {
 	return hasFigure ? t + MARQUEUR_FIGURE : t;
 }
 
+/* Énoncé du journal d'un « clique sur le mot » : la consigne, puis la phrase entre
+   guillemets — la consigne seule (« Clique sur le verbe ») ne dit pas sur quelle phrase.
+   Partagé par le runner et la séance partagée (#734), qui écrivent le même énoncé. */
+export function enonceClicMotJournal(q: { consigne: string; tokens: string[] }): string {
+	return `${q.consigne} « ${joindrePhrase(q.tokens)} »`;
+}
+
+/* Énoncé du journal d'une droite graduée : la FENÊTRE fait partie de l'énoncé pour le
+   parent. « Place 3 470 » ne veut rien dire sans savoir sur quelle portion de droite : il
+   lirait le nombre à placer et la graduation choisie sans pouvoir redessiner la droite où
+   l'enfant s'est trompé. Partagé par le runner (erreur et question passée, #467) et la
+   séance partagée (#734). */
+export function enonceDroiteJournal(q: {
+	consigne: string;
+	min: number;
+	max: number;
+	bornes: readonly { label: string }[];
+}): string {
+	const de = q.bornes[0]?.label ?? String(q.min);
+	const a = q.bornes[q.bornes.length - 1]?.label ?? String(q.max);
+	return `${q.consigne} La droite va de ${de} à ${a}.`;
+}
+
+/* Énoncé d'un problème lu hors de l'appli (séance partagée, #734) : la situation, puis
+   la ou les questions posées, numérotées s'il y en a plusieurs. La situation seule ne dit
+   pas ce qu'on demandait. */
+export function enonceProblemeLisible(p: {
+	enonce: string;
+	etapes: readonly { question: string }[];
+}): string {
+	const questions =
+		p.etapes.length === 1
+			? p.etapes[0].question
+			: p.etapes.map((e, i) => `${i + 1}) ${e.question}`).join(' ');
+	return `${p.enonce} ${questions}`;
+}
+
+/* Réponses (données ou attendues) aux étapes d'un problème, en une ligne. Numérotées dès
+   qu'il y en a plusieurs, comme les questions de `enonceProblemeLisible` : « 12 ; 5 » ne
+   dit pas quelle réponse va avec quelle question (relecture langue, #734). */
+export function etapesLisibles(valeurs: readonly string[]): string {
+	return valeurs.length === 1 ? valeurs[0] : valeurs.map((v, i) => `${i + 1}) ${v}`).join(' ; ');
+}
+
 /* Libellé LISIBLE d'un choix de QCM pour le journal : la vue riche (#200) si elle
    existe (fraction empilée, symbole de ponctuation…), sinon la valeur brute (déjà
    lisible en QCM texte). `valeur` sert à retrouver l'index dans `choices` (aligné
@@ -49,6 +94,20 @@ export function libelleChoix(
 	valeur: string,
 ): string {
 	return choicesView?.[choices.indexOf(valeur)]?.label ?? valeur;
+}
+
+/* Réponse donnée et réponse attendue d'un item de fiche, lisibles hors de l'appli : le
+   LIBELLÉ d'un choix de QCM (vue riche : « trois quarts », pas « 3/4 »), sinon la saisie
+   telle quelle et `attendueItem`. Partagées par le journal de la fiche (`ui/session.ts`)
+   et la séance partagée (#734), qui doivent écrire la même chose du même item. */
+export function saisieLisibleItem(it: Item, saisie: string): string {
+	return it.choices?.length ? libelleChoix(it.choices, it.choicesView, saisie) : saisie;
+}
+
+export function attendueLisibleItem(it: Item): string {
+	return it.choices?.length
+		? libelleChoix(it.choices, it.choicesView, String(it.answer))
+		: attendueItem(it);
 }
 
 /* ---------- Question PASSÉE : ce qu'une tentative laisse au journal (#467) ---------- */
@@ -254,9 +313,16 @@ export function pairesErreur(
 	const faux = liens.filter((l) => l.droite !== bonne.get(l.gauche));
 	const source = faux.length ? faux : liens;
 	return {
-		donnee: source.map((l) => `${l.gauche} → ${l.droite ?? '(non relié)'}`).join(' ; '),
+		donnee: liensLisibles(source),
 		attendue: source.map((l) => `${l.gauche} → ${bonne.get(l.gauche) ?? ''}`).join(' ; '),
 	};
+}
+
+/* Liens posés, TOUS, mis en forme comme la réponse donnée du journal (« bois → boiserie ;
+   mur → (non relié) »). Sert la réponse entière d'une séance partagée (#734), quand
+   `pairesErreur` ne garde que les liens faux. */
+export function liensLisibles(liens: readonly LienPropose[]): string {
+	return liens.map((l) => `${l.gauche} → ${l.droite ?? '(non relié)'}`).join(' ; ');
 }
 
 /* ---------- Tri par thème (mots dans deux colonnes) ---------- */

@@ -18,14 +18,20 @@
 
    Hors sprint (runner d'écran dédié). Structure calquée sur ui/lecon-appariement.ts
    et ui/lecon-probleme.ts (état de module + squelette lecon-runner-shared).
+
+   Séance partagée (#734, `runner-partage.ts`) : les phrases FIGÉES d'un envoi, sans
+   verdict avant la fin. « Valider » s'active comme « Vérifier » (un mot choisi, ou un
+   bloc fermé pour un segment) ; il note la réponse avec la règle du widget
+   (`ctrl.juste()`), sans rien figer, marquer ni annoncer, puis passe à la phrase suivante.
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
-import type { ExerciseMode } from '../core/exercise';
+import type { Exercise, ExerciseMode } from '../core/exercise';
 
 import { ttsAttr } from '../core/tts-text';
-import { joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
+import { libelleCible } from '../data/francais/grammaire-clic-mot';
+import { enonceClicMotJournal } from '../core/erreur-representation';
 import { bindClicMot, type ClicMotController } from './clic-mot-interaction';
 import { bindSegmentMot } from './segment-mot-interaction';
 import { bindConsigneTts } from './consigne-tts';
@@ -50,6 +56,16 @@ import {
 } from './lecon-passer';
 import { monterBoutonAide } from './aide-exercice';
 import { html } from '../core/html';
+import {
+	brancherDecisionPartage,
+	decisionPartageHTML,
+	enchainerPartage,
+	erreurPassee,
+	type DecisionPartage,
+	type ErreurRunner,
+	type ReponseRunner,
+	type SeanceRunner,
+} from './runner-partage';
 
 const NB_QUESTIONS = 8;
 
@@ -82,18 +98,41 @@ let score = 0;
 // « Vérifier » après une révélation (le widget n'est muet qu'une fois `verify()` appelé).
 let answered = false;
 let ctrl: ClicMotController; // widget de sélection dans la phrase (mutualisé, #466)
+// Séance partagée (#734) : la séance de l'écran partagé, le bloc de décision de la phrase
+// affichée, et « une réponse est posée » (règle d'activation de « Valider » : celle du
+// widget monté). `null` en jeu libre.
+let partage: SeanceRunner | null = null;
+let decision: DecisionPartage | null = null;
+let pret = false;
 
 function sheets(): HTMLElement {
-	return document.getElementById('sheets')!;
+	return partage?.scene ?? document.getElementById('sheets')!;
+}
+
+/* Un exercice « clique sur le mot » devient une question du runner. Partagé par le tirage
+   du jeu libre et par les exercices figés d'un envoi : les deux jouent la même phrase. */
+function questionDepuisExercice(ex: Extract<Exercise, { type: 'clicMot' }>): QuestionClicMot {
+	return {
+		tokens: ex.tokens,
+		cibleIndices: ex.cibleIndices,
+		consigne: ex.consigne,
+		explication: ex.explication,
+		parle: ex.parle,
+		cibleLabel: ex.cibleLabel,
+		explicationNommeCible: ex.explicationNommeCible,
+		segment: ex.segment,
+	};
 }
 
 /* Génère jusqu'à n phrases DISTINCTES (dédup sur la phrase reconstruite). */
-function genQuestions(l: LessonDef, n: number): QuestionClicMot[] {
+/* `m` : le mode DEMANDÉ. L'état de module `mode` n'est posé qu'ensuite, par `demarrer` : le
+   lire ici reprendrait le mode de la partie précédente, qui peut être une séance partagée. */
+function genQuestions(l: LessonDef, m: ExerciseMode | undefined, n: number): QuestionClicMot[] {
 	const out: QuestionClicMot[] = [];
 	const seen = new Set<string>();
 	let misses = 0;
 	while (out.length < n && misses < 80) {
-		const ex = l.exerciseType.generate({ mode, level: niveauLecon(l) });
+		const ex = l.exerciseType.generate({ mode: m, level: niveauLecon(l) });
 		if (ex.type !== 'clicMot') break; // ce runner n'a de sens que pour ce type
 		const key = ex.tokens.join('|');
 		if (seen.has(key)) {
@@ -101,16 +140,7 @@ function genQuestions(l: LessonDef, n: number): QuestionClicMot[] {
 			continue;
 		}
 		seen.add(key);
-		out.push({
-			tokens: ex.tokens,
-			cibleIndices: ex.cibleIndices,
-			consigne: ex.consigne,
-			explication: ex.explication,
-			parle: ex.parle,
-			cibleLabel: ex.cibleLabel,
-			explicationNommeCible: ex.explicationNommeCible,
-			segment: ex.segment,
-		});
+		out.push(questionDepuisExercice(ex));
 		misses = 0;
 	}
 	return out;
@@ -127,7 +157,9 @@ function demarrer(
 	qs: QuestionClicMot[],
 	depart = 0,
 	pts = 0,
+	seancePartagee: SeanceRunner | null = null,
 ): void {
+	partage = seancePartagee;
 	lesson = l;
 	mode = m;
 	questions = qs;
@@ -140,7 +172,17 @@ function demarrer(
 		etat: () => ({ questions, idx, score }),
 		render: renderQuestion,
 		aide: aideDuGeste(),
+		partage: seancePartagee ?? undefined,
 	});
+}
+
+/** Séance partagée (#734) : les exercices figés de l'envoi, joués sans verdict. Le mode
+    peut manquer : « clique sur le mot » se joue toujours dans ce runner. */
+export function jouerPartageClicMot(s: SeanceRunner): void {
+	const qs = s.exercices.flatMap((ex) =>
+		ex.type === 'clicMot' ? [questionDepuisExercice(ex)] : [],
+	);
+	demarrer(s.lesson, s.mode, qs, 0, 0, s);
 }
 
 /* Quelle bulle d'aide expliquer : les deux gestes n'ont ni les mêmes étapes ni la même
@@ -158,7 +200,7 @@ export function runLeconClicMot(lessonId: string, m?: ExerciseMode): void {
 		goHome();
 		return;
 	}
-	const qs = genQuestions(l, NB_QUESTIONS);
+	const qs = genQuestions(l, m, NB_QUESTIONS);
 	if (!qs.length) {
 		goHome();
 		return;
@@ -185,16 +227,19 @@ enregistrerRunner(RUNNER, (snap) => {
    (journal d'erreurs, XP). */
 function renderQuestion(): void {
 	answered = false;
+	decision = null;
+	pret = false;
+	const s = partage;
 	const q = questions[idx];
 	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage lclic-stage">
         <div class="lclic-col">
-          ${leconTitreHTML(lesson)}
+          ${leconTitreHTML(lesson, s?.niveau)}
           <p class="lclic-consigne" tabindex="-1"${ttsAttr(q.consigne)}>${q.consigne}</p>
           <div data-tuile-mount></div>
-          ${decisionHTML('lclicVerif')}
+          ${s ? decisionPartageHTML('lclicVerif') : decisionHTML('lclicVerif')}
           <div class="sprint-correction" id="lclicFeedback" hidden></div>
           <div class="sprint-actions" id="lclicActions" hidden></div>
         </div>
@@ -215,13 +260,26 @@ function renderQuestion(): void {
 			explicationNommeCible: q.explicationNommeCible,
 		},
 		{
-			onState: (pret) => {
-				if (!answered) verif.disabled = !pret;
+			// En séance partagée, (dé)sélectionner un mot ou poser une borne décoche « Je ne
+			// sais pas » et recalcule « Valider ».
+			onState: (repondu) => {
+				if (s) {
+					pret = repondu;
+					decision?.widgetTouche();
+				} else if (!answered) verif.disabled = !repondu;
 			},
 		},
 	);
-	verif.addEventListener('click', () => verifier());
-	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
+	if (s)
+		decision = brancherDecisionPartage(sheets(), {
+			validerId: 'lclicVerif',
+			repondu: () => pret,
+			onValider: () => validerPartage(s),
+		});
+	else {
+		verif.addEventListener('click', () => verifier());
+		wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
+	}
 	bindConsigneTts(sheets()); // boutons « Écouter » : consigne (auto) + phrase entière (#42)
 	// Bouton « ? » d'aide (#272) : renderQuestion() reconstruit tout le sheets() à chaque
 	// question, donc on le re-monte à chaque rendu (l'appel est idempotent).
@@ -297,11 +355,7 @@ function passer(): void {
 	// Même énoncé et même attendu que pour une erreur (cf. journaliser) : les mots sont joints
 	// par `libelleCible`, donc une cible non contiguë se lit « chien et pomme ».
 	const solution = libelleCible(q.tokens, q.cibleIndices);
-	capterPasse({
-		text: `${q.consigne} « ${joindrePhrase(q.tokens)} »`,
-		attendue: solution,
-		lessonId: lesson.id,
-	});
+	capterPasse({ text: enonceClicMotJournal(q), attendue: solution, lessonId: lesson.id });
 	// L'index avance AVANT tout affichage : la photo de reprise (#498) est prise quand
 	// l'enfant quitte l'écran, et une question déjà révélée ne doit jamais lui être reposée.
 	idx++;
@@ -329,12 +383,52 @@ function passer(): void {
    composé, « ni … ni » — se lit « chien et pomme » et non « chien pomme », qui ferait
    passer deux mots séparés pour un groupe. */
 function journaliser(q: QuestionClicMot, choisis: number[]): void {
-	capterErreur({
-		text: `${q.consigne} « ${joindrePhrase(q.tokens)} »`,
-		donnee: choisis.length ? libelleCible(q.tokens, choisis) : '(aucun mot choisi)',
+	capterErreur({ ...erreurClicMot(q, choisis), mode: 'lecon' });
+}
+
+/* Mots choisis, lisibles (cf. `journaliser` pour le choix de `libelleCible`). */
+function motsChoisis(q: QuestionClicMot, choisis: number[]): string {
+	return choisis.length ? libelleCible(q.tokens, choisis) : '(aucun mot choisi)';
+}
+
+/* Entrée du journal d'une phrase ratée. L'énoncé vient de `enonceClicMotJournal`, source
+   unique partagée avec la capture de la séance partagée (#734). Partagée par le jeu libre
+   et la séance partagée, qui journalisent la même erreur. */
+function erreurClicMot(q: QuestionClicMot, choisis: number[]): ErreurRunner {
+	return {
+		text: enonceClicMotJournal(q),
+		donnee: motsChoisis(q, choisis),
 		attendue: libelleCible(q.tokens, q.cibleIndices),
 		lessonId: lesson.id,
-		mode: 'lecon',
+	};
+}
+
+/* Séance partagée : note la phrase (même correction qu'en jeu libre, critère 11, via
+   `ctrl.juste()`), puis passe à la suivante sans rien montrer du verdict. */
+function validerPartage(s: SeanceRunner): void {
+	const q = questions[idx];
+	const attendue = libelleCible(q.tokens, q.cibleIndices);
+	let reponse: ReponseRunner;
+	if (decision?.jnsp() || !pret) {
+		reponse = {
+			statut: 'jnsp',
+			saisie: '',
+			attendue,
+			erreurs: [erreurPassee({ text: enonceClicMotJournal(q), attendue, lessonId: lesson.id })],
+		};
+	} else {
+		const choisis = ctrl.selected();
+		const juste = ctrl.juste();
+		reponse = {
+			statut: juste ? 'juste' : 'faux',
+			saisie: motsChoisis(q, choisis),
+			attendue,
+			erreurs: juste ? [] : [erreurClicMot(q, choisis)],
+		};
+	}
+	enchainerPartage(s, idx, reponse, () => {
+		idx++;
+		renderQuestion();
 	});
 }
 

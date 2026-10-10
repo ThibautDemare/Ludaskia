@@ -20,11 +20,16 @@
    Réutilise la coquille des runners (.sprint-stage, .sprint-q, figureBlock, barre de
    progression, lecon-runner-shared) et le TTS (bindConsigneTts / bindItemTts).
    Structure calquée sur ui/lecon-qcm.ts et ui/lecon-appariement.ts.
+
+   Séance partagée (#734, `runner-partage.ts`) : les questions FIGÉES d'un envoi, sans
+   verdict avant la fin. « Valider » s'active dès qu'une proposition est cochée, comme en
+   jeu libre ; il note la grille avec la même règle tout-ou-rien (`selectionJuste`), sans
+   rien marquer, puis passe à la question suivante.
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
-import type { ExerciseMode } from '../core/exercise';
+import type { Exercise, ExerciseMode } from '../core/exercise';
 import { figureBlock } from '../core/items';
 import { ttsAttr } from '../core/tts-text';
 import { icon } from './icon';
@@ -53,6 +58,16 @@ import {
 	wirePasser,
 } from './lecon-passer';
 import { html, joindre, type SafeHtml, brut } from '../core/html';
+import {
+	brancherDecisionPartage,
+	decisionPartageHTML,
+	enchainerPartage,
+	erreurPassee,
+	type DecisionPartage,
+	type ErreurRunner,
+	type ReponseRunner,
+	type SeanceRunner,
+} from './runner-partage';
 
 // Tour plus court que le QCM mono (8) : anti-empilement d'étoile sur un « tout-ou-rien »
 // conjonctif (gamification-enfant).
@@ -73,9 +88,25 @@ let idx = 0;
 let score = 0;
 let selected = new Set<number>(); // index des propositions cochées (question courante)
 let validated = false;
+// Séance partagée (#734) : la séance de l'écran partagé et le bloc de décision de la
+// question affichée. `null` en jeu libre.
+let partage: SeanceRunner | null = null;
+let decision: DecisionPartage | null = null;
 
 function sheets(): HTMLElement {
-	return document.getElementById('sheets')!;
+	return partage?.scene ?? document.getElementById('sheets')!;
+}
+
+/* Un exercice multi devient une question du runner. Partagé par le tirage du jeu libre et
+   par les exercices figés d'un envoi : les deux jouent la même grille. */
+function questionDepuisExercice(ex: Extract<Exercise, { type: 'qcmMulti' }>): QuestionMulti {
+	return {
+		figure: ex.figure,
+		propositions: ex.propositions,
+		correctes: ex.correctes,
+		consigne: ex.question,
+		parle: ex.parle ?? ex.question,
+	};
 }
 
 /* Génère jusqu'à n questions multi distinctes (dédup par figure + propositions + bonnes). */
@@ -92,13 +123,7 @@ function genQuestions(l: LessonDef, m: ExerciseMode, n: number): QuestionMulti[]
 			continue;
 		}
 		seen.add(key);
-		out.push({
-			figure: ex.figure,
-			propositions: ex.propositions,
-			correctes: ex.correctes,
-			consigne: ex.question,
-			parle: ex.parle ?? ex.question,
-		});
+		out.push(questionDepuisExercice(ex));
 		misses = 0;
 	}
 	return out;
@@ -109,7 +134,15 @@ const RUNNER = 'qcmMulti';
 
 /* Démarre l'écran sur un jeu de questions donné, à l'index et au score voulus. Chemin
    COMMUN au lancement neuf (0/0) et à la reprise, pour que les deux ne divergent pas. */
-function demarrer(l: LessonDef, m: ExerciseMode, qs: QuestionMulti[], depart = 0, pts = 0): void {
+function demarrer(
+	l: LessonDef,
+	m: ExerciseMode,
+	qs: QuestionMulti[],
+	depart = 0,
+	pts = 0,
+	seancePartagee: SeanceRunner | null = null,
+): void {
+	partage = seancePartagee;
 	lesson = l;
 	mode = m;
 	questions = qs;
@@ -121,7 +154,17 @@ function demarrer(l: LessonDef, m: ExerciseMode, qs: QuestionMulti[], depart = 0
 		mode: m ?? null,
 		etat: () => ({ questions, idx, score }),
 		render: renderQuestion,
+		partage: seancePartagee ?? undefined,
 	});
+}
+
+/** Séance partagée (#734) : les exercices figés de l'envoi, joués sans verdict. */
+export function jouerPartageQcmMulti(s: SeanceRunner): void {
+	const qs = s.exercices.flatMap((ex) =>
+		ex.type === 'qcmMulti' ? [questionDepuisExercice(ex)] : [],
+	);
+	// Le QCM multi n'a de runner que dans un mode retenu (`JEU_PAR_TYPE`) : il est défini.
+	demarrer(s.lesson, s.mode!, qs, 0, 0, s);
 }
 
 export function runLeconQcmMulti(lessonId: string, m: ExerciseMode): void {
@@ -153,6 +196,8 @@ enregistrerRunner(RUNNER, (snap) => {
 function renderQuestion(): void {
 	validated = false;
 	selected = new Set<number>();
+	decision = null;
+	const s = partage;
 	const q = questions[idx];
 	// Consigne PERSISTANTE et emphatique (« Coche TOUTES… ») : reste affichée pendant tout
 	// le cochage (contre le réflexe « un seul choix »). « toutes » est mis en gras.
@@ -165,7 +210,7 @@ function renderQuestion(): void {
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
-        ${leconTitreHTML(lesson)}
+        ${leconTitreHTML(lesson, s?.niveau)}
         ${figureBlock(q.figure)}
         <p class="sprint-q lqcm-multi-consigne"${ttsAttr(q.parle)}>${consigneHTML}</p>
         <div class="sprint-choices sprint-choices--pile lqcm-multi-choices" id="lqmChoices" role="group" aria-label="${q.consigne}">
@@ -180,7 +225,11 @@ function renderQuestion(): void {
 						),
 					)}
         </div>
-        ${decisionHTML('lqmValider', { classeBloc: 'lqcm-multi-decide' })}
+        ${
+					s
+						? decisionPartageHTML('lqmValider', 'lqcm-multi-decide')
+						: decisionHTML('lqmValider', { classeBloc: 'lqcm-multi-decide' })
+				}
         <!-- Région live (#467) : porte la RÉVÉLATION d'une question passée. Le verdict
              ordinaire, lui, est annoncé proposition par proposition (sr-only posé sur chaque
              ligne à la validation) ; une question révélée à la demande n'a AUCUN autre canal,
@@ -193,8 +242,16 @@ function renderQuestion(): void {
 	sheets()
 		.querySelectorAll<HTMLButtonElement>('#lqmChoices .lqcm-multi-choice')
 		.forEach((btn) => btn.addEventListener('click', () => toggle(Number(btn.dataset.i), btn)));
-	(sheets().querySelector('#lqmValider') as HTMLButtonElement).addEventListener('click', valider);
-	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
+	if (s)
+		decision = brancherDecisionPartage(sheets(), {
+			validerId: 'lqmValider',
+			repondu: () => selected.size > 0,
+			onValider: () => validerPartage(s),
+		});
+	else {
+		(sheets().querySelector('#lqmValider') as HTMLButtonElement).addEventListener('click', valider);
+		wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
+	}
 	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
 	// TTS par proposition (#203) : haut-parleur ajouté DANS chaque ligne, après le toggle.
 	const cibles: ItemTtsCible[] = [];
@@ -213,7 +270,10 @@ function toggle(i: number, btn: HTMLButtonElement): void {
 	btn.classList.toggle('is-selected', coche);
 	const box = btn.querySelector('.lqcm-multi-box');
 	if (box) box.innerHTML = icon(coche ? 'check-square' : 'square').balisage;
-	(sheets().querySelector('#lqmValider') as HTMLButtonElement).disabled = selected.size === 0;
+	// Séance partagée : cocher ou décocher décoche « Je ne sais pas » et recalcule « Valider »
+	// (même règle : au moins une proposition cochée).
+	if (decision) decision.widgetTouche();
+	else (sheets().querySelector('#lqmValider') as HTMLButtonElement).disabled = selected.size === 0;
 }
 
 function valider(): void {
@@ -332,14 +392,25 @@ function cocheesTexte(q: QuestionMulti, coches: ReadonlySet<number>): string {
    pas, montre-moi » sur une grille déjà cochée (#467) : dans les deux cas l'enfant a proposé
    quelque chose, et le parent doit lire la même chose. */
 function journaliserErreurMulti(q: QuestionMulti, coches: ReadonlySet<number>): void {
-	capterErreur({
+	capterErreur({ ...erreurMulti(q, coches), mode: 'lecon' });
+}
+
+/* Bonnes propriétés sur une ligne : l'attendu du journal, de la question passée et de la
+   séance partagée. */
+function correctesTexte(q: QuestionMulti): string {
+	return q.correctes.join(' ; ');
+}
+
+/* Entrée du journal d'une grille fausse. Partagée par le jeu libre et la séance partagée
+   (#734), qui journalisent la même erreur. */
+function erreurMulti(q: QuestionMulti, coches: ReadonlySet<number>): ErreurRunner {
+	return {
 		text: q.consigne,
 		figure: q.figure,
 		donnee: cocheesTexte(q, coches),
-		attendue: q.correctes.join(' ; '),
+		attendue: correctesTexte(q),
 		lessonId: lesson.id,
-		mode: 'lecon',
-	});
+	};
 }
 
 /* Ce qu'une question passée laisse au journal encadrant (#467). La règle des trois cas
@@ -360,7 +431,7 @@ function journaliserPasseMulti(q: QuestionMulti, coches: ReadonlySet<number>): v
 		capterPasse({
 			text: q.consigne,
 			figure: q.figure,
-			attendue: q.correctes.join(' ; '),
+			attendue: correctesTexte(q),
 			lessonId: lesson.id,
 		});
 		return;
@@ -397,6 +468,37 @@ function passer(): void {
 			if (idx >= questions.length) finish();
 			else renderQuestion();
 		},
+	});
+}
+
+/* Séance partagée : note la grille (même correction qu'en jeu libre, critère 11, via
+   `selectionJuste`), puis passe à la question suivante sans rien montrer du verdict. La
+   réponse lisible est la grille cochée ENTIÈRE, dans l'ordre d'affichage, comme au journal. */
+function validerPartage(s: SeanceRunner): void {
+	const q = questions[idx];
+	const attendue = correctesTexte(q);
+	let reponse: ReponseRunner;
+	if (decision?.jnsp() || selected.size === 0) {
+		reponse = {
+			statut: 'jnsp',
+			saisie: '',
+			attendue,
+			erreurs: [
+				erreurPassee({ text: q.consigne, figure: q.figure, attendue, lessonId: lesson.id }),
+			],
+		};
+	} else {
+		const juste = selectionJuste(q, selected);
+		reponse = {
+			statut: juste ? 'juste' : 'faux',
+			saisie: cocheesTexte(q, selected),
+			attendue,
+			erreurs: juste ? [] : [erreurMulti(q, selected)],
+		};
+	}
+	enchainerPartage(s, idx, reponse, () => {
+		idx++;
+		renderQuestion();
 	});
 }
 

@@ -7,11 +7,18 @@
    corrigée indépendamment ; le problème est réussi si TOUTES ses étapes le sont.
    Pas de chrono (exclu du sprint). À la fin : recordLessonRun → mêmes XP /
    étoiles / objectifs que les autres modes (parité, cf. lecon-qcm.ts).
+
+   Séance partagée (#734, `runner-partage.ts`) : les problèmes FIGÉS d'un envoi, sans
+   verdict avant la fin. « Valider » ne s'active que quand TOUTES les étapes sont
+   remplies : en jeu libre, « Vérifier » refuse un champ vide au lieu de se griser, mais
+   un refus muet sans verdict derrière se lirait comme « faux ». Il note le problème avec
+   la règle du jeu libre (`etapeJuste`, juste si toutes les étapes le sont), sans rien
+   marquer, puis passe au problème suivant.
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
-import type { ExerciseMode, ProblemeEtape, ProbLexique } from '../core/exercise';
+import type { Exercise, ExerciseMode, ProblemeEtape, ProbLexique } from '../core/exercise';
 import { figureBlock } from '../core/items';
 import { commKey } from '../core/utils';
 import { ttsAttr } from '../core/tts-text';
@@ -37,7 +44,18 @@ import {
 } from './lecon-passer';
 import { attenduEtapeTexte, entreesEtapesPassees, etapeJuste } from '../core/probleme-etapes';
 import type { EntreeEtapePassee } from '../core/probleme-etapes';
+import { etapesLisibles } from '../core/erreur-representation';
 import { html, type SafeHtml, VIDE, joindre } from '../core/html';
+import {
+	brancherDecisionPartage,
+	decisionPartageHTML,
+	enchainerPartage,
+	erreurPassee,
+	type DecisionPartage,
+	type ErreurRunner,
+	type ReponseRunner,
+	type SeanceRunner,
+} from './runner-partage';
 
 const NB_QUESTIONS = 8;
 
@@ -178,9 +196,25 @@ let questions: ProbQuestion[] = [];
 let idx = 0;
 let score = 0;
 let answered = false;
+// Séance partagée (#734) : la séance de l'écran partagé et le bloc de décision du problème
+// affiché. `null` en jeu libre.
+let partage: SeanceRunner | null = null;
+let decision: DecisionPartage | null = null;
 
 function sheets(): HTMLElement {
-	return document.getElementById('sheets')!;
+	return partage?.scene ?? document.getElementById('sheets')!;
+}
+
+/* Un exercice « problème » devient une question du runner. Partagé par le tirage du jeu
+   libre et par les exercices figés d'un envoi : les deux jouent le même problème. */
+function questionDepuisExercice(ex: Extract<Exercise, { type: 'probleme' }>): ProbQuestion {
+	return {
+		enonce: ex.enonce,
+		etapes: ex.etapes,
+		parle: ex.parle,
+		figure: ex.figure,
+		explication: ex.explication,
+	};
 }
 
 /* Génère jusqu'à n problèmes distincts (dédup par énoncé), comme genQcmQuestions.
@@ -198,13 +232,7 @@ function genQuestions(l: LessonDef, n: number, m?: ExerciseMode): ProbQuestion[]
 			continue;
 		}
 		seen.add(key);
-		out.push({
-			enonce: ex.enonce,
-			etapes: ex.etapes,
-			parle: ex.parle,
-			figure: ex.figure,
-			explication: ex.explication,
-		});
+		out.push(questionDepuisExercice(ex));
 		misses = 0;
 	}
 	return out;
@@ -221,7 +249,9 @@ function demarrer(
 	qs: ProbQuestion[],
 	depart = 0,
 	pts = 0,
+	seancePartagee: SeanceRunner | null = null,
 ): void {
+	partage = seancePartagee;
 	lesson = l;
 	probMode = m;
 	lex = l.exerciseType.probLexique ?? LEX_DEFAUT;
@@ -234,7 +264,17 @@ function demarrer(
 		mode: m ?? null,
 		etat: () => ({ questions, idx, score }),
 		render: renderQuestion,
+		partage: seancePartagee ?? undefined,
 	});
+}
+
+/** Séance partagée (#734) : les exercices figés de l'envoi, joués sans verdict. Le mode
+    peut manquer : un problème se joue toujours dans ce runner. */
+export function jouerPartageProbleme(s: SeanceRunner): void {
+	const qs = s.exercices.flatMap((ex) =>
+		ex.type === 'probleme' ? [questionDepuisExercice(ex)] : [],
+	);
+	demarrer(s.lesson, s.mode, qs, 0, 0, s);
 }
 
 export function runLeconProbleme(lessonId: string, m?: ExerciseMode): void {
@@ -265,18 +305,20 @@ enregistrerRunner(RUNNER, (snap) => {
 
 function renderQuestion(): void {
 	answered = false;
+	decision = null;
+	const s = partage;
 	const q = questions[idx];
 	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length, lex.nom)}
       <div class="sprint-stage prob-stage">
         <div class="prob-col">
-          ${leconTitreHTML(lesson)}
+          ${leconTitreHTML(lesson, s?.niveau)}
           ${renderProblemeBoardHTML(q, lex)}
           ${brouillonHTML()}
           <!-- « Vérifier » ACTIF dès l'affichage (la validation refuse un champ vide au
                lieu de se désactiver) + « Je ne sais pas, montre-moi » en dessous (#467). -->
-          ${decisionHTML('probVerif', { actif: true })}
+          ${s ? decisionPartageHTML('probVerif') : decisionHTML('probVerif', { actif: true })}
           ${PROB_STATUS_HTML}
           <div class="sprint-correction" id="probFeedback" hidden></div>
           <div class="sprint-actions" id="probActions" hidden></div>
@@ -285,12 +327,51 @@ function renderQuestion(): void {
     </div>`.balisage;
 	bindConsigneTts(sheets()); // bouton « Écouter » en tête de l'énoncé (#42)
 	bindBrouillon(sheets()); // ardoise de dessin repliable (#199)
+	if (s) {
+		// Écrire ou effacer dans une case décoche « Je ne sais pas » et recalcule « Valider ».
+		// Pas de focus sur la première case : l'écran partagé le pose sur la question, pour que
+		// le clavier virtuel ne s'ouvre pas avant la lecture de l'énoncé.
+		decision = brancherDecisionPartage(sheets(), {
+			validerId: 'probVerif',
+			repondu: () => saisiesEtapes().every((v) => v !== ''),
+			onValider: () => validerPartage(s),
+		});
+		sheets()
+			.querySelectorAll<HTMLInputElement>('.prob-input')
+			.forEach((inp) => inp.addEventListener('input', () => decision?.widgetTouche()));
+		return;
+	}
 	sheets()
 		.querySelector('#probVerif')!
 		.addEventListener('click', () => verifier());
 	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
 	const first = sheets().querySelector<HTMLInputElement>('.prob-input');
 	if (first) first.focus();
+}
+
+/* Saisies des cases, rangées comme les étapes et sans les espaces de bord : ce que lit la
+   correction (`corrigerEtapesProbleme`), au même `data-i`. */
+function saisiesEtapes(): string[] {
+	const saisies = questions[idx].etapes.map(() => '');
+	sheets()
+		.querySelectorAll<HTMLInputElement>('.prob-input')
+		.forEach((inp) => {
+			saisies[Number(inp.dataset.i)] = inp.value.trim();
+		});
+	return saisies;
+}
+
+/* Entrée du journal d'une sous-question ratée (#391), une par étape fausse. L'attendu est ce
+   que LIT le parent, dans la graphie de l'énoncé (#542) : `String(4.5)` lui écrivait « 4.5 »,
+   avec un point, une notation que son enfant n'a jamais vue en classe. Partagée par le jeu
+   libre et la séance partagée, qui journalisent les mêmes erreurs. */
+function erreurEtape(etape: ProblemeEtape, saisie: string): ErreurRunner {
+	return {
+		text: etape.question,
+		donnee: saisie,
+		attendue: attenduEtapeTexte(etape.answer, etape.unite),
+		lessonId: lesson.id,
+	};
 }
 
 function verifier(): void {
@@ -309,15 +390,7 @@ function verifier(): void {
 	// chaque sous-question ratée (#391) via le callback — une seule capture par essai
 	// (garde `answered`).
 	const toutJuste = corrigerEtapesProbleme(sheets(), q.etapes, (etape, saisie) =>
-		capterErreur({
-			text: etape.question,
-			donnee: saisie,
-			// Ce que LIT le parent, dans la graphie de l'énoncé (#542) : `String(4.5)` lui écrivait
-			// « 4.5 », avec un point, une notation que son enfant n'a jamais vue en classe.
-			attendue: attenduEtapeTexte(etape.answer, etape.unite),
-			lessonId: lesson.id,
-			mode: 'lecon',
-		}),
+		capterErreur({ ...erreurEtape(etape, saisie), mode: 'lecon' }),
 	);
 	if (toutJuste) score++;
 	// Une fois la réponse validée, le bloc de décision s'efface : seul « Continuer ▶ »
@@ -409,6 +482,46 @@ function passer(): void {
 			if (idx >= questions.length) finish();
 			else renderQuestion();
 		},
+	});
+}
+
+/* Séance partagée : note le problème (même correction qu'en jeu libre, critère 11 : chaque
+   étape par `etapeJuste`, le problème juste si TOUTES le sont, comme le score), puis passe au
+   suivant sans rien marquer. Une entrée de journal par étape ratée, comme en jeu libre.
+   « Je ne sais pas » : une entrée « n'a pas essayé » par étape, ce que le jeu libre écrit
+   pour un problème passé sans rien remplir (`entreesEtapesPassees`). */
+function validerPartage(s: SeanceRunner): void {
+	const q = questions[idx];
+	const attendue = etapesLisibles(q.etapes.map((et) => attenduEtapeTexte(et.answer, et.unite)));
+	const saisies = saisiesEtapes();
+	let reponse: ReponseRunner;
+	if (decision?.jnsp() || saisies.some((v) => v === '')) {
+		reponse = {
+			statut: 'jnsp',
+			saisie: '',
+			attendue,
+			erreurs: q.etapes.map((et) =>
+				erreurPassee({
+					text: et.question,
+					attendue: attenduEtapeTexte(et.answer, et.unite),
+					lessonId: lesson.id,
+				}),
+			),
+		};
+	} else {
+		const ratees = q.etapes.flatMap((et, i) =>
+			etapeJuste(saisies[i], et.answer) ? [] : [erreurEtape(et, saisies[i])],
+		);
+		reponse = {
+			statut: ratees.length === 0 ? 'juste' : 'faux',
+			saisie: etapesLisibles(saisies),
+			attendue,
+			erreurs: ratees,
+		};
+	}
+	enchainerPartage(s, idx, reponse, () => {
+		idx++;
+		renderQuestion();
 	});
 }
 

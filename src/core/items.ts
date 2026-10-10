@@ -8,7 +8,7 @@ import { ttsAttr, texteParle } from './tts-text';
 import { stackFractions } from './fraction-text';
 import { wrapGrandsNombres, parseNombreFr, formatReponseRevelee } from './nombres';
 import { estSigneComparaison, paveSignesHTML } from './signes';
-import { attendueItem, corrigeIntercalation } from './erreur-representation';
+import { attendueItem, corrigeIntercalation, libelleChoix } from './erreur-representation';
 import { normaliserRomain } from './chiffres-romains';
 import type { ChoiceView } from './exercise';
 
@@ -384,14 +384,41 @@ function qcmCheckboxHTML(it: Item, ctx: RenderContext): SafeHtml {
 export const poserAuTrou = (texte: SafeHtml, motif: string | RegExp, champ: SafeHtml): SafeHtml =>
 	brut(texte.balisage.replace(motif, () => champ.balisage));
 
+/** QCM SANS TROU rendu à l'écran dans une fiche, un bilan ou une révision d'erreurs
+ *  (#734) : les choix deviennent des boutons radio, dont la valeur alimente un champ
+ *  `.ans` CACHÉ, corrigé, marqué et révélé exactement comme les autres champs (même
+ *  `checkItemAnswer`). Ce chemin laissait le QCM sans rien à répondre : un bilan d'une
+ *  leçon dont le mode par défaut est un QCM ne laissait rien à faire à l'enfant (39 couples
+ *  leçon × niveau, mesurés le 10 octobre 2026). Le câblage radio → champ est délégué
+ *  (`initSession`). `data-attendue` porte le LIBELLÉ de la bonne réponse quand les choix
+ *  ont une vue riche, pour que l'erreur révèle « trois quarts » et non « 3/4 ». */
+export function qcmChoixHTML(it: Item, ctx: RenderContext): SafeHtml {
+	const id = nextInputId(ctx);
+	ctx.items[id] = it;
+	const choices = it.choices ?? [];
+	const options = joindre(
+		choices.map((valeur, i) => {
+			const vue = it.choicesView?.[i];
+			return html`<label class="fiche-choix-opt"><input type="radio"${attribut('name', `${id}-choix`)}${attribut('value', valeur)}${vue ? attribut('aria-label', vue.label) : VIDE}><span class="fiche-choix-vue">${vue ? vue.html : valeur}</span></label>`;
+		}),
+	);
+	const attendue = it.choicesView?.length
+		? attribut('data-attendue', libelleChoix(choices, it.choicesView, String(it.answer)))
+		: VIDE;
+	return html`${figureBlock(it.figure)}<p class="fiche-question">${enonceTexte(it.text)}</p>
+    <fieldset class="fiche-choix"${attribut('data-for', id)}><legend class="sr-only">${nomChampReponse(it)}</legend>${options}</fieldset>
+    <input type="hidden" class="ans"${attribut('id', id)}${attribut('data-answer', String(it.answer))}${attendue}${lessonAttr(ctx)}><span class="mark"${attribut('data-for', id)}></span>`;
+}
+
 export function renderItem(it: Item, ctx: RenderContext, extra = ''): SafeHtml {
 	// Opération posée : déployée en grille de colonnes (plusieurs champs .ans).
 	if (it.kind === 'posed' && it.posed) return posedGridHTML(it.posed, ctx);
-	// QCM imprimable (#289) : un item porteur de `choices` (sa question n'a pas de `@`)
-	// est rendu en cases à cocher, UNIQUEMENT en impression. À l'écran, ce chemin
-	// (fiche/bilan interactif) laisse le QCM sans champ de saisie — limite préexistante,
-	// hors périmètre #289 (le QCM interactif vit dans son propre runner, pas ici).
+	// QCM imprimable (#289) : un item porteur de `choices` est rendu en cases à cocher,
+	// à trou ou non, en impression.
 	if (ctx.printMode && estItemQcm(it)) return qcmCheckboxHTML(it, ctx);
+	// À l'écran, un QCM SANS trou se joue par ses choix (`qcmChoixHTML`). Un QCM à trou
+	// (`@` : homophones, m/b/p…) garde son champ au trou, où l'enfant écrit le mot.
+	if (estItemQcm(it) && !it.text.includes('@')) return qcmChoixHTML(it, ctx);
 	const id = nextInputId(ctx);
 	ctx.items[id] = it;
 	// Réponse exposée pour la révélation après correction (échappée pour les attributs).

@@ -13,9 +13,16 @@ import {
 	seJoueEnRunner,
 	type Exercise,
 	type ExerciseMode,
+	type TypeRunner,
 } from '../exercise';
 import { labelLecon } from '../levels';
-import { attendueItem, libelleChoix, questionPourJournal } from '../erreur-representation';
+import {
+	attendueLisibleItem,
+	enonceClicMotJournal,
+	enonceDroiteJournal,
+	enonceProblemeLisible,
+	questionPourJournal,
+} from '../erreur-representation';
 import { addXP, recordActivitePartage } from '../progress';
 import { lsGet, lsGetRaw, lsSet } from '../storage';
 import type { Envoi } from './envoi';
@@ -61,11 +68,26 @@ export interface BlocPassage {
 
 /** Pourquoi un envoi bien formé ne se joue pas ici :
  *  - `lecon` : une leçon de l'envoi n'existe pas dans cette version du catalogue ;
- *  - `format` : l'envoi ne se joue pas en fiche (dictée, runner une-question-à-la-fois). */
+ *  - `format` : l'envoi ne se joue ni en fiche ni dans UN runner (dictée, exercices de
+ *    formats mêlés). */
 export type RaisonInjouable = 'lecon' | 'format';
 
+/** Runner d'écran qui joue un envoi « leçon », comme en jeu libre : le type de ses
+ *  exercices, et le mode effectif (celui de l'encadrant, ou le mode par défaut). */
+export interface JeuRunner {
+	type: TypeRunner;
+	mode: ExerciseMode | undefined;
+}
+
 export type Passage =
-	{ ok: true; envoi: Envoi; blocs: BlocPassage[] } | { ok: false; raison: RaisonInjouable };
+	| {
+			ok: true;
+			envoi: Envoi;
+			blocs: BlocPassage[];
+			/** Absent : l'envoi se joue en fiche (une leçon en saisie, ou un bilan). */
+			runner?: JeuRunner;
+	  }
+	| { ok: false; raison: RaisonInjouable };
 
 /** Ce que la correction d'un champ a donné. `pos` : rang du chiffre dans le résultat
  *  d'une opération posée, dont chaque chiffre est un champ. */
@@ -84,27 +106,46 @@ export interface ChampCorrige {
 export function preparerPassage(envoi: Envoi): Passage {
 	if (envoi.nature === 'dictee') return { ok: false, raison: 'format' };
 	const blocs: BlocPassage[] = [];
+	let runner: JeuRunner | undefined;
 	for (const bloc of envoi.blocs) {
+		// Jugé bloc par bloc, pas sur l'accumulateur : un envoi « leçon » n'a qu'un bloc
+		// aujourd'hui, mais ce qui vaut pour un bloc ne doit pas déborder sur le suivant.
+		let enRunner = false;
 		// L'id relu sur la leçon trouvée : un id comme `constructor` ne doit pas passer pour
 		// une leçon en tombant sur un prototype.
 		const lecon = getLessonById(bloc.lecon);
 		if (!lecon || lecon.id !== bloc.lecon) return { ok: false, raison: 'lecon' };
-		// Une leçon se joue comme en jeu libre : un mode à runner dédié n'est pas une fiche.
-		// Mode absent = mode par défaut de la leçon, comme `runLecon`. Un bilan, lui, replie
-		// tout format en fiche (`itemDepuisExercice`), comme le bilan ordinaire.
+		// Une leçon se joue comme en jeu libre : en fiche, ou dans le runner d'écran de son
+		// mode. Mode absent = mode par défaut de la leçon, comme `runLecon`. Un bilan, lui,
+		// replie tout format en fiche (`itemDepuisExercice`), comme le bilan ordinaire.
 		if (envoi.nature === 'lecon') {
 			const mode = bloc.mode ?? defaultMode(lecon.exerciseType);
-			if (bloc.exercices.some((ex) => seJoueEnRunner(ex.type, mode)))
-				return { ok: false, raison: 'format' };
+			const jeu = jeuDuBloc(bloc.exercices, mode);
+			if (jeu === null) return { ok: false, raison: 'format' };
+			if (jeu !== 'fiche') runner = { type: jeu, mode };
+			enRunner = jeu !== 'fiche';
 		}
 		blocs.push({
 			lecon,
 			titre: labelLecon(lecon, envoi.niveau),
 			consigne: consigneFiche(lecon, envoi.niveau),
-			items: bloc.exercices.map((ex) => itemPassage(lecon, ex, bloc.mode)),
+			items: bloc.exercices.map((ex) => itemPassage(lecon, ex, bloc.mode, enRunner)),
 		});
 	}
-	return { ok: true, envoi, blocs };
+	return runner ? { ok: true, envoi, blocs, runner } : { ok: true, envoi, blocs };
+}
+
+/* Comment se joue un bloc : en fiche, dans UN runner, ou pas du tout (`null`) quand ses
+   exercices mêlent les formats. Le jeu libre aiguille sur le premier exercice tiré et le
+   runner suppose ensuite les autres du même type : un envoi mêlé n'a pas d'écran qui le
+   joue en entier. Chaque exercice est regardé, pas le premier seul. */
+function jeuDuBloc(
+	exercices: readonly Exercise[],
+	mode: ExerciseMode | undefined,
+): 'fiche' | TypeRunner | null {
+	const jeux = new Set(exercices.map((ex) => (seJoueEnRunner(ex.type, mode) ? ex.type : 'fiche')));
+	const [jeu] = jeux;
+	return jeux.size === 1 ? jeu : null;
 }
 
 /* Même consigne que la fiche ordinaire (`buildLessonFiche`). */
@@ -115,14 +156,17 @@ function consigneFiche(lecon: LessonDef, niveau: SchoolLevel): string {
 	);
 }
 
-function itemPassage(lecon: LessonDef, ex: Exercise, mode: ExerciseMode | undefined): ItemPassage {
+function itemPassage(
+	lecon: LessonDef,
+	ex: Exercise,
+	mode: ExerciseMode | undefined,
+	enRunner: boolean,
+): ItemPassage {
 	const item = itemDepuisExercice(lecon, ex);
 	const capture: ItemCapture = {
 		lecon: lecon.id,
-		enonce: enonceLisible(item),
-		attendue: item.choices?.length
-			? libelleChoix(item.choices, item.choicesView, String(item.answer))
-			: attendueItem(item),
+		enonce: enRunner ? enonceRunner(ex) : enonceLisible(item),
+		attendue: attendueLisibleItem(item),
 	};
 	if (mode !== undefined) capture.mode = mode;
 	return { item, capture };
@@ -134,6 +178,19 @@ function itemPassage(lecon: LessonDef, ex: Exercise, mode: ExerciseMode | undefi
 function enonceLisible(item: Item): string {
 	if (item.kind === 'posed' && item.posed) return dispositionPosee(item.posed).operation;
 	return questionPourJournal(item.text, !!item.figure?.balisage);
+}
+
+/* L'énoncé d'un exercice joué dans son runner : celui que le runner écrit dans le journal.
+   Le repli en fiche (`itemDepuisExercice`) ne garde la question que des formats qu'une
+   fiche sait poser, et laisserait vide l'énoncé d'un tableau de conversion. */
+function enonceRunner(ex: Exercise): string {
+	if (ex.type === 'clicMot') return questionPourJournal(enonceClicMotJournal(ex));
+	if (ex.type === 'droiteGraduee') return questionPourJournal(enonceDroiteJournal(ex), true);
+	if (ex.type === 'probleme')
+		return questionPourJournal(enonceProblemeLisible(ex), !!ex.figure?.balisage);
+	if (!('question' in ex)) return '';
+	const figure = 'figure' in ex ? ex.figure : undefined;
+	return questionPourJournal(ex.question, !!figure?.balisage);
 }
 
 /* ---------- Noter : le statut d'un item ---------- */

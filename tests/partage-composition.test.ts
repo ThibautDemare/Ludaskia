@@ -14,12 +14,13 @@
      l'identique, quel que soit le profil qui l'ouvre ;
    - 39 : liste blanche du libellé (lettres, chiffres, apostrophe droite, trait
      d'union, espace ; 60 caractères au plus) — EXACTEMENT celle du décodage ;
-   - périmètre de la PR 3 : seules les leçons/modes qui se jouent en FICHE sont
-     envoyables, et un envoi composé n'est JAMAIS refusé côté enfant.
+   - un envoi composé n'est JAMAIS refusé côté enfant.
+
+   Depuis la PR 4, les modes joués dans un runner « une question à la fois » sont
+   envoyables aussi : ce qui le garde (modes runner proposés, `runner` du passage,
+   garantie sur tout le catalogue) vit dans `partage-runners-passage.test.ts`.
 
    Références d'attendu (aucune n'est le module testé) :
-   - « se joue en fiche » : la règle de la séance côté enfant, `seJoueEnRunner` avec
-     le mode retenu (ou le mode par défaut) — c'est elle qui refuserait l'envoi ;
    - « liste blanche du décodage » : `decoderEnvoi` lui-même, nourri d'un JSON forgé ;
    - « même règle que l'express de l'enfant » : `expressQuestionsPerLesson`,
      `EXPRESS_CAP`, et `buildExpressConfig` pour montrer que la mesure statistique
@@ -42,14 +43,8 @@ import {
 	type LessonDef,
 	type SchoolLevel,
 } from '../src/core/catalog';
-import {
-	defaultMode,
-	modesPourNiveau,
-	seJoueEnRunner,
-	type Exercise,
-	type ExerciseMode,
-} from '../src/core/exercise';
-import { labelLecon, LEVEL_ORDER } from '../src/core/levels';
+import { modesPourNiveau, type Exercise, type ExerciseMode } from '../src/core/exercise';
+import { labelLecon } from '../src/core/levels';
 import { lessonAvgPct, loadLessonStats, recordLessonStats } from '../src/core/progress';
 import {
 	addProfile,
@@ -155,22 +150,6 @@ function nombresDe(ex: Exercise): number[] {
 	return (ex.question.match(NOMBRE) ?? []).map((s) => Number(s.replace(/\D/g, '')));
 }
 
-/** Ce que devrait dire `modesEnvoyables`, dérivé de la RÈGLE DE L'ENFANT : un mode est
- *  envoyable si ce qu'il tire se joue en fiche (sinon la séance le refuserait), et
- *  seulement s'il est proposé à ce niveau. Leçon sans modes : `[undefined]` ou `[]`. */
-function modesAttendus(l: LessonDef, niveau: SchoolLevel): (ExerciseMode | undefined)[] {
-	const proposes = modesPourNiveau(l.exerciseType, niveau).map((m) => m.id);
-	const candidats: (ExerciseMode | undefined)[] = proposes.length ? proposes : [undefined];
-	return candidats.filter((mode) => {
-		const joue = mode ?? defaultMode(l.exerciseType);
-		for (let i = 0; i < 30; i++) {
-			const ex = l.exerciseType.generate({ level: niveau, mode });
-			if (seJoueEnRunner(ex.type, joue)) return false;
-		}
-		return true;
-	});
-}
-
 /** Options de `composerLecon` sans clé `mode` quand il n'y en a pas. */
 function optsLecon(
 	l: LessonDef,
@@ -184,35 +163,22 @@ function optsLecon(
 }
 
 /* ============================================================
-   Ce qui est envoyable (périmètre PR 3 : la fiche seulement)
+   Ce qui est envoyable : forme de la réponse (modes runner : voir
+   `partage-runners-passage.test.ts`)
    ============================================================ */
 
-describe('modesEnvoyables / niveauxEnvoyables : seule la fiche part dans un lien', () => {
-	it('un mode « saisie » à côté d’un mode QCM : seul le premier est envoyable', () => {
-		const l = lecon('fr-conj-etre-present');
-		expect(
-			modesPourNiveau(l.exerciseType, 'ce2').map((m) => m.id),
-			'précondition : les modes de la leçon',
-		).toEqual(['saisie', 'qcm']);
-		expect(modesEnvoyables(l, 'ce2')).toEqual(['saisie']);
-		expect(modesEnvoyables(l, 'cm1')).toEqual(['saisie']);
-		expect(niveauxEnvoyables(l)).toEqual(['ce2', 'cm1']);
-	});
-
-	it('l’ordre est celui des modes de la leçon, runner écarté même placé en tête', () => {
-		const geo = lecon('geo-figures-reconnaitre');
-		expect(
-			modesPourNiveau(geo.exerciseType, 'ce2').map((m) => m.id),
-			'précondition',
-		).toEqual(['qcm', 'saisie']);
-		expect(modesEnvoyables(geo, 'ce2')).toEqual(['saisie']);
-
+describe('modesEnvoyables / niveauxEnvoyables : ordre des modes, niveaux en ordre scolaire', () => {
+	it('l’ordre est celui des modes de la leçon ; les niveaux suivent l’ordre scolaire', () => {
 		const romains = lecon('num-chiffres-romains');
 		expect(
 			modesPourNiveau(romains.exerciseType, 'cm1').map((m) => m.id),
 			'précondition',
 		).toEqual(['ecrire', 'lire']);
 		expect(modesEnvoyables(romains, 'cm1')).toEqual(['ecrire', 'lire']);
+
+		const conj = lecon('fr-conj-etre-present');
+		expect([...conj.levels].sort(), 'précondition : CE2 et CM1').toEqual(['ce2', 'cm1']);
+		expect(niveauxEnvoyables(conj)).toEqual(['ce2', 'cm1']);
 	});
 
 	it('leçon sans modes jouée en fiche : [undefined] ; niveaux = ceux de la leçon', () => {
@@ -222,42 +188,6 @@ describe('modesEnvoyables / niveauxEnvoyables : seule la fiche part dans un lien
 		expect(niveauxEnvoyables(l)).toEqual(['ce2']);
 		expect(niveauxEnvoyables(lecon('math-multiples-50'))).toEqual(['cm1']);
 	});
-
-	it('leçons entièrement à runner (problème, clic sur le mot, droite graduée, QCM seul, relier, ranger) : rien d’envoyable', () => {
-		for (const id of [
-			'math-prob-composition',
-			'fr-gram-clic-verbe',
-			'num-droite-entiers',
-			'fr-homophones-a',
-			'fr-vocab-familles-relier',
-			'num-ranger',
-		]) {
-			const l = lecon(id);
-			expect(niveauxEnvoyables(l), id).toEqual([]);
-			for (const niv of l.levels) expect(modesEnvoyables(l, niv), `${id} @${niv}`).toEqual([]);
-		}
-	});
-
-	it('sur TOUT le catalogue : envoyable ⇔ joué en fiche par la séance de l’enfant, niveaux en ordre scolaire', () => {
-		const ecarts: string[] = [];
-		for (const l of getAllLessons()) {
-			const parNiveau = new Map(l.levels.map((n) => [n, modesAttendus(l, n)] as const));
-			for (const [niv, attendus] of parNiveau) {
-				const obtenus = modesEnvoyables(l, niv);
-				if (JSON.stringify(obtenus) !== JSON.stringify(attendus))
-					ecarts.push(
-						`${l.id} @${niv} : ${JSON.stringify(obtenus)} au lieu de ${JSON.stringify(attendus)}`,
-					);
-			}
-			const niveaux = LEVEL_ORDER.filter((n) => (parNiveau.get(n)?.length ?? 0) > 0);
-			const obtenus = niveauxEnvoyables(l);
-			if (JSON.stringify(obtenus) !== JSON.stringify(niveaux))
-				ecarts.push(
-					`${l.id} niveaux : ${JSON.stringify(obtenus)} au lieu de ${JSON.stringify(niveaux)}`,
-				);
-		}
-		expect(ecarts).toEqual([]);
-	}, 60_000);
 });
 
 /* ============================================================
@@ -303,9 +233,8 @@ describe('composerLecon : forme de l’envoi et nombre d’exercices', () => {
 		expect([...reponses].sort()).toEqual(['es', 'est', 'sommes', 'sont', 'suis', 'êtes'].sort());
 	});
 
-	it('mode QCM, mode d’une autre leçon, mode réservé à un autre niveau : refus « format »', () => {
+	it('mode d’une autre leçon, mode inconnu, mode réservé à un autre niveau : refus « format »', () => {
 		const conj = lecon('fr-conj-etre-present');
-		expect(raison(composerLecon(optsLecon(conj, 'ce2', 'qcm')))).toBe('format');
 		// `tuiles` n'est pas un mode de cette leçon : sa fabrique rendrait peut-être du texte,
 		// mais l'encadrant n'a pas pu le choisir.
 		expect(raison(composerLecon(optsLecon(conj, 'ce2', 'tuiles')))).toBe('format');
@@ -317,22 +246,6 @@ describe('composerLecon : forme de l’envoi et nombre d’exercices', () => {
 			'précondition : « virgule » n’est pas proposé au CE2',
 		).not.toContain('virgule');
 		expect(raison(composerLecon(optsLecon(longueurs, 'ce2', 'virgule')))).toBe('format');
-	});
-
-	it('leçon entièrement à runner : refus « format », avec ou sans son mode', () => {
-		const cas: [string, SchoolLevel, ExerciseMode | undefined][] = [
-			['math-prob-composition', 'ce2', undefined],
-			['fr-gram-clic-verbe', 'ce2', 'clic'],
-			['fr-gram-clic-verbe', 'ce2', undefined],
-			['num-droite-entiers', 'cm1', 'placer'],
-			['fr-homophones-a', 'ce2', 'qcm'],
-			['fr-homophones-a', 'ce2', undefined],
-		];
-		for (const [id, niv, mode] of cas)
-			expect(
-				raison(composerLecon(optsLecon(lecon(id), niv, mode))),
-				`${id} (${mode ?? 'sans mode'})`,
-			).toBe('format');
 	});
 
 	it('critère 39 : libellé hors liste blanche → refus « libelle »', () => {

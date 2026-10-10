@@ -18,12 +18,18 @@
    live region (a11y). À la fin : recordLessonRun → mêmes XP / étoiles / objectifs (parité).
 
    Hors sprint (runner d'écran dédié). Structure calquée sur ui/lecon-clic-mot.ts.
+
+   Séance partagée (#734, `runner-partage.ts`) : les droites FIGÉES d'un envoi, sans
+   verdict avant la fin. Poser le repère (doigt ou clavier) reste le geste neutre du jeu
+   libre ; « Valider » s'active dès qu'une graduation est choisie, comme « Vérifier », et
+   Entrée le déclenche s'il est actif. Il note le placement avec la règle du jeu libre
+   (`tentativePosee`), sans figure de révélation, puis passe à la droite suivante.
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
 import { droiteDepuisExercice } from '../core/etayage-droite';
-import type { ExerciseMode } from '../core/exercise';
+import type { Exercise, ExerciseMode } from '../core/exercise';
 
 import { ttsAttr } from '../core/tts-text';
 import {
@@ -44,7 +50,7 @@ import {
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { capterErreur } from './erreur-capture';
-import { entreeTentativePassee } from '../core/erreur-representation';
+import { enonceDroiteJournal, entreeTentativePassee } from '../core/erreur-representation';
 import {
 	capterPasse,
 	decisionHTML,
@@ -55,6 +61,16 @@ import {
 } from './lecon-passer';
 import { monterBoutonAide } from './aide-exercice';
 import { html, type SafeHtml, brut } from '../core/html';
+import {
+	brancherDecisionPartage,
+	decisionPartageHTML,
+	enchainerPartage,
+	erreurPassee,
+	type DecisionPartage,
+	type ErreurRunner,
+	type ReponseRunner,
+	type SeanceRunner,
+} from './runner-partage';
 
 const NB_QUESTIONS = 8;
 
@@ -82,18 +98,42 @@ let selection: number | null = null;
 // Index de la graduation FOCUSABLE au clavier (roving tabindex), indépendant de la sélection.
 let focusIndex = 0;
 let fige = false; // vrai après « Vérifier » : plus aucune (dé)sélection
+// Séance partagée (#734) : la séance de l'écran partagé et le bloc de décision de la droite
+// affichée. `null` en jeu libre.
+let partage: SeanceRunner | null = null;
+let decision: DecisionPartage | null = null;
 
 function sheets(): HTMLElement {
-	return document.getElementById('sheets')!;
+	return partage?.scene ?? document.getElementById('sheets')!;
+}
+
+/* Un exercice de droite graduée devient une question du runner. Partagé par le tirage du
+   jeu libre et par les exercices figés d'un envoi : les deux jouent la même droite. */
+function questionDepuisExercice(ex: Extract<Exercise, { type: 'droiteGraduee' }>): QuestionDroite {
+	return {
+		min: ex.min,
+		max: ex.max,
+		pas: ex.pas,
+		graduations: ex.graduations,
+		bornes: ex.bornes,
+		cible: ex.cible,
+		cibleLabel: ex.cibleLabel,
+		consigne: ex.consigne,
+		explication: ex.explication,
+		parle: ex.parle,
+		pasLabel: ex.pasLabel,
+	};
 }
 
 /* Génère jusqu'à n droites DISTINCTES (dédup sur fenêtre + cible). */
-function genQuestions(l: LessonDef, n: number): QuestionDroite[] {
+/* `m` : le mode DEMANDÉ. L'état de module `mode` n'est posé qu'ensuite, par `demarrer` : le
+   lire ici reprendrait le mode de la partie précédente, qui peut être une séance partagée. */
+function genQuestions(l: LessonDef, m: ExerciseMode | undefined, n: number): QuestionDroite[] {
 	const out: QuestionDroite[] = [];
 	const seen = new Set<string>();
 	let misses = 0;
 	while (out.length < n && misses < 80) {
-		const ex = l.exerciseType.generate({ mode, level: niveauLecon(l) });
+		const ex = l.exerciseType.generate({ mode: m, level: niveauLecon(l) });
 		if (ex.type !== 'droiteGraduee') break; // ce runner n'a de sens que pour ce type
 		const key = `${ex.min}|${ex.max}|${ex.cible}`;
 		if (seen.has(key)) {
@@ -101,19 +141,7 @@ function genQuestions(l: LessonDef, n: number): QuestionDroite[] {
 			continue;
 		}
 		seen.add(key);
-		out.push({
-			min: ex.min,
-			max: ex.max,
-			pas: ex.pas,
-			graduations: ex.graduations,
-			bornes: ex.bornes,
-			cible: ex.cible,
-			cibleLabel: ex.cibleLabel,
-			consigne: ex.consigne,
-			explication: ex.explication,
-			parle: ex.parle,
-			pasLabel: ex.pasLabel,
-		});
+		out.push(questionDepuisExercice(ex));
 		misses = 0;
 	}
 	return out;
@@ -130,7 +158,9 @@ function demarrer(
 	qs: QuestionDroite[],
 	depart = 0,
 	pts = 0,
+	seancePartagee: SeanceRunner | null = null,
 ): void {
+	partage = seancePartagee;
 	lesson = l;
 	mode = m;
 	questions = qs;
@@ -143,7 +173,17 @@ function demarrer(
 		etat: () => ({ questions, idx, score }),
 		render: renderQuestion,
 		aide: 'droiteGraduee',
+		partage: seancePartagee ?? undefined,
 	});
+}
+
+/** Séance partagée (#734) : les exercices figés de l'envoi, joués sans verdict. Le mode
+    peut manquer : la droite graduée se joue toujours dans ce runner. */
+export function jouerPartageDroiteGraduee(s: SeanceRunner): void {
+	const qs = s.exercices.flatMap((ex) =>
+		ex.type === 'droiteGraduee' ? [questionDepuisExercice(ex)] : [],
+	);
+	demarrer(s.lesson, s.mode, qs, 0, 0, s);
 }
 
 export function runLeconDroiteGraduee(lessonId: string, m?: ExerciseMode): void {
@@ -152,7 +192,7 @@ export function runLeconDroiteGraduee(lessonId: string, m?: ExerciseMode): void 
 		goHome();
 		return;
 	}
-	const qs = genQuestions(l, NB_QUESTIONS);
+	const qs = genQuestions(l, m, NB_QUESTIONS);
 	if (!qs.length) {
 		goHome();
 		return;
@@ -183,13 +223,15 @@ function renderQuestion(): void {
 	selection = null;
 	focusIndex = 0;
 	fige = false;
+	decision = null;
+	const s = partage;
 	const q = questions[idx];
 	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage dg-stage">
         <div class="dg-col">
-          ${leconTitreHTML(lesson)}
+          ${leconTitreHTML(lesson, s?.niveau)}
           <p class="dg-consigne" id="dgConsigne"${ttsAttr(q.parle)}>${q.consigne}</p>
           <div class="dg-figure" id="dgFigure">${brut(
 						// Fragment SVG du moteur de figures (frontière typée, cf. rendu-et-echappement.md) :
@@ -203,7 +245,7 @@ function renderQuestion(): void {
 							ariaLabel: q.consigne,
 						}),
 					)}</div>
-          ${decisionHTML('dgVerify')}
+          ${s ? decisionPartageHTML('dgVerify') : decisionHTML('dgVerify')}
           <p class="sr-only" id="dgStatus" role="status" aria-live="polite" aria-atomic="true"></p>
           <div class="sprint-correction" id="dgFeedback" hidden></div>
           <div class="sprint-actions" id="dgActions" hidden></div>
@@ -219,8 +261,16 @@ function renderQuestion(): void {
 		}),
 	);
 	svg.addEventListener('keydown', (e) => onKeydown(e));
-	verif.addEventListener('click', () => verifier());
-	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
+	if (s)
+		decision = brancherDecisionPartage(sheets(), {
+			validerId: 'dgVerify',
+			repondu: () => selection !== null,
+			onValider: () => validerPartage(s),
+		});
+	else {
+		verif.addEventListener('click', () => verifier());
+		wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
+	}
 	bindConsigneTts(sheets()); // bouton « Écouter » de la consigne (#42)
 	monterBoutonAide(sheets().querySelector('.dg-col'), 'droiteGraduee');
 	window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -246,7 +296,10 @@ function selectGraduation(i: number, focus: boolean): void {
 	g.innerHTML = brut(
 		repereMarkup(xDeValeur(q.graduations[i].valeur, q.min, q.max), 'neutre'),
 	).balisage;
-	(sheets().querySelector('#dgVerify') as HTMLButtonElement).disabled = false;
+	// Séance partagée : poser le repère décoche « Je ne sais pas » et recalcule « Valider »
+	// (même règle : une graduation choisie). Le repère reste neutre, rien n'est révélé.
+	if (decision) decision.widgetTouche();
+	else (sheets().querySelector('#dgVerify') as HTMLButtonElement).disabled = false;
 }
 
 /* Clavier (WCAG 2.1.1) : flèches / Début / Fin déplacent le repère de graduation en
@@ -274,7 +327,8 @@ function onKeydown(e: KeyboardEvent): void {
 			selectGraduation(focusIndex, true);
 			break;
 		case 'Enter':
-			if (selection !== null) verifier();
+			if (decision) validerAuClavier();
+			else if (selection !== null) verifier();
 			break;
 		default:
 			return; // touche non gérée : ne pas bloquer (Tab, etc.)
@@ -284,10 +338,12 @@ function onKeydown(e: KeyboardEvent): void {
 
 function verifier(): void {
 	if (fige || selection === null) return;
-	fige = true;
 	const q = questions[idx];
-	const choisie = q.graduations[selection];
-	const juste = choisie.valeur === q.cible;
+	// Même lecture du placement que la droite passée et la séance partagée (`tentativePosee`) :
+	// une seule règle « au bon endroit ».
+	const { choisie, juste } = tentativePosee(q, selection);
+	if (!choisie) return;
+	fige = true;
 	if (juste) score++;
 
 	afficherFigureRevelation(q, juste ? undefined : { valeur: choisie.valeur, etat: 'faux' });
@@ -378,16 +434,6 @@ function afficherFigureRevelation(
 	).balisage;
 }
 
-/* Énoncé du journal : la FENÊTRE fait partie de l'énoncé pour le parent : « place 3 470 » ne
-   veut rien dire sans savoir sur quelle portion de droite. Sans elle, il lit le nombre à
-   placer et la graduation choisie, mais ne peut pas redessiner la droite où l'enfant s'est
-   trompé. Partagé par l'erreur et la question passée (#467). */
-function enonceJournal(q: QuestionDroite): string {
-	const de = q.bornes[0]?.label ?? String(q.min);
-	const a = q.bornes[q.bornes.length - 1]?.label ?? String(q.max);
-	return `${q.consigne} La droite va de ${de} à ${a}.`;
-}
-
 /* Figure du journal : droite VIDE de repère, telle que l'enfant l'a vue, la réponse restant
    portée par `attendue`. Seule la PRÉSENCE d'une figure est consommée (marqueur « exercice
    avec dessin »), mais on passe la vraie figure pour que ce mode porte le même marqueur que
@@ -402,14 +448,21 @@ function figureJournal(q: QuestionDroite): SafeHtml {
 /* Journal des erreurs (#391) : une entrée par droite ratée. `fige` garantit une seule
    capture par essai. */
 function journaliser(q: QuestionDroite, choisieLabel: string): void {
-	capterErreur({
-		text: enonceJournal(q),
+	capterErreur({ ...erreurDroite(q, choisieLabel), mode: 'lecon' });
+}
+
+/* Entrée du journal d'une droite ratée. L'énoncé vient de `enonceDroiteJournal` (la FENÊTRE
+   en fait partie : « place 3 470 » ne dit rien sans la portion de droite), source unique
+   partagée avec la capture de la séance partagée (#734). Partagée par le jeu libre et la
+   séance partagée, qui journalisent la même erreur. */
+function erreurDroite(q: QuestionDroite, choisieLabel: string): ErreurRunner {
+	return {
+		text: enonceDroiteJournal(q),
 		figure: figureJournal(q),
 		donnee: choisieLabel,
 		attendue: q.cibleLabel,
 		lessonId: lesson.id,
-		mode: 'lecon',
-	});
+	};
 }
 
 /* Ce que l'enfant avait posé au moment de demander à voir : la graduation choisie (`null` s'il
@@ -446,7 +499,7 @@ function journaliserPasse(
 	if (!entree) return;
 	if (entree.sansTentative) {
 		capterPasse({
-			text: enonceJournal(q),
+			text: enonceDroiteJournal(q),
 			figure: figureJournal(q),
 			attendue: q.cibleLabel,
 			lessonId: lesson.id,
@@ -494,6 +547,49 @@ function passer(): void {
 			if (idx >= questions.length) finish();
 			else renderQuestion();
 		},
+	});
+}
+
+/* Séance partagée : Entrée sur la droite déclenche « Valider » s'il est actif, comme elle
+   déclenche « Vérifier » en jeu libre ; rien sinon. Le clic passe par le bloc de décision,
+   qui garde son unique validation par question. */
+function validerAuClavier(): void {
+	const valider = sheets().querySelector<HTMLButtonElement>('#dgVerify');
+	if (valider && !valider.disabled) valider.click();
+}
+
+/* Séance partagée : note le placement (même correction qu'en jeu libre, critère 11, via
+   `tentativePosee`), puis passe à la droite suivante sans figure de révélation ni verdict. */
+function validerPartage(s: SeanceRunner): void {
+	const q = questions[idx];
+	const attendue = q.cibleLabel;
+	const { choisie, juste } = tentativePosee(q, selection);
+	let reponse: ReponseRunner;
+	if (decision?.jnsp() || !choisie) {
+		reponse = {
+			statut: 'jnsp',
+			saisie: '',
+			attendue,
+			erreurs: [
+				erreurPassee({
+					text: enonceDroiteJournal(q),
+					figure: figureJournal(q),
+					attendue,
+					lessonId: lesson.id,
+				}),
+			],
+		};
+	} else {
+		reponse = {
+			statut: juste ? 'juste' : 'faux',
+			saisie: choisie.label,
+			attendue,
+			erreurs: juste ? [] : [erreurDroite(q, choisie.label)],
+		};
+	}
+	enchainerPartage(s, idx, reponse, () => {
+		idx++;
+		renderQuestion();
 	});
 }
 

@@ -14,7 +14,7 @@
    Le runner « problème » garde son lexique spécifique (`lex.nom` /
    `lex.nomPluriel`) via le paramètre optionnel `lexique`.
    ============================================================ */
-import type { LessonDef } from '../core/catalog';
+import type { LessonDef, SchoolLevel } from '../core/catalog';
 import type { ExerciseMode, ProbLexique } from '../core/exercise';
 import { recordLessonRun } from '../core/lesson-run';
 import type { LessonRunOutcome } from '../core/lesson-run';
@@ -45,6 +45,7 @@ import {
 } from './navigation';
 import { retourFinActivite } from './retour-activite';
 import { html, type SafeHtml } from '../core/html';
+import type { SeanceRunner } from './runner-partage';
 
 function sheets(): HTMLElement {
 	return document.getElementById('sheets')!;
@@ -66,8 +67,9 @@ export function leconProgressHTML(idx: number, total: number, libelle = 'Questio
     RÉELLEMENT joué (#436 — une leçon peut se nommer autrement selon la classe, cf.
     `LessonDef.labelNiveau`). Les dix runners rendaient ce même markup chacun chez eux, donc
     chacun aurait dû penser à résoudre le niveau : un seul endroit désormais. */
-export function leconTitreHTML(lesson: LessonDef): SafeHtml {
-	const label = labelLecon(lesson, niveauLecon(lesson));
+export function leconTitreHTML(lesson: LessonDef, niveau?: SchoolLevel): SafeHtml {
+	// `niveau` : celui d'un envoi en séance partagée (#734), jamais celui du profil.
+	const label = labelLecon(lesson, niveau ?? niveauLecon(lesson));
 	return html`<div class="sprint-theme"><span class="sprint-lesson">${label}</span></div>`;
 }
 
@@ -92,7 +94,17 @@ export function demarrerRunner(o: {
 	etat: () => { questions: unknown[]; idx: number; score: number };
 	render: () => void;
 	aide?: TypeAide; // clé d'aide contextuelle, pour les runners qui en ont une
+	/** Séance partagée (#734) : l'écran partagé garde le mode, le focus et la fin. Rien de
+	 *  ce qui suit n'a lieu alors : ni session reprenable (la reprendre la terminerait en
+	 *  jeu libre, XP comprise), ni aide ouverte d'office (elle écrit dans le profil, et le
+	 *  critère 26 n'admet que l'XP, l'activité et le journal), ni étayage de la notion. */
+	partage?: SeanceRunner;
 }): void {
+	if (o.partage) {
+		hideMenus();
+		o.render();
+		return;
+	}
 	setCurrentMode('lecon');
 	setCurrentLessonId(o.lesson.id);
 	hideMenus();

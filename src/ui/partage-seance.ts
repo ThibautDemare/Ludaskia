@@ -1,7 +1,8 @@
 /* ============================================================
    Séance partagée (#734) — les écrans ENFANT d'un envoi reçu par lien.
 
-   Accueil → séance (une fiche, ou les fiches d'un bilan) → fin. Le premier passage
+   Accueil → séance (une fiche, les fiches d'un bilan, ou le runner « une question à la
+   fois » du mode de la leçon) → fin. Le premier passage
    terminé est FIGÉ et produit le lien de résultat ; le même lien rouvert sur le même
    profil propose de recopier ce résultat ou de s'entraîner sans rien envoyer.
 
@@ -22,6 +23,13 @@
    - la correction n'est posée qu'APRÈS que le résultat est figé (critère 17) ;
    - pas de chrono, pas de modale de récompense (critères 8 et 23) ;
    - la correction passe par les mêmes fonctions que la fiche ordinaire (critère 11).
+
+   Une leçon dont le mode se joue dans un runner d'écran se joue ici dans CE runner, avec
+   les exercices de l'envoi (`runner-partage.ts` : ce qui change par rapport au jeu
+   libre). L'écran garde la main sur tout le reste : le repère, la région d'annonce qui
+   survit aux questions, le figeage, le journal et la fin. La correction d'une séance en
+   runner est une LISTE (énoncé, réponse, attendu, statut), le contenu même du résultat
+   (arbitrage du mainteneur) : redessiner chaque widget figé coûterait un rendu par format.
    ============================================================ */
 import { decoderEnvoi, type Envoi } from '../core/partage/envoi';
 import { encoderResultat, type Resultat } from '../core/partage/resultat';
@@ -36,6 +44,7 @@ import type { RaisonRefus } from '../core/partage/codec';
 import {
 	changerPseudo,
 	MODE_PARTAGE,
+	type JeuRunner,
 	passageTermine,
 	premierPassage,
 	preparerPassage,
@@ -51,29 +60,54 @@ import {
 	type RaisonInjouable,
 } from '../core/partage/passage';
 import type { StatutReponse } from '../core/partage/resultat';
-import {
-	createRenderContext,
-	enonceTexte,
-	figureBlock,
-	lessonAttr,
-	nextInputId,
-	nomChampReponse,
-	renderItem,
-	withLessonId,
-	type Item,
-	type RenderContext,
-} from '../core/items';
+import { createRenderContext, renderItem, withLessonId, type RenderContext } from '../core/items';
 import { ttsAttr } from '../core/tts-text';
 import { formatReponseRevelee } from '../core/nombres';
 import { attribut, html, joindre, VIDE, type SafeHtml } from '../core/html';
 import { scoreItems } from '../core/scoring';
 import { activeProfile } from '../core/profiles';
 import { icon } from './icon';
-import { capterErreur, libelleChoix } from './erreur-capture';
+import { capterErreur } from './erreur-capture';
+import { saisieLisibleItem } from '../core/erreur-representation';
 import { bindConsigneTts } from './consigne-tts';
 import { annoncer, causeRefus, copierTexte, urlDuLien } from './lien-partage';
-import { champsIllisibles, lireSaisies, marquerChamps, signalerSaisiesIllisibles } from './session';
+import {
+	champsIllisibles,
+	lireSaisies,
+	marquerChamps,
+	rattacherMarqueAuChoix,
+	signalerSaisiesIllisibles,
+} from './session';
 import { goHome, setCurrentLessonId, setCurrentMode, setRenderCtx, setToolbar } from './navigation';
+import { itemsResultatHTML } from './partage-resultat';
+import type { ErreurRunner, SeanceRunner } from './runner-partage';
+import type { TypeRunner } from '../core/exercise';
+import { jouerPartageQcm } from './lecon-qcm';
+import { jouerPartageTuiles } from './lecon-tuiles';
+import { jouerPartageOrdre } from './lecon-ordre';
+import { jouerPartageTri } from './lecon-tri';
+import { jouerPartageAppariement } from './lecon-appariement';
+import { jouerPartageClicMot } from './lecon-clic-mot';
+import { jouerPartageQcmMulti } from './lecon-qcm-multi';
+import { jouerPartageTableau } from './lecon-tableau';
+import { jouerPartageDroiteGraduee } from './lecon-droite-graduee';
+import { jouerPartageProbleme } from './lecon-probleme';
+
+/* Runner de chaque type, en séance partagée. Table typée sur `TypeRunner` : un type
+   déclaré « runner » dans `JEU_PAR_TYPE` sans sa séance partagée ne compile pas, comme
+   la table `RUNNERS` du jeu libre (`navigation.ts`). */
+const RUNNERS_PARTAGE: Record<TypeRunner, (s: SeanceRunner) => void> = {
+	qcm: jouerPartageQcm,
+	tuilesNombre: jouerPartageTuiles,
+	tuilesOrdre: jouerPartageOrdre,
+	tuilesTri: jouerPartageTri,
+	appariement: jouerPartageAppariement,
+	clicMot: jouerPartageClicMot,
+	qcmMulti: jouerPartageQcmMulti,
+	tableauConversion: jouerPartageTableau,
+	droiteGraduee: jouerPartageDroiteGraduee,
+	probleme: jouerPartageProbleme,
+};
 
 type PassageOk = Extract<Passage, { ok: true }>;
 
@@ -85,6 +119,9 @@ interface SeanceEnCours {
 	ctx: RenderContext;
 	capture: Capture;
 	finie: boolean;
+	/** Erreurs notées par un runner, journalisées à la fin du passage seulement : rien
+	 *  n'est écrit si l'enfant quitte avant (la fiche, elle, ne corrige qu'à la fin). */
+	erreurs: ErreurRunner[];
 }
 
 let seance: SeanceEnCours | null = null;
@@ -213,6 +250,10 @@ function repereHTML(envoi: Envoi, entrainement: boolean): SafeHtml {
 }
 
 function demarrer(el: HTMLElement, p: PassageOk, entrainement: boolean): void {
+	if (p.runner && p.envoi.nature === 'lecon') {
+		demarrerEnRunner(el, p, p.runner, entrainement);
+		return;
+	}
 	const ctx = createRenderContext();
 	setRenderCtx(ctx);
 	setCurrentMode(MODE_PARTAGE);
@@ -227,6 +268,7 @@ function demarrer(el: HTMLElement, p: PassageOk, entrainement: boolean): void {
 		ctx,
 		capture: nouvelleCapture(items.map((i) => i.capture)),
 		finie: false,
+		erreurs: [],
 	};
 	let rang = 0;
 	const fiches = joindre(
@@ -264,8 +306,10 @@ function demarrer(el: HTMLElement, p: PassageOk, entrainement: boolean): void {
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+/* Le rendu de la fiche ordinaire (`renderItem`), QCM sans trou compris : ses choix sont
+   des boutons radio (`qcmChoixHTML`), et un QCM à trou garde son champ au trou. */
 function itemHTML(ip: ItemPassage, rang: number, ctx: RenderContext): SafeHtml {
-	const corps = ip.item.choices?.length ? choixHTML(ip.item, ctx) : renderItem(ip.item, ctx);
+	const corps = renderItem(ip.item, ctx);
 	// Nom de la case : l'énoncé, pas un numéro que rien n'affiche. Sur un bilan, un lecteur
 	// d'écran entendrait sinon trente fois « Je ne sais pas » sans savoir de quelle question.
 	const nom = `Je ne sais pas : ${ip.capture.enonce || `question ${rang + 1}`}`;
@@ -273,27 +317,6 @@ function itemHTML(ip: ItemPassage, rang: number, ctx: RenderContext): SafeHtml {
       ${corps}
       <label class="partage-jnsp"><input type="checkbox"${attribut('aria-label', nom)}><span>Je ne sais pas</span></label>
     </div>`;
-}
-
-/* Un QCM dans une fiche (#734). Le bilan ordinaire ne sait pas le jouer à l'écran : son
-   item n'a pas de champ (cf. `renderItem`, limite préexistante), si bien qu'une leçon
-   dont le mode par défaut est un QCM n'y laisse rien à répondre. Ici, l'enfant DOIT
-   pouvoir répondre à chaque question : les choix deviennent des boutons radio, dont la
-   valeur alimente un champ `.ans` caché — corrigé, marqué et révélé exactement comme les
-   autres (même `checkItemAnswer`, critère 11). Réservé à la séance partagée : le bilan
-   ordinaire ne change pas (critère 27). */
-function choixHTML(it: Item, ctx: RenderContext): SafeHtml {
-	const id = nextInputId(ctx);
-	ctx.items[id] = it;
-	const options = joindre(
-		(it.choices ?? []).map((valeur, i) => {
-			const vue = it.choicesView?.[i];
-			return html`<label class="partage-choix-opt"><input type="radio"${attribut('name', `${id}-choix`)}${attribut('value', valeur)}${vue ? attribut('aria-label', vue.label) : VIDE}><span class="partage-choix-vue">${vue ? vue.html : valeur}</span></label>`;
-		}),
-	);
-	return html`${figureBlock(it.figure)}<p class="partage-question">${enonceTexte(it.text)}</p>
-    <fieldset class="partage-choix"${attribut('data-for', id)}><legend class="sr-only">${nomChampReponse(it)}</legend>${options}</fieldset>
-    <input type="hidden" class="ans"${attribut('id', id)}${attribut('data-answer', String(it.answer))}${lessonAttr(ctx)}><span class="mark"${attribut('data-for', id)}></span>`;
 }
 
 const PLACEHOLDER_JNSP = 'Je ne sais pas';
@@ -344,19 +367,7 @@ function brancherQuestions(el: HTMLElement): void {
 			deCote = null;
 			quitterJnsp();
 		});
-		const cache = question.querySelector<HTMLInputElement>('input.ans[type="hidden"]');
-		question.querySelectorAll<HTMLInputElement>('input[type="radio"]').forEach((r) =>
-			r.addEventListener('change', () => {
-				if (cache && r.checked) cache.value = r.value;
-			}),
-		);
 	});
-}
-
-/* La saisie telle que l'encadrant la lira : le LIBELLÉ d'un choix de QCM, pas sa valeur
-   brute (même règle que le journal d'erreurs). */
-function saisieLisible(it: Item, saisie: string): string {
-	return it.choices?.length ? libelleChoix(it.choices, it.choicesView, saisie) : saisie;
 }
 
 const MESSAGE_SEUIL =
@@ -409,7 +420,7 @@ function terminer(el: HTMLElement): void {
 		if (v.statut !== 'vide')
 			noterReponse(s.capture, i, {
 				statut: v.statut,
-				saisie: saisieLisible(items[i].item, v.saisie),
+				saisie: saisieLisibleItem(items[i].item, v.saisie),
 			});
 	});
 	// Le résultat est figé AVANT que la correction soit posée (critère 17).
@@ -456,7 +467,7 @@ function journaliser(items: ItemPassage[], verdicts: Verdict[]): void {
 		const ip = items[i];
 		capterErreur({
 			text: ip.capture.enonce,
-			donnee: v.statut === 'jnsp' ? '' : saisieLisible(ip.item, v.saisie),
+			donnee: v.statut === 'jnsp' ? '' : saisieLisibleItem(ip.item, v.saisie),
 			attendue: ip.capture.attendue,
 			lessonId: ip.capture.lecon,
 			mode: MODE_PARTAGE,
@@ -466,11 +477,10 @@ function journaliser(items: ItemPassage[], verdicts: Verdict[]): void {
 }
 
 /* Ce que `marquerChamps` ne fait pas, parce que la fiche ordinaire n'en a pas besoin :
-   - une question passée par « je ne sais pas » a ses champs VIDES, donc ni marque ni
-     réponse révélée ; or c'est précisément là que l'enfant a demandé à savoir. On révèle
-     la réponse, sans croix : ce n'est pas une faute (même ton que #467) ;
-   - le champ d'un QCM est caché : la marque est rattachée au GROUPE de choix
-     (`aria-describedby`), sans quoi un lecteur d'écran ne l'entendrait jamais. */
+   une question passée par « je ne sais pas » a ses champs VIDES, donc ni marque ni
+   réponse révélée ; or c'est précisément là que l'enfant a demandé à savoir. On révèle
+   la réponse, sans croix : ce n'est pas une faute (même ton que #467). Le champ d'un QCM
+   étant caché, la marque est rattachée au groupe de choix, comme dans `marquerChamps`. */
 function revelerQuestions(questions: HTMLElement[], verdicts: Verdict[]): void {
 	questions.forEach((question, i) => {
 		if (verdicts[i].statut === 'jnsp') {
@@ -481,17 +491,9 @@ function revelerQuestions(questions: HTMLElement[], verdicts: Verdict[]): void {
 				mark.className = 'mark revelee';
 				mark.id = `${inp.id}-mark`;
 				mark.innerHTML = html`<span class="sol">→ ${revelee}</span>`.balisage;
-				if (inp.type !== 'hidden') inp.setAttribute('aria-describedby', mark.id);
+				if (inp.type === 'hidden') rattacherMarqueAuChoix(inp, mark);
+				else inp.setAttribute('aria-describedby', mark.id);
 			}
-		}
-		const groupe = question.querySelector<HTMLElement>('fieldset.partage-choix');
-		const idChamp = groupe?.dataset.for;
-		const mark = idChamp
-			? question.querySelector<HTMLElement>(`.mark[data-for="${idChamp}"]`)
-			: null;
-		if (groupe && mark?.textContent) {
-			mark.id ||= `${idChamp}-mark`;
-			groupe.setAttribute('aria-describedby', mark.id);
 		}
 	});
 }
@@ -531,6 +533,108 @@ function figerFiche(el: HTMLElement): void {
 		html`<h2 id="partageCorrection" class="partage-titre" tabindex="-1">Ta correction</h2>
       <p class="partage-texte">La réponse attendue est écrite à côté de chaque erreur et de chaque « Je ne sais pas ».</p>`.balisage;
 	fiche.prepend(entete);
+}
+
+/* ---------- La séance dans un runner ---------- */
+
+/* Le repère et la région d'annonce sont rendus ICI, hors du conteneur que le runner
+   réécrit à chaque question : le repère reste visible d'un bout à l'autre (critère 7), et
+   une région live recréée à chaque question ne serait pas annoncée de façon fiable. */
+function demarrerEnRunner(
+	el: HTMLElement,
+	p: PassageOk,
+	jeu: JeuRunner,
+	entrainement: boolean,
+): void {
+	if (p.envoi.nature !== 'lecon') return;
+	setCurrentMode(MODE_PARTAGE);
+	setCurrentLessonId(null);
+	setToolbar({ verify: false, home: true, profile: false });
+	const items = p.blocs.flatMap((b) => b.items);
+	const s: SeanceEnCours = {
+		envoi: p.envoi,
+		blocs: p.blocs,
+		entrainement,
+		ctx: createRenderContext(),
+		capture: nouvelleCapture(items.map((i) => i.capture)),
+		finie: false,
+		erreurs: [],
+	};
+	seance = s;
+	el.innerHTML = html`${repereHTML(p.envoi, entrainement)}
+    <p id="partageAnnonce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+    <div id="partageRunner"></div>`.balisage;
+	const region = el.querySelector<HTMLElement>('#partageAnnonce')!;
+	RUNNERS_PARTAGE[jeu.type]({
+		lesson: p.blocs[0].lecon,
+		mode: jeu.mode,
+		niveau: p.envoi.niveau,
+		exercices: p.envoi.blocs[0].exercices,
+		scene: el.querySelector<HTMLElement>('#partageRunner')!,
+		noter: (index, r) => {
+			if (seance !== s || s.finie) return;
+			const notee = noterReponse(s.capture, index, {
+				statut: r.statut,
+				saisie: r.saisie,
+				...(r.attendue !== undefined ? { attendue: r.attendue } : {}),
+			});
+			if (notee) s.erreurs.push(...r.erreurs);
+		},
+		terminer: () => terminerEnRunner(el, s),
+		annoncer: (texte) => annoncer(region, texte),
+	});
+	// Même départ que la fiche : focus sur le repère, qui dit où l'on est.
+	el.querySelector<HTMLElement>('#partageRepere')?.focus({ preventScroll: true });
+	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* Après la dernière question. Comme la fiche : le résultat est figé AVANT que la
+   correction existe (critère 17), et le lien sort même si le journal ou la liste échouent. */
+function terminerEnRunner(el: HTMLElement, s: SeanceEnCours): void {
+	if (seance !== s || s.finie) return;
+	const resultat = s.entrainement ? null : figerPremierPassage(s);
+	s.finie = true;
+	el.innerHTML = repereHTML(s.envoi, s.entrainement).balisage;
+	try {
+		journaliserRunner(s.erreurs);
+	} catch {
+		// Le journal est un confort pour l'adulte : il ne doit coûter ni le lien ni la correction.
+	}
+	let correction: HTMLElement | null;
+	try {
+		// En entraînement, rien n'est gardé : la liste se lit sur la capture figée à la volée.
+		const lu =
+			resultat ??
+			figerResultat(s.capture, { envoi: s.envoi, pseudo: '', date: Date.now(), id: '' });
+		correction = correctionRunner(el, lu);
+	} catch {
+		el.querySelector('#partageCorrectionRunner')?.remove();
+		correction = null;
+	}
+	if (resultat) afficherFin(el, resultat, correction);
+	else afficherFinEntrainement(el, correction);
+}
+
+/* Journal d'erreurs (critère 25) : les entrées notées par le runner, à la granularité de
+   son format, sous le mode « séance partagée ». Entraînement compris, comme la fiche. */
+function journaliserRunner(erreurs: readonly ErreurRunner[]): void {
+	for (const e of erreurs) capterErreur({ ...e, mode: MODE_PARTAGE });
+}
+
+/* La correction d'une séance en runner : la liste des réponses du résultat, comme
+   l'adulte la lira, avec les mots de l'enfant. Même enveloppe que la fiche corrigée
+   (titre focalisable `#partageCorrection`), pour que l'écran de fin la traite pareil. */
+function correctionRunner(el: HTMLElement, r: Resultat): HTMLElement {
+	const bloc = document.createElement('div');
+	bloc.id = 'partageCorrectionRunner';
+	bloc.className = 'partage-correction-runner';
+	bloc.innerHTML = html`<div class="partage-correction-entete">
+        <h2 id="partageCorrection" class="partage-titre" tabindex="-1">Ta correction</h2>
+        <p class="partage-texte">Sous chaque question, tu vois ta réponse et la réponse attendue.</p>
+      </div>
+      <ol class="resultat-items" id="partageCorrectionItems">${itemsResultatHTML(r, 'enfant')}</ol>`.balisage;
+	el.appendChild(bloc);
+	return bloc;
 }
 
 /* ---------- Fin ---------- */

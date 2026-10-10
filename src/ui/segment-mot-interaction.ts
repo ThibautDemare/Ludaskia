@@ -75,6 +75,9 @@ export interface SegmentMotOptions {
 export interface SegmentMotController {
 	/** Fige, marque ✓/✗, révèle le segment attendu, renvoie la justesse. Idempotent. */
 	verify(): boolean;
+	/** Le bloc est-il le segment attendu ? LA règle de `verify()`, sans rien figer, marquer
+	    ni annoncer (séance partagée, #734 : même contrat que `bindClicMot`). */
+	juste(): boolean;
 	/** Indices des MOTS du bloc (ordre croissant, ponctuation exclue), pour le journal
 	    d'erreurs (#391) et la correction. */
 	selected(): number[];
@@ -131,6 +134,13 @@ export function bindSegmentMot(
 		const out: number[] = [];
 		for (let i = bloc[0]; i <= bloc[1]; i++) if (!estPonctuation(tokens[i])) out.push(i);
 		return out;
+	}
+
+	/** Les mots du bloc sont-ils exactement ceux du segment attendu ? */
+	function estJuste(): boolean {
+		const choisis = motsDuBloc();
+		const cible = new Set(cibleIndices);
+		return new Set(choisis).size === cible.size && choisis.every((i) => cible.has(i));
 	}
 
 	/* Repeint l'état courant. Une seule fonction, appelée après chaque frappe : deux
@@ -222,7 +232,7 @@ export function bindSegmentMot(
 			const choisis = motsDuBloc();
 			const selection = new Set(choisis);
 			const cible = new Set(cibleIndices);
-			const juste = selection.size === cible.size && choisis.every((i) => cible.has(i));
+			const juste = estJuste();
 			resultat = juste;
 
 			boutons().forEach((btn) => {
@@ -273,6 +283,7 @@ export function bindSegmentMot(
 			}
 			return juste;
 		},
+		juste: estJuste,
 		selected(): number[] {
 			return motsDuBloc();
 		},

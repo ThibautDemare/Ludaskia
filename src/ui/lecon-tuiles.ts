@@ -7,6 +7,11 @@
    mêmes XP / étoiles / objectifs que la fiche en saisie (parité #69).
    Réutilise les composants visuels du sprint (.sprint-*) et la tuile
    `.tuile` de l'orthographe. N'altère PAS le moteur de tuiles ortho.
+
+   Séance partagée (#734, `runner-partage.ts`) : les questions FIGÉES d'un envoi, sans
+   verdict avant la fin. « Valider » s'active dès qu'une tuile est posée, comme
+   « Vérifier » ; il note la réponse avec la règle du widget (`ctrl.juste()`), sans rien
+   figer ni marquer, puis passe à la question suivante.
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
@@ -42,6 +47,16 @@ import {
 import { attendueIntervalle } from '../core/erreur-representation';
 import { intervalleAPlusieursReponses } from '../core/items';
 import { html, type SafeHtml } from '../core/html';
+import {
+	brancherDecisionPartage,
+	decisionPartageHTML,
+	enchainerPartage,
+	erreurPassee,
+	type DecisionPartage,
+	type ErreurRunner,
+	type ReponseRunner,
+	type SeanceRunner,
+} from './runner-partage';
 
 const NB_QUESTIONS = 8;
 
@@ -62,9 +77,15 @@ let ctrl: TuileController; // widget « tuiles » mutualisé (#345)
 // contre un second enregistrement, et surtout contre une réactivation de « Vérifier » par
 // le `onState` du widget, qui reste bavard tant que `verify()` n'a pas figé le widget.
 let tranchee = false;
+// Séance partagée (#734) : la séance de l'écran partagé, le bloc de décision de la question
+// affichée, et « une tuile est posée » (règle d'activation de « Valider »). `null` en jeu
+// libre.
+let partage: SeanceRunner | null = null;
+let decision: DecisionPartage | null = null;
+let pret = false;
 
 function sheets(): HTMLElement {
-	return document.getElementById('sheets')!;
+	return partage?.scene ?? document.getElementById('sheets')!;
 }
 
 function genQuestions(l: LessonDef, m: ExerciseMode, n: number): TuilesQuestion[] {
@@ -91,7 +112,15 @@ const RUNNER = 'tuiles';
 
 /* Démarre l'écran sur un jeu de questions donné, à l'index et au score voulus. Chemin
    COMMUN au lancement neuf (0/0) et à la reprise, pour que les deux ne divergent pas. */
-function demarrer(l: LessonDef, m: ExerciseMode, qs: TuilesQuestion[], depart = 0, pts = 0): void {
+function demarrer(
+	l: LessonDef,
+	m: ExerciseMode,
+	qs: TuilesQuestion[],
+	depart = 0,
+	pts = 0,
+	seancePartagee: SeanceRunner | null = null,
+): void {
+	partage = seancePartagee;
 	lesson = l;
 	mode = m;
 	questions = qs;
@@ -104,7 +133,18 @@ function demarrer(l: LessonDef, m: ExerciseMode, qs: TuilesQuestion[], depart = 
 		etat: () => ({ questions, idx, score }),
 		render: renderQuestion,
 		aide: 'tuiles',
+		partage: seancePartagee ?? undefined,
 	});
+}
+
+/** Séance partagée (#734) : les exercices figés de l'envoi, joués sans verdict. Même
+    conversion que le tirage du jeu libre (`depuisTuilesNombre`). */
+export function jouerPartageTuiles(s: SeanceRunner): void {
+	const qs = s.exercices.flatMap((ex) =>
+		ex.type === 'tuilesNombre' ? [depuisTuilesNombre(ex)] : [],
+	);
+	// Les tuiles n'ont de runner que dans un mode retenu (`JEU_PAR_TYPE`) : il est défini.
+	demarrer(s.lesson, s.mode!, qs, 0, 0, s);
 }
 
 export function runLeconTuiles(lessonId: string, m: ExerciseMode): void {
@@ -136,13 +176,16 @@ enregistrerRunner(RUNNER, (snap) => {
 function renderQuestion(): void {
 	const q = questions[idx];
 	tranchee = false;
+	decision = null;
+	pret = false;
+	const s = partage;
 	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
-        ${leconTitreHTML(lesson)}
+        ${leconTitreHTML(lesson, s?.niveau)}
         <div data-tuile-mount></div>
-        ${decisionHTML('ltuiVerif')}
+        ${s ? decisionPartageHTML('ltuiVerif') : decisionHTML('ltuiVerif')}
         <!-- Région live (#467) : porte la RÉVÉLATION d'une question passée. Le widget
              « tuiles » n'annonce rien de son côté (son verdict est visuel : case ✓/✗),
              mais une question révélée à la demande n'a AUCUN autre canal — le focus part
@@ -154,19 +197,31 @@ function renderQuestion(): void {
     </div>`.balisage;
 	const verif = sheets().querySelector('#ltuiVerif') as HTMLButtonElement;
 	// Le widget « tuiles » mutualisé (#345) rend l'énoncé + le bac, gère tap/glisser
-	// et l'enveloppe .bignum (#240) ; il (dé)active « Vérifier » via onState.
+	// et l'enveloppe .bignum (#240) ; il (dé)active « Vérifier » via onState. En séance
+	// partagée, poser ou retirer une tuile décoche « Je ne sais pas » et recalcule « Valider ».
 	ctrl = bindTuileInteraction(
 		sheets(),
 		{ kind: 'tuile', question: q.question, answer: q.answer, tuiles: q.tuiles, parle: q.parle },
 		{
 			variant: 'lecon',
 			onState: (complete) => {
-				if (!tranchee) verif.disabled = !complete;
+				if (s) {
+					pret = complete;
+					decision?.widgetTouche();
+				} else if (!tranchee) verif.disabled = !complete;
 			},
 		},
 	);
-	verif.addEventListener('click', () => verifier());
-	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
+	if (s)
+		decision = brancherDecisionPartage(sheets(), {
+			validerId: 'ltuiVerif',
+			repondu: () => pret,
+			onValider: () => validerPartage(s),
+		});
+	else {
+		verif.addEventListener('click', () => verifier());
+		wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
+	}
 	bindConsigneTts(sheets()); // bouton « Écouter » sur l'énoncé (#42)
 	monterBoutonAide(sheets().querySelector('.sprint-stage'), 'tuiles'); // bouton « ? » persistant (#272)
 }
@@ -214,21 +269,9 @@ function verifier(): void {
 	const q = questions[idx];
 	const correct = ctrl.verify(); // fige + marque la case (✓/✗)
 	if (correct) score++;
-	else {
-		// Journal des erreurs (#391) : la tuile posée (libellé) vs la bonne. Une seule
-		// capture : verifier() ne corrige qu'une fois (bouton figé, puis question suivante).
-		const rep = ctrl.reponse?.();
-		capterErreur({
-			text: q.question,
-			donnee: rep?.kind === 'tuile' ? (rep.posee ?? '') : '',
-			// Intercalation : la BANDE acceptée (« un nombre entre 450 et 465 »), pas la seule
-			// tuile juste — c'est ce qui explique au parent pourquoi la tuile posée était fausse
-			// sans lui faire croire à une réponse unique (#446).
-			attendue: q.intervalle ? attendueIntervalle(q.intervalle) : q.answer,
-			lessonId: lesson.id,
-			mode: 'lecon',
-		});
-	}
+	// Journal des erreurs (#391). Une seule capture : verifier() ne corrige qu'une fois
+	// (bouton figé, puis question suivante).
+	else capterErreur({ ...erreurTuiles(q), mode: 'lecon' });
 	// Une fois la réponse validée, le bloc de décision s'efface : seul « Continuer ▶ »
 	// (#ltuiActions) reste, pour ne pas afficher deux boutons à la fois (#153).
 	masquerDecision(sheets());
@@ -259,11 +302,7 @@ function passer(): void {
 	const q = questions[idx];
 	// Même énoncé et même attendu que pour une erreur — intercalation comprise : la BANDE
 	// acceptée, pas la seule tuile juste (#446). Seule la réponse donnée manque.
-	capterPasse({
-		text: q.question,
-		attendue: q.intervalle ? attendueIntervalle(q.intervalle) : q.answer,
-		lessonId: lesson.id,
-	});
+	capterPasse({ text: q.question, attendue: attendueTuiles(q), lessonId: lesson.id });
 	// L'index avance AVANT tout affichage : la photo de reprise (#498) est prise quand
 	// l'enfant quitte l'écran, et une question déjà révélée ne doit jamais lui être reposée.
 	idx++;
@@ -281,6 +320,58 @@ function passer(): void {
 			if (idx >= questions.length) finish();
 			else renderQuestion();
 		},
+	});
+}
+
+/* Réponse attendue lisible. Intercalation : la BANDE acceptée (« un nombre entre 450 et
+   465 »), pas la seule tuile juste — c'est ce qui explique au parent pourquoi la tuile
+   posée était fausse sans lui faire croire à une réponse unique (#446). */
+function attendueTuiles(q: TuilesQuestion): string {
+	return q.intervalle ? attendueIntervalle(q.intervalle) : q.answer;
+}
+
+/* Libellé de la tuile posée ('' si aucune). */
+function tuilePosee(): string {
+	const rep = ctrl.reponse?.();
+	return rep?.kind === 'tuile' ? (rep.posee ?? '') : '';
+}
+
+/* Entrée du journal d'une tuile fausse (#391) : la tuile posée (libellé) vs la bonne.
+   Partagée par le jeu libre et la séance partagée, qui journalisent la même erreur. */
+function erreurTuiles(q: TuilesQuestion): ErreurRunner {
+	return {
+		text: q.question,
+		donnee: tuilePosee(),
+		attendue: attendueTuiles(q),
+		lessonId: lesson.id,
+	};
+}
+
+/* Séance partagée : note la question (même correction qu'en jeu libre, critère 11, via
+   `ctrl.juste()`), puis passe à la suivante sans rien montrer du verdict. */
+function validerPartage(s: SeanceRunner): void {
+	const q = questions[idx];
+	const attendue = attendueTuiles(q);
+	let reponse: ReponseRunner;
+	if (decision?.jnsp() || !pret) {
+		reponse = {
+			statut: 'jnsp',
+			saisie: '',
+			attendue,
+			erreurs: [erreurPassee({ text: q.question, attendue, lessonId: lesson.id })],
+		};
+	} else {
+		const juste = ctrl.juste();
+		reponse = {
+			statut: juste ? 'juste' : 'faux',
+			saisie: tuilePosee(),
+			attendue,
+			erreurs: juste ? [] : [erreurTuiles(q)],
+		};
+	}
+	enchainerPartage(s, idx, reponse, () => {
+		idx++;
+		renderQuestion();
 	});
 }
 

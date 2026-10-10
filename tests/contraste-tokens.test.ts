@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { contraste, melange, SEUIL_NON_TEXTE_AA, SEUIL_TEXTE_AA } from '../tools/contrast/wcag.js';
 
 /* ============================================================
@@ -53,10 +53,15 @@ import { contraste, melange, SEUIL_NON_TEXTE_AA, SEUIL_TEXTE_AA } from '../tools
      • `--warn-bd` sur `--warn-bg` (1,28:1) : liseré décoratif. Le dépôt a déjà tranché
        (encadrant.scss, `.enc-revoir-signal`) en prenant `--warn` PLEIN quand la puce
        doit réellement se voir.
-     • `--warn` comme TEXTE : le seul usage restant (`.enc-tendance-glyphe`) est
-       `aria-hidden` et doublé par le mot en clair → objet graphique décoratif, pas du
-       texte. Partout ailleurs le dépôt évite déjà `--warn` en texte (#8a5200 écrit à
-       la main). Le couple est donc gardé au seuil non-texte, pas au seuil texte.
+     • `--warn` comme TEXTE : l'ambre est trop clair pour du texte courant (4,24:1 sur
+       `--paper`, 3,84:1 sur `--warn-bg` en thème clair). Le texte d'alerte a son propre
+       token, `--warn-text` (décision du 10 octobre 2026), réécrit par la palette Nuit et
+       mesuré au seuil TEXTE sur ses deux surfaces dans PAIRES_TEXTE. Le gate « Texte
+       d'alerte », plus bas, interdit `color: var(--warn)` hors d'une liste blanche dont
+       chaque entrée porte sa raison (aujourd'hui le seul `.enc-tendance-glyphe`, glyphe
+       `aria-hidden` doublé par le mot en clair, donc objet graphique et non texte), et
+       tout `#8a5200` écrit à la main hors de la définition du token (base.scss, et sa
+       palette miroir d'impression print.scss).
    ============================================================ */
 
 /** Tokens `--x: #rrggbb;` d'un bloc de déclarations. Volontairement limité aux
@@ -345,6 +350,19 @@ const PAIRES_TEXTE: Paire[] = [
 	{ avant: '--muted', arriere: '--admin-bg', ou: 'encadrant.scss (texte discret)' },
 	{ avant: '--admin-accent', arriere: '--admin-bg', ou: 'encadrant.scss (titres)' },
 	{ avant: '--admin-accent', arriere: '--paper', ou: 'encadrant.scss .enc-btn-sec' },
+	// Texte d'alerte (décision du 10 octobre 2026) : `--warn` est réservé aux liserés et aux
+	// glyphes, le TEXTE ambre passe par `--warn-text`. Ses deux surfaces réelles ci-dessous ;
+	// le gate « Texte d'alerte » plus bas empêche qu'un texte reparte sur `--warn`.
+	{
+		avant: '--warn-text',
+		arriere: '--paper',
+		ou: 'sheets.scss .rb-record, .rb-trophies, .cover .cover-warn (couverture imprimée) ; orthographe.scss .fb-xp',
+	},
+	{
+		avant: '--warn-text',
+		arriere: '--warn-bg',
+		ou: 'lessons.scss .lz-level ; lecon-mode.scss .lqcm-multi-choice.is-missed, .lqm-badge--revoir ; sheets.scss .rb-warn ; guide.scss .g-badge--renforcer ; vitrine.scss .v-enc-badge--encours',
+	},
 ];
 
 /** Couples de COMPOSANTS D'INTERFACE ou d'objets graphiques porteurs de sens
@@ -597,6 +615,330 @@ describe('Contraste des paires de tokens, tous thèmes (#582)', () => {
 });
 
 /* ============================================================
+   Texte d'alerte : `--warn-text`, jamais `--warn` (décision du 10 octobre 2026)
+
+   `--warn` (#b26a00) ne tient pas AA en texte courant. Le dépôt l'avait contourné à la
+   main, feuille par feuille, en écrivant #8a5200 : le motif exact de `--muted` (#576).
+   Une valeur en dur ne suit pas le thème, et c'est en Nuit qu'elle a cassé (#253, ~2:1
+   sur `--warn-bg` sombre). PAIRES_TEXTE mesure le token ; ce gate-ci tient l'autre
+   moitié, que les feuilles s'en servent :
+     (a) aucun #8a5200 écrit à la main, hors de la définition du token (base.scss,
+         print.scss) ;
+     (b) aucun `color: var(--warn)` hors de la liste blanche ci-dessous.
+   Les commentaires ne comptent pas : ils ne colorent rien.
+   ============================================================ */
+
+type ToleranceWarn = {
+	/** Feuille, relative à src/styles. */
+	fichier: string;
+	/** SUJET du sélecteur : son dernier composé, l'élément réellement coloré. */
+	sujet: string;
+	/** Pourquoi l'élément n'est pas du texte lu. Sans raison, pas d'entrée. */
+	raison: string;
+};
+
+/** Seuls endroits où `color: var(--warn)` est permis. Ajouter une entrée, c'est affirmer
+ *  que l'élément coloré n'est pas un texte qu'on lit ; sinon, `var(--warn-text)`. */
+const WARN_EN_COULEUR_TOLEREE: ToleranceWarn[] = [
+	{
+		fichier: 'encadrant.scss',
+		sujet: '.enc-tendance-glyphe',
+		raison:
+			'glyphe de tendance `aria-hidden`, doublé par le mot en clair : objet graphique, ' +
+			'tenu au seuil non-texte (cf. en-tête), pas du texte',
+	},
+];
+
+type Declaration = {
+	fichier: string;
+	ligne: number;
+	/** Sélecteurs complets de la règle (imbrication et `&` résolus, at-rules ignorées). */
+	selecteurs: string[];
+	propriete: string;
+	valeur: string;
+};
+
+/** Retire les commentaires `/* … *\/` et `// …` sans toucher aux chaînes, et en gardant
+ *  les sauts de ligne : les numéros de ligne des messages d'échec restent justes. */
+function sansCommentaires(scss: string): string {
+	let sortie = '';
+	let guillemet = '';
+	for (let i = 0; i < scss.length; i++) {
+		const c = scss[i];
+		if (guillemet) {
+			sortie += c;
+			if (c === '\\') {
+				sortie += scss.charAt(i + 1);
+				i++;
+			} else if (c === guillemet) guillemet = '';
+		} else if (c === '"' || c === "'") {
+			guillemet = c;
+			sortie += c;
+		} else if (c === '/' && scss[i + 1] === '*') {
+			const fin = scss.indexOf('*/', i + 2);
+			const bout = fin === -1 ? scss.length : fin + 2;
+			sortie += scss.slice(i, bout).replace(/[^\n]/g, ' ');
+			i = bout - 1;
+		} else if (c === '/' && scss[i + 1] === '/' && scss[i - 1] !== ':') {
+			// `scss[i - 1] !== ':'` : épargne le `//` d'une URL (`https://…`).
+			const fin = scss.indexOf('\n', i);
+			const bout = fin === -1 ? scss.length : fin;
+			sortie += ' '.repeat(bout - i);
+			i = bout - 1;
+		} else sortie += c;
+	}
+	return sortie;
+}
+
+/** Liste de sélecteurs coupée aux virgules de premier niveau (pas celles d'un `:is(…)`). */
+function listeSelecteurs(brut: string): string[] {
+	const parts: string[] = [];
+	let profondeur = 0;
+	let courant = '';
+	for (const c of brut) {
+		if (c === '(' || c === '[') profondeur++;
+		else if (c === ')' || c === ']') profondeur--;
+		if (c === ',' && profondeur === 0) {
+			parts.push(courant);
+			courant = '';
+		} else courant += c;
+	}
+	parts.push(courant);
+	return parts.map((s) => s.trim().replace(/\s+/g, ' ')).filter(Boolean);
+}
+
+function resoudre(pile: string[]): string[] {
+	let courants = [''];
+	for (const brut of pile) {
+		if (brut.startsWith('@')) continue; // @media, @mixin, @supports… : pas un sélecteur
+		const enfants = listeSelecteurs(brut);
+		courants = courants.flatMap((parent) =>
+			enfants.map((e) =>
+				e.includes('&') ? e.split('&').join(parent) : parent ? `${parent} ${e}` : e,
+			),
+		);
+	}
+	return courants;
+}
+
+/** Déclarations `propriété: valeur` d'une feuille, avec la règle qui les porte. */
+function declarations(fichier: string, scss: string): Declaration[] {
+	const src = sansCommentaires(scss);
+	const pile: string[] = [];
+	const trouvees: Declaration[] = [];
+	let tampon = '';
+	let ligne = 1;
+	let ligneTampon = 1;
+	let guillemet = '';
+	for (let i = 0; i < src.length; i++) {
+		const c = src[i];
+		if (c === '\n') ligne++;
+		if (!tampon.trim() && /\S/.test(c)) ligneTampon = ligne;
+		if (guillemet) {
+			tampon += c;
+			if (c === guillemet) guillemet = '';
+		} else if (c === '"' || c === "'") {
+			guillemet = c;
+			tampon += c;
+		} else if (c === '#' && src[i + 1] === '{') {
+			// Interpolation SCSS `#{…}` : ses accolades ne sont pas celles d'une règle.
+			const fin = src.indexOf('}', i);
+			tampon += src.slice(i, fin + 1);
+			i = fin;
+		} else if (c === '{') {
+			pile.push(tampon.trim());
+			tampon = '';
+		} else if (c === ';' || c === '}') {
+			const m = tampon.trim().match(/^([\w-]+)\s*:([\s\S]*)$/);
+			if (m)
+				trouvees.push({
+					fichier,
+					ligne: ligneTampon,
+					selecteurs: resoudre(pile),
+					propriete: m[1].toLowerCase(),
+					valeur: m[2].trim(),
+				});
+			tampon = '';
+			if (c === '}') pile.pop();
+		} else tampon += c;
+	}
+	return trouvees;
+}
+
+/** `color: var(--warn)` au sens strict : la propriété `color` exactement (donc ni
+ *  `border-left-color` ni `outline-color`), et le token `--warn` lui-même (ni
+ *  `--warn-text` ni `--warn-bg`), avec ou sans valeur de repli. */
+const estTexteEnWarn = (d: Declaration) =>
+	d.propriete === 'color' && /var\(\s*--warn\s*[,)]/.test(d.valeur);
+
+/** Dernier composé d'un sélecteur : l'élément que la règle colore. */
+const sujet = (selecteur: string) => selecteur.split(/\s*[>+~]\s*|\s+/).pop() ?? '';
+
+const tolereePar = (t: ToleranceWarn, d: Declaration) =>
+	d.fichier === t.fichier && d.selecteurs.every((s) => sujet(s) === t.sujet);
+
+/** Détecteur (b). */
+function texteEnWarnHorsListe(fichier: string, scss: string): Declaration[] {
+	return declarations(fichier, scss).filter(
+		(d) => estTexteEnWarn(d) && !WARN_EN_COULEUR_TOLEREE.some((t) => tolereePar(t, d)),
+	);
+}
+
+/** Feuilles qui DÉFINISSENT `--warn-text` : la source (base.scss) et la palette miroir
+ *  d'impression (print.scss, #601), qui rétablit la valeur claire sur papier. Définir le
+ *  token y est permis ; écrire la valeur comme couleur d'un composant reste interdit. */
+const DEFINISSENT_WARN_TEXT = ['base.scss', 'print.scss'];
+
+/** Détecteur (a) : #8a5200 hors commentaires (toute forme, alpha `#8a5200cc` compris),
+ *  sauf la déclaration `--warn-text: #8a5200` dans les feuilles qui définissent le token. */
+function ambreEcritALaMain(fichier: string, scss: string): { ligne: number; texte: string }[] {
+	return sansCommentaires(scss)
+		.split('\n')
+		.flatMap((l, i) => {
+			const reste = DEFINISSENT_WARN_TEXT.includes(fichier)
+				? l.replace(/--warn-text\s*:\s*#8a5200\s*(?:!important\s*)?;?/i, '')
+				: l;
+			return /#8a5200/i.test(reste) ? [{ ligne: i + 1, texte: l.trim() }] : [];
+		});
+}
+
+const DOSSIER_STYLES = 'src/styles';
+const FEUILLES = readdirSync(DOSSIER_STYLES, { recursive: true, encoding: 'utf8' })
+	.map((f) => f.replace(/\\/g, '/'))
+	.filter((f) => f.endsWith('.scss'))
+	.sort();
+const SOURCES = FEUILLES.map((fichier) => ({
+	fichier,
+	scss: readFileSync(`${DOSSIER_STYLES}/${fichier}`, 'utf8'),
+}));
+
+const lignesDe = (ds: { ligne: number }[]) => ds.map((d) => d.ligne);
+const decrire = (d: Declaration) =>
+	`${d.fichier}:${d.ligne}  ${d.selecteurs.join(', ')} { ${d.propriete}: ${d.valeur} }`;
+
+describe("Texte d'alerte : --warn-text, jamais --warn en texte (décision du 10 octobre 2026)", () => {
+	it('les feuilles sont bien lues et le lecteur de déclarations voit le vrai code', () => {
+		// Sans cette garde, un lecteur cassé (zéro déclaration) rendrait (a) et (b) verts.
+		expect(FEUILLES).toContain('base.scss');
+		expect(FEUILLES).toContain('encadrant.scss');
+		expect(
+			declarations('base.scss', BASE).some(
+				(d) => d.propriete === '--warn' && d.selecteurs.includes(':root'),
+			),
+		).toBe(true);
+	});
+
+	it('la palette Nuit écrit sa propre valeur de --warn-text, en hexadécimal', () => {
+		const nuit = THEMES.match(/@mixin nuit-palette\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
+		expect(
+			tokens(nuit)['--warn-text'],
+			`themes.scss, @mixin nuit-palette : --warn-text doit y avoir sa valeur, écrite en ` +
+				`#rrggbb. Sans elle, l'ambre sombre du thème clair s'affiche sur la carte Nuit ` +
+				`(~2:1) ; et un var(--autre) ne serait pas mesuré par PAIRES_TEXTE.`,
+		).toMatch(/^#[0-9a-f]{6}$/);
+	});
+
+	it('(a) aucun #8a5200 écrit à la main hors de la définition de --warn-text', () => {
+		const trouves = SOURCES.flatMap(({ fichier, scss }) =>
+			ambreEcritALaMain(fichier, scss).map((o) => `${fichier}:${o.ligne}  ${o.texte}`),
+		);
+		expect(
+			trouves,
+			`Ambre d'alerte écrit en dur dans src/styles : il ne suit pas le thème (en Nuit, ` +
+				`#8a5200 tombe à ~2:1 sur --warn-bg). Utilisez var(--warn-text) pour un texte, ` +
+				`var(--warn) pour un liseré ou un glyphe. Seule la définition du token ` +
+				`(--warn-text: …, dans ${DEFINISSENT_WARN_TEXT.join(' ou ')}) écrit cette valeur.`,
+		).toEqual([]);
+	});
+
+	it('(b) color: var(--warn) seulement aux sélecteurs de la liste blanche', () => {
+		const trouves = SOURCES.flatMap(({ fichier, scss }) =>
+			texteEnWarnHorsListe(fichier, scss).map(decrire),
+		);
+		expect(
+			trouves,
+			`Texte posé en var(--warn), sous AA en petite taille (4,24:1 sur --paper, 3,84:1 sur ` +
+				`--warn-bg en thème clair) : utilisez var(--warn-text). Si l'élément n'est PAS un ` +
+				`texte qu'on lit (glyphe aria-hidden doublé en clair…), ajoutez-le à ` +
+				`WARN_EN_COULEUR_TOLEREE avec sa raison.`,
+		).toEqual([]);
+	});
+
+	it('chaque entrée de la liste blanche sert encore', () => {
+		// Même règle que DEROGATIONS : une exception qui ne sert plus est une porte ouverte.
+		const enWarn = SOURCES.flatMap(({ fichier, scss }) =>
+			declarations(fichier, scss).filter(estTexteEnWarn),
+		);
+		for (const t of WARN_EN_COULEUR_TOLEREE)
+			expect(
+				enWarn.some((d) => tolereePar(t, d)),
+				`WARN_EN_COULEUR_TOLEREE : ${t.fichier} ${t.sujet} ne porte plus de color: var(--warn). ` +
+					`Retirer l'entrée.`,
+			).toBe(true);
+	});
+
+	it('détecteur (b) : seule la propriété color compte, et pas dans un commentaire', () => {
+		const scss = `
+.a { border-left-color: var(--warn); }
+.b { border-color: var(--warn); outline-color: var(--warn); --k: var(--warn); }
+.c { /* color: var(--warn) */ color: var(--ink); }
+.d { /* ancien ; color: var(--warn); */ color: var(--warn-text); background: var(--warn-bg); }
+// ancien ; color: var(--warn);
+.e { color: var(--warn); }
+.f {
+	&.g { color: var( --warn , #b26a00) !important; }
+}
+.h { /* note */ color: var(--warn); }
+`;
+		expect(texteEnWarnHorsListe('x.scss', scss).map(decrire)).toEqual([
+			'x.scss:7  .e { color: var(--warn) }',
+			'x.scss:9  .f.g { color: var( --warn , #b26a00) !important }',
+			'x.scss:11  .h { color: var(--warn) }',
+		]);
+	});
+
+	it('détecteur (b) : la liste blanche vise le SUJET du sélecteur, dans son fichier', () => {
+		const scss = `
+.enc-tendance-a-relancer .enc-tendance-glyphe { color: var(--warn); }
+.enc-tendance-a-relancer {
+	.enc-tendance-glyphe { color: var(--warn); }
+}
+.enc-tendance-glyphe-texte { color: var(--warn); }
+.enc-tendance-glyphe, .enc-tendance-mot { color: var(--warn); }
+.enc-tendance-glyphe .enc-libelle { color: var(--warn); }
+`;
+		expect(lignesDe(texteEnWarnHorsListe('encadrant.scss', scss))).toEqual([6, 7, 8]);
+		expect(lignesDe(texteEnWarnHorsListe('sheets.scss', scss))).toEqual([2, 4, 6, 7, 8]);
+	});
+
+	it("détecteur (a) : n'exempte que la définition du token, dans base.scss et print.scss", () => {
+		const scss = `
+:root {
+	--warn-text: #8a5200;
+	/* #8a5200 ≈ 5,8:1 sur --warn-bg */
+}
+.x { color: #8A5200; }
+.y { border-left-color: #8a5200; } // #8a5200
+$ambre: #8a5200cc;
+`;
+		expect(lignesDe(ambreEcritALaMain('base.scss', scss))).toEqual([6, 7, 8]);
+		expect(lignesDe(ambreEcritALaMain('lessons.scss', scss))).toEqual([3, 6, 7, 8]);
+		// Palette miroir d'impression : la définition passe, une couleur de composant non.
+		const impression = `
+@media print {
+	:root {
+		--warn-text: #8a5200 !important;
+	}
+	.z { color: #8a5200 !important; }
+	.w { border-color: #8a5200; }
+}
+`;
+		expect(lignesDe(ambreEcritALaMain('print.scss', impression))).toEqual([6, 7]);
+		expect(lignesDe(ambreEcritALaMain('themes.scss', impression))).toEqual([4, 6, 7]);
+	});
+});
+
+/* ============================================================
    La palette d'IMPRESSION doit refléter la palette claire (#601)
    ============================================================ */
 
@@ -648,6 +990,19 @@ describe("Palette d'impression, miroir de la palette claire (#601)", () => {
 				`exactement ce qui est arrivé à --muted entre #576 et #601.\n` +
 				`Si la divergence est voulue, l'écrire dans DIVERGENCES_ASSUMEES avec sa raison.`,
 		).toBe(RACINE[nom]);
+	});
+
+	it('--warn-text y est rétabli à sa valeur claire (décision du 10 octobre 2026)', () => {
+		// Le test ci-dessus ne vérifie que les tokens PRÉSENTS dans la liste ; un token oublié
+		// lui échappe. C'est arrivé à --warn lui-même (cf. print.scss). --warn-text est réécrit
+		// par la palette Nuit et porte un texte imprimé (.cover-warn, print-only) : sans entrée
+		// ici, imprimer en Nuit pose l'ambre clair du thème sombre sur du papier blanc.
+		const valeur = PALETTE_IMPRESSION['--warn-text'];
+		const message =
+			`print.scss, @media print :root : ajouter --warn-text à sa valeur claire ` +
+			`(${RACINE['--warn-text'] ?? 'celle de base.scss'}) !important.`;
+		expect(valeur, message).toMatch(/^#[0-9a-f]{6}$/);
+		expect(valeur, message).toBe(RACINE['--warn-text']);
 	});
 });
 

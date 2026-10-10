@@ -365,7 +365,7 @@ const PAIRES_TEXTE: Paire[] = [
 	{
 		avant: '--warn-text',
 		arriere: '--warn-bg',
-		ou: 'lessons.scss .lz-level ; lecon-mode.scss .lqcm-multi-choice.is-missed, .lqm-badge--revoir ; sheets.scss .rb-warn ; guide.scss .g-badge--renforcer ; vitrine.scss .v-enc-badge--encours',
+		ou: 'lessons.scss .lz-level ; lecon-mode.scss .lqcm-multi-choice.is-missed, .lqm-badge--revoir ; guide.scss .g-badge--renforcer ; vitrine.scss .v-enc-badge--encours',
 	},
 ];
 

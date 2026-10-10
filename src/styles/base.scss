@@ -54,6 +54,11 @@
 	--warn: #b26a00;
 	--warn-bg: #fff3d6;
 	--warn-bd: #ffd54f;
+	/* TEXTE d'alerte (ambre assombri). `--warn` n'est pas un texte : 4,24:1 sur --paper et
+	   3,84:1 sur --warn-bg, sous AA en petite taille. Faute de token, ce brun était écrit à
+	   la main feuille par feuille, et restait tel quel en thème Nuit, où il tombe à ~2:1.
+	   Tenu par tests/contraste-tokens.test.ts ; Nuit a sa propre valeur (themes.scss). */
+	--warn-text: #8a5200;
 	/* Tokens sémantiques partagés (issue #224) : valeurs CLAIRES ci-dessous =
 	   aspect historique inchangé ; le thème « Nuit » les réécrit (themes.scss).
 	   Les composants doivent les utiliser plutôt que des couleurs en dur, pour

@@ -528,12 +528,11 @@ a.v-brand:focus-visible {
 	background: var(--ok-soft);
 	color: var(--accent-dark);
 }
-/* Texte assombri (#8a5200, ≈ 5,8:1 sur --warn-bg) pour passer WCAG AA en petite
-   taille — var(--warn) seul (#b26a00) n'atteint que ~3,9:1. Même correctif que
-   `.lz-level` (lessons.scss) et les badges de lecon-mode.scss. */
+/* Texte en --warn-text pour passer WCAG AA en petite taille : var(--warn) seul
+   n'atteint que ~3,9:1. Comme `.lz-level` (lessons.scss) et les badges de lecon-mode.scss. */
 .v-enc-badge--encours {
 	background: var(--warn-bg);
-	color: #8a5200;
+	color: var(--warn-text);
 }
 .v-enc-demo-sub {
 	margin: 0 0 8px;

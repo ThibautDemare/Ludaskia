@@ -132,7 +132,7 @@
 	color: var(--ink);
 }
 .g-note--attention {
-	border-left-color: #8a5200;
+	border-left-color: var(--warn-text);
 	background: var(--warn-bg);
 }
 .g-note p {
@@ -191,11 +191,11 @@
 	background: var(--track);
 	color: var(--grey);
 }
-/* #8a5200 (≈ 5,8:1 sur --warn-bg) et non var(--warn) (~3,9:1, échec AA en
-   petite taille) — même correctif que `.lz-level` dans lessons.scss. */
+/* --warn-text et non var(--warn) (~3,9:1, échec AA en petite taille), comme
+   `.lz-level` dans lessons.scss. */
 .g-badge--renforcer {
 	background: var(--warn-bg);
-	color: #8a5200;
+	color: var(--warn-text);
 }
 /* « en cours » est BLEU dans l'application (`--cat-bleu`, cf. `.enc-key-en-cours`
    dans encadrant.scss), pas vert : le reprendre en vert clair ici l'aurait rendu

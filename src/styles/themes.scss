@@ -120,6 +120,7 @@
 	--warn: #f0b850;
 	--warn-bg: #3a2f12;
 	--warn-bd: #6b5512;
+	--warn-text: #f0b850; /* l'ambre clair est déjà un texte AA sur les surfaces sombres */
 	--line: #353d4a;
 	/* Ligne de base des champs de réponse (#386) : le #333 clair y était quasi invisible
 	   (1,14:1 sur --paper). Reprend la valeur de --grey Nuit, plutôt qu'un gris de plus :
@@ -237,14 +238,6 @@
 	/* Médaille de niveau : liseré crème (pas blanc pur) pour éviter un halo dur. */
 	.levelup-medal {
 		border-color: #fff3c4;
-	}
-	/* Multi-sélection (#253) : le texte ambre `#8a5200` échoue sur `--warn-bg` en Nuit
-	   (~2:1) → `var(--warn)` (#f0b850, ≈ 6,99:1). Ne concerne QUE ces sélecteurs neufs ; les
-	   3 occurrences #8a5200 tracées ailleurs (#385/#386/#387) ne sont PAS touchées. */
-	.lqcm-multi-choice.is-missed,
-	.lqcm-multi-choice.is-missed .lqcm-multi-box,
-	.lqm-badge--revoir {
-		color: var(--warn);
 	}
 }
 :root[data-theme='nuit'] {

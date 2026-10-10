@@ -666,15 +666,15 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 .lqcm-multi-choice.is-hit .lqcm-multi-box {
 	color: var(--ok);
 }
-/* (c) oublié (bonne non cochée) → ambre, texte assombri (#8a5200 ≈ 5,8:1 sur --warn-bg
-   en clair ; --warn brut échoue l'AA). PAS rouge (un oubli n'est pas une faute). */
+/* (c) oublié (bonne non cochée) → ambre, texte en --warn-text (--warn brut échoue l'AA).
+   PAS rouge (un oubli n'est pas une faute). */
 .lqcm-multi-choice.is-missed {
 	border-color: var(--warn-bd);
 	background: var(--warn-bg);
-	color: #8a5200;
+	color: var(--warn-text);
 }
 .lqcm-multi-choice.is-missed .lqcm-multi-box {
-	color: #8a5200;
+	color: var(--warn-text);
 }
 /* (d) coché à tort → rouge doux + ✗ (seul vrai rouge). */
 .lqcm-multi-choice.is-false {
@@ -721,7 +721,7 @@ html.anim-reduced .lqcm-ponct-trou.rempli {
 }
 /* « À revoir » en AMBRE (pas rouge) — même recette que le badge « plus dur ». */
 .lqm-badge--revoir {
-	color: #8a5200;
+	color: var(--warn-text);
 	background: var(--warn-bg);
 }
 .lqm-synthese {

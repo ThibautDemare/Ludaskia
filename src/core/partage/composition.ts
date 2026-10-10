@@ -28,9 +28,10 @@ import {
 	nombreItems,
 	type BlocEnvoi,
 	type Envoi,
+	type MotDictee,
 } from './envoi';
 import { preparerPassage } from './passage';
-import { libelle as schemaLibelle, LONGUEUR_MAX_LIBELLE } from './textes';
+import { libelle as schemaLibelle, LONGUEUR_MAX_LIBELLE, NOMBRE_MAX_MOTS } from './textes';
 import { tirerExercices } from './tirage';
 
 export { QUESTIONS_PAR_FICHE };
@@ -125,7 +126,7 @@ export function libelleParDefaut(texte: string): string {
 
 /* ---------- Composer ---------- */
 
-/* Dernier contrôle, commun aux deux natures : l'enfant pourra jouer l'envoi, et l'envoi
+/* Dernier contrôle, commun aux trois natures : l'enfant pourra jouer l'envoi, et l'envoi
    peut voyager (une figure sans recette, par exemple, ne le pourrait pas). */
 function verifier(envoi: Envoi): Composition {
 	if (!preparerPassage(envoi).ok) return { ok: false, raison: 'format' };
@@ -190,6 +191,30 @@ export function composerBilan(o: {
 		blocs,
 	};
 	if (nombreItems(envoi) > MAX_ITEMS) return { ok: false, raison: 'trop-grand' };
+	return verifier(envoi);
+}
+
+/** Une dictée : les mots d'une dictée prédéfinie ou d'une liste (cf. `dictees.ts`), dans
+ *  leur ordre, sans tirage (la liste EST l'exercice). `lecon` : sa source, où ses erreurs
+ *  se rangeront. `niveau` : celui d'une dictée prédéfinie ; une liste n'en a pas. */
+export function composerDictee(o: {
+	mots: MotDictee[];
+	lecon: string;
+	niveau?: SchoolLevel;
+	libelle: string;
+	id: string;
+}): Composition {
+	if (!libelleValide(o.libelle)) return { ok: false, raison: 'libelle' };
+	if (o.mots.length === 0) return { ok: false, raison: 'vide' };
+	if (o.mots.length > NOMBRE_MAX_MOTS) return { ok: false, raison: 'trop-grand' };
+	const envoi: Envoi = {
+		id: o.id,
+		libelle: o.libelle,
+		nature: 'dictee',
+		lecon: o.lecon,
+		mots: o.mots.map((m) => ({ ...m })),
+	};
+	if (o.niveau !== undefined) envoi.niveau = o.niveau;
 	return verifier(envoi);
 }
 

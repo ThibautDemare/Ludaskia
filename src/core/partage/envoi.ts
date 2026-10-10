@@ -19,6 +19,7 @@ import {
 	commeDans,
 	identifiant,
 	idLecon,
+	idLeconResultat,
 	idMode,
 	libelle,
 	motDictee,
@@ -62,8 +63,11 @@ export type Envoi =
 			niveau: SchoolLevel;
 			blocs: BlocEnvoi[];
 	  })
-	/** Une dictée, prédéfinie (niveau connu) ou tirée d'une liste personnalisée (pas de niveau). */
-	| (EnvoiCommun & { nature: 'dictee'; niveau?: SchoolLevel; mots: MotDictee[] });
+	/** Une dictée, prédéfinie (niveau connu) ou tirée d'une liste personnalisée (pas de niveau).
+	 *  `lecon` : sa source, l'id de la dictée prédéfinie ou l'UUID de la liste (arbitrage du
+	 *  mainteneur, 10 octobre 2026). Les erreurs de l'enfant s'y rangent dans le journal, comme
+	 *  en jeu libre. Facultatif : les liens de référence d'avant ce champ restent valides. */
+	| (EnvoiCommun & { nature: 'dictee'; niveau?: SchoolLevel; lecon?: string; mots: MotDictee[] });
 
 /** Nombre d'items d'un envoi : ce que l'enfant aura à faire, et la longueur attendue du résultat. */
 export function nombreItems(envoi: Envoi): number {
@@ -121,6 +125,8 @@ const schemaEnvoi: Schema<Envoi> = union<'nature', Envoi>('nature', {
 		libelle,
 		nature: parmi('dictee'),
 		niveau: facultatif(niveauScolaire),
+		// Le motif d'une leçon de RÉSULTAT : l'UUID d'une liste n'est pas un id du catalogue.
+		lecon: facultatif(idLeconResultat),
 		mots: liste(mot, { min: 1, max: NOMBRE_MAX_MOTS }),
 	}),
 });

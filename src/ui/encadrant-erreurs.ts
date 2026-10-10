@@ -44,7 +44,7 @@ import {
 import { LEVEL_LABEL, labelLecon } from '../core/levels';
 import { lsGetRaw } from '../core/storage';
 import { ORTHO_KEY } from '../core/orthographe/store';
-import { labelLeconOrtho } from '../core/orthographe/lessons';
+import { labelLeconOrtho, libelleOrthoIntrouvable } from '../core/orthographe/lessons';
 import { badgeClasseOrigine, container, renderEspace } from './encadrant-commun';
 import { segmentHTML } from './segment';
 import { html, VIDE, type SafeHtml, joindre } from '../core/html';
@@ -193,7 +193,9 @@ function groupeHTML(
 	prerequis: PrerequisOuvert[],
 ): SafeHtml {
 	// Résolution du libellé : leçon du catalogue, sinon liste d'orthographe (prédéfinie
-	// ou du profil consulté), sinon l'id brut en dernier recours. Le libellé de leçon est
+	// ou du profil consulté), sinon un titre de repli pour une liste absente de ce profil
+	// (supprimée, ou arrivée par une dictée envoyée d'un autre profil, #734), sinon l'id
+	// brut en dernier recours. Le libellé de leçon est
 	// résolu AU NIVEAU DU PROFIL CONSULTÉ (#436, `labelNiveau`), comme le récap de
 	// progression et le programme de séance : les erreurs d'un CM1 sur « Clique sur le nom
 	// noyau » ne doivent pas se regrouper sous le libellé d'une autre classe.
@@ -201,7 +203,7 @@ function groupeHTML(
 	const labelOrtho = lesson ? null : labelLeconOrtho(g.lessonId, orthoListes);
 	const label = lesson
 		? labelLecon(lesson, niveauProfilMatiere(consulte, lesson.subject))
-		: (labelOrtho ?? g.lessonId);
+		: (labelOrtho ?? libelleOrthoIntrouvable(g.lessonId) ?? g.lessonId);
 	const quand = libelleDerniereFois(g.derniereFois, now);
 	const visibles = g.erreurs.slice(0, MAX_PAR_LECON);
 	const anciennes = g.erreurs.slice(MAX_PAR_LECON);

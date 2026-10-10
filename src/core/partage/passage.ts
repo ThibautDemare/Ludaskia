@@ -25,7 +25,9 @@ import {
 } from '../erreur-representation';
 import { addXP, recordActivitePartage } from '../progress';
 import { lsGet, lsGetRaw, lsSet } from '../storage';
-import type { Envoi } from './envoi';
+import { enonceJournalOrtho } from '../orthographe/exercise';
+import { ID_DICTEE_ENVOYEE } from '../orthographe/lessons';
+import type { Envoi, MotDictee } from './envoi';
 import { figerResultat, type Capture, type ItemCapture } from './capture';
 import { schemaResultatGarde, type Resultat, type StatutReponse } from './resultat';
 import { pseudo as schemaPseudo } from './textes';
@@ -66,10 +68,16 @@ export interface BlocPassage {
 	items: ItemPassage[];
 }
 
+/** Un mot d'une dictée envoyée, et ce que le résultat en dira. */
+export interface ItemDictee {
+	mot: MotDictee;
+	capture: ItemCapture;
+}
+
 /** Pourquoi un envoi bien formé ne se joue pas ici :
  *  - `lecon` : une leçon de l'envoi n'existe pas dans cette version du catalogue ;
- *  - `format` : l'envoi ne se joue ni en fiche ni dans UN runner (dictée, exercices de
- *    formats mêlés). */
+ *  - `format` : l'envoi ne se joue ni en fiche ni dans UN runner (exercices de formats
+ *    mêlés). */
 export type RaisonInjouable = 'lecon' | 'format';
 
 /** Runner d'écran qui joue un envoi « leçon », comme en jeu libre : le type de ses
@@ -86,6 +94,9 @@ export type Passage =
 			blocs: BlocPassage[];
 			/** Absent : l'envoi se joue en fiche (une leçon en saisie, ou un bilan). */
 			runner?: JeuRunner;
+			/** Une dictée : ses mots, un à la fois, sous la dictée de la synthèse vocale. Les
+			 *  blocs sont alors vides. */
+			dictee?: ItemDictee[];
 	  }
 	| { ok: false; raison: RaisonInjouable };
 
@@ -104,7 +115,10 @@ export interface ChampCorrige {
  *  passage (critère 16). Le niveau du titre, de la consigne et des items est celui de
  *  l'ENVOI, jamais celui du profil actif (critère 2). */
 export function preparerPassage(envoi: Envoi): Passage {
-	if (envoi.nature === 'dictee') return { ok: false, raison: 'format' };
+	if (envoi.nature === 'dictee') {
+		const lecon = envoi.lecon ?? ID_DICTEE_ENVOYEE;
+		return { ok: true, envoi, blocs: [], dictee: envoi.mots.map((m) => itemDictee(m, lecon)) };
+	}
 	const blocs: BlocPassage[] = [];
 	let runner: JeuRunner | undefined;
 	for (const bloc of envoi.blocs) {
@@ -170,6 +184,21 @@ function itemPassage(
 	};
 	if (mode !== undefined) capture.mode = mode;
 	return { item, capture };
+}
+
+/* Un mot dicté. L'énoncé est celui du journal de la dictée en jeu libre (« Mot à écrire
+   sous la dictée », ou la phrase à trou d'un verbe) : le même geste se raconte de la même
+   façon quel que soit le chemin. Le « comme dans » n'y entre pas, l'attendu porte le mot. */
+function itemDictee(mot: MotDictee, lecon: string): ItemDictee {
+	return {
+		mot,
+		capture: {
+			lecon,
+			mode: 'dictee',
+			enonce: enonceJournalOrtho(mot, 'dictee'),
+			attendue: mot.mot,
+		},
+	};
 }
 
 /* L'énoncé tel que l'encadrant le lira : la forme du journal d'erreurs (`@` → « … »,

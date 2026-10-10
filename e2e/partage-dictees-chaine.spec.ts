@@ -371,12 +371,16 @@ test('37, 20 · chaîne LISTE : ni leçon ni niveau ni id dans le résultat, cla
    Libellé de repli dans le journal de l'encadrant (§5, §8)
    ============================================================ */
 
-const activerProfil = (page: Page, uuid: string) =>
-	page.evaluate((u) => {
+/* Le profil actif est lu au démarrage de l'appli : après l'écriture, on RECHARGE, sans quoi
+   la navigation suivante (qui ne change que le hash) jouerait encore avec l'ancien profil. */
+async function activerProfil(page: Page, uuid: string): Promise<void> {
+	await page.evaluate((u) => {
 		const p = JSON.parse(localStorage.getItem('ludaskia_profiles')!);
 		p.active = u;
 		localStorage.setItem('ludaskia_profiles', JSON.stringify(p));
 	}, uuid);
+	await page.reload({ waitUntil: 'networkidle' });
+}
 
 /** Crée l'envoi de liste en « E2E », puis le fait jouer par `joueur` (profil actif pendant le
  *  jeu). Un profil qui a joué la séance ici a déjà ses erreurs au journal : importer SON

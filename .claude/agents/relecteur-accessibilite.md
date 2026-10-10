@@ -51,6 +51,15 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
     du formulaire ni en tête de page. Cas d'origine : l'import d'un résultat (#734)
     rendait le focus au premier bouton radio, et l'annonce de réussite passait
     derrière.
+  - **Quand le focus va sur un conteneur** (la carte d'une question qui vient de
+    s'afficher), ce conteneur est NOMMÉ (`role="group"` + `aria-label` qui dit où
+    l'on est : « Question 2 sur 5 »). Un `div` sans rôle ni nom est muet ou relu en
+    entier selon le lecteur d'écran, et il couvre l'annonce de la région live. Cas
+    d'origine : les runners en séance partagée (#734).
+  - **Une aide masquée reste lue si elle est encore référencée.** Un `aria-describedby`
+    qui pointe un élément `hidden` garde sa description (calcul du nom accessible) :
+    retirer la référence quand l'aide disparaît. Cas d'origine : « Valider », décrit par
+    « Réponds, ou coche… » même une fois actif (#734).
   - **Boutons répétés dans une liste** (« Copier le lien », « Retirer » sur chaque
     ligne) : chacun a un nom accessible distinct, qui CONTIENT son libellé visible
     (« Copier le lien : Fiche du lundi », WCAG 2.5.3). Un `aria-describedby` donne

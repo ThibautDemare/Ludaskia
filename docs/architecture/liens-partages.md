@@ -10,8 +10,9 @@ Deux routes : `#envoi/<code>` (l'enfant joue) et `#resultat/<code>` (l'encadrant
 Le format est de la **logique pure** (testable sans DOM) et ne porte aucun écran. Les
 écrans de l'enfant (`#envoi/<code>`) sont décrits à « Côté enfant » ; ceux de
 l'encadrant (composer un envoi, lire un résultat, l'ajouter à un suivi) à « Côté
-encadrant ». Aujourd'hui, un envoi se compose pour les leçons jouées en fiche et les
-bilans ; les leçons « une question à la fois » et les dictées n'ont pas encore leur écran.
+encadrant ». Aujourd'hui, un envoi se compose pour les leçons jouées en fiche, celles jouées
+dans un runner « une question à la fois » et les bilans ; seules les dictées n'ont pas
+encore leur écran.
 
 ## Principe : un lien est une donnée hostile
 
@@ -148,9 +149,13 @@ changement d'écran) oublie la séance. Aucune exception ne finit en écran blan
   `itemDepuisExercice` (la fabrique du bilan ordinaire). Titre, consigne et items sont
   au niveau de l'**envoi**, jamais celui du profil actif. N'écrit rien : préparer puis
   abandonner ne consomme pas le premier passage. Refus : `lecon` (leçon absente de ce
-  catalogue), `format` (une dictée ; pour une leçon, un exercice dont le mode se joue
-  dans un runner dédié, table `JEU_PAR_TYPE` / `seJoueEnRunner`). Un **bilan** replie
-  tout format en fiche, comme le bilan ordinaire.
+  catalogue), `format` (une dictée ; un envoi aux formats **mêlés**, dont un runner ne
+  saurait jouer qu'un). Une leçon dont le mode se joue dans un runner dédié (table
+  `JEU_PAR_TYPE` / `seJoueEnRunner`) rend `runner: { type, mode }` en plus des blocs ;
+  l'écran aiguille dessus. Un **bilan** replie tout format en fiche, comme le bilan ordinaire.
+- `enonceRunner` : l'énoncé d'un item joué en runner, celui que le runner écrit dans le
+  journal du jeu libre (`enonceClicMotJournal`, `enonceDroiteJournal`,
+  `enonceProblemeLisible` de `core/erreur-representation.ts`).
 - Chaque item porte une capture (énoncé et attendu **lisibles hors de l'appli**, même
   forme que le journal d'erreurs).
 - `statutItem` : un statut par item (`juste`, `faux`, `jnsp`, `vide`) ; « je ne sais pas »
@@ -189,6 +194,34 @@ changement d'écran) oublie la séance. Aucune exception ne finit en écran blan
    correction soit posée.
 5. **Entraînement** : même séance, sans fige, sans lien, sans XP ni activité.
 
+**Séance en runner (`ui/runner-partage.ts`).** Une leçon dont le mode se joue dans un
+runner d'écran (QCM, QCM multi, tuiles, rangement, tri, tableau de conversion,
+appariement, clic-mot, droite graduée, problème) se joue **dans ce runner**, avec les
+exercices figés de l'envoi, à la place de la fiche (écrans 1, 2, 4 et 5 inchangés).
+- **Aiguillage** : `RUNNERS_PARTAGE` (`partage-seance.ts`) est une table typée
+  `Record<TypeRunner, (s: SeanceRunner) => void>` : un type runner sans séance partagée ne
+  compile pas. Chaque runner exporte un `jouerPartageX` et convertit l'`Exercise` en sa
+  question avec le tirage du jeu libre ; `demarrerRunner({ partage })` et
+  `leconTitreHTML(lesson, niveau?)` (`lecon-runner-shared.ts`) lui évitent le profil actif.
+- **API commune** : `SeanceRunner` (leçon, mode et niveau de l'**envoi**, exercices figés,
+  `noter` / `terminer` / `annoncer`), `decisionPartageHTML` + `brancherDecisionPartage` (bloc
+  « Je ne sais pas » puis « Valider », désactivé tant que rien n'est répondu),
+  `enchainerPartage` (note, rend la suivante ou termine ; focus sur la carte nommée
+  « Question k sur n »), `erreurPassee`. Chaque runner garde **son** verdict (la règle de son
+  jeu libre) et **ses** entrées de journal, à la granularité du format.
+- **Aucun verdict avant la fin** : toucher un choix le sélectionne, « Valider » note et passe
+  à la suivante, sans marque, explication ni étayage. Pas de retour en arrière.
+- **Correction de l'enfant**, une fois le résultat figé : une **liste** (énoncé, « Ta réponse »,
+  « Réponse attendue », statut ; « À revoir » au lieu de « Faux »), la même
+  `itemsResultatHTML(r, lecteur)` que la vue adulte.
+- **Journal** écrit **à la fin** du passage, sous le mode `partage`, avec la granularité du
+  format ; rien si l'enfant quitte avant. Ni XP de leçon, ni étoile, ni reprise, ni aide ouverte
+  d'office, ni étayage.
+- **Widgets** : leur `verify()` s'appuie sur `juste()` (`TuileController`, `ClicMotController`,
+  `SegmentMotController`, `AppariementController`), pour juger sans figer ni marquer ;
+  `AppariementController.liberer()` rend la main au widget d'une question à l'autre.
+  `core/tableau-lecture.ts` (pur) porte le verdict et la relecture d'un tableau de conversion.
+
 **Brancher le reste de l'appli.** Type d'activité `partage` (`progress.ts`,
 `recordActivitePartage`) : contrairement aux autres sessions il **ne pose pas la borne
 des paliers** (`marquerDebutSuivi`), puisqu'il n'écrit aucune statistique de leçon dont
@@ -213,7 +246,8 @@ causes de refus (`causeRefus`, communes aux deux côtés) vivent dans `ui/lien-p
   l'enfant, pas une seconde règle) **et** s'encode (`envoiEnJson`). Refus : `libelle`,
   `vide`, `trop-grand` (`MAX_BLOCS`, `MAX_ITEMS`), `format`.
 - **Ce qu'on peut envoyer** : `modesEnvoyables(lesson, niveau)` ne garde que les modes qui
-  se jouent en fiche (mémorisé), `niveauxEnvoyables` les niveaux où il en reste un.
+  se jouent en fiche **ou dans le runner** d'un seul type d'exercice, `niveauxEnvoyables`
+  les niveaux où il en reste un. Un mode aux formats mêlés est refusé (`format`).
 - **Bilans** : `bilanCategorie` (express **sans pondération** par les statistiques, qui
   sont celles d'un profil, ou complet), `bilanFavori` (favori du profil consulté ; les
   leçons absentes au niveau choisi sont écartées et **comptées**, l'écran le dit) ;
@@ -267,7 +301,8 @@ jamais partiel) ne fait que **cocher d'avance**.
 ## Décisions
 
 Écrites une fois, pour que le prochain relecteur ne les remonte pas de nouveau. Les
-points 1 à 10 concernent le côté enfant, 11 à 15 le côté encadrant.
+points 1 à 10 concernent le côté enfant en fiche, 11 à 15 le côté encadrant, 16 à 24 la
+séance en runner.
 
 1. **« Je ne sais pas » COMPTE comme répondu pour le seuil de 60 %** (avis
    `specialiste-troubles-apprentissage`) : c'est l'information la plus utile à l'adulte,
@@ -280,10 +315,12 @@ points 1 à 10 concernent le côté enfant, 11 à 15 le côté encadrant.
 3. **Entrée sur le dernier champ ne termine PAS la séance** (`verify`, `ui/session.ts`,
    donne le focus au bouton) : terminer fige le premier passage, ce qu'aucune touche ne
    doit faire par mégarde.
-4. **Un QCM se joue en boutons radio DANS une fiche**, réservé à la séance partagée. Le
-   bilan ordinaire n'a aucun champ pour un item QCM (limite préexistante de
-   `renderItem` : 39 couples leçon × niveau ont un QCM pour mode par défaut). Le corriger
-   dans le bilan ordinaire changerait le jeu libre, d'où l'exception.
+4. **Un QCM sans trou se joue en boutons radio DANS une fiche** (`qcmChoixHTML`,
+   `core/items.ts`). Introduit ici pour la séance partagée, le rendu a été étendu au bilan
+   ordinaire sur décision du mainteneur (10 octobre 2026) : `renderItem` n'y donnait
+   aucun champ à un item QCM, et les 39 couples leçon × niveau dont le mode par défaut
+   est un QCM ne laissaient rien à répondre. Un QCM à trou (`@`) garde son champ au
+   trou, dans les deux écrans.
 5. **L'entraînement journalise les erreurs** (règle #391 : tout chemin qui corrige
    journalise), mais ne rapporte ni XP ni résultat.
 6. **Pas d'annonce de passage de niveau** si les +5 XP en franchissent un : aucune modale
@@ -304,11 +341,34 @@ points 1 à 10 concernent le côté enfant, 11 à 15 le côté encadrant.
 12. **Pas de test unitaire de `causeRefus`** : textes constants ; les refus des deux côtés
     sont joués en e2e.
 13. **`encadrant-envois.ts` n'est pas découpé** (environ 750 lignes) : à découper si les
-    PR 4 et 5 le font grossir.
+    PR 5 le fait grossir.
 14. **À 320 px de large, « Programme » se coupe sur deux lignes** dans la barre d'onglets :
     repli voulu (zoom 200 %), largeur rare.
 15. **Le titre visible de l'espace est « Espace encadrants »** (pluriel) : les textes qui le
     nomment suivent ce titre.
+16. **Aucun retour en arrière, et correction en liste texte** (arbitrages du mainteneur du
+    8 octobre 2026). Rejouer chaque widget figé pour la correction coûterait un rendu par
+    format ; la liste (énoncé, réponse, attendu, statut) dit l'essentiel pour tous.
+17. **« Je ne sais pas » coché alors que le widget est rempli donne toujours « n'a pas
+    essayé ».** C'est une réponse explicite, comme sur la fiche où la case vide les champs.
+    Le jeu libre, lui, distingue une tentative (`entreeTentativePassee`).
+18. **Le squelette de `validerPartage` est répété dans les dix runners**, sans être
+    factorisé davantage : la partie commune (bloc de décision, enchaînement) est dans
+    `runner-partage.ts`, chaque runner garde son verdict et son journal. Une API à rappels
+    cacherait plus qu'elle n'économise.
+19. **Le séparateur « — » entre les thèmes d'un tri est gardé** : il met déjà en forme le
+    journal du jeu libre, le changer changerait le jeu libre.
+20. **« Valider » est `disabled`, pas `aria-disabled`** : il n'y a rien à faire avant de
+    répondre, et l'aide visible précède le bouton.
+21. **L'annonce « Réponse enregistrée. Question k sur n. » et le nom de la carte focalisée
+    redisent le rang** : voulu, le silence serait pire.
+22. **Pas de reprise d'une séance partagée commencée, pas de récapitulatif avant l'envoi,
+    pas d'écart (« presque ») dans le résultat** : avis de `specialiste-troubles-apprentissage`,
+    hors des critères de #734.
+23. **Le bouton d'aide « ? » reste en séance partagée** : l'ouvrir n'écrit rien dans le
+    profil, et il décrit le geste, pas la notion.
+24. **« Réponds, ou coche « Je ne sais pas » » est gardé** contre « Fais ta réponse… »
+    (relecture de la langue).
 
 ## Les gardes
 
@@ -330,4 +390,7 @@ figures).
 | `tests/partage-envois-crees.test.ts` | La liste « Vos envois » : plafond, entrées corrompues, refus du stockage. |
 | `tests/partage-import.test.ts` | L'import : ce qui entre dans le profil et rien d'autre, doublon, import à moitié écrit défait, profil correspondant. |
 | `e2e/partage-encadrant.spec.ts` | Le parcours encadrant : composer, retrouver un envoi, lire un résultat, l'importer, et la chaîne complète (créer, jouer, lire). |
+| `tests/partage-runners-passage.test.ts` | La préparation d'un envoi joué en runner (`runner`, refus des formats mêlés) et l'énoncé de résultat par format. |
+| `tests/widgets-juste.test.ts` | `juste()` des widgets : même verdict que `verify()`, sans rien figer (rangée vide ou incomplète refusée). |
+| `e2e/partage-runners.spec.ts`, `e2e/partage-runners-chaine.spec.ts` | Les runners joués depuis un lien (sans verdict avant la fin, « Je ne sais pas », correction en liste) et la chaîne créer, jouer, lire. |
 | `e2e/csp.spec.ts` | La CSP qui n'est pas appliquée pour de bon (dev **et** build). |

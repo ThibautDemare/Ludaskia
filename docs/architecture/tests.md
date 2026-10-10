@@ -483,6 +483,24 @@ surface adulte** ; `contraste-tokens` garde `--field-line` sur `--paper` pour `.
 `.enc-select-niveau` (leur bordure passe de `--line` à `--field-line`) et `--admin-accent` sur
 `--paper` en non-texte.
 
+Runners en séance partagée (PR 4) : `tests/partage-runners-passage.test.ts` (Vitest :
+`preparerPassage` rend `runner: { type, mode }` pour un envoi d'un seul type runner, refuse
+`format` un envoi mêlé, jamais de `runner` pour une fiche ou un bilan ; `modesEnvoyables` /
+`niveauxEnvoyables` ; garantie « envoyable ⇒ composé, préparé, joué dans le bon runner » sur
+tout le catalogue), `tests/widgets-juste.test.ts` (`juste()` de chaque widget : même verdict que
+`verify()` sans rien figer, rangée vide ou incomplète refusée, `AppariementController.liberer()`,
+`liensLisibles` / `pairesErreur`), `e2e/partage-runners.spec.ts` (un format par runner : trois
+questions juste / fausse / « Je ne sais pas », aucun verdict avant la fin, résultat et journal ;
+double clic sur « Valider », quitter en cours, premier passage et entraînement) et
+`e2e/partage-runners-chaine.spec.ts` (créer, jouer, lire, importer, par format).
+`tests/runner-partage.test.ts` (bloc de décision et enchaînement communs), `tests/tableau-lecture.test.ts`
+(verdict et relecture d'un tableau, virgule posée, groupement de la réponse donnée comme
+l'attendue). QCM sans trou d'une fiche ou d'un bilan en boutons radio : `tests/qcm-fiche.test.ts`
+(rendu écran / impression / QCM à trou, libellés lisibles, balayage du catalogue : la bonne
+réponse est le seul choix juste), `tests/qcm-fiche-session.test.ts` (radio → champ caché, marque
+rattachée au groupe), `tests/champs-libelles.test.ts` (un champ caché n'est exempté de nom que
+s'il a son groupe de choix nommé) et `e2e/bilan-qcm.spec.ts` (correction, révélation du libellé,
+journal, reprise, QCM à trou inchangé, défilement vers la première erreur).
 Les schémas, le codec, la capture et le tirage ont leurs tests unitaires
 (`tests/partage-codec`, `-schemas`, `-resultat`, `-tirage`). `tests/recette-balisage.test.ts`
 fige le balisage des trois producteurs migrés vers les fabriques à recette, comparé à la

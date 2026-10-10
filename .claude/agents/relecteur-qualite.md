@@ -135,6 +135,16 @@ faut.**
   d'échec revenir à l'état d'avant, sinon le nouvel essai qu'on propose double ce qui
   était déjà passé. Même règle pour un objet créé au début du geste (un profil créé pour
   un import qui échoue est retiré). Cas d'origine : l'import d'un résultat (#734).
+- **Un état de module qui change le comportement d'un écran est remis par CHAQUE
+  entrée de cet écran**, pas seulement par celle qui l'a posé. Un runner joué en séance
+  partagée garde `partage` non nul après la séance : c'est l'entrée du jeu libre
+  (`demarrer(…)`) qui le remet à `null`. Exiger le test qui joue les deux à la suite sans
+  recharger la page. Cas d'origine : les runners en séance partagée (#734).
+- **Une règle de correction n'a qu'une source.** Un écran qui doit juger SANS marquer
+  (séance partagée, aperçu) appelle la règle que `verify()` utilise lui-même
+  (`juste()` d'un widget, `jugerTableau`, `etapeJuste`), jamais une copie. Deux
+  copies d'une règle de correction divergent au premier correctif. Cas d'origine : les
+  runners en séance partagée (#734).
 - **TypeScript strict, vraiment.** Repère les `any`, les `as` qui masquent un
   vrai problème, les `!` non-null hasardeux, les types trop larges. Le code doit
   passer `tsc --noEmit` sans contournement.

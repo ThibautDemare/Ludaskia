@@ -627,11 +627,13 @@ html.anim-reduced .mark.correct {
 	color: #1b5e20;
 	width: 100%;
 }
+/* Texte en `--ink` : `--warn` sur `--warn-bg` ne fait que 3,84:1, sous AA. L'alerte se lit
+   au liseré et à l'icône, comme `.enc-warn` de l'espace encadrant. */
 .rb-warn {
 	font-family: var(--ui);
 	font-size: 13.5px;
 	font-weight: 700;
-	color: var(--warn);
+	color: var(--ink);
 	background: var(--warn-bg);
 	border: 1px solid var(--warn-bd);
 	border-radius: 10px;

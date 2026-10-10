@@ -45,9 +45,13 @@ couleur d'accent).
 
 ## Intégration continue (CI)
 
-La CI (`.github/workflows/ci.yml`) a deux jobs : `test` enchaîne `format:check →
-lint → typecheck → test` (bloquant), et `e2e` lance les smoke tests Playwright
-(**bloquant** depuis #413 ; #129). Sur chaque PR et push `main`.
+La CI (`.github/workflows/ci.yml`) enchaîne deux vérifications, sur chaque PR et push
+`main` :
+- `test` : `format:check → lint → typecheck → test` (bloquant) ;
+- les smoke tests Playwright (**bloquants** depuis #413 ; #129), joués en DEUX moitiés
+  parallèles (`e2e-shard`, `--shard=1/2` et `2/2`), dont un dernier job, `e2e`, rend le
+  verdict. C'est lui que la protection de `main` exige, sous ce nom. Découpage du
+  10/10/2026 : en un seul job, la suite dépassait sa borne de 25 min.
 
 Un workflow séparé, `.github/workflows/update-snapshots.yml` (#412), régénère et
 recommite les baselines de screenshots de la galerie (`e2e/galerie.spec.ts`) sur

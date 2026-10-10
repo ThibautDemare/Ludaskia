@@ -47,18 +47,31 @@ jobs:
 
   # Tests e2e Playwright (#129) — navigation/rendu réel. BLOQUANT (#413) : la suite
   # est fiabilisée (exécution en série `workers=1`, `retries=1`, `trace: on-first-retry`)
-  # et gèle désormais le merge en cas d'échec. Reste à l'ajouter aux status checks
-  # requis de la branche protégée `main` (réglage du dépôt, côté mainteneur).
-  e2e:
+  # et gèle le merge en cas d'échec.
+  #
+  # DÉCOUPÉE en deux moitiés jouées en parallèle (`--shard`, mesure du 10/10/2026) : la
+  # suite en un seul job durait 19 à 23 min, et les tests de la séance partagée (#734)
+  # lui ont fait passer la borne de 25 min ci-dessous, coupée à 957 tests sur 973, tous
+  # verts. Le commentaire de la borne le prévoyait : découper, pas relever le nombre.
+  # `fullyParallel: true` (playwright.config.ts) répartit les TESTS, pas les fichiers,
+  # donc les deux moitiés restent équilibrées sans rien régler. Pour découper en trois,
+  # ajouter une valeur à `shard` et passer le `/2` du nom et de la commande à `/3`.
+  e2e-shard:
+    name: e2e (${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
+    strategy:
+      # Une moitié rouge ne doit pas annuler l'autre : on veut TOUS les échecs d'un run.
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     # Garde-fou : sans limite explicite, GitHub laisse tourner un job SIX HEURES. Le
     # 19/08/2026, trois jobs bloqués sur le téléchargement d'un paquet apt ont brûlé un
     # runner jusqu'à ce timeout par défaut, en affichant « pending » tout du long — donc
     # sans jamais dire qu'il fallait relancer. Une étape gelée doit échouer VITE et
-    # bruyamment. 25 min laissent une marge large : la suite tourne en ~13 min (dont
-    # ~11,5 min de tests, `workers=1` + `retries: 1`), et l'installation du navigateur
-    # est quasi instantanée sur cache chaud. Si la suite s'approche un jour de cette
-    # borne, c'est le signe qu'il faut la découper, pas relever le nombre.
+    # bruyamment. 25 min PAR MOITIÉ laissent une marge large (mesure du 10/10/2026 : la
+    # suite entière en prenait 19 à 23 en un seul job, `workers=1` + `retries: 1`), et
+    # l'installation du navigateur est quasi instantanée sur cache chaud. Si une moitié
+    # s'approche un jour de cette borne, découper davantage, pas relever le nombre.
     timeout-minutes: 25
     steps:
       - name: Récupérer le dépôt
@@ -95,7 +108,7 @@ jobs:
         run: npx playwright install chromium
 
       - name: Lancer les tests e2e
-        run: npm run test:e2e
+        run: npm run test:e2e -- --shard=${{ matrix.shard }}/2
 
       # Conserve le rapport HTML et les traces/captures même en cas d'échec : sans
       # `continue-on-error`, une étape de test rouge ferait normalement sauter les
@@ -105,9 +118,25 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          # Un nom par moitié : deux artefacts du même nom dans un run se refusent.
+          name: playwright-report-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/
           retention-days: 7
           if-no-files-found: ignore
+
+  # Le check REQUIS par la protection de `main` s'appelle `e2e` : ce job garde ce nom et
+  # rend le verdict des deux moitiés. `always()` le fait tourner même quand une moitié
+  # échoue ou est annulée, sinon il serait « sauté », et un check requis sauté ne bloque
+  # pas un merge.
+  e2e:
+    needs: e2e-shard
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verdict des deux moitiés
+        run: |
+          echo "Moitiés e2e : ${{ needs.e2e-shard.result }}"
+          test "${{ needs.e2e-shard.result }}" = "success"

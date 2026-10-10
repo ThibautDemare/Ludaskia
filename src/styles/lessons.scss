@@ -92,11 +92,10 @@
 }
 /* Badge « plus dur » (#205) : ambre (un défi, pas une erreur — d'où la famille
    --warn et non --ko du flag « à revoir »). Info portée par le texte, pas la seule
-   couleur. Texte assombri (#8a5200, ≈ 5,8:1 sur --warn-bg) pour passer WCAG AA en
-   petite taille — var(--warn) seul (#b26a00) n'atteint que ~3,9:1. */
+   couleur. Texte en --warn-text (AA en petite taille, tous thèmes). */
 .lz-level {
 	background: var(--warn-bg);
-	color: #8a5200;
+	color: var(--warn-text);
 	font-family: var(--ui);
 	font-weight: 700;
 	font-size: 11px;

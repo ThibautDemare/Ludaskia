@@ -38,7 +38,7 @@
 	margin-bottom: 24px;
 }
 .cover .cover-warn {
-	color: var(--warn, #b26a00);
+	color: var(--warn-text);
 	font-size: 13px;
 	margin-top: 18px;
 }
@@ -605,7 +605,7 @@ html.anim-reduced .mark.correct {
 	font-family: var(--ui);
 	font-size: 15px;
 	font-weight: 800;
-	color: var(--warn);
+	color: var(--warn-text);
 }
 .rb-rank {
 	font-family: var(--ui);
@@ -617,7 +617,7 @@ html.anim-reduced .mark.correct {
 	font-family: var(--ui);
 	font-size: 14px;
 	font-weight: 800;
-	color: var(--warn);
+	color: var(--warn-text);
 	width: 100%;
 }
 .rb-goal {

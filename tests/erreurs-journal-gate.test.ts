@@ -60,8 +60,51 @@ const SANS_CAPTURE_PROPRE: Record<string, string> = {
 		"« Je ne sais pas, montre-moi » : il journalise bien (question passée, marquée « n'a pas essayé »), mais par DÉLÉGATION à revelation-neutre.ts — vérifié par un test dédié ci-dessous.",
 };
 
+/* Modules correctifs de la séance PARTAGÉE (#734) hors convention `lecon-*`, qui ne
+   capturent pas eux-mêmes : ils NOTENT leurs erreurs dans la réponse qu'ils rendent à la
+   séance (`ReponseRunner.erreurs`, entrées portant leur `lessonId` ; « je ne sais pas »
+   par `erreurPassee`), et c'est `partage-seance.ts` qui journalise (`journaliserRunner` →
+   `capterErreur`), à la FIN du passage : rien si l'enfant quitte avant. Sans cette table,
+   un tel module passerait entre les mailles — ni `lecon-*`, ni importateur de
+   `capterErreur`. */
+const NOTES_POUR_LA_SEANCE: Record<string, string> = {
+	'dictee-partage.ts':
+		'séance de dictée envoyée par lien (#734, PR 5) : un mot à la fois, noté en ReponseRunner.',
+};
+
 const importeCapterErreur = (source: string): boolean =>
 	/import\s*\{[^}]*\bcapterErreur\b[^}]*\}\s*from\s*'\.\/erreur-capture'/.test(source);
+
+/** Le source sans ses commentaires : une règle qu'un commentaire suffirait à satisfaire
+ *  ne garderait rien. (`://` épargné : une URL n'est pas un commentaire.) */
+const sansCommentaires = (source: string): string =>
+	source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+/** Ce qu'un module noté pour la séance partagée doit montrer, motif par motif. Chaque
+ *  clé est une condition NÉCESSAIRE : la retirer du module fait rougir le gate. */
+function notePourLaSeance(source: string): Record<string, boolean> {
+	const src = sansCommentaires(source);
+	// Valeurs données à `erreurs:` (les 200 caractères qui suivent, sauts de ligne compris).
+	const valeurs = [...src.matchAll(/\berreurs\s*:\s*/g)].map((m) =>
+		src.slice(m.index + m[0].length, m.index + m[0].length + 200),
+	);
+	return {
+		'importe erreurPassee depuis ./runner-partage':
+			/import\s*\{[^}]*\berreurPassee\b[^}]*\}\s*from\s*'\.\/runner-partage'/.test(src),
+		'appelle erreurPassee (« je ne sais pas » → « n’a pas essayé »)': /\berreurPassee\s*\(/.test(
+			src,
+		),
+		// Une réponse FAUSSE porte au moins une entrée : une valeur d'`erreurs` qui n'est ni
+		// vide (réponse juste), ni la seule entrée « je ne sais pas », ni un type.
+		'note une entrée pour une réponse fausse (erreurs: …)': valeurs.some(
+			(v) =>
+				!/^\[\s*\]/.test(v) &&
+				!/^\[\s*erreurPassee\s*\(/.test(v) &&
+				!/^(readonly\s+)?[A-Z]\w*\s*(\[\]|<)/.test(v),
+		),
+		'donne leur lessonId aux entrées (sans lui, capterErreur les ignore)': /\blessonId\b/.test(src),
+	};
+}
 
 const RUNNERS_LECON = readdirSync(DIR).filter((f) => f.startsWith('lecon-') && f.endsWith('.ts'));
 
@@ -105,6 +148,76 @@ describe('Gate du journal d’erreurs (#580)', () => {
 				'journalisée « n’a pas essayé ». Rétablir la délégation, ou lui faire importer capterErreur ' +
 				'directement et le sortir de SANS_CAPTURE_PROPRE.',
 		).toBe(true);
+	});
+
+	it.each(Object.keys(NOTES_POUR_LA_SEANCE))(
+		'%s note ses erreurs pour la séance partagée (erreurs avec lessonId, erreurPassee)',
+		(fichier) => {
+			const source = lire(fichier); // lève si le module n'existe pas (encore)
+			for (const [condition, tenue] of Object.entries(notePourLaSeance(source)))
+				expect(
+					tenue,
+					`${fichier} : ne ${condition} plus.\n` +
+						`Ce module ne capture pas lui-même : ses erreurs n'arrivent au journal de l'encadrant ` +
+						`que par la réponse notée (ReponseRunner.erreurs), que partage-seance.ts journalise ` +
+						`à la fin du passage. Motif de l'entrée : ${NOTES_POUR_LA_SEANCE[fichier]}`,
+				).toBe(true);
+			expect(
+				new RegExp(`from\\s*'\\./${fichier.replace(/\.ts$/, '')}'`).test(
+					sansCommentaires(lire('partage-seance.ts')),
+				),
+				`${fichier} n'est pas importé par partage-seance.ts : ce qu'il note n'est journalisé par personne.`,
+			).toBe(true);
+		},
+	);
+
+	it('la séance partagée journalise ce que ses runners notent (partage-seance.ts)', () => {
+		const src = sansCommentaires(lire('partage-seance.ts'));
+		const corps =
+			/function journaliserRunner\s*\([^)]*\)[^{]*\{([\s\S]*?)\n\}/.exec(src)?.[1] ?? '';
+		const raison =
+			'partage-seance.ts est le SEUL point de capture des modules de NOTES_POUR_LA_SEANCE : ' +
+			'sans lui, leurs erreurs ne vont nulle part.';
+		expect(importeCapterErreur(src), `n'importe plus capterErreur. ${raison}`).toBe(true);
+		expect(
+			/\bcapterErreur\s*\(/.test(corps),
+			`journaliserRunner n'appelle plus capterErreur. ${raison}`,
+		).toBe(true);
+		expect(
+			[...src.matchAll(/\bjournaliserRunner\s*\(/g)].length,
+			`journaliserRunner n'est plus appelé. ${raison}`,
+		).toBeGreaterThanOrEqual(2); // sa définition + au moins un appel
+		expect(
+			/\.erreurs\.push\(\s*\.\.\.\s*\w+\.erreurs\b|\.erreurs\s*=\s*[^;\n]*\.erreurs\b/.test(src),
+			`les erreurs notées par les runners (réponse.erreurs) ne sont plus collectées. ${raison}`,
+		).toBe(true);
+	});
+
+	it('la règle des modules notés rougit si on retire erreurPassee ou les erreurs des faux', () => {
+		// Garde contre une règle qui passerait à vide : éprouvée sur un module FICTIF, écrit
+		// d'après le contrat (pas d'après un runner existant), puis muté.
+		const exemple = [
+			"import { enchainerPartage, erreurPassee, type ReponseRunner } from './runner-partage';",
+			'function valider(): void {',
+			'	const reponse: ReponseRunner = jnsp',
+			"		? { statut: 'jnsp', saisie: '', erreurs: [erreurPassee({ text, attendue: mot, lessonId })] }",
+			"		: { statut: juste ? 'juste' : 'faux', saisie, erreurs: juste ? [] : [{ text, donnee: saisie, attendue: mot, lessonId }] };",
+			'}',
+		].join('\n');
+		const tenues = (s: string) => Object.values(notePourLaSeance(s)).every(Boolean);
+		expect(tenues(exemple), 'le module fictif conforme doit passer').toBe(true);
+		expect(
+			tenues(exemple.replace('erreurPassee, ', '').replace(/erreurPassee\(([^)]*)\)/, '$1')),
+			'sans erreurPassee',
+		).toBe(false);
+		expect(
+			tenues(exemple.replace(/juste \? \[\] : \[\{[^\]]*\]/, '[]')),
+			'sans entrée pour une réponse fausse',
+		).toBe(false);
+		expect(
+			tenues(`/* erreurPassee( lessonId erreurs: x */\n${exemple.replace(/^import.*$/m, '')}`),
+			'un commentaire ne remplace pas l’import',
+		).toBe(false);
 	});
 
 	/* Croisement avec l'aiguillage réel : la convention de nommage ne protège que les

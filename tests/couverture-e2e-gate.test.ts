@@ -256,6 +256,75 @@ describe('Couverture e2e des runners de leçon (#598)', () => {
 });
 
 /* ============================================================
+   Surface 2 bis — la séance de dictée partagée (#734, PR 5)
+   ============================================================ */
+
+/* Son module (`src/ui/dictee-partage.ts`) ne s'appelle pas `lecon-*` et n'est aiguillé
+   par aucun type : la surface 2 ne le voit pas. Il n'a pas non plus de signature CSS
+   propre (il réutilise `.sprint-stage`, `#orthoInput`, le bloc de décision partagé) : la
+   preuve est donc le GESTE, une spec qui ouvre un envoi de nature `dictee` ET actionne
+   « Valider » de la séance partagée — ce bouton n'existe que dans la séance de l'enfant. */
+
+/** Un envoi de dictée écrit en dur (objet ou JSON). */
+const NATURE_DICTEE = /\bnature['"]?\s*:\s*['"]dictee['"]/;
+
+/** Fabriques d'envoi de dictée exportées par une aide de `e2e/` (`partage-fixtures.ts`…) :
+ *  une spec qui en appelle une ouvre une dictée sans écrire `nature: 'dictee'` elle-même. */
+const FABRIQUES_DICTEE = readdirSync('e2e')
+	.filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'))
+	.flatMap((f) => readFileSync(`e2e/${f}`, 'utf8').split(/\n(?=export )/))
+	.filter((bloc) => NATURE_DICTEE.test(bloc))
+	.map((bloc) => /^export\s+(?:async\s+)?(?:function|const)\s+(\w+)/.exec(bloc)?.[1])
+	.filter((n): n is string => Boolean(n));
+
+const ouvreUneDictee = (src: string) =>
+	NATURE_DICTEE.test(src) || FABRIQUES_DICTEE.some((n) => new RegExp(`\\b${n}\\s*\\(`).test(src));
+
+const SELECTEURS_VALIDER = ['[data-partage-valider]', '#partageValider'];
+const echapper = (s: string) => s.replace(/[.*+?^${}()|[\]\\#-]/g, '\\$&');
+const GESTE = String.raw`\.(?:click|press|tap|dispatchEvent)\(`;
+
+/** « Valider » ACTIONNÉ, pas seulement cité : un `toHaveCount(0)` ne joue rien. Directement
+ *  (`locator('…').click()`) ou par un raccourci (`const valider = (page) => page.locator('…')`
+ *  puis `valider(page).click()`). */
+function actionneValider(src: string): boolean {
+	return SELECTEURS_VALIDER.some((sel) => {
+		const s = echapper(sel);
+		if (new RegExp(`['"\`]${s}['"\`]\\)\\s*${GESTE}`).test(src)) return true;
+		return [...src.matchAll(new RegExp(`const\\s+(\\w+)\\s*=[^;\\n]*['"\`]${s}['"\`]`, 'g'))].some(
+			(m) => new RegExp(`\\b${m[1]}\\b(?:\\([^)]*\\))?\\s*${GESTE}`).test(src),
+		);
+	});
+}
+
+describe('Couverture e2e de la séance de dictée partagée (#734)', () => {
+	it('le détecteur reconnaît un « Valider » actionné (garde : les runners partagés le font déjà)', () => {
+		// Sans cette garde, un détecteur cassé rendrait le test suivant rouge pour une
+		// mauvaise raison, ou vert à vide le jour où il cesserait de chercher.
+		expect(SPECS.filter((s) => actionneValider(s.src)).map((s) => s.nom)).toContain(
+			'e2e/partage-runners.spec.ts',
+		);
+		expect(
+			actionneValider("await expect(page.locator('[data-partage-valider]')).toHaveCount(0);"),
+		).toBe(false);
+	});
+
+	it('une spec ouvre un envoi de nature « dictee » ET actionne « Valider »', () => {
+		const specs = SPECS.filter((s) => ouvreUneDictee(s.src) && actionneValider(s.src)).map(
+			(s) => s.nom,
+		);
+		expect(
+			specs.length,
+			`Aucune spec e2e ne joue la séance de dictée partagée (src/ui/dictee-partage.ts).\n` +
+				`Règle CLAUDE.md : « pas de fonctionnalité visuelle sans sa spec ». Ce module échappe à la ` +
+				`surface 2 (ni lecon-*, ni aiguillé par type) : il faut une spec qui ouvre un envoi ` +
+				`\`nature: 'dictee'\` (en dur, ou par une fabrique exportée d'une aide de e2e/) et clique ` +
+				`« Valider » ([data-partage-valider] ou #partageValider).`,
+		).toBeGreaterThan(0);
+	});
+});
+
+/* ============================================================
    Surface 3 — les types, par délégation à #581
    ============================================================ */
 

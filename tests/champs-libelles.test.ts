@@ -21,11 +21,60 @@ import { withSeed } from '../src/core/utils';
 
 const GRAINE = 42;
 
-/** aria-label de chaque champ de réponse d'un fragment HTML, dans l'ordre du rendu. */
+/** aria-label de chaque champ de réponse EXPOSÉ d'un fragment HTML, dans l'ordre du rendu.
+ *  Un `input type="hidden"` n'est jamais exposé aux technologies d'assistance : c'est le
+ *  champ que remplit un QCM de fiche (#734), et ce qui se nomme alors, ce sont son groupe
+ *  de choix et ses boutons radio (cf. `defautsGroupesDeChoix`). */
 function libelles(html: string): string[] {
-	return [...html.matchAll(/<input[^>]*class="ans[^"]*"[^>]*>/g)].map(
+	return [...html.matchAll(/<input(?![^>]*\btype="hidden")[^>]*class="ans[^"]*"[^>]*>/g)].map(
 		(m) => m[0].match(/aria-label="([^"]*)"/)?.[1] ?? '',
 	);
+}
+
+/** Nom accessible d'un bouton radio : son `aria-label`, sinon le texte du `label` qui
+ *  l'enveloppe (seule association label/radio que produit `qcmChoixHTML`). */
+function nomRadio(radio: HTMLInputElement): string {
+	return (radio.getAttribute('aria-label') ?? radio.closest('label')?.textContent ?? '').trim();
+}
+
+/** Le choix est-il une VUE RICHE (du balisage, pas du texte seul) ? Une fraction empilée a
+ *  pour texte « 34 », une image n'en a aucun : le texte du choix n'est alors pas un nom. */
+function choixRiche(radio: HTMLInputElement): boolean {
+	const texteSeul = (el: Element) =>
+		el.childNodes.length > 0 && [...el.childNodes].every((n) => n.nodeType === Node.TEXT_NODE);
+	const label = radio.closest('label');
+	return !!label && [...label.querySelectorAll('*')].some((el) => el !== radio && !texteSeul(el));
+}
+
+/** Défauts de nommage des QCM de fiche (#734), en échange de l'exclusion du champ caché :
+ *  - un champ caché sans groupe de choix qui le pilote est une question à laquelle on ne
+ *    peut RIEN répondre (le défaut d'origine de #734) — on ne l'exclut qu'à cette condition ;
+ *  - un groupe se nomme par sa `legend`, ENFANT DIRECT du `fieldset` (sinon elle ne le
+ *    nomme pas), non vide ;
+ *  - chaque bouton radio porte un nom : le texte du choix, ou, pour une vue riche, son
+ *    `aria-label` (le texte « 34 » d'une fraction empilée est un nom, mais un faux). */
+function defautsGroupesDeChoix(html: string): { groupes: number; defauts: string[] } {
+	const racine = document.createElement('div');
+	racine.innerHTML = html;
+	const defauts: string[] = [];
+	for (const cache of racine.querySelectorAll<HTMLInputElement>('input.ans[type="hidden"]')) {
+		if (!racine.querySelector(`fieldset.fiche-choix[data-for="${cache.id}"]`))
+			defauts.push(`champ caché #${cache.id} sans groupe de choix : rien à répondre`);
+	}
+	const groupes = [...racine.querySelectorAll<HTMLFieldSetElement>('fieldset.fiche-choix')];
+	for (const [g, groupe] of groupes.entries()) {
+		const legend = groupe.querySelector('legend');
+		if (!legend || legend.parentElement !== groupe || !legend.textContent?.trim())
+			defauts.push(`groupe de choix n°${g + 1} sans legend (nom du groupe)`);
+		const radios = [...groupe.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
+		if (radios.length < 2) defauts.push(`groupe de choix n°${g + 1} : ${radios.length} choix`);
+		for (const [r, radio] of radios.entries()) {
+			if (!nomRadio(radio)) defauts.push(`groupe n°${g + 1}, choix n°${r + 1} sans nom`);
+			else if (choixRiche(radio) && !radio.getAttribute('aria-label')?.trim())
+				defauts.push(`groupe n°${g + 1}, choix n°${r + 1} : vue riche sans libellé parlé`);
+		}
+	}
+	return { groupes: groupes.length, defauts };
 }
 
 const ficheDe = (id: string) => withSeed(GRAINE, () => buildLessonFiche(id));
@@ -137,7 +186,68 @@ describe('Gate : aucun champ de fiche sans nom accessible (#577)', () => {
 						`Toute branche de renderItem qui rend un <input class="ans"> doit poser un aria-label.`,
 				).not.toBe('');
 			}
+			expect(
+				defautsGroupesDeChoix(html.balisage).defauts,
+				`${id} (${niveau}) : QCM de fiche mal nommé (#734). Un champ caché n'est exclu ` +
+					`du balayage qu'en échange d'un groupe de choix nommé, aux choix nommés.`,
+			).toEqual([]);
 		}
+	});
+
+	it('les groupes de choix sont bien balayés (garde contre une exclusion à vide)', () => {
+		// Sans QCM sans trou rendu en groupe de choix, l'exclusion du champ caché ne serait
+		// compensée par rien : on vérifie que le balayage en rencontre réellement. 39 couples
+		// leçon × niveau mesurés le 10 octobre 2026 ; le plancher laisse une marge.
+		let couples = 0;
+		for (const lesson of LECONS) {
+			for (const niveau of lesson.levels) {
+				const html = withSeed(GRAINE, () => buildLessonFiche(lesson.id, niveau));
+				if (defautsGroupesDeChoix(html.balisage).groupes > 0) couples++;
+			}
+		}
+		expect(couples).toBeGreaterThanOrEqual(30);
+	});
+});
+
+describe('Gate QCM de fiche : le contrôle du nommage mord (#734)', () => {
+	/* Témoins fabriqués à la main : le contenu réel respecte déjà la règle, donc seul un
+	   balisage fautif prouve que `defautsGroupesDeChoix` le signale. */
+	const bon =
+		'<fieldset class="fiche-choix" data-for="a0"><legend>Quelle fraction ?</legend>' +
+		'<label><input type="radio" name="a0-choix" value="aucune"><span>aucune</span></label>' +
+		'<label><input type="radio" name="a0-choix" value="3/4" aria-label="trois quarts">' +
+		'<span><span class="frac"><span>3</span><span>4</span></span></span></label>' +
+		'<label><input type="radio" name="a0-choix" value="img" aria-label="La première image">' +
+		'<span><svg></svg></span></label>' +
+		'</fieldset><input type="hidden" class="ans" id="a0" data-answer="aucune">';
+
+	it('témoin conforme : aucun défaut, et le champ caché ne compte pas comme champ sans nom', () => {
+		expect(defautsGroupesDeChoix(bon)).toEqual({ groupes: 1, defauts: [] });
+		expect(libelles(bon)).toEqual([]);
+	});
+
+	it('champ caché sans groupe de choix : signalé (rien à répondre)', () => {
+		const html = '<p>Quel angle ?</p><input type="hidden" class="ans" id="a0" data-answer="aigu">';
+		expect(defautsGroupesDeChoix(html).defauts).toHaveLength(1);
+	});
+
+	it('legend vide ou absente : signalée', () => {
+		expect(defautsGroupesDeChoix(bon.replace('Quelle fraction ?', ' ')).defauts).toHaveLength(1);
+		expect(
+			defautsGroupesDeChoix(bon.replace('<legend>Quelle fraction ?</legend>', '')).defauts,
+		).toHaveLength(1);
+	});
+
+	it('image sans aria-label : choix sans nom, signalé', () => {
+		expect(
+			defautsGroupesDeChoix(bon.replace(' aria-label="La première image"', '')).defauts,
+		).toEqual(['groupe n°1, choix n°3 sans nom']);
+	});
+
+	it('fraction empilée sans aria-label : son texte « 34 » n’est pas un nom, signalée', () => {
+		expect(defautsGroupesDeChoix(bon.replace(' aria-label="trois quarts"', '')).defauts).toEqual([
+			'groupe n°1, choix n°2 : vue riche sans libellé parlé',
+		]);
 	});
 });
 

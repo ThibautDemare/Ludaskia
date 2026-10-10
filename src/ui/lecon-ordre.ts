@@ -23,11 +23,16 @@
 
    Réutilise les composants du sprint (.sprint-*) et la tuile .tuile. Modèle
    d'interaction validé côté UX enfant (tap fiable au doigt, drag en appoint).
+
+   Séance partagée (#734, `runner-partage.ts`) : les questions FIGÉES d'un envoi, sans
+   verdict avant la fin (ni marques, ni diagnostic d'inversion). « Valider » s'active
+   quand la rangée est pleine, comme « Vérifier » ; il note la réponse avec la règle du
+   widget (`ctrl.juste()`), puis passe à la question suivante.
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
-import type { ExerciseMode, NatureOrdre } from '../core/exercise';
+import type { Exercise, ExerciseMode, NatureOrdre } from '../core/exercise';
 import { separateurSuite } from '../core/exercise';
 import { escapeHTML } from '../core/utils';
 import { parseNombreFr } from '../core/nombres';
@@ -58,6 +63,16 @@ import {
 } from './lecon-passer';
 import { ordreErreur } from '../core/erreur-representation';
 import { html, joindre } from '../core/html';
+import {
+	brancherDecisionPartage,
+	decisionPartageHTML,
+	enchainerPartage,
+	erreurPassee,
+	type DecisionPartage,
+	type ErreurRunner,
+	type ReponseRunner,
+	type SeanceRunner,
+} from './runner-partage';
 
 const NB_QUESTIONS = 6;
 
@@ -78,9 +93,15 @@ let ctrl: TuileController; // widget « ranger une suite » mutualisé (#345)
 // contre un second enregistrement, et surtout contre une réactivation de « Vérifier » par
 // le `onState` du widget, qui reste bavard tant que `verify()` n'a pas figé le widget.
 let tranchee = false;
+// Séance partagée (#734) : la séance de l'écran partagé, le bloc de décision de la question
+// affichée, et « la rangée est pleine » (règle d'activation de « Valider »). `null` en jeu
+// libre.
+let partage: SeanceRunner | null = null;
+let decision: DecisionPartage | null = null;
+let pret = false;
 
 function sheets(): HTMLElement {
-	return document.getElementById('sheets')!;
+	return partage?.scene ?? document.getElementById('sheets')!;
 }
 
 /* Type d'aide contextuelle (#272) accordé à ce qu'on range (#448) : le contenu de
@@ -160,10 +181,16 @@ function genQuestions(l: LessonDef, m: ExerciseMode, n: number): OrdreQuestion[]
 			continue;
 		}
 		seen.add(key);
-		out.push({ question: ex.question, tuiles: ex.tuiles, ordre: ex.ordre, nature: ex.nature });
+		out.push(questionDepuisExercice(ex));
 		misses = 0;
 	}
 	return out;
+}
+
+/* Un exercice « ranger une suite » devient une question du runner. Partagé par le tirage
+   du jeu libre et par les exercices figés d'un envoi : les deux jouent la même question. */
+function questionDepuisExercice(ex: Extract<Exercise, { type: 'tuilesOrdre' }>): OrdreQuestion {
+	return { question: ex.question, tuiles: ex.tuiles, ordre: ex.ordre, nature: ex.nature };
 }
 
 /* Nom du runner dans le registre de reprise (#498) — stable, il vit dans les instantanés. */
@@ -171,7 +198,15 @@ const RUNNER = 'ordre';
 
 /* Démarre l'écran sur un jeu de questions donné, à l'index et au score voulus. Chemin
    COMMUN au lancement neuf (0/0) et à la reprise, pour que les deux ne divergent pas. */
-function demarrer(l: LessonDef, m: ExerciseMode, qs: OrdreQuestion[], depart = 0, pts = 0): void {
+function demarrer(
+	l: LessonDef,
+	m: ExerciseMode,
+	qs: OrdreQuestion[],
+	depart = 0,
+	pts = 0,
+	seancePartagee: SeanceRunner | null = null,
+): void {
+	partage = seancePartagee;
 	lesson = l;
 	mode = m;
 	questions = qs;
@@ -186,7 +221,17 @@ function demarrer(l: LessonDef, m: ExerciseMode, qs: OrdreQuestion[], depart = 0
 		// Clé d'aide DYNAMIQUE (#448) : ranger des mots et ranger des nombres ne
 		// s'expliquent pas pareil, la nature est portée par la question tirée.
 		aide: typeAide(qs[0]),
+		partage: seancePartagee ?? undefined,
 	});
+}
+
+/** Séance partagée (#734) : les exercices figés de l'envoi, joués sans verdict. */
+export function jouerPartageOrdre(s: SeanceRunner): void {
+	const qs = s.exercices.flatMap((ex) =>
+		ex.type === 'tuilesOrdre' ? [questionDepuisExercice(ex)] : [],
+	);
+	// Le rangement n'a de runner que dans un mode retenu (`JEU_PAR_TYPE`) : il est défini.
+	demarrer(s.lesson, s.mode!, qs, 0, 0, s);
 }
 
 export function runLeconOrdre(lessonId: string, m: ExerciseMode): void {
@@ -218,14 +263,17 @@ enregistrerRunner(RUNNER, (snap) => {
 function renderQuestion(): void {
 	const q = questions[idx];
 	tranchee = false;
+	decision = null;
+	pret = false;
+	const s = partage;
 	sheets().innerHTML = html`
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
-        ${leconTitreHTML(lesson)}
+        ${leconTitreHTML(lesson, s?.niveau)}
         <p class="sprint-q lord-consigne"${ttsAttr(q.question)}>${q.question}</p>
         <div data-tuile-mount></div>
-        ${decisionHTML('lordVerif')}
+        ${s ? decisionPartageHTML('lordVerif') : decisionHTML('lordVerif')}
         <p class="sr-only" id="lordStatus" role="status" aria-live="polite" aria-atomic="true"></p>
         <div class="sprint-correction" id="lordFeedback" hidden></div>
         <div class="sprint-actions" id="lordActions" hidden></div>
@@ -233,19 +281,31 @@ function renderQuestion(): void {
     </div>`.balisage;
 	const verif = sheets().querySelector('#lordVerif') as HTMLButtonElement;
 	// Widget « ranger une suite » mutualisé (#345) : rangée numérotée + bac, tap/glisser,
-	// figeage et marques ✓/✗ par case à la validation.
+	// figeage et marques ✓/✗ par case à la validation. En séance partagée, poser ou retirer
+	// une tuile décoche « Je ne sais pas » et recalcule « Valider ».
 	ctrl = bindTuileInteraction(
 		sheets(),
 		{ kind: 'ordre', question: q.question, ordre: q.ordre, tuiles: q.tuiles, nature: q.nature },
 		{
 			variant: 'lecon',
 			onState: (complete) => {
-				if (!tranchee) verif.disabled = !complete;
+				if (s) {
+					pret = complete;
+					decision?.widgetTouche();
+				} else if (!tranchee) verif.disabled = !complete;
 			},
 		},
 	);
-	verif.addEventListener('click', () => verifier());
-	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
+	if (s)
+		decision = brancherDecisionPartage(sheets(), {
+			validerId: 'lordVerif',
+			repondu: () => pret,
+			onValider: () => validerPartage(s),
+		});
+	else {
+		verif.addEventListener('click', () => verifier());
+		wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
+	}
 	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne (#42)
 	monterBoutonAide(sheets().querySelector('.sprint-stage'), typeAide(q)); // bouton « ? » persistant (#272)
 }
@@ -259,8 +319,7 @@ function verifier(): void {
 	// Ordre réellement posé par l'enfant : il sert à DEUX choses, le journal d'erreurs
 	// et le diagnostic « suite inversée » — on le lit donc une seule fois, avant de
 	// brancher quoi que ce soit (aucun chemin ne doit sortir avant `capterErreur`).
-	const rep = ctrl.reponse?.();
-	const propose = rep?.kind === 'ordre' ? rep.propose : [];
+	const propose = suiteProposee();
 	if (correct) score++;
 	else {
 		// Journal des erreurs (#391) : UNE entrée pour le rangement raté (ordre proposé
@@ -268,8 +327,7 @@ function verifier(): void {
 		// journalisée comme les autres (avec son message ciblé en plus à l'écran). Une
 		// seule capture : verifier() ne corrige qu'une fois (bouton figé après
 		// validation, puis on passe à la question suivante).
-		const { donnee, attendue } = ordreErreur(propose, q.ordre, q.nature);
-		capterErreur({ text: q.question, donnee, attendue, lessonId: lesson.id, mode: 'lecon' });
+		capterErreur({ ...erreurOrdre(q, propose), mode: 'lecon' });
 	}
 	// Diagnostic ciblé de l'inversion : il s'AJOUTE à la révélation du bon rangement
 	// (qui reste l'information la plus utile), il ne la remplace pas.
@@ -337,6 +395,51 @@ function passer(): void {
 			if (idx >= questions.length) finish();
 			else renderQuestion();
 		},
+	});
+}
+
+/* Suite posée par l'enfant, dans l'ordre des cases. */
+function suiteProposee(): string[] {
+	const rep = ctrl.reponse?.();
+	return rep?.kind === 'ordre' ? rep.propose : [];
+}
+
+/* Entrée du journal d'un rangement raté (#391) : UNE entrée, ordre proposé vs bon ordre,
+   lisibles (séparateur accordé à la nature, #448). Partagée par le jeu libre et la séance
+   partagée, qui journalisent la même erreur. */
+function erreurOrdre(q: OrdreQuestion, propose: string[]): ErreurRunner {
+	const { donnee, attendue } = ordreErreur(propose, q.ordre, q.nature);
+	return { text: q.question, donnee, attendue, lessonId: lesson.id };
+}
+
+/* Séance partagée : note la question (même correction qu'en jeu libre, critère 11, via
+   `ctrl.juste()`), puis passe à la suivante sans rien montrer du verdict. */
+function validerPartage(s: SeanceRunner): void {
+	const q = questions[idx];
+	let reponse: ReponseRunner;
+	if (decision?.jnsp() || !pret) {
+		// Même attendu que le « je ne sais pas » du jeu libre (`passer`).
+		const attendue = ordreErreur([], q.ordre, q.nature).attendue;
+		reponse = {
+			statut: 'jnsp',
+			saisie: '',
+			attendue,
+			erreurs: [erreurPassee({ text: q.question, attendue, lessonId: lesson.id })],
+		};
+	} else {
+		const propose = suiteProposee();
+		const juste = ctrl.juste();
+		const { donnee, attendue } = ordreErreur(propose, q.ordre, q.nature);
+		reponse = {
+			statut: juste ? 'juste' : 'faux',
+			saisie: donnee,
+			attendue,
+			erreurs: juste ? [] : [erreurOrdre(q, propose)],
+		};
+	}
+	enchainerPartage(s, idx, reponse, () => {
+		idx++;
+		renderQuestion();
 	});
 }
 

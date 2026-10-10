@@ -2,9 +2,9 @@
    Espace encadrant — onglet « Envois » (#734) : COMPOSER un exercice figé à envoyer par
    lien, et retrouver les envois déjà créés.
    ------------------------------------------------------------
-   Quatre sources à terme ; ici une leçon dans un mode, ou un bilan (de catégorie, ou un
-   favori du profil consulté). Les dictées et les leçons jouées « une question à la fois »
-   viendront avec leurs écrans côté enfant : on ne propose que ce que l'enfant pourra
+   Quatre sources à terme ; ici une leçon dans un mode (en fiche, ou dans son runner « une
+   question à la fois »), ou un bilan (de catégorie, ou un favori du profil consulté). Les
+   dictées viendront avec leur écran côté enfant : on ne propose que ce que l'enfant pourra
    jouer (`modesEnvoyables`).
 
    Le niveau est TOUJOURS choisi ici, en clair (critère 1) : le profil consulté ne sert qu'à

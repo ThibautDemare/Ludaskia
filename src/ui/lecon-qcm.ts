@@ -7,11 +7,16 @@
    saisie (parité des modes). Pas de reprise auto (ce n'est pas une
    grille, comme le sprint / la révision).
    Réutilise les composants visuels du sprint (.sprint-*).
+
+   Séance partagée (#734, `runner-partage.ts`) : les questions FIGÉES d'un envoi, sans
+   verdict avant la fin. Toucher un choix le SÉLECTIONNE au lieu de valider : sans verdict
+   derrière, un appui voisin enverrait la mauvaise réponse sans que l'enfant le voie (avis
+   designer). « Valider » note, puis passe à la question suivante.
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
-import type { ChoiceView, ExerciseMode, QcmVariante } from '../core/exercise';
+import type { ChoiceView, Exercise, ExerciseMode, QcmVariante } from '../core/exercise';
 import type { Item } from '../core/items';
 import {
 	checkItemAnswer,
@@ -40,7 +45,18 @@ import {
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { capterErreur, libelleChoix } from './erreur-capture';
-import { html, joindre } from '../core/html';
+import { html, joindre, VIDE } from '../core/html';
+import { icon } from './icon';
+import {
+	brancherDecisionPartage,
+	decisionPartageHTML,
+	enchainerPartage,
+	erreurPassee,
+	type DecisionPartage,
+	type ErreurRunner,
+	type ReponseRunner,
+	type SeanceRunner,
+} from './runner-partage';
 
 // Cible de questions ; une leçon offrant moins de variantes en aura moins, sans
 // doublon (une conjugaison = 6 personnes), comme la fiche en saisie.
@@ -64,9 +80,37 @@ let questions: QcmQuestion[] = [];
 let idx = 0;
 let score = 0;
 let answered = false; // garde anti double-clic sur une même question
+// Séance partagée (#734) : la séance de l'écran partagé, le choix sélectionné et le bloc
+// de décision de la question affichée. `null` en jeu libre.
+let partage: SeanceRunner | null = null;
+let choisi: number | null = null;
+let decision: DecisionPartage | null = null;
 
 function sheets(): HTMLElement {
-	return document.getElementById('sheets')!;
+	return partage?.scene ?? document.getElementById('sheets')!;
+}
+
+/* Un exercice QCM devient une question du runner. Partagé par le tirage du jeu libre et
+   par les exercices figés d'un envoi : les deux jouent la même question. */
+function questionDepuisExercice(l: LessonDef, ex: Extract<Exercise, { type: 'qcm' }>): QcmQuestion {
+	return {
+		item: {
+			text: ex.question,
+			answer: ex.answer,
+			kind: 'text',
+			figure: ex.figure,
+			parle: ex.parle,
+			_lesson: l.id,
+		},
+		choices: ex.choices,
+		choicesView: ex.choicesView,
+		empilees: ex.choicesEmpilees,
+		explication: ex.explication,
+		consigne: ex.consigne,
+		picto: ex.picto,
+		ttsItems: ex.ttsItems,
+		variante: ex.variante,
+	};
 }
 
 /* Génère jusqu'à n questions QCM distinctes, comme genItems pour la fiche : on
@@ -87,24 +131,7 @@ function genQcmQuestions(l: LessonDef, m: ExerciseMode, n: number): QcmQuestion[
 			continue;
 		}
 		seen.add(key);
-		out.push({
-			item: {
-				text: ex.question,
-				answer: ex.answer,
-				kind: 'text',
-				figure: ex.figure,
-				parle: ex.parle,
-				_lesson: l.id,
-			},
-			choices: ex.choices,
-			choicesView: ex.choicesView,
-			empilees: ex.choicesEmpilees,
-			explication: ex.explication,
-			consigne: ex.consigne,
-			picto: ex.picto,
-			ttsItems: ex.ttsItems,
-			variante: ex.variante,
-		});
+		out.push(questionDepuisExercice(l, ex));
 		misses = 0;
 	}
 	return out;
@@ -115,7 +142,15 @@ const RUNNER = 'qcm';
 
 /* Démarre l'écran sur un jeu de questions donné, à l'index et au score voulus. Chemin
    COMMUN au lancement neuf (0/0) et à la reprise, pour que les deux ne divergent pas. */
-function demarrer(l: LessonDef, m: ExerciseMode, qs: QcmQuestion[], depart = 0, pts = 0): void {
+function demarrer(
+	l: LessonDef,
+	m: ExerciseMode,
+	qs: QcmQuestion[],
+	depart = 0,
+	pts = 0,
+	seancePartagee: SeanceRunner | null = null,
+): void {
+	partage = seancePartagee;
 	lesson = l;
 	mode = m;
 	questions = qs;
@@ -127,7 +162,17 @@ function demarrer(l: LessonDef, m: ExerciseMode, qs: QcmQuestion[], depart = 0, 
 		mode: m ?? null,
 		etat: () => ({ questions, idx, score }),
 		render: renderQuestion,
+		partage: seancePartagee ?? undefined,
 	});
+}
+
+/** Séance partagée (#734) : les exercices figés de l'envoi, joués sans verdict. */
+export function jouerPartageQcm(s: SeanceRunner): void {
+	const qs = s.exercices.flatMap((ex) =>
+		ex.type === 'qcm' ? [questionDepuisExercice(s.lesson, ex)] : [],
+	);
+	// Un QCM n'a de runner que dans un mode retenu (`JEU_PAR_TYPE`) : il est donc défini.
+	demarrer(s.lesson, s.mode!, qs, 0, 0, s);
 }
 
 export function runLeconQcm(lessonId: string, m: ExerciseMode): void {
@@ -164,6 +209,8 @@ enregistrerRunner(RUNNER, (snap) => {
    C'est `wireNext` qui la peuple, via le résumé que ce runner lui passe. */
 function renderQuestion(): void {
 	answered = false;
+	choisi = null;
+	decision = null;
 	const q = questions[idx];
 	const ponct = q.variante === 'ponctuation';
 	// `enonceTexte` : échappe + GRAS « **…** » (mot-cible #203) + fractions empilées (#200).
@@ -183,7 +230,7 @@ function renderQuestion(): void {
     <div class="sprint sprint-lecon">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
-        ${leconTitreHTML(lesson)}
+        ${leconTitreHTML(lesson, partage?.niveau)}
         ${figureBlock(q.item.figure)}
         ${consigneHTML}
         <div class="sprint-q sprint-q-qcm"${q.consigne ? '' : ttsAttr(ttsText)}>${question}</div>
@@ -197,14 +244,30 @@ function renderQuestion(): void {
 						}),
 					)}
         </div>
+        ${partage ? decisionPartageHTML('lqcmValider') : VIDE}
         <div class="sprint-correction" id="lqcmFeedback" hidden></div>
         <p class="sr-only" id="lqcmStatus" role="status" aria-live="polite" aria-atomic="true"></p>
         <div class="sprint-actions" id="lqcmActions" hidden></div>
       </div>
     </div>`.balisage;
+	const s = partage;
 	sheets()
 		.querySelectorAll<HTMLButtonElement>('#lqcmChoices .sprint-choice')
-		.forEach((btn) => btn.addEventListener('click', () => answer(Number(btn.dataset.i))));
+		.forEach((btn) => {
+			const i = Number(btn.dataset.i);
+			if (!s) {
+				btn.addEventListener('click', () => answer(i));
+				return;
+			}
+			btn.setAttribute('aria-pressed', 'false');
+			btn.addEventListener('click', () => selectionner(i));
+		});
+	if (s)
+		decision = brancherDecisionPartage(sheets(), {
+			validerId: 'lqcmValider',
+			repondu: () => choisi !== null,
+			onValider: () => validerPartage(s),
+		});
 	bindConsigneTts(sheets()); // bouton « Écouter » sur la consigne/énoncé (#42)
 	// TTS individuel (#203) : haut-parleur sur le mot-cible (en gras) et chaque option.
 	if (q.ttsItems) {
@@ -229,14 +292,7 @@ function answer(choiceIdx: number): void {
 		// Journal des erreurs (#391) : on stocke les LIBELLÉS lisibles des choix (vue riche
 		// #200 : fraction empilée, symbole…), jamais la valeur interne — sinon la ligne serait
 		// inintelligible pour le parent (avis designer). libelleChoix gère le fallback.
-		capterErreur({
-			text: q.item.text,
-			figure: q.item.figure,
-			donnee: libelleChoix(q.choices, q.choicesView, chosen),
-			attendue: libelleChoix(q.choices, q.choicesView, String(q.item.answer)),
-			lessonId: lesson.id,
-			mode: 'lecon',
-		});
+		capterErreur({ ...erreurQcm(q, chosen), mode: 'lecon' });
 	}
 	// Marquage : la bonne réponse en vert ; le mauvais choix tapé en rouge.
 	sheets()
@@ -297,6 +353,70 @@ function answer(choiceIdx: number): void {
 			if (idx >= questions.length) finish();
 			else renderQuestion();
 		},
+	});
+}
+
+/* Entrée du journal d'un choix faux (#391). Les LIBELLÉS lisibles des choix (vue riche
+   #200 : fraction empilée, symbole…), jamais la valeur interne, sinon la ligne serait
+   inintelligible pour le parent (avis designer). `libelleChoix` gère le repli. Partagée
+   par le jeu libre et la séance partagée, qui journalisent la même erreur. */
+function erreurQcm(q: QcmQuestion, chosen: string): ErreurRunner {
+	return {
+		text: q.item.text,
+		figure: q.item.figure,
+		donnee: libelleChoix(q.choices, q.choicesView, chosen),
+		attendue: libelleChoix(q.choices, q.choicesView, String(q.item.answer)),
+		lessonId: lesson.id,
+	};
+}
+
+/* Séance partagée : sélectionne un choix, sans valider ni marquer. Un nouveau choix
+   déplace la sélection ; choisir décoche « Je ne sais pas ». */
+function selectionner(i: number): void {
+	choisi = i;
+	sheets()
+		.querySelectorAll<HTMLButtonElement>('#lqcmChoices .sprint-choice')
+		.forEach((b) => {
+			const oui = Number(b.dataset.i) === i;
+			b.setAttribute('aria-pressed', String(oui));
+			// Coche décorative : la sélection ne repose pas sur la seule teinte (relecture a11y).
+			// L'état, lui, est dit par `aria-pressed`.
+			b.querySelector('.partage-coche')?.remove();
+			if (oui) b.insertAdjacentHTML('beforeend', COCHE.balisage);
+		});
+	decision?.widgetTouche();
+}
+
+const COCHE = html`<span class="partage-coche" aria-hidden="true">${icon('check')}</span>`;
+
+/* Séance partagée : note la question (même correction qu'en jeu libre, critère 11), puis
+   passe à la suivante sans rien montrer du verdict. */
+function validerPartage(s: SeanceRunner): void {
+	const q = questions[idx];
+	const attendue = libelleChoix(q.choices, q.choicesView, String(q.item.answer));
+	let reponse: ReponseRunner;
+	if (decision?.jnsp() || choisi === null) {
+		reponse = {
+			statut: 'jnsp',
+			saisie: '',
+			attendue,
+			erreurs: [
+				erreurPassee({ text: q.item.text, figure: q.item.figure, attendue, lessonId: lesson.id }),
+			],
+		};
+	} else {
+		const chosen = q.choices[choisi];
+		const juste = checkItemAnswer(q.item, chosen);
+		reponse = {
+			statut: juste ? 'juste' : 'faux',
+			saisie: libelleChoix(q.choices, q.choicesView, chosen),
+			attendue,
+			erreurs: juste ? [] : [erreurQcm(q, chosen)],
+		};
+	}
+	enchainerPartage(s, idx, reponse, () => {
+		idx++;
+		renderQuestion();
 	});
 }
 

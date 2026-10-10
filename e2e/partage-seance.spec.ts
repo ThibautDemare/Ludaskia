@@ -533,7 +533,7 @@ const radio = (page: Page, i: number, valeur: string) =>
 	page
 		.locator('.partage-item')
 		.nth(i)
-		.locator('label.partage-choix-opt', { has: page.locator(`input[value="${valeur}"]`) });
+		.locator('label.fiche-choix-opt', { has: page.locator(`input[value="${valeur}"]`) });
 
 test('9, 11, 14, 17 · QCM dans un bilan : radios, « Je ne sais pas » exclusif, résultat, correction décrite', async ({
 	page,
@@ -557,7 +557,7 @@ test('9, 11, 14, 17 · QCM dans un bilan : radios, « Je ne sais pas » exclusif
 	const items = page.locator('.partage-item');
 	await expect(items).toHaveCount(4);
 	for (let i = 0; i < 4; i++) {
-		await expect(items.nth(i).locator('fieldset.partage-choix input[type=radio]')).toHaveCount(3);
+		await expect(items.nth(i).locator('fieldset.fiche-choix input[type=radio]')).toHaveCount(3);
 		await expect(items.nth(i).locator('input.ans[type=hidden]')).toHaveCount(1);
 	}
 
@@ -587,7 +587,7 @@ test('9, 11, 14, 17 · QCM dans un bilan : radios, « Je ne sais pas » exclusif
 
 	await page.locator('#partageVoirCorrection').click();
 	// La question fausse est décrite pour un lecteur d'écran : le groupe pointe une marque non vide.
-	const groupe = items.nth(1).locator('fieldset.partage-choix');
+	const groupe = items.nth(1).locator('fieldset.fiche-choix');
 	const cible = await groupe.getAttribute('aria-describedby');
 	expect(cible).toBeTruthy();
 	await expect(page.locator(`[id="${cible}"]`)).not.toBeEmpty();

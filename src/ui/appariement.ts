@@ -24,7 +24,8 @@
    ResizeObserver les recalcule au redimensionnement / zoom (SC 1.4.4/1.4.10).
 
    Corrigé par le runner (ui/lecon-appariement.ts) : expose `verify()` (fige +
-   marque + renvoie la justesse globale) et notifie la complétude via `onState`.
+   marque + renvoie la justesse globale), `juste()` (la même justesse, sans rien
+   figer : séance partagée, #734) et notifie la complétude via `onState`.
    Modèle calqué sur les widgets à tuiles (ui/tuile-interaction.ts) dont il
    réutilise le contrat `TuileController`/`TuileOptions` et la tuile `.tuile`.
    ============================================================ */
@@ -38,6 +39,14 @@ export interface AppariementSpec {
 	intrus?: string[];
 }
 
+/* Le contrôleur des widgets à tuiles, plus de quoi débrancher l'observateur de
+   redimensionnement. La séance partagée (#734) l'appelle avant de quitter la manche : un
+   écouteur ne doit pas survivre à la séance. Le jeu libre et la révision ne l'appellent
+   pas : leur résultat figé reste à l'écran, et doit rester aligné sur les mots. */
+export interface AppariementController extends TuileController {
+	liberer(): void;
+}
+
 /* Un point d'ancrage (bord intérieur d'un mot), en coordonnées RELATIVES au board. */
 interface Point {
 	x: number;
@@ -48,7 +57,7 @@ export function bindAppariement(
 	root: HTMLElement,
 	spec: AppariementSpec,
 	opts: TuileOptions,
-): TuileController {
+): AppariementController {
 	// Ordre d'affichage mélangé INDÉPENDAMMENT dans chaque colonne (jamais aligné) :
 	// l'enfant relie sur la relation, pas sur une position mémorisée (cf. pédagogue).
 	const gauches = sample(
@@ -70,6 +79,7 @@ export function bindAppariement(
 		return r;
 	};
 	const complete = (): boolean => gauches.every((g) => linkOf[g] !== undefined);
+	const juste = (): boolean => gauches.every((g) => linkOf[g] === bonneDroite.get(g));
 
 	const mount = root.querySelector('[data-tuile-mount]');
 	if (mount) {
@@ -271,7 +281,7 @@ export function bindAppariement(
 
 	return {
 		verify(): boolean {
-			const correct = gauches.every((g) => linkOf[g] === bonneDroite.get(g));
+			const correct = juste();
 			if (frozen) return correct;
 			frozen = true;
 			armed = null;
@@ -285,6 +295,10 @@ export function bindAppariement(
 			// fois la manche suivante rendue, ce board est détaché (renderLinks sort tôt sur
 			// width 0) et l'observer devient inatteignable → collecté.
 			return correct;
+		},
+		juste,
+		liberer(): void {
+			ro.disconnect();
 		},
 		/* Liens posés, pour le journal d'erreurs (#391). Dans l'ordre d'AFFICHAGE de la
 		   colonne de gauche (celui que l'enfant a sous les yeux) ; un mot laissé sans lien

@@ -167,3 +167,23 @@ export function resultatDe(over: Partial<Resultat> = {}): Resultat {
 export async function codeResultatDe(over: Partial<Resultat> = {}): Promise<string> {
 	return encoderResultat(resultatDe(over));
 }
+
+/* ---------- Runners « une question à la fois » (PR 4) ---------- */
+
+/** Un envoi `lecon` joué dans un runner : une seule leçon, un mode (ou celui par
+ *  défaut), des exercices écrits à la main à la forme exacte de leur type. */
+export function envoiRunnerDe(
+	lecon: string,
+	mode: string | undefined,
+	exercices: Exercise[],
+	niveau: 'ce2' | 'cm1' = 'ce2',
+): Envoi {
+	const bloc: BlocEnvoi = mode === undefined ? { lecon, exercices } : { lecon, mode, exercices };
+	return {
+		id: nouvelIdentifiant(),
+		libelle: LIBELLE_FICHE,
+		nature: 'lecon',
+		niveau,
+		blocs: [bloc],
+	};
+}

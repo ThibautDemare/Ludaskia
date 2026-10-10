@@ -378,7 +378,7 @@ const PAIRES_NON_TEXTE: Paire[] = [
 	{
 		avant: '--accent',
 		arriere: '--paper',
-		ou: 'bordure des mêmes boutons une fois survolés/pressés, remplissage de jauge',
+		ou: 'bordure des mêmes boutons une fois survolés/pressés, remplissage de jauge ; partage.scss, choix de QCM sélectionné en séance partagée (#734)',
 	},
 	// Curseur SUR sa piste, et non sur le papier : c'est le couple qu'on voit réellement dès
 	// qu'une jauge est partiellement remplie. Posé par #711 (jauge de défilement du tableau de

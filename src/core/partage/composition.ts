@@ -45,10 +45,11 @@ export type Composition =
 const SONDAGES = 3;
 const sondes = new Map<string, boolean>();
 
-/* Le mode se joue-t-il en fiche à ce niveau ? Même règle que la séance de l'enfant
-   (`preparerPassage`) : le type de l'exercice tiré, et le mode qui le jouera. Mémorisé :
-   le sélecteur pose la question pour tout le catalogue. */
-function seJoueEnFiche(lesson: LessonDef, niveau: SchoolLevel, mode?: ExerciseMode): boolean {
+/* Le mode a-t-il un écran qui le joue en entier à ce niveau : la fiche, ou UN runner ?
+   Même règle que la séance de l'enfant (`preparerPassage`) : le type des exercices tirés,
+   et le mode qui les jouera. Mémorisé : le sélecteur pose la question pour tout le
+   catalogue. */
+function seJoueDepuisUnLien(lesson: LessonDef, niveau: SchoolLevel, mode?: ExerciseMode): boolean {
 	const cle = `${lesson.id}|${niveau}|${mode ?? ''}`;
 	let oui = sondes.get(cle);
 	if (oui === undefined) {
@@ -61,19 +62,21 @@ function seJoueEnFiche(lesson: LessonDef, niveau: SchoolLevel, mode?: ExerciseMo
 function sonder(lesson: LessonDef, niveau: SchoolLevel, mode?: ExerciseMode): boolean {
 	const joue = mode ?? defaultMode(lesson.exerciseType);
 	try {
+		const jeux = new Set<string>();
 		for (let i = 0; i < SONDAGES; i++) {
 			const ex = lesson.exerciseType.generate({ level: niveau, mode });
-			if (seJoueEnRunner(ex.type, joue)) return false;
+			jeux.add(seJoueEnRunner(ex.type, joue) ? ex.type : 'fiche');
 		}
-		return true;
+		return jeux.size === 1;
 	} catch {
 		return false;
 	}
 }
 
-/** Modes de la leçon, à ce niveau, qu'un enfant peut jouer depuis un lien : ceux qui se
- *  jouent en fiche (les runners « une question à la fois » viendront ensuite). Une leçon
- *  sans modes rend `[undefined]` si elle se joue en fiche. */
+/** Modes de la leçon, à ce niveau, qu'un enfant peut jouer depuis un lien : en fiche, ou
+ *  dans le runner « une question à la fois » du mode, comme en jeu libre. Seul un mode
+ *  dont les exercices mêlent les formats est écarté : aucun écran ne le jouerait en
+ *  entier. Une leçon sans modes rend `[undefined]`. */
 export function modesEnvoyables(
 	lesson: LessonDef,
 	niveau: SchoolLevel,
@@ -82,7 +85,7 @@ export function modesEnvoyables(
 	const modes = lesson.exerciseType.modes?.length
 		? modesPourNiveau(lesson.exerciseType, niveau).map((m) => m.id)
 		: [undefined];
-	return modes.filter((m) => seJoueEnFiche(lesson, niveau, m));
+	return modes.filter((m) => seJoueDepuisUnLien(lesson, niveau, m));
 }
 
 /** Niveaux de la leçon où au moins un mode est envoyable, dans l'ordre scolaire. */

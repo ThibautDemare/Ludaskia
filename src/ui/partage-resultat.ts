@@ -55,6 +55,13 @@ const STATUTS: Record<StatutReponse, { mot: string; icone: IconName }> = {
 	vide: { mot: 'Sans réponse', icone: 'square' },
 };
 
+/** Qui lit la liste des réponses : l'adulte (vue de résultat), ou l'enfant (sa correction
+ *  après une séance en runner, #734). Seuls les mots changent : l'enfant lit « Ta
+ *  réponse » et « À revoir », pas « Faux » (même ton que la fiche corrigée). */
+export type LecteurResultat = 'adulte' | 'enfant';
+
+const MOTS_ENFANT: Partial<Record<StatutReponse, string>> = { faux: 'À revoir' };
+
 /** Décode le code et affiche la vue de lecture, ou le refus. Ne lève jamais : un échec
  *  devient l'écran de refus, jamais un écran blanc. */
 export async function afficherResultat(code: string, el: HTMLElement): Promise<void> {
@@ -113,7 +120,10 @@ function scoreHTML(r: Resultat): SafeHtml {
       ${autres.length ? html`<p class="partage-texte resultat-detail">Et ${autres.join(', ')}.</p>` : VIDE}`;
 }
 
-function itemsHTML(r: Resultat): SafeHtml {
+/** Les réponses d'un résultat, une par item, dans l'ordre : énoncé, réponse donnée,
+ *  réponse attendue, statut (icône et mot, jamais la couleur seule). */
+export function itemsResultatHTML(r: Resultat, lecteur: LecteurResultat = 'adulte'): SafeHtml {
+	const cleSaisie = lecteur === 'enfant' ? 'Ta réponse :' : "Réponse de l'enfant :";
 	let leconPrecedente = '';
 	const multi = new Set(r.reponses.map((x) => x.lecon)).size > 1;
 	return joindre(
@@ -124,13 +134,17 @@ function itemsHTML(r: Resultat): SafeHtml {
 					: VIDE;
 			leconPrecedente = x.lecon;
 			const s = STATUTS[x.statut];
+			const mot = (lecteur === 'enfant' ? MOTS_ENFANT[x.statut] : undefined) ?? s.mot;
 			const saisie = x.saisie || 'aucune';
+			// « Ta réponse : aucune » sous un « Je ne sais pas » de l'enfant : le statut le dit
+			// déjà, et la ligne sonnerait comme un reproche (relecture langue).
+			const sansLigneSaisie = lecteur === 'enfant' && x.statut === 'jnsp';
 			return html`<li class="resultat-item" data-statut="${x.statut}">
           ${lecon}
           <p class="resultat-enonce">${x.enonce}</p>
-          <p class="resultat-ligne"><span class="resultat-cle">Réponse de l'enfant :</span> <span class="resultat-saisie${x.saisie ? '' : ' resultat-aucune'}">${saisie}</span></p>
+          ${sansLigneSaisie ? VIDE : html`<p class="resultat-ligne"><span class="resultat-cle">${cleSaisie}</span> <span class="resultat-saisie${x.saisie ? '' : ' resultat-aucune'}">${saisie}</span></p>`}
           <p class="resultat-ligne"><span class="resultat-cle">Réponse attendue :</span> <span class="resultat-attendue">${x.attendue}</span></p>
-          <p class="resultat-statut resultat-statut-${x.statut}">${icon(s.icone)} <span>${s.mot}</span></p>
+          <p class="resultat-statut resultat-statut-${x.statut}">${icon(s.icone)} <span>${mot}</span></p>
         </li>`;
 		}),
 	);
@@ -155,7 +169,7 @@ function afficherLecture(el: HTMLElement, r: Resultat): void {
         <div id="resultatImportCorps"></div>
       </div>
       <h2 class="resultat-h2">Les réponses</h2>
-      <ol class="resultat-items" id="resultatItems">${itemsHTML(r)}</ol>
+      <ol class="resultat-items" id="resultatItems">${itemsResultatHTML(r)}</ol>
     </section>`.balisage;
 	const bouton = el.querySelector<HTMLButtonElement>('#resultatImporter')!;
 	const corps = el.querySelector<HTMLElement>('#resultatImportCorps')!;

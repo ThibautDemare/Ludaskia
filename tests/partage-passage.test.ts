@@ -7,8 +7,9 @@
    Rouges tant que le module n'est pas écrit : c'est attendu.
 
    Critères tenus ici (versant logique) :
-   - 1 / 37 : ce qui se joue en fiche, ce qui relève d'un runner d'écran (refus
-     `format`), ce qui n'existe plus au catalogue (refus `lecon`) ;
+   - 1 / 37 : ce qui se joue en fiche, la dictée (refus `format`), ce qui n'existe
+     plus au catalogue (refus `lecon`). Les runners « une question à la fois »
+     (PR 4) sont gardés par `partage-runners-passage.test.ts` ;
    - 2 : le niveau des items, du titre et de la consigne vient de l'ENVOI, jamais
      du profil actif ;
    - 9 : « je ne sais pas » ressort comme tel, distinct d'un faux ou d'un vide ;
@@ -221,10 +222,10 @@ function prefixe(): string {
 }
 
 /* ============================================================
-   preparerPassage — ce qui ne se joue pas en fiche
+   preparerPassage — la dictée, et ce qui se joue en fiche
    ============================================================ */
 
-describe('preparerPassage — refus « format » (critères 1 et 37 : un runner a son propre écran)', () => {
+describe('preparerPassage — dictée refusée, leçons jouées en fiche (critères 1, 11 et 37)', () => {
 	it('une dictée ne se joue pas en fiche', () => {
 		const dictee: Envoi = {
 			id: ID_ENVOI,
@@ -234,38 +235,6 @@ describe('preparerPassage — refus « format » (critères 1 et 37 : un runner 
 			mots: [{ mot: 'école' }, { mot: 'arbre' }],
 		};
 		expect(preparerPassage(dictee)).toEqual({ ok: false, raison: 'format' });
-	});
-
-	it.each<[string, string, SchoolLevel, ExerciseMode | undefined, Exercise['type']]>([
-		['problème, leçon mono-mode', 'math-prob-composition', 'ce2', undefined, 'probleme'],
-		['problème servi par un mode nommé « saisie »', 'math-div-reste', 'ce2', 'saisie', 'probleme'],
-		['clique sur le mot (mode clic)', 'fr-gram-clic-verbe', 'ce2', 'clic', 'clicMot'],
-		['clique sur le mot, sans mode', 'fr-gram-clic-verbe', 'ce2', undefined, 'clicMot'],
-		['droite graduée', 'num-droite-entiers', 'ce2', 'placer', 'droiteGraduee'],
-		['QCM d’homophones', 'fr-homophones-a', 'ce2', 'qcm', 'qcm'],
-		['QCM de conjugaison', 'fr-conj-etre-present', 'ce2', 'qcm', 'qcm'],
-		['QCM à plusieurs réponses', 'geo-cm1-figures-proprietes', 'cm1', 'coche', 'qcmMulti'],
-		['tuiles nombre', 'num-comparer', 'ce2', 'tuiles', 'tuilesNombre'],
-		['rangement d’une suite', 'num-ranger', 'ce2', 'tuiles', 'tuilesOrdre'],
-		['tri par thème', 'fr-vocab-champs-tri', 'ce2', 'tri', 'tuilesTri'],
-		['tableau de conversion', 'mes-longueurs', 'ce2', 'tableau', 'tableauConversion'],
-		['appariement', 'fr-vocab-familles-relier', 'ce2', 'relier', 'appariement'],
-	])('leçon « %s » → format', (_cas, id, niveau, mode, type) => {
-		const envoi = envoiLecon(bloc(id, tirer(id, 3, niveau, mode, type), mode), niveau);
-		expect(preparerPassage(envoi), `${id} se joue dans son runner d'écran`).toEqual({
-			ok: false,
-			raison: 'format',
-		});
-	});
-
-	it('bloc sans mode d’une leçon dont le mode PAR DÉFAUT est un QCM → format (comme runLecon)', () => {
-		// Contrat de `BlocEnvoi.mode` : « Absent : mode par défaut de la leçon ». Pour
-		// fr-homophones-a, ce défaut est « qcm », que `runLecon` joue dans son runner.
-		const exs = tirer('fr-homophones-a', 3, 'ce2', undefined, 'qcm');
-		expect(preparerPassage(envoiLecon(bloc('fr-homophones-a', exs)))).toEqual({
-			ok: false,
-			raison: 'format',
-		});
 	});
 
 	it.each<[string, string, SchoolLevel, ExerciseMode | undefined, Exercise['type']]>([

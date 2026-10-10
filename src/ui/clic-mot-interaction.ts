@@ -54,6 +54,10 @@ export interface ClicMotController {
 	/** Fige le widget, marque ✓/✗, révèle les cibles, renvoie la justesse (égalité
 	    d'ensembles exacte). Idempotent : un second appel renvoie le même verdict. */
 	verify(): boolean;
+	/** La sélection est-elle juste ? LA règle de `verify()` (égalité d'ensembles exacte),
+	    sans rien figer, marquer ni annoncer : la séance partagée (#734) note sans verdict
+	    visible et corrige comme le jeu libre. Une seule règle, deux appelants. */
+	juste(): boolean;
 	/** Indices des mots sélectionnés (ordre croissant), pour le journal d'erreurs (#391). */
 	selected(): number[];
 }
@@ -70,6 +74,11 @@ export function bindClicMot(
 	const selection = new Set<number>();
 	let fige = false;
 	let resultat = false;
+	// Égalité d'ensembles exacte : même cardinal ET tout sélectionné est cible.
+	const estJuste = (): boolean => {
+		const cible = new Set(cibleIndices);
+		return selection.size === cible.size && [...selection].every((i) => cible.has(i));
+	};
 
 	// Découpage de la phrase PARTAGÉ avec le widget à deux bornes (#716, ui/phrase-mots.ts) :
 	// les deux gestes diffèrent, le substrat non — et un substrat en double aurait dérivé sur
@@ -126,8 +135,7 @@ export function bindClicMot(
 			fige = true;
 			const cible = new Set(cibleIndices);
 			const nomCible = cibleLabel ?? 'la bonne réponse';
-			// Égalité d'ensembles exacte : même cardinal ET tout sélectionné est cible.
-			const juste = selection.size === cible.size && [...selection].every((i) => cible.has(i));
+			const juste = estJuste();
 			resultat = juste;
 
 			// Feedback token par token (mots seulement). Un mot choisi est marqué juste
@@ -179,6 +187,7 @@ export function bindClicMot(
 			}
 			return juste;
 		},
+		juste: estJuste,
 		selected(): number[] {
 			return [...selection].sort((a, b) => a - b);
 		},

@@ -13,6 +13,10 @@ import {
 	motsMalClasses,
 	attendueItem,
 	attendueIntervalle,
+	enonceClicMotJournal,
+	enonceDroiteJournal,
+	enonceProblemeLisible,
+	etapesLisibles,
 	type CellulePosee,
 	type CelluleTableau,
 	type LienPropose,
@@ -21,7 +25,8 @@ import { labelLeconOrtho } from '../src/core/orthographe/lessons';
 import { ORTHO_PREDEF } from '../src/data/francais/orthographe';
 import { MESURE_LESSONS } from '../src/data/maths/mesures';
 import type { Exercise } from '../src/core/exercise';
-import type { SchoolLevel } from '../src/core/catalog';
+import { getLessonById, type SchoolLevel } from '../src/core/catalog';
+import { withSeed } from '../src/core/utils';
 
 const cell = (pos: number, saisie: string, correct: boolean): CellulePosee => ({
 	pos,
@@ -578,5 +583,149 @@ describe('attendueItem — la réponse révélée au parent (#501)', () => {
 		expect(attendueItem({ answer: 457, intervalle: [450, 465] })).toBe(
 			'un nombre entre 450 et 465',
 		);
+	});
+});
+
+/* ---------------------------------------------------------------
+   Énoncés lisibles HORS de l'appli (#734) : le journal encadrant et la séance partagée
+   relisent un « clique sur le mot », une droite graduée ou un problème sans l'écran qui
+   les montrait. Chaque énoncé doit donc porter ce que l'écran disait en plus de la
+   consigne : la phrase, la fenêtre de la droite, la ou les questions du problème.
+   --------------------------------------------------------------- */
+describe('enonceClicMotJournal — la consigne ET la phrase sur laquelle elle porte', () => {
+	it('la phrase recomposée suit la consigne, entre guillemets français', () => {
+		const t = enonceClicMotJournal({
+			consigne: 'Clique sur le verbe conjugué.',
+			tokens: ['Les', 'enfants', 'ont', 'mangé', 'une', 'pomme', '.'],
+		});
+		expect(t).toMatch(/^Clique sur le verbe conjugué\.\s«\sLes enfants ont mangé une pomme\.\s»$/);
+	});
+
+	it('ponctuation recollée comme dans un texte : ni « matin , » ni « dort . »', () => {
+		const t = enonceClicMotJournal({
+			consigne: 'Clique sur le sujet.',
+			tokens: ['Ce', 'matin', ',', 'le', 'petit', 'chat', 'noir', 'dort', '.'],
+		});
+		expect(t).toContain('Ce matin, le petit chat noir dort.');
+		expect(t).not.toMatch(/\s[,.]/);
+	});
+
+	it('point d’interrogation : précédé d’une espace, à la française', () => {
+		const t = enonceClicMotJournal({
+			consigne: 'Clique sur le nom.',
+			tokens: ['Où', 'est', 'le', 'chat', '?'],
+		});
+		expect(t).toMatch(/Où est le chat\s\?/);
+	});
+});
+
+describe('enonceDroiteJournal — la FENÊTRE de la droite fait partie de l’énoncé', () => {
+	const CONSIGNE = 'Place le nombre 3470 sur la droite graduée.';
+
+	it('la consigne, puis les deux bornes EXTRÊMES — jamais la borne du milieu', () => {
+		// Le générateur numérote trois graduations : les deux bornes et le milieu.
+		const t = enonceDroiteJournal({
+			consigne: CONSIGNE,
+			min: 3400,
+			max: 3500,
+			bornes: [{ label: '3400' }, { label: '3450' }, { label: '3500' }],
+		});
+		expect(t.startsWith(CONSIGNE)).toBe(true);
+		expect(t).toMatch(/de 3400 à 3500/);
+		expect(t).not.toContain('3450');
+	});
+
+	it('décimaux : les libellés VUS par l’enfant (3 et 4), jamais les centièmes internes (300, 400)', () => {
+		const t = enonceDroiteJournal({
+			consigne: 'Place le nombre 3,7 sur la droite graduée.',
+			min: 300,
+			max: 400,
+			bornes: [{ label: '3' }, { label: '3,5' }, { label: '4' }],
+		});
+		expect(t).toMatch(/de 3 à 4/);
+		expect(t).not.toMatch(/300|400/);
+	});
+
+	it('sans bornes numérotées : repli sur min et max', () => {
+		const t = enonceDroiteJournal({ consigne: CONSIGNE, min: 340, max: 350, bornes: [] });
+		expect(t.startsWith(CONSIGNE)).toBe(true);
+		expect(t).toMatch(/de 340 à 350/);
+	});
+
+	it('droites réellement tirées : la consigne, et les libellés des deux bornes extrêmes', () => {
+		const tirages: [string, SchoolLevel][] = [
+			['num-droite-entiers', 'ce2'],
+			['num-droite-entiers', 'cm1'],
+			['num-droite-decimaux', 'cm1'],
+		];
+		for (const [id, level] of tirages) {
+			const type = getLessonById(id)!.exerciseType;
+			for (let seed = 1; seed <= 100; seed++) {
+				const ex = withSeed(seed, () => type.generate({ level }));
+				if (ex.type !== 'droiteGraduee') throw new Error(`${id} : pas une droite graduée`);
+				const t = enonceDroiteJournal(ex);
+				const de = ex.bornes[0].label;
+				const a = ex.bornes[ex.bornes.length - 1].label;
+				expect(t.startsWith(ex.consigne), `${id} ${level}`).toBe(true);
+				expect(t, `${id} ${level} : fenêtre absente`).toContain(`${de} à ${a}`);
+			}
+		}
+	});
+});
+
+describe('enonceProblemeLisible — la situation, puis ce qu’on demandait', () => {
+	const ENONCE = 'Léo a 12 billes. Il en gagne 5, puis en perd 3.';
+	const Q1 = 'Combien Léo a-t-il de billes après avoir gagné ?';
+	const Q2 = 'Combien Léo a-t-il de billes à la fin ?';
+
+	it('une seule question : la situation puis la question, SANS numéro', () => {
+		const t = enonceProblemeLisible({ enonce: ENONCE, etapes: [{ question: Q2 }] });
+		expect(t.startsWith(ENONCE)).toBe(true);
+		expect(t).toContain(Q2);
+		expect(t.indexOf(Q2)).toBeGreaterThan(ENONCE.length - 1);
+		expect(t).not.toMatch(/\b1\)/);
+	});
+
+	it('deux questions : numérotées 1) et 2), dans l’ordre, après la situation', () => {
+		const t = enonceProblemeLisible({
+			enonce: ENONCE,
+			etapes: [{ question: Q1 }, { question: Q2 }],
+		});
+		expect(t.startsWith(ENONCE)).toBe(true);
+		const i1 = t.indexOf(`1) ${Q1}`);
+		const i2 = t.indexOf(`2) ${Q2}`);
+		expect(i1, 'question 1 numérotée').toBeGreaterThanOrEqual(ENONCE.length);
+		expect(i2, 'question 2 numérotée, après la 1').toBeGreaterThan(i1);
+	});
+
+	it('trois questions : la numérotation continue (3)', () => {
+		const Q3 = 'Combien en a-t-il perdu en tout ?';
+		const t = enonceProblemeLisible({
+			enonce: ENONCE,
+			etapes: [{ question: Q1 }, { question: Q2 }, { question: Q3 }],
+		});
+		expect(t).toContain(`3) ${Q3}`);
+	});
+});
+
+describe('etapesLisibles — les réponses d’un problème, rattachées à leur question', () => {
+	it('une seule étape : la valeur seule, sans numéro', () => {
+		expect(etapesLisibles(['14'])).toBe('14');
+		expect(etapesLisibles(['4,50 €'])).toBe('4,50 €');
+	});
+
+	it('deux étapes : chaque réponse précédée du numéro de SA question, dans l’ordre', () => {
+		const t = etapesLisibles(['17', '14']);
+		const i1 = t.indexOf('1) 17');
+		const i2 = t.indexOf('2) 14');
+		expect(i1).toBeGreaterThanOrEqual(0);
+		expect(i2).toBeGreaterThan(i1);
+	});
+
+	it('réponses décimales : aucune lecture « 4, 5, 3 » possible — chaque valeur reste intacte', () => {
+		const t = etapesLisibles(['4,5', '3']);
+		expect(t).toContain('1) 4,5');
+		expect(t).toContain('2) 3');
+		expect(t).not.toMatch(/4,5,\s?3/);
 	});
 });

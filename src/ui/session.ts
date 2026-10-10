@@ -43,7 +43,8 @@ import { capterErreur } from './erreur-capture';
 import { poserLiensEtayagePosee } from './etayage-panneau';
 import {
 	analyserResultatPosee,
-	attendueItem,
+	attendueLisibleItem,
+	saisieLisibleItem,
 	type CellulePosee,
 } from '../core/erreur-representation';
 import { html, brut, VIDE, type SafeHtml } from '../core/html';
@@ -165,6 +166,9 @@ export function champsIllisibles(
 ): HTMLInputElement[] {
 	return [...inputs].filter((inp) => {
 		const item = items[inp.id];
+		// Le champ caché d'un QCM porte la valeur d'un CHOIX, jamais une saisie : rien à
+		// signaler à l'enfant, qui n'a rien tapé.
+		if (inp.type === 'hidden') return false;
 		return (
 			!!item && itemEstNumerique(item) && inp.value.trim() !== '' && !saisieEstNombre(inp.value)
 		);
@@ -291,11 +295,12 @@ export function verify() {
 			capterErreur({
 				text: s.item?.text ?? '',
 				figure: s.item?.figure,
-				donnee: s.saisie,
+				// Le LIBELLÉ d'un choix de QCM, pas sa valeur interne (« trois quarts », pas « 3/4 »).
+				donnee: s.item ? saisieLisibleItem(s.item, s.saisie) : s.saisie,
 				// Intercalation (#446) : la BANDE acceptée (« un nombre entre 450 et 465 »), pas
 				// l'exemple révélé — sinon le parent lit une réponse unique là où douze valeurs
 				// passaient, et croit son enfant plus loin du but qu'il ne l'est (cf. attendueItem).
-				attendue: s.item ? attendueItem(s.item) : (s.answer ?? ''),
+				attendue: s.item ? attendueLisibleItem(s.item) : (s.answer ?? ''),
 				lessonId: s.lesson ?? currentLessonId,
 				mode: currentMode!,
 			});
@@ -423,8 +428,12 @@ export function verify() {
 	const sc = document.getElementById('score')!;
 	sc.classList.remove('hidden');
 	sc.textContent = total > 0 ? `${ok}/${total} · ${fmt(ms)}` : `Aucune réponse · ${fmt(ms)}`;
-	const firstWrong = document.querySelector('#sheets input.ans.wrong');
-	if (firstWrong) firstWrong.scrollIntoView({ behavior: 'smooth', block: 'center' });
+	const firstWrong = document.querySelector<HTMLInputElement>('#sheets input.ans.wrong');
+	// Le champ d'un QCM de fiche est CACHÉ, sans boîte : y défiler ne ferait rien. On vise
+	// son groupe de choix, ce que l'enfant voit.
+	const cible =
+		firstWrong?.type === 'hidden' ? (groupeDeChoix(firstWrong) ?? firstWrong) : firstWrong;
+	if (cible) cible.scrollIntoView({ behavior: 'smooth', block: 'center' });
 	else window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -443,6 +452,7 @@ export function marquerChamps(
 			mark.className = 'mark';
 			mark.textContent = '';
 		}
+		if (inp.type === 'hidden') groupeDeChoix(inp)?.removeAttribute('aria-describedby');
 		const status = statuses[inp.id];
 		// Validité exposée aux technologies d'assistance : le ✓/✗ est une marque VISUELLE,
 		// elle ne dit rien à un lecteur d'écran. C'est ce qui rend le détail atteignable
@@ -483,7 +493,21 @@ export function marquerChamps(
 					html`✗ <span class="sol">→ ${revelee}</span>${regleRomaineHTML(sessionItems[inp.id], inp.value)}`.balisage;
 			}
 		}
+		if (mark?.textContent && inp.type === 'hidden') rattacherMarqueAuChoix(inp, mark);
 	}
+}
+
+/* Groupe de choix d'un QCM de fiche (`qcmChoixHTML`) dont `inp` est le champ caché. */
+function groupeDeChoix(inp: HTMLInputElement): HTMLElement | null {
+	return document.querySelector<HTMLElement>(`fieldset.fiche-choix[data-for="${inp.id}"]`);
+}
+
+/** Le champ d'un QCM de fiche est CACHÉ : sa marque (✓, ✗ et la réponse révélée) est
+ *  rattachée au GROUPE de choix (`aria-describedby`), sans quoi un lecteur d'écran ne
+ *  l'entendrait jamais. */
+export function rattacherMarqueAuChoix(inp: HTMLInputElement, mark: HTMLElement): void {
+	mark.id ||= `${inp.id}-mark`;
+	groupeDeChoix(inp)?.setAttribute('aria-describedby', mark.id);
 }
 
 /* ---------- Impression (issue #40) ----------
@@ -601,6 +625,19 @@ let printSnapshot: { sheets: string; banner: string | null } | null = null;
    impression) sont posés ICI et non à l'import du module (#349) : importer
    session.ts (test unitaire, autre module) ne doit produire aucun effet de bord. */
 export function initSession() {
+	// QCM de fiche (`qcmChoixHTML`) : le choix coché devient la valeur du champ caché que la
+	// correction lit. L'événement `input` relancé sur ce champ efface son ancien marquage
+	// (écouteur ci-dessous) et déclenche la sauvegarde de reprise, comme une frappe.
+	document.addEventListener('change', (e: Event) => {
+		const radio = e.target;
+		if (!(radio instanceof HTMLInputElement) || radio.type !== 'radio' || !radio.checked) return;
+		const id = radio.closest<HTMLElement>('fieldset.fiche-choix')?.dataset.for;
+		const champ = id ? document.getElementById(id) : null;
+		if (!(champ instanceof HTMLInputElement)) return;
+		champ.value = radio.value;
+		groupeDeChoix(champ)?.removeAttribute('aria-describedby');
+		champ.dispatchEvent(new Event('input', { bubbles: true }));
+	});
 	// Saisie : modifier un champ efface son marquage. Pour l'heure (#88), éditer le
 	// champ des minutes (.heure-min) efface la marque du champ des heures qui lui est lié.
 	document.addEventListener('input', (e: Event) => {

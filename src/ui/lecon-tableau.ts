@@ -51,6 +51,15 @@
    est stable d'un exercice à l'autre, et `#tcStatus` répète déjà ce nom à chaque frappe :
    le rang n'ajouterait qu'une redondance à écouter. Consigné ici pour que le prochain
    audit ne le re-remonte pas.
+
+   Séance partagée (#734, `runner-partage.ts`) : les tableaux FIGÉS d'un envoi, sans
+   verdict avant la fin. « Valider » ne s'active qu'avec au moins une case remplie : en jeu
+   libre « Vérifier » est actif d'office, mais sans verdict derrière, un tableau vide
+   validé serait une question laissée sans réponse notée « faux ». Entrée sur une case le
+   déclenche s'il est actif. Il note le tableau avec la règle du jeu libre (`jugerTableau`),
+   sans marquer aucune case, puis passe au tableau suivant ; l'écho de saisie `#tcStatus`
+   reste, il ne dit rien du verdict. Les écouteurs posés hors du tableau (clavier sur
+   `document`, `resize`, observateur du cadre) sont détachés à chaque validation.
    ============================================================ */
 import { getLessonById } from '../core/catalog';
 import type { LessonDef } from '../core/catalog';
@@ -82,7 +91,7 @@ import {
 	revelerSolution,
 	wirePasser,
 } from './lecon-passer';
-import { nombreTableauSaisi, entreeTentativePassee } from '../core/erreur-representation';
+import { entreeTentativePassee } from '../core/erreur-representation';
 import { conversionDepuisTableau } from '../core/etayage-conversion';
 // Traduction index-de-case ↔ index-de-colonne (#711 lot 4) : pure, donc dans `core/` où
 // un test la joue sur un tableau fabriqué — le cas qui casse (colonne de tête à deux
@@ -94,14 +103,23 @@ import {
 	indicesQuestion,
 	casesObligatoires,
 	verdictsCases,
-	saisiesPourJournal,
 	noteOubli,
 	type VerdictCase,
 } from '../core/tableau-verdict';
 import type { EtayageDemande } from './etayage-panneau';
 import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 import { poserAuTrou } from '../core/items';
-import { formatReponseRevelee } from '../core/nombres';
+import { attendueTableau, jugerTableau, saisieTableau } from '../core/tableau-lecture';
+import {
+	brancherDecisionPartage,
+	decisionPartageHTML,
+	enchainerPartage,
+	erreurPassee,
+	type DecisionPartage,
+	type ErreurRunner,
+	type ReponseRunner,
+	type SeanceRunner,
+} from './runner-partage';
 
 const NB_QUESTIONS = 8;
 
@@ -174,9 +192,13 @@ let frozen = false; // après validation : plus de saisie
 let keyHandler: ((e: KeyboardEvent) => void) | null = null;
 let resizeHandler: (() => void) | null = null;
 let cadreObserver: ResizeObserver | null = null;
+// Séance partagée (#734) : la séance de l'écran partagé et le bloc de décision du tableau
+// affiché. `null` en jeu libre.
+let partage: SeanceRunner | null = null;
+let decision: DecisionPartage | null = null;
 
 function sheets(): HTMLElement {
-	return document.getElementById('sheets')!;
+	return partage?.scene ?? document.getElementById('sheets')!;
 }
 
 const pluriel = (nom: string) => `${nom}s`;
@@ -224,7 +246,15 @@ const RUNNER = 'tableau';
 
 /* Démarre l'écran sur un jeu de questions donné, à l'index et au score voulus. Chemin
    COMMUN au lancement neuf (0/0) et à la reprise, pour que les deux ne divergent pas. */
-function demarrer(l: LessonDef, m: ExerciseMode, qs: Tableau[], depart = 0, pts = 0): void {
+function demarrer(
+	l: LessonDef,
+	m: ExerciseMode,
+	qs: Tableau[],
+	depart = 0,
+	pts = 0,
+	seancePartagee: SeanceRunner | null = null,
+): void {
+	partage = seancePartagee;
 	lesson = l;
 	mode = m;
 	questions = qs;
@@ -239,7 +269,17 @@ function demarrer(l: LessonDef, m: ExerciseMode, qs: Tableau[], depart = 0, pts 
 		// L'aide suit le MODE, pas le runner : placer la virgule n'est pas un geste de plus
 		// dans le même tableau, c'est une autre question posée à l'enfant.
 		aide: typeAide(),
+		partage: seancePartagee ?? undefined,
 	});
+}
+
+/** Séance partagée (#734) : les exercices figés de l'envoi, joués sans verdict. Un tableau
+    se joue tel que tiré (le jeu libre garde l'exercice lui-même comme question) : il n'y a
+    rien à convertir. */
+export function jouerPartageTableau(s: SeanceRunner): void {
+	const qs = s.exercices.flatMap((ex) => (ex.type === 'tableauConversion' ? [ex] : []));
+	// Le tableau n'a de runner que dans un mode retenu (`JEU_PAR_TYPE`) : il est défini.
+	demarrer(s.lesson, s.mode!, qs, 0, 0, s);
 }
 
 /* Aide contextuelle du mode courant (#711 lot 4). Lue sur l'exercice et non sur `mode`, pour
@@ -354,13 +394,14 @@ function renderQuestion(): void {
 	active = 0;
 	virguleCase = null;
 	frozen = false;
+	decision = null;
 	sheets().innerHTML = html`
     <div class="sprint sprint-lecon tc-runner">
       ${leconProgressHTML(idx, questions.length)}
       <div class="sprint-stage">
-        ${leconTitreHTML(lesson)}
+        ${leconTitreHTML(lesson, partage?.niveau)}
         ${renderTableauBoardHTML(ex, cells)}
-        ${decisionHTML('tcVerif', { actif: true })}
+        ${partage ? decisionPartageHTML('tcVerif') : decisionHTML('tcVerif', { actif: true })}
         <div class="sprint-correction" id="tcFeedback" hidden></div>
         <div class="sprint-actions" id="tcActions" hidden></div>
         <p class="sr-only" id="tcStatus" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -479,8 +520,17 @@ function wireInteraction(): void {
 		cadreObserver.observe(cadre);
 	}
 	const verif = sheets().querySelector('#tcVerif') as HTMLButtonElement;
-	verif.addEventListener('click', () => verifier());
-	wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
+	const s = partage;
+	if (s)
+		decision = brancherDecisionPartage(sheets(), {
+			validerId: 'tcVerif',
+			repondu: () => cells.some((c) => c.valeur !== ''),
+			onValider: () => validerPartage(s),
+		});
+	else {
+		verif.addEventListener('click', () => verifier());
+		wirePasser(sheets(), passer); // « Je ne sais pas, montre-moi » (#467)
+	}
 	// Clavier physique (l'inputmode ne s'applique pas ; les cases ne sont pas des champs
 	// texte) : chiffres, effacement et navigation ← →. Retiré au re-rendu / à la sortie.
 	detachKeys();
@@ -514,8 +564,10 @@ function wireInteraction(): void {
 			setActive(Math.max(active - 1, 0), estCaseFocus());
 			e.preventDefault();
 		} else if (e.key === 'Enter' && estCaseFocus() && !verif.disabled) {
-			// Entrée ne valide que depuis une CASE (les boutons gardent leur Entrée natif).
-			verifier();
+			// Entrée ne valide que depuis une CASE (les boutons gardent leur Entrée natif). En
+			// séance partagée, elle passe par « Valider », qui ne note qu'une fois par tableau.
+			if (s) verif.click();
+			else verifier();
 			e.preventDefault();
 		}
 	};
@@ -710,6 +762,8 @@ function saisir(d: string): void {
 	// Retour vocal (surtout path pavé, focus hors case) : ce qu'on vient d'écrire, où.
 	announce(`${cells[prev].aria} : ${d}${resteLaVirgule()}`);
 	garderCaseActiveEnVue();
+	// Séance partagée : écrire décoche « Je ne sais pas » et recalcule « Valider ».
+	decision?.widgetTouche();
 }
 
 /* Pose, déplace ou retire la virgule (#711 lot 4). Elle va à la frontière de colonne qui
@@ -754,6 +808,7 @@ function basculerVirgule(): void {
 	// laquelle était l'ancienne.
 	cells.forEach((_, i) => paintCell(i));
 	garderCaseActiveEnVue();
+	decision?.widgetTouche(); // séance partagée : la virgule fait partie de la réponse
 }
 
 /* Place le glyphe dans SON emplacement et retire les autres marques. Les emplacements vides
@@ -812,6 +867,9 @@ function effacer(): void {
 		announce(`${cells[active].aria} effacé`);
 	}
 	garderCaseActiveEnVue();
+	// Séance partagée : effacer décoche « Je ne sais pas » et recalcule « Valider » (le
+	// tableau peut redevenir vide).
+	decision?.widgetTouche();
 }
 
 /* « Vérifier » est actif DÈS l'apparition de la question et le reste (#711 lot 5,
@@ -830,23 +888,7 @@ function verifier(): void {
 	if (frozen) return;
 	frozen = true;
 	const ex = questions[idx];
-	// Deux verdicts SÉPARÉS, et non un « faux » global. Ce sont deux compétences distinctes
-	// du programme — la valeur positionnelle des chiffres d'un côté, la lecture du tableau
-	// dans l'unité demandée de l'autre (avis pedagogue-primaire) — et un enfant qui voit sa
-	// série de cases justes repeinte en rouge pour une virgule conclut qu'il a tout raté
-	// (avis specialiste-troubles-apprentissage).
-	const virguleOk = !ex.virguleLibre || virguleCase === caseVirguleAttendue(ex);
-	/* Le verdict case par case vient d'un module PUR (#711 lot 5) : une case hors de la
-	   question est juste qu'elle soit vide ou à zéro, une case exigée laissée vide est fausse,
-	   et une case hors question portant autre chose qu'un zéro est fausse. Trois règles qui
-	   n'ont rien de visuel, donc rien à faire dans un runner. */
-	const verdicts = verdictsCases(
-		ex.colonnes,
-		ex.uniteConnue,
-		ex.answerUnit,
-		cells.map((c) => c.valeur),
-	);
-	const chiffresOk = !verdicts.includes('faux');
+	const { verdicts, chiffresOk, virguleOk } = jugerTableau(ex, saisiesCases(), virguleCase);
 	cells.forEach((c, i) => {
 		const v: VerdictCase = verdicts[i];
 		const b = cellBtn(i);
@@ -889,43 +931,12 @@ function verifier(): void {
 	const correct = chiffresOk && virguleOk;
 	marquerVirgule(ex, virguleOk);
 	if (correct) score++;
-	// La réponse attendue, écrite comme dans les énoncés (#501) : « 20 000 mL », pas
-	// « 20000 mL ». UNE variable pour ses trois usages — le journal encadrant, le feedback
-	// affiché et le résumé annoncé — pour qu'ils ne puissent pas se contredire. Le résumé
-	// annoncé, lui, est recollé en aval par le point de passage des annonces
-	// (ui/lecon-runner-shared.ts) : un séparateur de milliers ne part jamais à l'oreille.
-	const attendueTexte = `${formatReponseRevelee(ex.answer)} ${ex.answerUnit}`;
+	// UNE variable pour ses trois usages — le journal encadrant, le feedback affiché et le
+	// résumé annoncé — pour qu'ils ne puissent pas se contredire (cf. `attendueTableau`).
+	const attendueTexte = attendueTableau(ex);
 	// Journal des erreurs (#391) : UNE entrée par tableau raté (jamais une par case, illisible
-	// pour le parent), la réponse donnée étant le nombre relu dans l'unité demandée — un
-	// chiffre parasite dans une colonne de transit s'y voit donc. La garde `frozen` ci-dessus
-	// assure une seule capture par question.
-	if (!correct) {
-		// La virgule POSÉE prime sur l'unité demandée (#711 lot 4) : elle fait partie de la
-		// réponse. Sans ça, un enfant qui l'a mise un cran trop loin verrait sa réponse
-		// journalisée à la bonne valeur, et le parent lirait un tableau juste là où l'écran
-		// affichait un tableau faux. Dans le mode `tableau`, `virguleCase` reste `null` et la
-		// relecture est exactement celle d'avant.
-		// Les cases vides ne se relisent pas toutes de la même façon (critère 34) :
-		// `saisiesPourJournal` porte la règle et sa raison.
-		const pourJournal = saisiesPourJournal(
-			ex.colonnes,
-			ex.uniteConnue,
-			ex.answerUnit,
-			cells.map((c) => c.valeur),
-		);
-		const saisi = nombreTableauSaisi(
-			cells.map((c, i) => ({ unite: c.col.unite, valeur: pourJournal[i] })),
-			ex.answerUnit,
-			virguleCase ?? undefined,
-		);
-		capterErreur({
-			text: ex.question,
-			donnee: `${saisi} ${ex.answerUnit}`,
-			attendue: attendueTexte,
-			lessonId: lesson.id,
-			mode: 'lecon',
-		});
-	}
+	// pour le parent). La garde `frozen` ci-dessus assure une seule capture par question.
+	if (!correct) capterErreur({ ...erreurTableau(ex), mode: 'lecon' });
 	// Un seul bouton à la fois (#153) : le bloc de décision s'efface (les DEUX boutons — un
 	// « Je ne sais pas » cliquable sur un tableau déjà corrigé n'aurait plus de sens) et
 	// « Continuer ▶ » prend le relais.
@@ -993,6 +1004,56 @@ function verifier(): void {
 	);
 }
 
+/* Les chiffres tapés, case par case : ce que lisent le verdict et la relecture du tableau
+   (`core/tableau-lecture.ts`, logique pure partagée avec la séance partagée, #734). */
+function saisiesCases(): string[] {
+	return cells.map((c) => c.valeur);
+}
+
+/* Entrée du journal d'un tableau raté (#391). Partagée par le jeu libre et la séance
+   partagée (#734), qui journalisent la même erreur. */
+function erreurTableau(ex: Tableau): ErreurRunner {
+	return {
+		text: ex.question,
+		donnee: saisieTableau(ex, saisiesCases(), virguleCase),
+		attendue: attendueTableau(ex),
+		lessonId: lesson.id,
+	};
+}
+
+/* Séance partagée : note le tableau (même correction qu'en jeu libre, critère 11, via
+   `jugerTableau`), sans marquer aucune case, puis passe au tableau suivant. Les écouteurs
+   posés hors du tableau sont détachés AVANT : après le dernier tableau, il n'y a plus de
+   runner pour le faire (le tableau suivant, lui, les repose). */
+function validerPartage(s: SeanceRunner): void {
+	const ex = questions[idx];
+	const attendue = attendueTableau(ex);
+	let reponse: ReponseRunner;
+	if (decision?.jnsp() || cells.every((c) => c.valeur === '')) {
+		reponse = {
+			statut: 'jnsp',
+			saisie: '',
+			attendue,
+			erreurs: [erreurPassee({ text: ex.question, attendue, lessonId: lesson.id })],
+		};
+	} else {
+		const { chiffresOk, virguleOk } = jugerTableau(ex, saisiesCases(), virguleCase);
+		const juste = chiffresOk && virguleOk;
+		reponse = {
+			statut: juste ? 'juste' : 'faux',
+			saisie: saisieTableau(ex, saisiesCases(), virguleCase),
+			attendue,
+			erreurs: juste ? [] : [erreurTableau(ex)],
+		};
+	}
+	frozen = true;
+	leconTableauCleanup();
+	enchainerPartage(s, idx, reponse, () => {
+		idx++;
+		renderQuestion();
+	});
+}
+
 /* De quoi étayer le tableau courant, quand sa structure se laisse décrire (invariant du
    générateur, cf. `conversionDepuisTableau`). Rien à proposer sinon : pas de lien plutôt
    qu'un lien qui ouvrirait une démonstration à côté de la plaque. */
@@ -1048,7 +1109,7 @@ function passer(): void {
 	const ex = questions[idx];
 	// Même graphie que dans le feedback de correction (#501) : le journal, la ligne révélée
 	// et l'annonce lisent la MÊME variable, donc disent le même nombre.
-	const attendueTexte = `${formatReponseRevelee(ex.answer)} ${ex.answerUnit}`;
+	const attendueTexte = attendueTableau(ex);
 	/* Le tableau journalise désormais CE QUI AVAIT ÉTÉ COMMENCÉ (#711 lot 5, critère 40), par
 	   la même primitive que les autres formats à saisie contrainte (`entreeTentativePassee`,
 	   cf. lecon-droite-graduee). Il en était le seul à faire exception, au motif que la lecture
@@ -1064,15 +1125,10 @@ function passer(): void {
 	   l'avoir trouvée n'est pas une erreur à montrer au parent. */
 	const exigees = casesExigees(ex);
 	const saisies = cells.map((c) => c.valeur);
-	const pourJournal = saisiesPourJournal(ex.colonnes, ex.uniteConnue, ex.answerUnit, saisies);
 	const entree = entreeTentativePassee({
 		tentee: exigees.some((exigee, i) => exigee && saisies[i] !== ''),
 		juste: !verdictsCases(ex.colonnes, ex.uniteConnue, ex.answerUnit, saisies).includes('faux'),
-		donnee: `${nombreTableauSaisi(
-			cells.map((c, i) => ({ unite: c.col.unite, valeur: pourJournal[i] })),
-			ex.answerUnit,
-			virguleCase ?? undefined,
-		)} ${ex.answerUnit}`,
+		donnee: saisieTableau(ex, saisiesCases(), virguleCase),
 	});
 	if (entree?.sansTentative)
 		capterPasse({ text: ex.question, attendue: attendueTexte, lessonId: lesson.id });

@@ -1025,7 +1025,7 @@ typée `Record<TypeRunner, …>`. `TypeRunner` est dérivé de `JEU_PAR_TYPE`
 (`core/exercise.ts`, avec `seJoueEnRunner`) : un type déclaré « runner » sans lanceur ne
 compile pas. **Un nouveau runner `lecon-*` s'enregistre dans cette table**, et
 `tests/couverture-e2e-gate.test.ts` la lit pour exiger qu'une spec le joue. La séance
-partagée (`partage.ts`) consulte la même `JEU_PAR_TYPE` pour savoir ce qui ne se joue
+partagée (`core/partage/passage.ts`) consulte la même `JEU_PAR_TYPE` pour savoir ce qui ne se joue
 pas en fiche.
 
 - **`lecon-runner-shared.ts`** (#344) — **squelette commun** des cinq runners
@@ -1036,6 +1036,13 @@ pas en fiche.
   chacun aurait dû penser à résoudre le niveau), `finishLeconRun(lessonId, ok, total)` (enregistre
   l'essai via `recordLessonRun` et renvoie l'issue) et `renderLeconResult(opts)` (écran de
   résultat commun — score, étoile, mascotte, récompenses de niveau via `announceRewards`).
+  **`demarrerRunner({ partage })`** (#734) démarre un runner pour une séance partagée : niveau
+  de l'envoi (jamais celui du profil), pas de reprise, ni XP de leçon ni étoile, et
+  `leconTitreHTML(lesson, niveau?)` accepte ce niveau explicite. L'API commune de ces séances est dans
+  **`runner-partage.ts`** (`SeanceRunner`, `decisionPartageHTML` / `brancherDecisionPartage` :
+  « Je ne sais pas » + « Valider », `enchainerPartage`, `erreurPassee`) ; chaque runner y exporte
+  son `jouerPartageX`, branché par la table `RUNNERS_PARTAGE` de `partage-seance.ts`. Détail dans
+  [Liens partagés](liens-partages.md).
   Chaque runner délègue sa fin de session à ce module au lieu de la dupliquer ;
   `lecon-probleme.ts` passe son lexique (`nom` / `nomPluriel`) via le paramètre optionnel
   `lexique`. `wireNext(actions, feedback, opts)` mutualise aussi la **fin de question**
@@ -1153,7 +1160,11 @@ pas en fiche.
   ci-dessous, qui implémente le même contrat sans passer par ce binder) — lue par le runner en
   cas d'échec pour journaliser une réponse lisible (cf. « Journal des erreurs » ci-dessous). La
   variante `opts.variant` (`'lecon'` | `'revision'`) adapte la classe de l'énoncé et
-  l'enveloppe `.bignum` des grands nombres (#240).
+  l'enveloppe `.bignum` des grands nombres (#240). **`juste()`** (#734) rend la même
+  justesse que `verify()` **sans rien figer ni marquer** (`verify()` s'en sert) : la séance
+  partagée juge ainsi sans verdict visible. Les trois autres widgets mutualisés
+  (`appariement.ts`, `clic-mot-interaction.ts`, `segment-mot-interaction.ts`) l'exposent
+  aussi ; l'appariement ajoute `liberer()` (déconnecte son `ResizeObserver`).
   **Persistance du focus (#360, étendue au rangement par #448)** : les widgets se
   redessinent par `innerHTML`, ce qui détruit l'élément focalisé — le focus retomberait sur
   `<body>` à chaque interaction, obligeant l'enfant au clavier à retabuler depuis le haut

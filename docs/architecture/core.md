@@ -81,7 +81,11 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `initProfiles()` et le branchement du hook sont appelés par `main.ts`.
 - **`items.ts`** — item de rendu `{text, answer, answers?, kind?, figure?}` (`@` = champ).
   Fabriques math (`add/sub/mul/dbl/half/comp/facteur`), `renderItem` (champ
-  numérique, **texte**, ou **grille posée** selon `kind`), `checkItemAnswer`
+  numérique, **texte**, ou **grille posée** selon `kind` ; à l'écran, un QCM **sans
+  trou** passe par **`qcmChoixHTML`** : boutons radio dans un `fieldset.fiche-choix` qui
+  alimentent un champ `.ans` caché, câblé par `initSession`, et dont la marque est
+  rattachée au groupe ; un QCM à trou garde son champ au trou, et l'impression ses cases à
+  cocher), `checkItemAnswer`
   (correction numérique **ou** texte via `normalizeText`), `gridHTML`,
   `ficheHTML`/`ficheHTMLGeneric`, `lessonAttr(ctx)`.
   **`itemEstNumerique(it)`** — source UNIQUE de « cet item se corrige-t-il
@@ -1626,6 +1630,11 @@ niveau, sans DOM ni stockage :
   confondre décale la virgule d'un rang sur les seules têtes à deux chiffres. Piège :
   `caseVirguleAttendue` rend `-1` sans virgule attendue, ne jamais l'enchaîner à
   `colonneDeCase` sans garde.
+- **`tableau-lecture.ts`** (#734) — **verdict et relecture d'un tableau de conversion
+  saisi**, sorties du runner pour que la séance partagée juge sans rien peindre :
+  **`jugerTableau`** (chiffres et virgule, deux verdicts séparés), **`attendueTableau`**,
+  **`saisieTableau`** (la réponse telle que le journal la relit), **`unitesDesCases`**.
+  Le jeu libre et la séance partagée utilisent les mêmes fonctions.
 - **`tableau-cadrage.ts`** (#711 lot 5) — **`scrollPourCadrer(donnee, demandee,
   largeurVisible, largeurTotale, marge)`** : le `scrollLeft` qui ouvre le cadre du tableau sur
   l'intervalle de la question (segments en pixels, mesurés par le runner). L'intervalle tient

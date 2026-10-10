@@ -30,6 +30,11 @@
    survit aux questions, le figeage, le journal et la fin. La correction d'une séance en
    runner est une LISTE (énoncé, réponse, attendu, statut), le contenu même du résultat
    (arbitrage du mainteneur) : redessiner chaque widget figé coûterait un rendu par format.
+
+   Une DICTÉE se joue de la même façon, un mot à la fois (`dictee-partage.ts`). Sans voix
+   française, elle ne démarre pas (critère 12) : l'accueil le dit, rien n'est écrit, et il
+   se corrige de lui-même si la voix arrive après lui. Une voix perdue en cours de séance
+   l'arrête sans rien garder, comme un abandon (critère 16).
    ============================================================ */
 import { decoderEnvoi, type Envoi } from '../core/partage/envoi';
 import { encoderResultat, type Resultat } from '../core/partage/resultat';
@@ -55,10 +60,12 @@ import {
 	terminerPremierPassage,
 	type BlocPassage,
 	type ChampCorrige,
+	type ItemDictee,
 	type ItemPassage,
 	type Passage,
 	type RaisonInjouable,
 } from '../core/partage/passage';
+import type { ItemCapture } from '../core/partage/capture';
 import type { StatutReponse } from '../core/partage/resultat';
 import { createRenderContext, renderItem, withLessonId, type RenderContext } from '../core/items';
 import { ttsAttr } from '../core/tts-text';
@@ -92,6 +99,8 @@ import { jouerPartageQcmMulti } from './lecon-qcm-multi';
 import { jouerPartageTableau } from './lecon-tableau';
 import { jouerPartageDroiteGraduee } from './lecon-droite-graduee';
 import { jouerPartageProbleme } from './lecon-probleme';
+import { jouerPartageDictee } from './dictee-partage';
+import { dicteeDisponible, messageSansVoix, raisonSansVoix, surChangementVoix } from './tts';
 
 /* Runner de chaque type, en séance partagée. Table typée sur `TypeRunner` : un type
    déclaré « runner » dans `JEU_PAR_TYPE` sans sa séance partagée ne compile pas, comme
@@ -134,10 +143,18 @@ let jeton = 0;
  *  (rien n'est repris) : `main.ts` demande alors confirmation, comme pour le sprint. */
 export const partageEnCours = (): boolean => !!seance && !seance.finie;
 
+/* Écoute des voix d'un écran d'accueil de dictée : posée tant qu'il est affiché. */
+let desabonnerVoix: (() => void) | null = null;
+function oublierVoix(): void {
+	desabonnerVoix?.();
+	desabonnerVoix = null;
+}
+
 /** Oublie la séance et annule un décodage en vol (appelé à chaque changement d'écran). */
 export function partageCleanup(): void {
 	jeton++;
 	seance = null;
+	oublierVoix();
 }
 
 /* ---------- Entrée : décodage, puis accueil, « déjà fait » ou refus ---------- */
@@ -203,18 +220,32 @@ function afficherRefus(el: HTMLElement, raison: RaisonRefus | RaisonInjouable): 
 }
 
 function afficherAccueil(el: HTMLElement, p: PassageOk): void {
+	const muet = sansVoix(p);
+	const consigne = p.dictee
+		? html`<p class="partage-texte">Mets le son : chaque mot va t'être dicté.</p>`
+		: VIDE;
 	el.innerHTML = html`<section id="partageAccueil" class="partage-ecran">
       <p class="partage-surtitre">${icon('bookmark')} Exercice envoyé</p>
       <h2 class="partage-titre" tabindex="-1">${p.envoi.libelle}</h2>
       <p class="partage-encart">${icon('eye')}<span>La personne qui t'a envoyé cet exercice verra tes réponses.</span></p>
+      ${
+				muet
+					? html`${sansVoixHTML("Ton exercice t'attend : rouvre le lien quand le son marchera.")}
+      <button type="button" id="partageRetour" class="partage-btn partage-btn-principal">${icon('house')} Retour à l'accueil</button>`
+					: html`${consigne}
       <p class="partage-texte">Réponds comme tu peux. Si tu ne sais pas, coche « Je ne sais pas » : c'est une vraie réponse.</p>
-      <button type="button" id="partageCommencer" class="partage-btn partage-btn-principal">Commencer</button>
+      <button type="button" id="partageCommencer" class="partage-btn partage-btn-principal">Commencer</button>`
+			}
     </section>`.balisage;
-	el.querySelector('#partageCommencer')!.addEventListener('click', () => demarrer(el, p, false));
+	el.querySelector('#partageCommencer')?.addEventListener('click', () => demarrer(el, p, false));
+	el.querySelector('#partageRetour')?.addEventListener('click', goHome);
+	surveillerVoix(p, () => afficherAccueil(el, p));
 	focusTitre(el);
 }
 
 function afficherDejaFait(el: HTMLElement, p: PassageOk, resultat: Resultat): void {
+	// Sans voix, recopier le résultat reste possible ; s'entraîner à une dictée, non.
+	const muet = sansVoix(p);
 	el.innerHTML = html`<section id="partageDejaFait" class="partage-ecran">
       <p class="partage-surtitre">${icon('bookmark')} Exercice envoyé</p>
       <h2 class="partage-titre" tabindex="-1">${p.envoi.libelle}</h2>
@@ -224,17 +255,76 @@ function afficherDejaFait(el: HTMLElement, p: PassageOk, resultat: Resultat): vo
           <span>Recopier mon résultat</span>
           <span class="partage-btn-sous">Pour le redonner à la personne qui t'a envoyé cet exercice.</span>
         </button>
-        <button type="button" id="partageEntrainer" class="partage-btn partage-btn-secondaire">
+        ${
+					muet
+						? VIDE
+						: html`<button type="button" id="partageEntrainer" class="partage-btn partage-btn-secondaire">
           <span>M'entraîner</span>
           <span class="partage-btn-sous">Rien n'est envoyé.</span>
-        </button>
+        </button>`
+				}
       </div>
+      ${muet ? sansVoixHTML("Pour t'entraîner, rouvre le lien quand le son marchera.") : VIDE}
     </section>`.balisage;
 	el.querySelector('#partageRecopier')!.addEventListener('click', () => {
+		oublierVoix();
 		el.innerHTML = repereHTML(p.envoi, false).balisage;
 		afficherFin(el, resultat, null);
 	});
-	el.querySelector('#partageEntrainer')!.addEventListener('click', () => demarrer(el, p, true));
+	el.querySelector('#partageEntrainer')?.addEventListener('click', () => demarrer(el, p, true));
+	surveillerVoix(p, () => afficherDejaFait(el, p, resultat));
+	focusTitre(el);
+}
+
+/* ---------- La voix d'une dictée (critère 12) ---------- */
+
+/* Une dictée sans voix française ne se joue pas : la voix EST l'exercice. */
+const sansVoix = (p: PassageOk): boolean => !!p.dictee && !dicteeDisponible();
+
+/* Les voix arrivent souvent APRÈS le premier rendu (`voiceschanged`), et la connexion peut
+   revenir : l'écran d'une dictée se refait quand la disponibilité change, pour ne pas
+   laisser l'enfant devant un « pas de son » qui n'est plus vrai. Un seul abonnement à la
+   fois, retiré au départ de l'écran (`partageCleanup`, `demarrer`). */
+function surveillerVoix(p: PassageOk, refaire: () => void): void {
+	oublierVoix();
+	if (!p.dictee) return;
+	let dispo = dicteeDisponible();
+	desabonnerVoix = surChangementVoix(() => {
+		const maintenant = dicteeDisponible();
+		if (maintenant === dispo) return;
+		dispo = maintenant;
+		refaire();
+	});
+}
+
+/* La cause, dite comme ailleurs dans l'appli (`messageSansVoix`). Une voix listée qui ne
+   parle pas (énoncé en échec) n'a pas de cause connue : le message générique dirait le
+   contraire (« disponible »). */
+function causeSansVoix(): string {
+	return raisonSansVoix() ? messageSansVoix() : 'La voix de cet appareil ne répond pas.';
+}
+
+function sansVoixHTML(suite: string): SafeHtml {
+	return html`<p id="partageSansVoix" class="partage-encart partage-encart-alerte">${icon('speaker')}<span>Cette dictée a besoin du son. ${causeSansVoix()} ${suite}</span></p>`;
+}
+
+/* La voix s'est tue PENDANT la dictée. Rien n'est figé ni journalisé : une saisie faite
+   dans le silence n'est pas une faute d'orthographe (#391), et le premier passage reste à
+   faire (critère 16). La séance est oubliée : quitter ne demande plus confirmation, il
+   n'y a plus rien à perdre. */
+function afficherSilence(el: HTMLElement, s: SeanceEnCours): void {
+	if (seance !== s || s.finie) return;
+	seance = null;
+	const suite = s.entrainement
+		? "Pour t'entraîner, rouvre le lien quand le son marchera."
+		: "Ton exercice n'est pas perdu : rouvre le lien quand le son marchera.";
+	el.innerHTML = html`<section id="partageSilence" class="partage-ecran">
+      <h2 class="partage-titre" tabindex="-1">${icon('speaker')} La dictée a besoin du son</h2>
+      <p class="partage-texte">${causeSansVoix()}</p>
+      <p class="partage-texte">${suite}</p>
+      <button type="button" id="partageRetour" class="partage-btn partage-btn-principal">${icon('house')} Retour à l'accueil</button>
+    </section>`.balisage;
+	el.querySelector('#partageRetour')!.addEventListener('click', goHome);
 	focusTitre(el);
 }
 
@@ -250,6 +340,13 @@ function repereHTML(envoi: Envoi, entrainement: boolean): SafeHtml {
 }
 
 function demarrer(el: HTMLElement, p: PassageOk, entrainement: boolean): void {
+	oublierVoix();
+	if (p.dictee) {
+		// Une voix partie entre l'accueil et le geste n'est pas un cas à part : le premier
+		// mot ne se fait pas entendre, et l'écran de silence prend la place.
+		demarrerDictee(el, p, p.dictee, entrainement);
+		return;
+	}
 	if (p.runner && p.envoi.nature === 'lecon') {
 		demarrerEnRunner(el, p, p.runner, entrainement);
 		return;
@@ -535,28 +632,33 @@ function figerFiche(el: HTMLElement): void {
 	fiche.prepend(entete);
 }
 
-/* ---------- La séance dans un runner ---------- */
+/* ---------- La séance dans un runner, ou la dictée ---------- */
 
-/* Le repère et la région d'annonce sont rendus ICI, hors du conteneur que le runner
-   réécrit à chaque question : le repère reste visible d'un bout à l'autre (critère 7), et
-   une région live recréée à chaque question ne serait pas annoncée de façon fiable. */
-function demarrerEnRunner(
+/* La séance ouverte, et ce que l'écran donne au jeu « une question à la fois » qui la joue
+   (runner de leçon ou dictée). */
+interface CadreSeance {
+	s: SeanceEnCours;
+	jeu: Pick<SeanceRunner, 'scene' | 'noter' | 'terminer' | 'annoncer'>;
+}
+
+/* Le repère et la région d'annonce sont rendus ICI, hors du conteneur que le jeu réécrit
+   à chaque question : le repère reste visible d'un bout à l'autre (critère 7), et une
+   région live recréée à chaque question ne serait pas annoncée de façon fiable. */
+function ouvrirCadre(
 	el: HTMLElement,
 	p: PassageOk,
-	jeu: JeuRunner,
+	captures: ItemCapture[],
 	entrainement: boolean,
-): void {
-	if (p.envoi.nature !== 'lecon') return;
+): CadreSeance {
 	setCurrentMode(MODE_PARTAGE);
 	setCurrentLessonId(null);
 	setToolbar({ verify: false, home: true, profile: false });
-	const items = p.blocs.flatMap((b) => b.items);
 	const s: SeanceEnCours = {
 		envoi: p.envoi,
 		blocs: p.blocs,
 		entrainement,
 		ctx: createRenderContext(),
-		capture: nouvelleCapture(items.map((i) => i.capture)),
+		capture: nouvelleCapture(captures),
 		finie: false,
 		erreurs: [],
 	};
@@ -565,26 +667,71 @@ function demarrerEnRunner(
     <p id="partageAnnonce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
     <div id="partageRunner"></div>`.balisage;
 	const region = el.querySelector<HTMLElement>('#partageAnnonce')!;
+	return {
+		s,
+		jeu: {
+			scene: el.querySelector<HTMLElement>('#partageRunner')!,
+			noter: (index, r) => {
+				if (seance !== s || s.finie) return;
+				const notee = noterReponse(s.capture, index, {
+					statut: r.statut,
+					saisie: r.saisie,
+					...(r.attendue !== undefined ? { attendue: r.attendue } : {}),
+				});
+				if (notee) s.erreurs.push(...r.erreurs);
+			},
+			terminer: () => terminerEnRunner(el, s),
+			annoncer: (texte) => annoncer(region, texte),
+		},
+	};
+}
+
+function demarrerEnRunner(
+	el: HTMLElement,
+	p: PassageOk,
+	jeu: JeuRunner,
+	entrainement: boolean,
+): void {
+	if (p.envoi.nature !== 'lecon') return;
+	const items = p.blocs.flatMap((b) => b.items);
+	const cadre = ouvrirCadre(
+		el,
+		p,
+		items.map((i) => i.capture),
+		entrainement,
+	);
 	RUNNERS_PARTAGE[jeu.type]({
+		...cadre.jeu,
 		lesson: p.blocs[0].lecon,
 		mode: jeu.mode,
 		niveau: p.envoi.niveau,
 		exercices: p.envoi.blocs[0].exercices,
-		scene: el.querySelector<HTMLElement>('#partageRunner')!,
-		noter: (index, r) => {
-			if (seance !== s || s.finie) return;
-			const notee = noterReponse(s.capture, index, {
-				statut: r.statut,
-				saisie: r.saisie,
-				...(r.attendue !== undefined ? { attendue: r.attendue } : {}),
-			});
-			if (notee) s.erreurs.push(...r.erreurs);
-		},
-		terminer: () => terminerEnRunner(el, s),
-		annoncer: (texte) => annoncer(region, texte),
 	});
 	// Même départ que la fiche : focus sur le repère, qui dit où l'on est.
 	el.querySelector<HTMLElement>('#partageRepere')?.focus({ preventScroll: true });
+	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* La dictée garde le focus que son premier mot pose sur le champ, comme la dictée du jeu
+   libre (#702) : le mot est dicté dès l'arrivée, et il n'y a rien à lire avant d'écrire. */
+function demarrerDictee(
+	el: HTMLElement,
+	p: PassageOk,
+	dictee: ItemDictee[],
+	entrainement: boolean,
+): void {
+	const cadre = ouvrirCadre(
+		el,
+		p,
+		dictee.map((i) => i.capture),
+		entrainement,
+	);
+	jouerPartageDictee({
+		...cadre.jeu,
+		mots: dictee.map((i) => i.mot),
+		lecon: dictee[0]?.capture.lecon ?? '',
+		silence: () => afficherSilence(el, cadre.s),
+	});
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

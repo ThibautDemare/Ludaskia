@@ -26,8 +26,9 @@ export const ORTHO_MODE_OPTIONS: ModeOption[] = [
     Partagé par le parcours (`ui/ortho-runner.ts`) et la révision (`ui/revision.ts`) : le
     parcours décrivait les trois tâches par le seul « Mot à écrire sous la dictée », si bien
     qu'une erreur commise sur les tuiles se lisait comme une dictée dans le tableau du
-    parent. Le même geste ne doit pas se raconter différemment selon le chemin pris. */
-export function enonceJournalOrtho(mot: MotOrtho, mode: ModeOrtho): string {
+    parent. Le même geste ne doit pas se raconter différemment selon le chemin pris. La
+    dictée envoyée par lien (#734) s'en sert aussi, sur un mot qui n'est pas en banque. */
+export function enonceJournalOrtho(mot: Pick<MotOrtho, 'contexte'>, mode: ModeOrtho): string {
 	const ctx = mot.contexte;
 	if (ctx) return `${ctx.avant}…${ctx.apres}`;
 	if (mode === 'tuiles') return 'Mot à reconstituer avec les lettres données';

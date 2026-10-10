@@ -86,6 +86,27 @@ export function labelLeconOrtho(
 	return predef ? predef.label : null;
 }
 
+/** Leçon d'une dictée reçue par un lien qui ne dit pas d'où elle vient (#734) : un lien
+    forgé, ou émis avant que l'envoi porte sa source. */
+export const ID_DICTEE_ENVOYEE = 'dictee-envoyee';
+
+/** Titre de repli d'un groupe d'erreurs dont la liste d'orthographe n'est pas dans ce
+    profil : une liste supprimée, ou celle d'un autre profil ou d'un autre appareil, arrivée
+    par une dictée envoyée (#734). */
+export const LABEL_LISTE_ABSENTE = 'Liste de dictée absente de ce profil';
+
+/* Forme des ids de liste (`genId` de `store.ts`) : un UUID, ou son repli `o` + horodatage
+   et tirage en base 36. Aucun id du catalogue ni de dictée prédéfinie n'a cette forme. */
+const FORME_ID_LISTE =
+	/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|o[0-9a-z]{12,})$/;
+
+/** Titre à montrer pour un id que ni le catalogue ni `labelLeconOrtho` ne résolvent, quand
+    c'est celui d'une liste d'orthographe : l'UUID brut ne dirait rien à l'adulte. `null` pour
+    tout autre id, que l'appelant affiche tel quel. Pur. */
+export function libelleOrthoIntrouvable(id: string): string | null {
+	return id === ID_DICTEE_ENVOYEE || FORME_ID_LISTE.test(id) ? LABEL_LISTE_ABSENTE : null;
+}
+
 /** Groupe d'erreurs affichable pour un MOT d'orthographe (#391) : l'id sous lequel ranger une
     erreur commise sur ce mot en révision espacée. Un mot n'est pas une leçon du catalogue, et la
     révision travaille des mots (pas des leçons) alors que le journal regroupe par leçon/liste.

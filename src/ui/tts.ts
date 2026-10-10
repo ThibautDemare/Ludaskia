@@ -30,6 +30,26 @@ export function initTts(): void {
 	speechSynthesis.addEventListener('voiceschanged', refresh);
 }
 
+/** Prévient quand la disponibilité de la dictée PEUT avoir changé : voix chargées après
+ *  coup (`voiceschanged` arrive souvent après le premier écran), connexion perdue ou
+ *  revenue (cf. `voixFr`). Rend de quoi se désabonner. Sert à un écran qui a conclu
+ *  « pas de voix » de se corriger sans que l'enfant recharge la page (#734). */
+export function surChangementVoix(cb: () => void): () => void {
+	if (typeof speechSynthesis === 'undefined') return () => {};
+	const maj = () => {
+		refresh();
+		cb();
+	};
+	speechSynthesis.addEventListener('voiceschanged', maj);
+	window.addEventListener('online', maj);
+	window.addEventListener('offline', maj);
+	return () => {
+		speechSynthesis.removeEventListener('voiceschanged', maj);
+		window.removeEventListener('online', maj);
+		window.removeEventListener('offline', maj);
+	};
+}
+
 /** Sait-on de façon SÛRE qu'il n'y a pas de réseau ? (cf. en-tête) */
 function horsLigne(): boolean {
 	return typeof navigator !== 'undefined' && navigator.onLine === false;

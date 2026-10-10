@@ -89,8 +89,12 @@ const cadreDe = (o: OptionsTache): string => o.cadre ?? 'page ortho-run';
    trou autour du slot interactif (le « trou » = la forme à écrire/assembler) et on
    lit la phrase complète en TTS. Un mot classique (`contexte` absent) est inchangé. */
 
+/** Ce qu'il faut d'un mot pour le dicter et montrer sa phrase à trou : un mot de la banque,
+    ou un mot d'une dictée envoyée par lien (#734), qui n'est pas en banque. */
+export type CibleDictee = Pick<MotOrtho, 'mot' | 'commeDans' | 'contexte'>;
+
 /** Phrase à trou. `reveal` montre la forme (phase « affiché » du mot caché). */
-export function contexteHTML(word: MotOrtho, reveal = false): SafeHtml {
+export function contexteHTML(word: CibleDictee, reveal = false): SafeHtml {
 	if (!word.contexte) return VIDE;
 	const { avant, apres } = word.contexte;
 	const creux = reveal
@@ -104,7 +108,7 @@ export function contexteHTML(word: MotOrtho, reveal = false): SafeHtml {
     « mange ») n'ont que leur phrase pour se distinguer (#702, `ui/ortho-revoir.ts`). Un seul
     point de composition : trois façons de recoller `avant + mot + apres` finiraient par ne
     plus dire la même chose. */
-export function phraseVerbe(word: MotOrtho): string {
+export function phraseVerbe(word: CibleDictee): string {
 	const c = word.contexte!;
 	return `${c.avant}${word.mot}${c.apres}`;
 }
@@ -112,12 +116,12 @@ export function phraseVerbe(word: MotOrtho): string {
 /** Écoute d'une cible : phrase complète pour un verbe (lève l'ambiguïté), sinon
     « mot. Comme dans : … » pour un mot classique. `onErreur` remonte le silence
     (voix absente ou énoncé en échec) à l'appelant — cf. `onSilence`. */
-export function ecouterCible(word: MotOrtho, onErreur?: () => void): void {
+export function ecouterCible(word: CibleDictee, onErreur?: () => void): void {
 	if (word.contexte) dicter(phraseVerbe(word), undefined, onErreur);
 	else dicter(word.mot, word.commeDans, onErreur);
 }
 
-export function ecouterLabel(word: MotOrtho): string {
+export function ecouterLabel(word: CibleDictee): string {
 	return word.contexte ? 'Écouter la phrase' : 'Écouter le mot';
 }
 
@@ -642,7 +646,9 @@ function brancherEntree(e: KeyboardEvent, verifier: () => void): void {
 	verifier();
 }
 
-function renderAccentKb(container: HTMLElement, input: HTMLInputElement): void {
+/** Clavier d'accents sous un champ de saisie d'orthographe. Une touche écrit dans le champ
+    sans émettre `input` : un hôte qui suit la saisie écoute aussi les clics du conteneur. */
+export function renderAccentKb(container: HTMLElement, input: HTMLInputElement): void {
 	container.innerHTML = joindre(
 		ACCENTS.map((c) => html`<button type="button" class="accent-key" data-c="${c}">${c}</button>`),
 	).balisage;

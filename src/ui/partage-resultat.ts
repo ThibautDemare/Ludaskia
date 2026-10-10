@@ -19,6 +19,7 @@ import { verifierPin } from '../core/encadrant-lock';
 import { attribut, drapeau, html, joindre, VIDE, type SafeHtml } from '../core/html';
 import type { IconName } from '../core/icon-names';
 import { availableLevels, LEVEL_LABEL, labelLecon } from '../core/levels';
+import { labelLeconOrtho, libelleOrthoIntrouvable } from '../core/orthographe/lessons';
 import type { RaisonRefus } from '../core/partage/codec';
 import {
 	creerProfilImporte,
@@ -101,9 +102,16 @@ function dateLongue(t: number): string {
 	return `${jour} à ${heure}`;
 }
 
+/* Titre de la leçon d'un item : une leçon du catalogue, ou une dictée prédéfinie. Une liste
+   personnalisée n'est connue que du profil qui la possède, et cette vue n'affiche rien des
+   profils de l'appareil (critère 18) : son UUID ne dirait rien, on ne titre pas (`''`), le
+   libellé de l'envoi la nomme déjà. */
 function titreLecon(id: string, r: Resultat): string {
 	const lesson = getLessonById(id);
-	return lesson ? labelLecon(lesson, r.envoi.niveau) : id;
+	if (lesson) return labelLecon(lesson, r.envoi.niveau);
+	const dictee = labelLeconOrtho(id);
+	if (dictee) return dictee;
+	return libelleOrthoIntrouvable(id) ? '' : id;
 }
 
 function scoreHTML(r: Resultat): SafeHtml {
@@ -128,10 +136,8 @@ export function itemsResultatHTML(r: Resultat, lecteur: LecteurResultat = 'adult
 	const multi = new Set(r.reponses.map((x) => x.lecon)).size > 1;
 	return joindre(
 		r.reponses.map((x) => {
-			const lecon =
-				multi && x.lecon !== leconPrecedente
-					? html`<p class="resultat-lecon">${titreLecon(x.lecon, r)}</p>`
-					: VIDE;
+			const titre = multi && x.lecon !== leconPrecedente ? titreLecon(x.lecon, r) : '';
+			const lecon = titre ? html`<p class="resultat-lecon">${titre}</p>` : VIDE;
 			leconPrecedente = x.lecon;
 			const s = STATUTS[x.statut];
 			const mot = (lecteur === 'enfant' ? MOTS_ENFANT[x.statut] : undefined) ?? s.mot;

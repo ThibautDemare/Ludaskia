@@ -138,12 +138,20 @@ export function erreurPassee(o: {
 	return { ...o, donnee: '', sansTentative: true };
 }
 
+/** Ce que l'enchaînement lit d'une séance : un runner de leçon, ou la dictée
+ *  (`dictee-partage.ts`), dont les exercices sont ses mots. */
+export type SeanceEnchainee = Pick<
+	SeanceRunner,
+	'exercices' | 'scene' | 'noter' | 'terminer' | 'annoncer'
+>;
+
 /** Après « Valider » : note la réponse, puis rend la question suivante, ou termine après
  *  la dernière. Le focus va sur la nouvelle question, jamais sur un champ (le clavier
  *  virtuel s'ouvrirait avant la lecture), et l'annonce dit que la réponse a compté sans
- *  dire si elle était juste. */
+ *  dire si elle était juste. Exception : un rendu qui pose lui-même le focus dans la
+ *  question le garde (cf. `focusQuestion`). */
 export function enchainerPartage(
-	s: SeanceRunner,
+	s: SeanceEnchainee,
 	index: number,
 	reponse: ReponseRunner,
 	rendreSuivante: () => void,
@@ -163,7 +171,7 @@ export function enchainerPartage(
    conteneur sans rôle ni nom est muet ou relu en entier selon le lecteur d'écran, et le
    rang, écrit dans la barre de progression, est hors de la carte (relecture a11y). Le rang
    est donc dit même si l'annonce de la région live est coupée par la lecture du focus. */
-function focusQuestion(s: SeanceRunner, rang: number, total: number): void {
+function focusQuestion(s: SeanceEnchainee, rang: number, total: number): void {
 	const stage = s.scene.querySelector<HTMLElement>('.sprint-stage');
 	if (!stage) return;
 	stage.tabIndex = -1;
@@ -171,7 +179,8 @@ function focusQuestion(s: SeanceRunner, rang: number, total: number): void {
 	stage.setAttribute('aria-label', `Question ${rang} sur ${total}`);
 	// Un focus déjà posé DANS la question par son rendu n'est pas volé (même règle que la
 	// révision, #528) : le clic-mot le met sur sa consigne, parce que la tâche change d'une
-	// question à l'autre (« l'épithète », puis « l'attribut »).
+	// question à l'autre (« l'épithète », puis « l'attribut ») ; la dictée, sur son champ,
+	// parce que le mot est dicté dès l'arrivée et qu'il n'y a rien à lire avant d'écrire.
 	const actif = document.activeElement;
 	if (actif && actif !== stage && stage.contains(actif)) return;
 	stage.focus({ preventScroll: true });

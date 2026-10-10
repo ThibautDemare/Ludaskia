@@ -7,7 +7,7 @@
    Rouges tant que le module n'est pas écrit : c'est attendu.
 
    Critères tenus ici (versant logique) :
-   - 1 / 37 : ce qui se joue en fiche, la dictée (refus `format`), ce qui n'existe
+   - 1 / 37 : ce qui se joue en fiche (la dictée : `partage-dictees.test.ts`), ce qui n'existe
      plus au catalogue (refus `lecon`). Les runners « une question à la fois »
      (PR 4) sont gardés par `partage-runners-passage.test.ts` ;
    - 2 : le niveau des items, du titre et de la consigne vient de l'ENVOI, jamais
@@ -222,21 +222,12 @@ function prefixe(): string {
 }
 
 /* ============================================================
-   preparerPassage — la dictée, et ce qui se joue en fiche
+   preparerPassage — ce qui se joue en fiche
+   La dictée se joue désormais depuis un lien (PR 5) : elle est couverte par
+   `partage-dictees.test.ts`.
    ============================================================ */
 
-describe('preparerPassage — dictée refusée, leçons jouées en fiche (critères 1, 11 et 37)', () => {
-	it('une dictée ne se joue pas en fiche', () => {
-		const dictee: Envoi = {
-			id: ID_ENVOI,
-			libelle: 'Dictee 4',
-			nature: 'dictee',
-			niveau: 'ce2',
-			mots: [{ mot: 'école' }, { mot: 'arbre' }],
-		};
-		expect(preparerPassage(dictee)).toEqual({ ok: false, raison: 'format' });
-	});
-
+describe('preparerPassage — leçons jouées en fiche (critères 1, 11 et 37)', () => {
 	it.each<[string, string, SchoolLevel, ExerciseMode | undefined, Exercise['type']]>([
 		['numération en saisie (même leçon que les tuiles)', 'num-comparer', 'ce2', 'saisie', 'text'],
 		['conversion en saisie (même leçon que le tableau)', 'mes-longueurs', 'ce2', 'saisie', 'text'],

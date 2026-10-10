@@ -307,7 +307,7 @@ const PAIRES_TEXTE: Paire[] = [
 	{
 		avant: '--ink',
 		arriere: '--warn-bg',
-		ou: 'encadrant.scss .enc-warn (alerte de carte) ; sheets.scss .rb-warn (alerte du bilan de fiche)',
+		ou: 'encadrant.scss .enc-warn (alerte de carte), .enc-envoi-aide-refus ; sheets.scss .rb-warn (alerte du bilan de fiche) ; partage.scss .partage-encart-alerte (dictée sans voix)',
 	},
 	{ avant: '--on-accent', arriere: '--accent', ou: 'bilan.scss .bilan-cta, aide-exercice.scss' },
 	{ avant: '--on-accent', arriere: '--accent-dark', ou: 'survol des mêmes boutons (bilan.scss)' },

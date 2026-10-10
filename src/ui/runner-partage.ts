@@ -40,6 +40,10 @@ export interface ReponseRunner {
 	erreurs: ErreurRunner[];
 }
 
+/** Ce que l'écran partagé donne à tout jeu « une question à la fois » : runner de leçon
+ *  (`SeanceRunner`) ou dictée (`SeanceDictee`, `dictee-partage.ts`). */
+export type JeuSeance = Pick<SeanceRunner, 'scene' | 'noter' | 'terminer' | 'annoncer'>;
+
 /** La séance qu'un runner joue pour l'écran partagé. */
 export interface SeanceRunner {
 	lesson: LessonDef;
@@ -61,6 +65,9 @@ export interface SeanceRunner {
 const JNSP_ID = 'partageJnsp';
 const AIDE_ID = 'partageValiderAide';
 
+/** L'aide du bloc de décision : pourquoi « Valider » ne fait rien encore. */
+export const AIDE_DECISION = 'Réponds, ou coche « Je ne sais pas ».';
+
 /** Bloc de décision d'une question : « Je ne sais pas », puis « Valider ». La case vient
  *  AVANT le bouton, entre la réponse et la validation : sous le bouton, à la place du lien
  *  « montre-moi » du jeu libre, elle deviendrait un raccourci sous le pouce (avis
@@ -69,7 +76,7 @@ const AIDE_ID = 'partageValiderAide';
 export function decisionPartageHTML(validerId: string, classeBloc?: string): SafeHtml {
 	return html`<div class="lecon-decide partage-decide${classeBloc ? ` ${classeBloc}` : ''}">
         <label class="partage-jnsp"><input type="checkbox" id="${JNSP_ID}"><span>Je ne sais pas</span></label>
-        <p class="partage-aide" id="${AIDE_ID}">Réponds, ou coche « Je ne sais pas ».</p>
+        <p class="partage-aide" id="${AIDE_ID}">${AIDE_DECISION}</p>
         <button class="sprint-btn" id="${validerId}" data-partage-valider aria-describedby="${AIDE_ID}" disabled>Valider</button>
       </div>`;
 }
@@ -139,11 +146,9 @@ export function erreurPassee(o: {
 }
 
 /** Ce que l'enchaînement lit d'une séance : un runner de leçon, ou la dictée
- *  (`dictee-partage.ts`), dont les exercices sont ses mots. */
-export type SeanceEnchainee = Pick<
-	SeanceRunner,
-	'exercices' | 'scene' | 'noter' | 'terminer' | 'annoncer'
->;
+ *  (`dictee-partage.ts`), dont les exercices sont ses mots. `unite` : ce qu'on compte,
+ *  « Question » par défaut, « Mot » pour une dictée (le même mot que sa progression). */
+export type SeanceEnchainee = JeuSeance & Pick<SeanceRunner, 'exercices'> & { unite?: string };
 
 /** Après « Valider » : note la réponse, puis rend la question suivante, ou termine après
  *  la dernière. Le focus va sur la nouvelle question, jamais sur un champ (le clavier
@@ -163,7 +168,7 @@ export function enchainerPartage(
 		return;
 	}
 	rendreSuivante();
-	s.annoncer(`Réponse enregistrée. Question ${index + 2} sur ${total}.`);
+	s.annoncer(`Réponse enregistrée. ${rangDit(s, index + 2, total)}.`);
 	focusQuestion(s, index + 2, total);
 }
 
@@ -176,7 +181,7 @@ function focusQuestion(s: SeanceEnchainee, rang: number, total: number): void {
 	if (!stage) return;
 	stage.tabIndex = -1;
 	stage.setAttribute('role', 'group');
-	stage.setAttribute('aria-label', `Question ${rang} sur ${total}`);
+	stage.setAttribute('aria-label', rangDit(s, rang, total));
 	// Un focus déjà posé DANS la question par son rendu n'est pas volé (même règle que la
 	// révision, #528) : le clic-mot le met sur sa consigne, parce que la tâche change d'une
 	// question à l'autre (« l'épithète », puis « l'attribut ») ; la dictée, sur son champ,
@@ -184,4 +189,9 @@ function focusQuestion(s: SeanceEnchainee, rang: number, total: number): void {
 	const actif = document.activeElement;
 	if (actif && actif !== stage && stage.contains(actif)) return;
 	stage.focus({ preventScroll: true });
+}
+
+/** « Question 2 sur 5 », ou « Mot 2 sur 5 » pour une dictée. */
+export function rangDit(s: Pick<SeanceEnchainee, 'unite'>, rang: number, total: number): string {
+	return `${s.unite ?? 'Question'} ${rang} sur ${total}`;
 }

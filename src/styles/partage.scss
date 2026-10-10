@@ -56,6 +56,13 @@
 	line-height: 1.45;
 }
 /* L'information qui compte (« verra tes réponses ») : un encart, pas un petit gris. */
+/* Encart d'ALERTE (une dictée sans voix) : le fond et le liseré d'avertissement, le
+   texte reste en `--ink` (`--warn` en texte est sous AA sur ce fond). */
+.partage-encart.partage-encart-alerte {
+	border-left-color: var(--warn);
+	background: var(--warn-bg);
+	color: var(--ink);
+}
 .partage-encart {
 	margin: 0;
 	display: flex;

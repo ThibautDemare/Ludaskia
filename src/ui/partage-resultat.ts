@@ -104,14 +104,14 @@ function dateLongue(t: number): string {
 
 /* Titre de la leçon d'un item : une leçon du catalogue, ou une dictée prédéfinie. Une liste
    personnalisée n'est connue que du profil qui la possède, et cette vue n'affiche rien des
-   profils de l'appareil (critère 18) : son UUID ne dirait rien, on ne titre pas (`''`), le
-   libellé de l'envoi la nomme déjà. */
-function titreLecon(id: string, r: Resultat): string {
+   profils de l'appareil (critère 18) : son UUID ne dirait rien, on ne titre pas (`null`),
+   le libellé de l'envoi la nomme déjà. */
+function titreLecon(id: string, r: Resultat): string | null {
 	const lesson = getLessonById(id);
 	if (lesson) return labelLecon(lesson, r.envoi.niveau);
 	const dictee = labelLeconOrtho(id);
 	if (dictee) return dictee;
-	return libelleOrthoIntrouvable(id) ? '' : id;
+	return libelleOrthoIntrouvable(id) ? null : id;
 }
 
 function scoreHTML(r: Resultat): SafeHtml {
@@ -136,7 +136,7 @@ export function itemsResultatHTML(r: Resultat, lecteur: LecteurResultat = 'adult
 	const multi = new Set(r.reponses.map((x) => x.lecon)).size > 1;
 	return joindre(
 		r.reponses.map((x) => {
-			const titre = multi && x.lecon !== leconPrecedente ? titreLecon(x.lecon, r) : '';
+			const titre = multi && x.lecon !== leconPrecedente ? titreLecon(x.lecon, r) : null;
 			const lecon = titre ? html`<p class="resultat-lecon">${titre}</p>` : VIDE;
 			leconPrecedente = x.lecon;
 			const s = STATUTS[x.statut];

@@ -15,6 +15,7 @@
    ============================================================ */
 import { html, joindre, drapeau, VIDE, type SafeHtml } from '../core/html';
 import { niveauProfilMatiere } from '../core/encadrant-stats';
+import { NOMBRE_MAX_MOTS } from '../core/partage/textes';
 import { LEVEL_LABEL, LEVEL_ORDER } from '../core/levels';
 import { listOrthoLecons, type LeconOrthoRef } from '../core/orthographe/lessons';
 import { loadOrthoFor } from '../core/orthographe/store';
@@ -109,7 +110,8 @@ export function sansChoixDictee(consulte: Profile): string {
 
 /* ---------- Rendu ---------- */
 
-const motsTexte = (n: number): string => `${n} mot${n > 1 ? 's' : ''}`;
+/** « 1 mot », « 12 mots » : l'aide du choix et le détail d'un envoi créé. */
+export const motsTexte = (n: number): string => `${n} mot${n > 1 ? 's' : ''}`;
 
 export function dicteeHTML(consulte: Profile): SafeHtml {
 	const source = segmentHTML({
@@ -174,6 +176,52 @@ export interface DicteeComposee {
 	titre: string;
 	/** Mots de la liste que le lien refuse, écartés de l'envoi. */
 	ecartes: string[];
+	/** Verbes de la liste que le lexique n'a pas su conjuguer, absents de l'envoi. */
+	nonConjugues: string[];
+	/** Refus, dit pour une dictée : l'onglet l'affiche tel quel. */
+	refus?: string;
+}
+
+/* La règle des caractères d'un lien, dite partout dans les mêmes mots (relecture langue). */
+const REGLE_LIEN =
+	"Un lien n'accepte que les lettres, l'apostrophe, le trait d'union et l'espace, complément d'un verbe compris.";
+const REFUS_PREPARATION =
+	"L'exercice n'a pas pu être préparé. Vérifiez la connexion, puis réessayez de créer le lien.";
+
+const cites = (mots: readonly string[]): string => mots.map((m) => `« ${m} »`).join(', ');
+
+/** Les mots d'une liste écartés de l'envoi, nommés entre guillemets : un mot qui finit par
+ *  un point (« M. ») ne double pas celui de la phrase. */
+export function messageEcartes(ecartes: readonly string[]): string {
+	const debut =
+		ecartes.length > 1
+			? `Ces ${ecartes.length} mots de la liste ne sont pas dans l'envoi`
+			: "Ce mot de la liste n'est pas dans l'envoi";
+	return `${debut} : ${cites(ecartes)}. ${REGLE_LIEN}`;
+}
+
+/** Les verbes que le lexique n'a pas su conjuguer, le plus souvent une faute de frappe. */
+export function messageNonConjugues(verbes: readonly string[]): string {
+	return verbes.length > 1
+		? `Ces verbes n'ont pas pu être conjugués et ne sont pas dans l'envoi : ${cites(verbes)}. Vérifiez leur orthographe dans la liste.`
+		: `Ce verbe n'a pas pu être conjugué et n'est pas dans l'envoi : ${cites(verbes)}. Vérifiez son orthographe dans la liste.`;
+}
+
+/* Le refus d'une dictée, qui dit comment réussir (convention #657). Une liste vide de mots
+   envoyables nomme ce qui l'a vidée : mots refusés, verbes inconnus. */
+function refusDictee(
+	raison: Exclude<Composition, { ok: true }>['raison'],
+	ecartes: string[],
+	nonConjugues: string[],
+): string | undefined {
+	if (raison === 'trop-grand')
+		return `Cette liste est trop longue pour tenir dans un lien : ${NOMBRE_MAX_MOTS} mots au plus. Envoyez une liste plus courte.`;
+	if (raison !== 'vide') return undefined;
+	const causes = [
+		ecartes.length ? messageEcartes(ecartes) : '',
+		nonConjugues.length ? messageNonConjugues(nonConjugues) : '',
+	].filter(Boolean);
+	return `Aucun mot de cette liste ne peut être mis dans un lien. ${causes.join(' ') || REGLE_LIEN} Corrigez la liste, puis créez le lien.`;
 }
 
 /** Compose la dictée choisie. Asynchrone : les verbes d'une liste se conjuguent au moment
@@ -190,12 +238,25 @@ export async function composerDicteeChoisie(
 		const d = dicteePredefinie(c.lecon);
 		if (!d) return null;
 		const compo = composerDictee({ mots: d.mots, lecon: d.id, niveau: d.niveau, libelle, id });
-		return { compo, titre: d.label, ecartes: [] };
+		return { compo, titre: d.label, ecartes: [], nonConjugues: [] };
 	}
-	const l = await motsDicteeListe(loadOrthoFor(consulte.uuid), c.lecon);
+	let l: Awaited<ReturnType<typeof motsDicteeListe>>;
+	try {
+		l = await motsDicteeListe(loadOrthoFor(consulte.uuid), c.lecon);
+	} catch {
+		// Le lexique des verbes, chargé à la demande, n'a pas pu l'être (hors ligne, cache vide).
+		return {
+			compo: { ok: false, raison: 'format' },
+			titre: c.titre,
+			ecartes: [],
+			nonConjugues: [],
+			refus: REFUS_PREPARATION,
+		};
+	}
 	if (!l) return null;
 	const compo = composerDictee({ mots: l.mots, lecon: c.lecon, libelle, id });
-	return { compo, titre: l.label, ecartes: l.ecartes };
+	const refus = compo.ok ? undefined : refusDictee(compo.raison, l.ecartes, l.nonConjugues);
+	return { compo, titre: l.label, ecartes: l.ecartes, nonConjugues: l.nonConjugues, refus };
 }
 
 /* ---------- Handlers ---------- */

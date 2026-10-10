@@ -17,7 +17,7 @@ import { ORTHO_PREDEF } from '../../data/francais/orthographe';
 import type { SchoolLevel } from '../catalog';
 import { getListe, motsDeListe } from '../orthographe/store';
 import type { OrthoState } from '../orthographe/types';
-import { materialiserVerbes } from '../orthographe/verbes';
+import { idsCiblesVerbes, materialiserVerbes } from '../orthographe/verbes';
 import type { MotDictee } from './envoi';
 import { apresVerbe, avantVerbe, commeDans as schemaCommeDans, motDictee } from './textes';
 
@@ -84,14 +84,22 @@ export function dicteePredefinie(id: string): DicteePredefinie | null {
 
 /** Les mots d'une liste personnalisée : ses mots simples dans l'ordre de la liste, puis
  *  ses verbes conjugués (verbe, temps, pronom), comme le parcours de l'enfant les sert.
- *  `ecartes` : les formes refusées par la liste blanche. `null` : liste inconnue.
+ *  `ecartes` : les formes refusées par la liste blanche. `nonConjugues` : les verbes que le
+ *  lexique n'a pas su conjuguer (faute de frappe, forme absente) ; le parcours les ignore
+ *  en silence, l'envoi les NOMME, sinon il partirait avec moins de mots qu'annoncé.
+ *  `null` : liste inconnue.
  *
  *  `state` peut être MUTÉ (la conjugaison matérialise les cibles verbe dans sa banque),
  *  mais n'est jamais sauvegardé : l'appelant passe un état chargé pour l'occasion. */
 export async function motsDicteeListe(
 	state: OrthoState,
 	listeId: string,
-): Promise<{ label: string; mots: MotDictee[]; ecartes: string[] } | null> {
+): Promise<{
+	label: string;
+	mots: MotDictee[];
+	ecartes: string[];
+	nonConjugues: string[];
+} | null> {
 	const liste = getListe(state, listeId);
 	if (!liste) return null;
 	const cibles = liste.verbes?.length
@@ -104,5 +112,11 @@ export async function motsDicteeListe(
 		if (mot) mots.push(mot);
 		else ecartes.push(m.mot);
 	}
-	return { label: liste.label, mots, ecartes };
+	const conjuguees = new Set(cibles.map((c) => c.id));
+	const nonConjugues: string[] = [];
+	for (const v of liste.verbes ?? []) {
+		const manque = idsCiblesVerbes([v]).some((id) => !conjuguees.has(id));
+		if (manque && !nonConjugues.includes(v.infinitif)) nonConjugues.push(v.infinitif);
+	}
+	return { label: liste.label, mots, ecartes, nonConjugues };
 }

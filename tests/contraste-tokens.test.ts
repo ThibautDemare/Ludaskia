@@ -304,7 +304,11 @@ const PAIRES_TEXTE: Paire[] = [
 	// qu'en thème Nuit cette surface a fait échouer un AUTRE texte (l'ambre #8a5200, #253) —
 	// preuve que `--warn-bg` bouge sans prévenir, donc qu'aucun des textes qu'elle porte ne
 	// devrait rester hors table.
-	{ avant: '--ink', arriere: '--warn-bg', ou: 'encadrant.scss .enc-warn (alerte de carte)' },
+	{
+		avant: '--ink',
+		arriere: '--warn-bg',
+		ou: 'encadrant.scss .enc-warn (alerte de carte) ; sheets.scss .rb-warn (alerte du bilan de fiche)',
+	},
 	{ avant: '--on-accent', arriere: '--accent', ou: 'bilan.scss .bilan-cta, aide-exercice.scss' },
 	{ avant: '--on-accent', arriere: '--accent-dark', ou: 'survol des mêmes boutons (bilan.scss)' },
 	{

@@ -408,10 +408,17 @@ après une régénération, faire tourner `ci.yml` **deux fois** avant de conclu
 
 ## CI
 
-Job `e2e` séparé dans `.github/workflows/ci.yml`, **bloquant** (#413) : la suite
+Jobs e2e séparés dans `.github/workflows/ci.yml`, **bloquants** (#413) : la suite
 est fiabilisée (exécution en série `workers=1`, `retries: 1`, `trace:
-on-first-retry`) et gèle le merge en cas d'échec. Reste à l'ajouter aux status
-checks requis de la branche protégée `main` (réglage du dépôt, côté mainteneur).
+on-first-retry`) et gèle le merge en cas d'échec.
+
+**Deux moitiés en parallèle.** Le job `e2e-shard` joue la suite en deux moitiés
+(`npm run test:e2e -- --shard=1/2`, puis `2/2`), chacune sur son runner, avec son propre
+rapport (`playwright-report-1`, `playwright-report-2`). `fullyParallel: true` répartit
+les tests, et non les fichiers, donc les moitiés restent équilibrées. Le job `e2e`
+attend les deux et rend leur verdict : c'est le check que la protection de `main` exige,
+sous ce nom. Pour rejouer localement une moitié qui a échoué en CI, lancer la même
+commande avec son `--shard`.
 
 **Installation du navigateur : `npx playwright install chromium`, sans `--with-deps`.**
 Mesure du 19/08/2026 : sur l'image `ubuntu-latest`, toutes les bibliothèques de Chromium
@@ -429,11 +436,13 @@ le premier COMPARE au pixel près. Des polices système présentes d'un côté e
 l'autre suffiraient à faire échouer une comparaison sur un rendu pourtant inchangé.
 
 **Garde-fou de durée.** Chaque job porte un `timeout-minutes` (15 pour `test`, 25 pour
-`e2e`, 30 pour la régénération des baselines). Sans limite explicite, GitHub laisse tourner
+chaque moitié de la suite e2e, 30 pour la régénération des baselines). Sans limite explicite, GitHub laisse tourner
 un job **six heures** : c'est ce qui est arrivé le 19/08/2026 à trois jobs gelés sur un
 téléchargement apt, qui affichaient « pending » tout du long sans jamais signaler qu'il
-fallait relancer. Une étape bloquée doit échouer vite et bruyamment. Si la suite s'approche
-un jour de sa borne, la découper — pas relever le nombre.
+fallait relancer. Une étape bloquée doit échouer vite et bruyamment. Si une moitié
+s'approche un jour de sa borne, découper davantage, pas relever le nombre. C'est ce qui a
+été fait le 10/10/2026 : en un seul job, la suite durait 19 à 23 min et a fini par être
+coupée à 25 min.
 
 ### Rejet écrit : la dérivation de la colonne cible est recopiée DEUX fois (#711 lot 4)
 

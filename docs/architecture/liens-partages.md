@@ -207,7 +207,8 @@ exercices figés de l'envoi, à la place de la fiche (écrans 1, 2, 4 et 5 incha
   `noter` / `terminer` / `annoncer`), `decisionPartageHTML` + `brancherDecisionPartage` (bloc
   « Je ne sais pas » puis « Valider », désactivé tant que rien n'est répondu),
   `enchainerPartage` (note, rend la suivante ou termine ; focus sur la carte nommée
-  « Question k sur n »), `erreurPassee`. Chaque runner garde **son** verdict (la règle de son
+  « Question k sur n », sauf si le rendu a déjà posé le focus dans la carte : le clic-mot le
+  met sur sa consigne, la tâche changeant d'une question à l'autre, #528), `erreurPassee`. Chaque runner garde **son** verdict (la règle de son
   jeu libre) et **ses** entrées de journal, à la granularité du format.
 - **Aucun verdict avant la fin** : toucher un choix le sélectionne, « Valider » note et passe
   à la suivante, sans marque, explication ni étayage. Pas de retour en arrière.

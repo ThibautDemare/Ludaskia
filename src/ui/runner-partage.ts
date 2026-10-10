@@ -169,5 +169,10 @@ function focusQuestion(s: SeanceRunner, rang: number, total: number): void {
 	stage.tabIndex = -1;
 	stage.setAttribute('role', 'group');
 	stage.setAttribute('aria-label', `Question ${rang} sur ${total}`);
+	// Un focus déjà posé DANS la question par son rendu n'est pas volé (même règle que la
+	// révision, #528) : le clic-mot le met sur sa consigne, parce que la tâche change d'une
+	// question à l'autre (« l'épithète », puis « l'attribut »).
+	const actif = document.activeElement;
+	if (actif && actif !== stage && stage.contains(actif)) return;
 	stage.focus({ preventScroll: true });
 }

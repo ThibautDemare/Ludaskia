@@ -32,6 +32,8 @@ interface FormatRunner {
 	exercices: Exercise[];
 	/** Sous-chaîne propre à la question 1 : si elle apparaît au journal, la question juste a été journalisée. */
 	marqueQ1: string;
+	/** Sélecteur, dans `.sprint-stage`, de l'élément qui reçoit le focus à chaque nouvelle question. Absent : la carte elle-même. clicMot : sa consigne, que le rendu focalise parce que la tâche change d'une question à l'autre (052fa1c). */
+	focus?: string;
 	/** Joue la question `i` (rang dans `exercices`) avec une réponse juste ou fausse. */
 	jouer(page: Page, i: number, verdict: 'juste' | 'faux'): Promise<void>;
 }
@@ -352,6 +354,7 @@ const FORMATS: FormatRunner[] = [
 			clic(['Marie', 'chante', '.'], 1),
 		],
 		marqueQ1: 'chat',
+		focus: '.lclic-consigne',
 		jouer: async (page, i, verdict) => {
 			const cible = [2, 2, 1][i];
 			await page.locator(`.lclic-mot[data-i="${verdict === 'juste' ? cible : 0}"]`).click();
@@ -417,9 +420,10 @@ async function regionsLivesSansVerdict(page: Page) {
 /** Après « Valider », la nouvelle question porte le focus et se nomme : un conteneur muet
  *  laisserait un lecteur d'écran sans repère. Le libellé « Question k sur n » est ici
  *  l'objet du test (nom accessible validé par la relecture a11y), la chaîne est intentionnelle. */
-async function focusSurQuestion(page: Page, rang: number) {
+async function focusSurQuestion(page: Page, rang: number, focus?: string) {
 	const stage = page.locator('#sheets .sprint-stage');
-	await expect(stage).toBeFocused();
+	// La carte porte toujours le nom ; le focus, lui, est sur elle ou sur l'élément déclaré du format.
+	await expect(focus ? stage.locator(focus) : stage).toBeFocused();
 	await expect(stage).toHaveAttribute('role', 'group');
 	await expect(stage).toHaveAttribute('aria-label', `Question ${rang} sur ${TOTAL}`);
 }
@@ -504,7 +508,7 @@ for (const f of FORMATS) {
 				await expect(page.locator('#partageAnnonce')).toContainText(
 					`Réponse enregistrée. Question ${i + 2} sur ${TOTAL}.`,
 				);
-				await focusSurQuestion(page, i + 2); // gate d
+				await focusSurQuestion(page, i + 2, f.focus); // gate d
 				await aucunVerdict(page); // 17 + gate c (régions live sans verdict)
 			}
 		}

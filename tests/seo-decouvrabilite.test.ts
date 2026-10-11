@@ -510,9 +510,9 @@ describe('critère 6 — les FAQ sont exposées en JSON-LD, sans écart', () => 
 		});
 	});
 
-	it('le guide expose ses 6 questions, ni plus ni moins', () => {
+	it('le guide expose ses 7 questions, ni plus ni moins', () => {
 		const affichees = questionsHtml('guide.html');
-		expect(affichees).toHaveLength(6);
+		expect(affichees).toHaveLength(7);
 		expect(new Set(affichees).size).toBe(affichees.length);
 		expect(affichees[0]).toBe('Combien de temps par jour ?');
 

@@ -145,6 +145,9 @@ faut.**
   (`juste()` d'un widget, `jugerTableau`, `etapeJuste`), jamais une copie. Deux
   copies d'une règle de correction divergent au premier correctif. Cas d'origine : les
   runners en séance partagée (#734).
+- **Un `catch` n'entoure que l'appel qui peut échouer pour la raison qu'il annonce.** Un
+  `try` qui englobe aussi le rendu ou l'écriture attrape un bug sous le message d'un
+  échec attendu (« lexique injoignable »). Cas d'origine : l'envoi d'une dictée (#734).
 - **TypeScript strict, vraiment.** Repère les `any`, les `as` qui masquent un
   vrai problème, les `!` non-null hasardeux, les types trop larges. Le code doit
   passer `tsc --noEmit` sans contournement.

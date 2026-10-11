@@ -653,8 +653,9 @@ signe. Cas posé par l'aide du mode « virgule » (#711 lot 4).
 
 ## Un écran qui fait transmettre quelque chose (#734)
 
-Cinq lignes de checklist, les deux premières posées par l'écran de fin de la séance
-partagée, les trois dernières par l'onglet Envois et la vue de résultat :
+Sept lignes de checklist, les deux premières posées par l'écran de fin de la séance
+partagée, les trois suivantes par l'onglet Envois et la vue de résultat, les deux dernières
+par les dictées envoyées :
 
 - **Un seul verbe pour l'action de transmettre**, et une action concrète plutôt qu'un
   état : « renvoie ton lien à la personne qui t'a donné cet exercice », pas « dernière
@@ -668,6 +669,13 @@ partagée, les trois dernières par l'onglet Envois et la vue de résultat :
   l'enfant »), pas « transmettre » ici et « partager » là.
 - **« de » s'élide devant un prénom à initiale vocalique** (« le suivi d'Élodie ») : passer
   par `elisionDe` de `core/utils`, jamais « de » + prénom concaténé.
+- **Un même fait garde une même formule d'un écran à l'autre.** La règle des caractères
+  admis dans un lien (libellé, pseudo, mot de dictée) se dit pareil dans l'onglet Envois,
+  dans le refus du lien et dans la liste des mots écartés : deux formules pour une règle
+  laissent croire à deux règles.
+- **Une consigne d'enfant est à l'actif, au « tu », et affirme.** « Écoute le mot, puis
+  écris-le », pas « Le mot est à écrire » ni une négation rassurante (« Ne t'inquiète
+  pas… », « Il n'y a pas de piège »), qui oblige à se représenter ce qu'on nie.
 
 ## Le retour d'un tableau de conversion : quoi écrire, quoi ne pas ancrer (#711 lot 5)
 

@@ -60,6 +60,9 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
     qui pointe un élément `hidden` garde sa description (calcul du nom accessible) :
     retirer la référence quand l'aide disparaît. Cas d'origine : « Valider », décrit par
     « Réponds, ou coche… » même une fois actif (#734).
+  - **Une touche qui n'agit pas dit pourquoi.** Entrée sur un champ vide alors que
+    « Valider » est désactivé n'est pas un silence : une région live dit « Réponds, ou
+    coche « Je ne sais pas » ». Cas d'origine : la dictée envoyée par lien (#734).
   - **Boutons répétés dans une liste** (« Copier le lien », « Retirer » sur chaque
     ligne) : chacun a un nom accessible distinct, qui CONTIENT son libellé visible
     (« Copier le lien : Fiche du lundi », WCAG 2.5.3). Un `aria-describedby` donne

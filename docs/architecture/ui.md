@@ -126,6 +126,15 @@ ci-dessous.
   « Vos envois ». Exporte `envoisHTML` et ses trois gestionnaires (`envoisClick/Change/Input`)
   que l'orchestrateur aiguille. Logique dans `core/partage/composition.ts` et
   `envois-crees.ts` ; détail dans [Liens partagés](liens-partages.md).
+- **`encadrant-envois-dictee.ts`** (#734) — la source « Une dictée » de l'onglet Envois,
+  extraite d'`encadrant-envois.ts` : dictée prédéfinie (avec son niveau) ou liste du profil
+  consulté (sans niveau), composition, et messages des mots écartés / verbes non conjugués
+  (`#envoiEcartes`, `#envoiNonConjugues`).
+- **`dictee-partage.ts`** et **`partage-voix.ts`** (#734) — la dictée reçue par lien, un
+  mot à la fois (`jouerPartageDictee`, sur l'enchaînement de `runner-partage.ts` :
+  `JeuSeance` / `SeanceEnchainee`), et la voix qu'elle exige : sans voix française
+  l'accueil le dit et la séance ne démarre pas, l'écran se refait quand la voix arrive ou
+  part (`#partageVoixStatut`), une voix perdue en séance l'arrête (`#partageSilence`).
 - **`partage-resultat.ts`** (#734) — vue `#resultat/<code>` (lecture d'un résultat, import
   derrière le code d'accès de l'espace). Troisième surface adulte, voix « vous ».
 - **`lien-partage.ts`** (#734) — ce que **les deux côtés** d'un lien partagé se partagent :
@@ -2032,6 +2041,13 @@ restait visible). À ne pas confondre avec `--line`, qui reste **décoratif** (f
 séparateurs) et exempté du 3:1 : `--field-line` est le seul indice de l'emplacement de
 saisie, donc un composant d'interface. Valeur claire inchangée (`#333333`, rendu identique
 sur les cinq thèmes clairs), `#aeb7c4` en Nuit (7,1:1).
+
+Autre token, **`--warn-text`** : la couleur d'un **texte** d'alerte ou d'état « à renforcer »
+(`#8a5200` dans `base.scss`, l'ambre clair `#f0b850` en Nuit, la valeur claire rétablie par
+`print.scss`). **`--warn` n'est jamais une couleur de texte** (4,24:1 sur blanc, sous AA) : il
+reste pour les liserés et les glyphes. Plus aucun `#8a5200` n'est écrit à la main dans les
+feuilles ; `.rb-warn` est en `--ink`. Tenu par le gate « Texte d'alerte » de
+`tests/contraste-tokens.test.ts`.
 
 ### Accessibilité (#42)
 

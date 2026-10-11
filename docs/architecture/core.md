@@ -1984,7 +1984,13 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   règle **cumulative** de l'enfant (#243, un CM1 garde les listes CE2), sous un jeton de
   classe précis elle est filtrée à **cette classe seule** (`levels.includes`, comme les
   leçons). `LeconOrthoRef.niveau?` (`core/orthographe/lessons.ts`) porte la classe d'une
-  prédéfinie ; absent pour une liste du parent.
+  prédéfinie ; absent pour une liste du parent. `libelleOrthoIntrouvable(id)` (#734) est le
+  **libellé de repli** d'un id que ni le catalogue ni `labelLeconOrtho` ne résolvent :
+  `LABEL_LISTE_ABSENTE` (« Liste de dictée absente de ce profil ») pour `ID_DICTEE_ENVOYEE`
+  et pour tout id en forme d'id de liste (UUID, ou `o` + au moins 12 caractères), `null`
+  sinon. Il sert au titre d'un groupe du journal de l'encadrant et à la vue de résultat d'un
+  lien partagé ; les dictées envoyées par lien sont décrites dans
+  [Liens partagés](liens-partages.md) (`core/partage/dictees.ts`).
 - **`encadrant-stats.ts`** (#234, pur) — lecture de la progression **par UUID sans
   bascule** (`progressionProfil`, `niveauProfilMatiere`) ; réexporte l'échelle de maîtrise
   (`niveauNotion`/`tendanceNotion`, définie dans `maitrise.ts`) pour les imports

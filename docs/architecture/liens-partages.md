@@ -10,9 +10,9 @@ Deux routes : `#envoi/<code>` (l'enfant joue) et `#resultat/<code>` (l'encadrant
 Le format est de la **logique pure** (testable sans DOM) et ne porte aucun écran. Les
 écrans de l'enfant (`#envoi/<code>`) sont décrits à « Côté enfant » ; ceux de
 l'encadrant (composer un envoi, lire un résultat, l'ajouter à un suivi) à « Côté
-encadrant ». Aujourd'hui, un envoi se compose pour les leçons jouées en fiche, celles jouées
-dans un runner « une question à la fois » et les bilans ; seules les dictées n'ont pas
-encore leur écran.
+encadrant ». Un envoi se compose pour les leçons jouées en fiche, celles jouées dans un
+runner « une question à la fois », les bilans et les dictées (une dictée prédéfinie, ou une
+liste personnalisée du profil consulté).
 
 ## Principe : un lien est une donnée hostile
 
@@ -46,13 +46,14 @@ ce qu'un lien déjà émis affiche. Un envoi n'a ni date limite ni compteur.
 | `exercices.ts` | Un schéma par format d'`Exercise`, table typée sur `Exercise['type']`. |
 | `figures.ts` | Un schéma par `FigureSpec`, table typée sur `FigureSpec['kind']`, paramètres bornés. |
 | `fragments.ts` | Recette ↔ fragment : `recetteDe` à l'émission, redessin par les fabriques à la réception. |
-| `envoi.ts` | L'`Envoi` (leçon, bilan ou dictée), ses blocs, `encoderEnvoi` / `decoderEnvoi`. |
+| `envoi.ts` | L'`Envoi` (leçon, bilan ou dictée), ses blocs, `encoderEnvoi` / `decoderEnvoi`. La dictée porte un `lecon` facultatif (id de la dictée prédéfinie ou UUID de la liste). |
+| `dictees.ts` | Les **sources** d'une dictée : `dicteesPredefinies` / `dicteePredefinie`, `motDicteeDepuis` (liste blanche du lien, apostrophes typographiques ramenées à `'`), `motsDicteeListe` (mots d'une liste, puis ses verbes conjugués au moment de l'envoi, rien de sauvegardé ; rend `ecartes`, les mots refusés par la liste blanche, et `nonConjugues`, les verbes que le lexique ne sait pas conjuguer). |
 | `resultat.ts` | Le `Resultat` renvoyé : pseudo, date, une `ReponseItem` par item, statut `juste` / `faux` / `jnsp` / `vide`. |
 | `capture.ts` | Capture item par item pendant le passage ; la **première** réponse notée fait foi, un item jamais noté ressort `vide`. |
 | `liens.ts` | `fragmentLien`, `lireFragment`, `nouvelIdentifiant` (72 bits aléatoires, ne dérive de rien). |
 | `tirage.ts` | `tirerExercices` : tirage d'exercices **distincts** d'une leçon, au niveau et dans le mode donnés. |
 | `passage.ts` | Le **passage** de l'enfant : envoi → items de fiche, statut par item, seuil, premier passage gardé. Voir « Côté enfant ». |
-| `composition.ts` | **Composer** un envoi (leçon ou bilan), niveau explicite, avec la garantie qu'il passe `preparerPassage`. Voir « Côté encadrant ». |
+| `composition.ts` | **Composer** un envoi (leçon, bilan ou dictée via `composerDictee`), niveau explicite (facultatif pour une liste), avec la garantie qu'il passe `preparerPassage`. Voir « Côté encadrant ». |
 | `envois-crees.ts` | « Vos envois » : les codes des liens déjà créés, clé globale `ludaskia_envois`. |
 | `import.ts` | **Ajouter** un résultat reçu au suivi d'un profil, par UUID. |
 
@@ -135,6 +136,14 @@ saisie, attendu) : la vue de lecture l'affiche échappé, sans rien rejouer. Le 
 saisi par l'enfant est ramené aux bornes du champ par `borner` (contrôles retirés,
 troncature en « … ») pour que son lien s'encode quoi qu'il ait collé.
 
+Pour une dictée, l'id de la source (`lecon`) s'y range comme `lecon` de chaque item ; sans lui,
+c'est `ID_DICTEE_ENVOYEE`. Là où l'id ne se résout ni dans le catalogue ni parmi les listes du
+profil (liste supprimée, ou dictée envoyée depuis un autre profil ou appareil),
+`libelleOrthoIntrouvable` (`core/orthographe/lessons.ts`) rend `LABEL_LISTE_ABSENTE`
+(« Liste de dictée absente de ce profil ») pour tout id en forme d'id de liste (UUID, ou repli
+`o` + au moins 12 caractères). Le journal de l'encadrant titre alors le groupe ainsi, au lieu de
+l'UUID, et la vue de résultat omet la ligne « Leçon » (elle nomme une dictée prédéfinie).
+
 ## Côté enfant (`#envoi/<code>`)
 
 **Route.** `route()` lit le fragment (`lireFragment`) ; `showEnvoiView` (`ui/navigation.ts`)
@@ -149,8 +158,12 @@ changement d'écran) oublie la séance. Aucune exception ne finit en écran blan
   `itemDepuisExercice` (la fabrique du bilan ordinaire). Titre, consigne et items sont
   au niveau de l'**envoi**, jamais celui du profil actif. N'écrit rien : préparer puis
   abandonner ne consomme pas le premier passage. Refus : `lecon` (leçon absente de ce
-  catalogue), `format` (une dictée ; un envoi aux formats **mêlés**, dont un runner ne
-  saurait jouer qu'un). Une leçon dont le mode se joue dans un runner dédié (table
+  catalogue), `format` (un envoi aux formats **mêlés**, dont un runner ne saurait jouer
+  qu'un). Une **dictée** n'est plus refusée : elle rend `blocs: []` et `dictee`, un
+  `ItemDictee` (le mot et sa capture) par mot, dans l'ordre. La capture a pour `lecon` celui
+  de l'envoi (ou `ID_DICTEE_ENVOYEE` s'il n'en porte pas), pour `mode` `'dictee'` et pour
+  énoncé celui du journal du jeu libre (`enonceJournalOrtho` : « Mot à écrire sous la
+  dictée », ou la phrase à trou d'un verbe). Une leçon dont le mode se joue dans un runner dédié (table
   `JEU_PAR_TYPE` / `seJoueEnRunner`) rend `runner: { type, mode }` en plus des blocs ;
   l'écran aiguille dessus. Un **bilan** replie tout format en fiche, comme le bilan ordinaire.
 - `enonceRunner` : l'énoncé d'un item joué en runner, celui que le runner écrit dans le
@@ -223,6 +236,23 @@ exercices figés de l'envoi, à la place de la fiche (écrans 1, 2, 4 et 5 incha
   `AppariementController.liberer()` rend la main au widget d'une question à l'autre.
   `core/tableau-lecture.ts` (pur) porte le verdict et la relecture d'un tableau de conversion.
 
+**Séance de dictée (`ui/dictee-partage.ts`, `ui/partage-voix.ts`).** Une dictée se joue un
+mot à la fois, avec l'enchaînement et le bloc de décision des runners
+(`SeanceEnchainee` et `JeuSeance` de `runner-partage.ts` : ce que l'écran donne à tout jeu
+« une question à la fois », runner de leçon ou dictée). Mêmes règles que les runners (aucun
+verdict avant la fin, « Je ne sais pas », résultat figé puis correction en liste, journal
+écrit à la fin), avec trois écarts :
+- le mot est **dicté dès l'arrivée** et le focus va sur le champ de saisie (parité #702) ;
+- le **rang** est dans le nom de la carte et du champ (« Mot k sur n ») ;
+- Entrée sur un champ vide **dit pourquoi** rien ne se passe (`#partageAnnonce`).
+
+La correction est celle du jeu libre (`checkAnswer` sur `{ type: 'dictee', … }`). **Sans voix
+française** (critère 12), l'accueil et « déjà fait » le disent (`#partageSansVoix`) et la séance
+ne démarre pas ; le bouton « Commencer » n'existe pas. L'écran se refait quand la voix arrive
+ou part (`voiceschanged`), annoncé par `#partageVoixStatut`, et ne vole pas un focus posé
+ailleurs. Une voix **perdue pendant la séance** l'arrête sur `#partageSilence`, sans rien
+garder : ni résultat, ni journal, ni XP, et le premier passage reste à faire.
+
 **Brancher le reste de l'appli.** Type d'activité `partage` (`progress.ts`,
 `recordActivitePartage`) : contrairement aux autres sessions il **ne pose pas la borne
 des paliers** (`marquerDebutSuivi`), puisqu'il n'écrit aucune statistique de leçon dont
@@ -253,6 +283,14 @@ causes de refus (`causeRefus`, communes aux deux côtés) vivent dans `ui/lien-p
   sont celles d'un profil, ou complet), `bilanFavori` (favori du profil consulté ; les
   leçons absentes au niveau choisi sont écartées et **comptées**, l'écran le dit) ;
   `niveauxFavori`, car un favori ne garde pas de niveau.
+- **Dictées** (`composerDictee`, `ui/encadrant-envois-dictee.ts`, extrait d'`encadrant-envois.ts`) :
+  troisième source « Une dictée », soit une **dictée prédéfinie** (qui a son niveau, montré en
+  lecture seule), soit une **liste personnalisée** du profil consulté (sans niveau). La liste
+  part **entière, dans son ordre**, sans tirage. Le `lecon` de l'envoi est l'id de la dictée ou
+  l'UUID de la liste. Les mots qui ne passent pas la liste blanche (`#envoiEcartes`) et les
+  verbes que le lexique ne sait pas conjuguer (`#envoiNonConjugues`) sont **nommés avec le lien
+  créé**, jamais perdus en silence ; si plus rien n'est envoyable, le refus nomme les uns et les
+  autres (`#envoiErreur`).
 - **Libellé** : même liste blanche que le décodage (`libelleValide`), préremplie par
   `libelleParDefaut`. Un libellé écrit par l'adulte survit aux changements de choix.
 - L'écran montre aussi ce que contiendra le **résultat** (critère 5), le lien, « Copier le
@@ -303,7 +341,7 @@ jamais partiel) ne fait que **cocher d'avance**.
 
 Écrites une fois, pour que le prochain relecteur ne les remonte pas de nouveau. Les
 points 1 à 10 concernent le côté enfant en fiche, 11 à 15 le côté encadrant, 16 à 24 la
-séance en runner.
+séance en runner, 25 à 35 les dictées.
 
 1. **« Je ne sais pas » COMPTE comme répondu pour le seuil de 60 %** (avis
    `specialiste-troubles-apprentissage`) : c'est l'information la plus utile à l'adulte,
@@ -341,8 +379,8 @@ séance en runner.
     un générateur cassé est attrapé par ses propres tests, pas ici.
 12. **Pas de test unitaire de `causeRefus`** : textes constants ; les refus des deux côtés
     sont joués en e2e.
-13. **`encadrant-envois.ts` n'est pas découpé** (environ 750 lignes) : à découper si les
-    PR 5 le fait grossir.
+13. **`encadrant-envois.ts` a été découpé** : la source dictée vit dans
+    `encadrant-envois-dictee.ts`, qui lui évite de grossir.
 14. **À 320 px de large, « Programme » se coupe sur deux lignes** dans la barre d'onglets :
     repli voulu (zoom 200 %), largeur rare.
 15. **Le titre visible de l'espace est « Espace encadrants »** (pluriel) : les textes qui le
@@ -370,6 +408,42 @@ séance en runner.
     profil, et il décrit le geste, pas la notion.
 24. **« Réponds, ou coche « Je ne sais pas » » est gardé** contre « Fais ta réponse… »
     (relecture de la langue).
+25. **L'envoi d'une dictée porte son `lecon`** (arbitrage du mainteneur du 10 octobre
+    2026) : l'id de la dictée prédéfinie, ou l'UUID de la liste. Les erreurs de l'enfant
+    se rangent ainsi dans le journal, comme en jeu libre. Là où l'id ne se résout pas, un
+    libellé de repli remplace l'UUID (`libelleOrthoIntrouvable`). `VERSION_FORMAT` ne
+    bouge pas : le champ est facultatif, les liens de référence d'avant décodent encore.
+26. **Le focus va sur le champ dès le premier mot d'une dictée**, écart assumé avec les
+    runners (où il va sur la carte nommée). Le mot est dicté à l'arrivée et l'enfant écrit
+    aussitôt, comme dans le jeu libre (parité #702). Le rang, que la carte ne dit plus en
+    recevant le focus, est dans le nom de la carte ET dans celui du champ (« Mot 2 sur 5 :
+    écris le mot »), dès le premier mot (relecture a11y).
+27. **Une voix perdue pendant la séance vaut abandon** : rien n'est gardé (ni résultat, ni
+    journal, ni XP) et le premier passage reste à faire. Une saisie faite dans le silence
+    n'est pas une faute d'orthographe : la journaliser tromperait l'adulte (#391), et figer
+    le passage priverait l'enfant de la vraie dictée le jour où le son marchera.
+28. **L'énoncé d'un mot n'a pas de « comme dans »** : « Mot à écrire sous la dictée »,
+    comme le journal du jeu libre, pour que les deux se lisent pareil côté encadrant.
+29. **La liste personnalisée part entière, dans son ordre** : pas de tirage, l'adulte a
+    saisi la liste de la semaine et attend celle-là.
+30. **Mots écartés et verbes non conjugués sont nommés APRÈS la création du lien**, pas
+    avant : un seul chemin (celui de la conjugaison, au moment de l'envoi) produit à la fois
+    les mots et ces avertissements, et rien n'est sauvegardé pour les prévisualiser.
+31. **REJET ÉCRIT : « Aucune dictée n'est proposée » ne dit pas comment réussir** (#657).
+    L'état est inatteignable (les dictées prédéfinies sont des données de l'appli, jamais
+    vides) : il n'y a pas d'action à proposer.
+32. **REJET ÉCRIT : le titre de repli du journal reste court**, sans expliquer la cause
+    (liste supprimée, autre profil, autre appareil).
+33. **REJET ÉCRIT : trois libellés coexistent** : « Une dictée » (la source de l'onglet
+    Envois), « Une dictée proposée » (le choix d'une dictée prédéfinie) et « Dictée » (le
+    menu de ces dictées, et le début d'une ligne de « Vos envois »). Chacun répond à la
+    question posée à sa place, on ne les unifie pas.
+34. **REJET ÉCRIT : un id de repli `o…` de moins de 13 caractères reste affiché brut.** Cas
+    d'une fois sur environ 21 000, seulement sans `crypto.randomUUID` ; un motif plus
+    large prendrait pour une liste des ids qui n'en sont pas.
+35. **REJET ÉCRIT : `encadrant-stats.ts` et `encadrant-seance.ts` ne passent pas par le
+    repli** : ils ne lisent que des ids choisis par l'adulte dans le profil consulté, qui
+    se résolvent toujours.
 
 ## Les gardes
 
@@ -394,4 +468,7 @@ figures).
 | `tests/partage-runners-passage.test.ts` | La préparation d'un envoi joué en runner (`runner`, refus des formats mêlés) et l'énoncé de résultat par format. |
 | `tests/widgets-juste.test.ts` | `juste()` des widgets : même verdict que `verify()`, sans rien figer (rangée vide ou incomplète refusée). |
 | `e2e/partage-runners.spec.ts`, `e2e/partage-runners-chaine.spec.ts` | Les runners joués depuis un lien (sans verdict avant la fin, « Je ne sais pas », correction en liste) et la chaîne créer, jouer, lire. |
+| `tests/partage-dictees.test.ts`, `tests/partage-dictees-sources.test.ts` | Le format et le passage d'une dictée (`lecon` facultatif et borné, une capture par mot), `composerDictee`, `motDicteeDepuis`, les dictées prédéfinies, `motsDicteeListe` (mots puis verbes, `ecartes`, `nonConjugues`, rien d'écrit), `libelleOrthoIntrouvable`. |
+| `tests/erreurs-journal-gate.test.ts`, `tests/couverture-e2e-gate.test.ts` | Le module de dictée partagée entre dans le gate du journal d'erreurs ; une spec doit jouer la dictée partagée. |
+| `e2e/partage-dictees.spec.ts`, `e2e/partage-dictees-chaine.spec.ts` | La séance de l'enfant (un mot à la fois, sans voix, voix perdue) ; côté encadrant et chaîne complète créer, jouer, lire (critère 37). |
 | `e2e/csp.spec.ts` | La CSP qui n'est pas appliquée pour de bon (dev **et** build). |

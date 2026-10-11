@@ -65,8 +65,9 @@ de conception initial est `docs/design-multi-subject.md`.
   séance figée dans un lien (format binaire versionné, schémas bidirectionnels,
   recettes de fragments), un lien étant traité comme une donnée hostile ; côté
   enfant, le passage d'un envoi (`#envoi/<code>`), en fiche ou dans un runner « une question
-  à la fois » (`ui/runner-partage.ts`) ; côté encadrant, l'onglet Envois
-  (composer, « Vos envois ») et la lecture d'un résultat (`#resultat/<code>`) avec son
+  à la fois » (`ui/runner-partage.ts`) ou, pour une dictée, un mot à la fois
+  (`ui/dictee-partage.ts`, qui exige une voix française) ; côté encadrant, l'onglet Envois
+  (composer une leçon, un bilan ou une dictée, « Vos envois ») et la lecture d'un résultat (`#resultat/<code>`) avec son
   import dans le suivi d'un profil.
 
 ### Fonctionnement

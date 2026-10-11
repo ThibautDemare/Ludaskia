@@ -501,6 +501,17 @@ réponse est le seul choix juste), `tests/qcm-fiche-session.test.ts` (radio → 
 rattachée au groupe), `tests/champs-libelles.test.ts` (un champ caché n'est exempté de nom que
 s'il a son groupe de choix nommé) et `e2e/bilan-qcm.spec.ts` (correction, révélation du libellé,
 journal, reprise, QCM à trou inchangé, défilement vers la première erreur).
+Dictées envoyées (PR 5) : `tests/partage-dictees.test.ts` (format avec `lecon` facultatif et
+borné, `preparerPassage` d'une dictée, `composerDictee`, libellé de repli
+`libelleOrthoIntrouvable`) et `tests/partage-dictees-sources.test.ts` (`motDicteeDepuis`,
+dictées prédéfinies, `motsDicteeListe` : mots puis verbes, `ecartes`, `nonConjugues`, rien
+d'écrit dans le stockage). Deux gates absorbent le nouveau module :
+`erreurs-journal-gate` (`dictee-partage.ts` entre dans `NOTES_POUR_LA_SEANCE` : il note ses
+erreurs dans la réponse rendue à la séance, que `partage-seance.ts` journalise) et
+`couverture-e2e-gate` (une spec doit jouer la dictée partagée). `e2e/partage-dictees.spec.ts`
+(séance de l'enfant : un mot à la fois, sans voix, voix perdue) et
+`e2e/partage-dictees-chaine.spec.ts` (encadrant et chaîne créer, jouer, lire, importer).
+`contraste-tokens` garde `--warn-text` (« Texte d'alerte ») sur les six thèmes.
 Les schémas, le codec, la capture et le tirage ont leurs tests unitaires
 (`tests/partage-codec`, `-schemas`, `-resultat`, `-tirage`). `tests/recette-balisage.test.ts`
 fige le balisage des trois producteurs migrés vers les fabriques à recette, comparé à la
@@ -575,6 +586,14 @@ Trois choix de conception structurent la table :
   (4,5:1) quand c'est un libellé et un composant (3:1) quand c'est une bordure de bouton : la
   nature fait partie de l'identité d'un cas, sinon une dérogation posée sur l'un déborde en
   silence sur l'autre.
+
+**Le texte d'alerte a son token (décision du 10 octobre 2026).** `--warn` (4,24:1 sur
+`--paper`, 3,84:1 sur `--warn-bg`) n'est plus jamais une couleur de texte : le texte ambre
+passe par `--warn-text`, mesuré sur ses deux surfaces dans la table de paires. Le gate
+« Texte d'alerte » de `tests/contraste-tokens.test.ts` refuse `color: var(--warn)` hors d'une
+liste blanche motivée (un glyphe qu'on ne lit pas), refuse tout `#8a5200` écrit à la main
+hors de la définition du token, et exige que la palette Nuit et la palette d'impression
+(`print.scss`) redéfinissent `--warn-text`.
 
 **Les dérogations s'auto-périment.** Un défaut connu mais non corrigé (#385 est le seul
 qui reste ; #438, #600 et #601 sont tombés) est déclaré avec son issue et son motif, et le test correspondant est **inversé** : il

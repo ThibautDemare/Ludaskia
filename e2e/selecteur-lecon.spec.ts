@@ -304,3 +304,57 @@ test('recherche du sélecteur : résultats plafonnés à 30, annonce différée,
 
 	expect(errors).toEqual([]);
 });
+
+test('sous-bloc « Épingler une leçon » : épingler une leçon À UNE CLASSE, focus sur la même classe (#573, critère 6)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	const LECON = 'fr-gram-clic-noyau'; // proposée en CE2 ET en CM1 (deux lignes, deux classes)
+	await page.addInitScript(CLEAR_PIN);
+	await page.addInitScript(
+		`localStorage.setItem('ludaskia_profiles', JSON.stringify({ list: [{ uuid: 'e2e', name: 'E2E', emoji: '🦊', updatedAt: 1, niveauReference: 'ce2', niveauParMatiere: { francais: 'cm1' } }], active: 'e2e' }));`,
+	);
+	await gotoHash(page, 'encadrant/programme');
+
+	const selecteur = page
+		.locator('.enc-block')
+		.filter({ hasText: 'Épingler une leçon' })
+		.locator('.enc-sel');
+	await expect(selecteur).toBeVisible();
+	const recherche = selecteur.locator('input[data-act="sel-recherche"]');
+	const ligne = (niveau: string) =>
+		selecteur.locator(
+			`[data-act="epingler-selecteur"][data-lesson="${LECON}"][data-niveau="${niveau}"]`,
+		);
+	const epingles = () =>
+		page.evaluate(() => JSON.parse(localStorage.getItem('e2e/ludaskia_revoir') ?? '[]'));
+	const focusNiveau = () =>
+		page.evaluate(() => document.activeElement?.getAttribute('data-niveau') ?? null);
+
+	// Pas de jeton « toutes classes » : on affiche chaque ligne tour à tour par son jeton.
+	// Classe CE2 : épingler écrit l'id SUFFIXÉ de CETTE classe, focus sur le même bouton.
+	await selecteur.locator('[data-act="sel-niveau"]').filter({ hasText: 'CE2' }).click();
+	await recherche.fill('clique sur le nom');
+	await expect(ligne('ce2')).toHaveText('Épingler');
+	await ligne('ce2').click();
+	await expect(ligne('ce2')).toHaveText('Retirer');
+	expect(await epingles()).toEqual([`${LECON}@ce2`]);
+	await expect.poll(focusNiveau).toBe('ce2');
+
+	// Classe CM1 : la même leçon, autre classe, n'est PAS marquée épinglée par l'épingle CE2.
+	await selecteur.locator('[data-act="sel-niveau"]').filter({ hasText: 'CM1' }).click();
+	await recherche.fill('clique sur le nom noyau');
+	await expect(ligne('cm1')).toHaveText('Épingler');
+	await expect(ligne('ce2')).toHaveCount(0);
+	await ligne('cm1').click();
+	await expect(ligne('cm1')).toHaveText('Retirer');
+	expect((await epingles()).sort()).toEqual([`${LECON}@ce2`, `${LECON}@cm1`]);
+	await expect.poll(focusNiveau).toBe('cm1');
+
+	// Retour sur CE2 : toujours épinglée sous sa classe.
+	await selecteur.locator('[data-act="sel-niveau"]').filter({ hasText: 'CE2' }).click();
+	await recherche.fill('clique sur le nom');
+	await expect(ligne('ce2')).toHaveText('Retirer');
+
+	expect(errors).toEqual([]);
+});

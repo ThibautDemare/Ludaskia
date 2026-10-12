@@ -18,6 +18,7 @@ import {
 	lireRevoirLecon,
 	niveauEntreeLecon,
 	entreeEpinglee,
+	epingleLecon,
 } from '../src/core/revoir-cible';
 import {
 	imposerNiveauLecon,
@@ -661,6 +662,85 @@ describe('progressionProfil — état du bouton d’épinglage, classe par class
 		expect(ligneDuRecap(p, X_ID)).toMatchObject({
 			epingle: false,
 			entryId: 'fr-gram-clic-noyau@ce2',
+		});
+	});
+});
+
+/* ============================================================
+   10. epingleLecon — état d'UN bouton « Épingler » posé sur une leçon à une classe
+   ------------------------------------------------------------
+   Source unique des boutons par classe (journal, suivi, sélecteur, étayage). Attendus
+   écrits en dur depuis le contrat (`x@niveau` à poser, id stocké rendu tel quel), jamais
+   via `revoirLeconId` : un format d'id cassé doit rougir ici aussi.
+   ============================================================ */
+describe('epingleLecon — état du bouton d’épinglage d’une leçon à une classe', () => {
+	it('file vide : rien d’épinglé, le bouton propose l’id scopé à SA classe', () => {
+		const x = temoin();
+		expect(epingleLecon([], x, 'ce2', 'cm1')).toEqual({
+			entryId: 'fr-gram-clic-noyau@ce2',
+			epingle: false,
+		});
+		expect(epingleLecon([], x, 'cm1', 'cm1')).toEqual({
+			entryId: 'fr-gram-clic-noyau@cm1',
+			epingle: false,
+		});
+	});
+
+	it('critère 6 : une épingle CE2 allume le bouton CE2, pas le bouton CM1', () => {
+		const x = temoin();
+		const file = ['fr-gram-clic-noyau@ce2'];
+		expect(epingleLecon(file, x, 'ce2', 'cm1')).toEqual({
+			entryId: 'fr-gram-clic-noyau@ce2',
+			epingle: true,
+		});
+		expect(epingleLecon(file, x, 'cm1', 'cm1')).toEqual({
+			entryId: 'fr-gram-clic-noyau@cm1',
+			epingle: false,
+		});
+	});
+
+	it('id nu d’avant #573 chez un CM1 : le bouton CM1 le rend NU, le bouton CE2 reste éteint', () => {
+		const x = temoin();
+		const file = [X_ID];
+		// Rendu nu : c'est l'id stocké, celui que le bouton doit retirer.
+		expect(epingleLecon(file, x, 'cm1', 'cm1')).toEqual({ entryId: X_ID, epingle: true });
+		expect(epingleLecon(file, x, 'ce2', 'cm1')).toEqual({
+			entryId: 'fr-gram-clic-noyau@ce2',
+			epingle: false,
+		});
+	});
+
+	it('id nu : basculer l’entryId rendu le retire vraiment de la file', () => {
+		const x = temoin();
+		const uuid = profilEn('cm1').uuid;
+		let file = toggleRevoirFor(uuid, X_ID); // épingle d'avant #573
+		const bouton = epingleLecon(file, x, 'cm1', 'cm1');
+		expect(bouton.epingle).toBe(true);
+
+		file = toggleRevoirFor(uuid, bouton.entryId);
+		expect(fileBrute(uuid)).toEqual([]);
+		expect(epingleLecon(file, x, 'cm1', 'cm1')).toEqual({
+			entryId: 'fr-gram-clic-noyau@cm1',
+			epingle: false,
+		});
+	});
+
+	it('id nu ET id scopé au même niveau : l’id scopé passe devant, quel que soit l’ordre', () => {
+		const x = temoin();
+		const attendu = { entryId: 'fr-gram-clic-noyau@cm1', epingle: true };
+		expect(epingleLecon([X_ID, 'fr-gram-clic-noyau@cm1'], x, 'cm1', 'cm1')).toEqual(attendu);
+		expect(epingleLecon(['fr-gram-clic-noyau@cm1', X_ID], x, 'cm1', 'cm1')).toEqual(attendu);
+	});
+
+	it('piège de préfixe : une leçon dont l’id commence pareil n’épingle pas le témoin', () => {
+		const x = temoin();
+		expect(epingleLecon([X_ID + '-bis@ce2'], x, 'ce2', 'cm1')).toEqual({
+			entryId: 'fr-gram-clic-noyau@ce2',
+			epingle: false,
+		});
+		expect(epingleLecon([X_ID + '-bis'], x, 'cm1', 'cm1')).toEqual({
+			entryId: 'fr-gram-clic-noyau@cm1',
+			epingle: false,
 		});
 	});
 });

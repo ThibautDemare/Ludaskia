@@ -74,13 +74,17 @@ export function entreeEpinglee(
 /** État d'un bouton « Épingler » posé sur `lesson` à la classe `niveau` : `epingle` dit si
     une entrée de `file` l'épingle déjà, `entryId` est l'id que le bouton bascule — celui qui
     l'épingle (un id nu d'avant #573 se retire donc bien), sinon l'id scopé à poser. Source
-    unique de tous les boutons d'épinglage par classe (journal, suivi, sélecteur, étayage). */
+    unique de tous les boutons d'épinglage par classe (journal, suivi, sélecteur, étayage).
+    `niveau` est d'abord ramené aux classes de la leçon : un bouton posé sur une classe qu'elle
+    n'a pas désigne celle où elle se jouerait, sans quoi il basculerait un id qu'il ne verrait
+    jamais allumé. */
 export function epingleLecon(
 	file: Iterable<string>,
 	lesson: LessonDef,
 	niveau: SchoolLevel,
 	suivi: SchoolLevel,
 ): { entryId: string; epingle: boolean } {
-	const deja = entreeEpinglee(file, lesson, niveau, suivi);
-	return { entryId: deja ?? revoirLeconId(lesson.id, niveau), epingle: deja != null };
+	const joue = effectiveLevel(lesson, niveau);
+	const deja = entreeEpinglee(file, lesson, joue, suivi);
+	return { entryId: deja ?? revoirLeconId(lesson.id, joue), epingle: deja != null };
 }

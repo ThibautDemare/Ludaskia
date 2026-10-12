@@ -1374,7 +1374,10 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   consommateur aujourd'hui — l'espace encadrant s'atteint par navigation, donc dans une
   autre tâche) ; et la marche porte l'instant du DÉBUT de `recordLessonStats`, le même que
   `lastAt` et le journal d'activité, plutôt qu'un `Date.now()` relu en fin de session comme
-  le faisaient les appelants — source de la frise d'évolution de l'espace encadrant (cf.
+  le faisaient les appelants. **Les clés `lessonId@niveau` sont résolues au moment de la
+  session**, pas dans la microtâche (`monteesPalierCles`, #573) : un niveau imposé peut avoir
+  été levé entre-temps, et la montée « acquis » d'une épingle jouée en CE2 aurait sinon été
+  relue en CM1 et perdue — source de la frise d'évolution de l'espace encadrant (cf.
   [Espace encadrant](espace-encadrant.md)).
   **Avancement/report de la leçon du jour** (#485, `ludaskia_leconReport`) :
   **`recordEssaiLecon(lessonId, pct, now, etoilee)`** enregistre un essai complet en
@@ -1780,9 +1783,20 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   **seulement** quand il est vrai (absent ⇒ tentative faite), pour que les journaux déjà
   stockés restent valides — `estErreurValide` ne l'**exige** pas, il n'en valide le type
   que s'il est présent.
+  **Classe jouée (#573)** : `ErreurEntry.niveau?: SchoolLevel` est la classe où la leçon a été
+  JOUÉE (celle de la matière à l'instant de l'erreur, ou la classe imposée par une épingle,
+  cf. `niveauLecon`/`niveau-actif.ts` ; pour une séance partagée, la classe de l'envoi).
+  `journaliserErreur` la pose pour toute leçon du catalogue, jamais pour une liste
+  d'orthographe (non scopée). Deux versions d'une même leçon peuvent être deux notions
+  (« Clique sur le nom » / « Clique sur le nom noyau ») : sans ce champ leurs erreurs
+  tombaient dans un seul groupe, titré d'après la classe suivie à la LECTURE.
+  **`niveauErreur(e)`** est l'unique lecture : `null` hors catalogue, sinon la classe
+  enregistrée, ou **CE2 pour une entrée d'avant #573** (ou au champ illisible), toujours
+  ramenée aux classes de la leçon (`effectiveLevel`) ; `estErreurValide` ne contrôle pas le
+  champ (un niveau illisible ne coûte pas l'entrée).
   **Rétention** `MAX_ERREURS` (150) : purge des plus anciennes, la plus récente en tête
   (`ajouterErreur`, pur, testable sans stockage). **`grouperErreursParLecon`** regroupe par
-  leçon (triée par **volume d'erreurs décroissant**, la récence de la dernière erreur ne
+  **(leçon, classe)** — `GroupeErreursLecon.niveau`, `null` hors catalogue — (triée par **volume d'erreurs décroissant**, la récence de la dernière erreur ne
   départageant que les égalités, #519) et **dédoublonne** (même question + même
   réponse donnée + même `sansTentative`) en une entrée « vue N fois » — les banques QCM se
   répètent, pas la peine d'afficher N lignes identiques. Le marqueur entre dans la clé (et
@@ -2022,9 +2036,10 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   normalement.
   **`revoirActives(dicteeDispo)`** ne filtre plus sur le niveau (#556, ferme #535 comme
   sous-cas) : une leçon d'une autre classe que celle suivie y est rendue comme les autres,
-  lue à son niveau de STOCKAGE via `scopeStockage`/`loadStarsStockage`/
-  `loadLessonStatsStockage` (`progress.ts`, cf. [Niveaux scolaires](niveaux-scolaires.md))
-  plutôt que via la vue scopée `scopeActif` habituelle — sans ce changement de lecture, une
+  lue à son niveau de STOCKAGE (depuis #573, dans les cartes brutes du profil, à la classe de
+  l'épingle ; #556 passait par `scopeStockage`/`loadStarsStockage`/`loadLessonStatsStockage`,
+  cf. [Niveaux scolaires](niveaux-scolaires.md)) plutôt que via la vue scopée `scopeActif`
+  habituelle — sans ce changement de lecture, une
   leçon assignée hors classe paraîtrait éternellement « jamais travaillée » et ne
   quitterait jamais la boucle. `epingleesProfil(profile, dicteeDispo)` lit la MÊME vue.
   **Désépinglage automatique** (#465) : `purgeRevoirSolides(profile, dicteeDispo, now)`
@@ -2055,7 +2070,40 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   (leçon : `origineLecon(...).direction === 'au-dessus'` ; dictée prédéfinie : absente du
   filtrage cumulatif au niveau du profil), `'maitrise'` sinon — **le prédicat de retrait
   reste identique dans les deux cas** (même `solide`), seul ce que la trace ANNONCE diffère
-  (cf. [Espace encadrant](espace-encadrant.md)). `loadRetraitsAuto` tolère l'absence de
+  (cf. [Espace encadrant](espace-encadrant.md)). Un troisième motif, **`'version-suivie'`**
+  (#573), ne vient pas de la purge mais de la fin de sonde (ci-dessous) ; `MotifRetrait` le
+  porte, la purge ne produit que les deux autres (`Exclude<…>`), et `RetraitAuto.versionSuivie
+  {niveau, label, reussie}` l'accompagne (présent si et seulement si ce motif ; une trace
+  `'version-suivie'` sans lui est écartée à la lecture).
+  **Épingle d'une leçon scopée par classe (#573)** : une épingle de leçon est un id de file
+  **`lessonId@niveau`** (module pur **`revoir-cible.ts`** : `revoirLeconId`, `lireRevoirLecon`
+  → `{lessonId, niveau|null}`, `niveauEntreeLecon`, `entreeEpinglee`). Un id NU d'avant #573,
+  ou au suffixe inconnu, se joue à la classe SUIVIE (une épingle est une intention vivante :
+  la relire en CE2 changerait ce que l'enfant reçoit demain ; asymétrie voulue avec le
+  journal d'erreurs, où une entrée sans classe se lit en CE2 — une erreur est un fait daté).
+  `entreeEpinglee(file, lesson, niveau, suivi)` retrouve l'id qui épingle la leçon À cette
+  classe (l'id scopé exact passe devant un id nu qui se résoudrait pareil) : c'est lui que les
+  boutons « Épingler »/« Retirer » portent dans `data-entry`. `RevoirEntry` (kind `'lecon'`)
+  gagne `entryId` (id de file, seul à désigner UNE entrée quand une leçon est épinglée dans
+  deux classes) et `niveau` (classe où jouer) ; `id` reste l'id nu, pour le lancement et la
+  comparaison avec la leçon du jour. Les deux versions se jouent, se lisent (cartes BRUTES du
+  profil, état à SA classe) et se purgent indépendamment ; deux entrées qui se joueraient
+  pareil sont dédoublonnées, l'épingle ordinaire l'emportant sur la sonde.
+  **Sonde (#573)** — `lireEpingleLecon`, lecture unique pour les quatre lecteurs (accueil
+  enfant `revoirActives`, liste adulte `epingleesProfil`, `purgeRevoirSolides`,
+  `cloreSondesRevoir`) : une épingle d'une classe STRICTEMENT antérieure à la classe suivie,
+  devenue solide, **candidate** au retrait (vue fragile depuis l'épinglage) et dont la leçon
+  existe aussi dans la classe suivie, n'est pas retirée tout de suite : `revoirActives` propose
+  UNE fois la version de la classe suivie (`EpingleEntry.sonde {niveau, label}` côté adulte).
+  Raison (avis pédagogue) : les deux versions sont deux notions, la seconde s'appuyant sur la
+  première ; réussir la CE2 ne prouve rien sur la CM1. Elle prend fin par
+  **`cloreSondesRevoir(lessonId, niveauJoue, reussie, now)`**, appelée par
+  `lesson-run.ts:recordLessonRun` après l'écriture de l'essai : au premier essai COMPLET en
+  mode leçon à la classe de la sonde, réussi ou non, l'épingle sort de la file et de la
+  mémoire de fragilité, avec une trace `motif: 'version-suivie'` dans `ludaskia_revoirAuto`
+  (affichée dans « Retirées automatiquement »). Un sprint, un bilan ou une session jouée à une
+  autre classe (niveau imposé) ne clôt rien. Écriture brute, sans `touchProfile`, comme la
+  purge. `loadRetraitsAuto` tolère l'absence de
   `motif` (entrées d'avant #571) mais écarte l'entrée entière si sa valeur est inconnue,
   plutôt que de la lire comme `'maitrise'` par défaut.
   Le graphe d'activité (#319) repose sur **`activiteParJourParType(activity, now, n)`** → `JourActivite[]`

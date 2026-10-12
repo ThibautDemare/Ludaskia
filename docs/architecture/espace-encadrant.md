@@ -655,9 +655,22 @@ catalogue ou liste de dictée** (#424) — peut être **épinglé** depuis ce bl
 l'action n'est **masquée** que si l'id ne résout ni l'une ni l'autre (groupe orphelin, cible
 disparue).
 
+**Groupé par (leçon, classe) (#573)** : chaque erreur porte la classe où la leçon a été
+JOUÉE (`ErreurEntry.niveau`, cf. [Logique pure](core.md)). Deux versions d'une même leçon
+(« Clique sur le nom » au CE2, « Clique sur le nom noyau » au CM1) font donc deux groupes. Le
+**titre** est le libellé de la classe ENREGISTRÉE, pas de la classe suivie aujourd'hui : un
+groupe ne change pas de titre quand la matière passe en CM1. Chaque groupe de leçon porte un
+**badge de classe** (`badgeClasseOrigine`), même quand une seule classe est présente, et le
+nom accessible du bouton « Épingler » cite la classe. Les entrées d'avant #573 se lisent en
+CE2 ; les listes d'orthographe ne sont pas scopées (ni badge, ni classe dans le nom). Le
+bouton épingle la leçon **à la classe du groupe** (id de file scopé, cf. « À revoir »
+ci-dessous). Une séance partagée (#734) journalise à la classe de l'envoi.
+
 **Prérequis de la classe précédente (#724)** : quand la leçon d'un groupe a, dans la table
 `PREREQUIS` (`data/ordre-pedagogique.ts`), un prérequis de la classe précédente encore
-OUVERT (`core/prerequis.ts:prerequisOuverts`, lu au niveau suivi par le profil CONSULTÉ),
+OUVERT (`core/prerequis.ts:prerequisOuverts`, lu au niveau suivi par le profil CONSULTÉ ;
+**seulement pour un groupe de la classe suivie**, #573 : un prérequis du CE2 explique une
+erreur sur la version CM1, pas une erreur faite sur la version CE2),
 une ligne « Prérequis : <libellé> » s'ajoute dans le **corps** du groupe — avant la liste
 d'erreurs, comme l'action « Épingler » plus bas — que ce prérequis ait été **travaillé ou
 non** : c'est ici (et dans le panneau d'étayage, cf. [Rendu & interactions](ui.md)) qu'un
@@ -884,7 +897,13 @@ liste de dictée (#424) — `toggleRevoirFor(uuid, entryId)` → `ludaskia_revoi
 [Données & profils](donnees-et-profils.md)). La file reste un simple `string[]` : une entrée de
 dictée s'y distingue par le préfixe `ortho:` (`orthoRevoirId`/`isOrthoRevoirId`/
 `orthoIdFromRevoir`, `core/encadrant-stats.ts`) — id opaque pour une liste du parent, `fr-ortho-*`
-pour une dictée prédéfinie.
+pour une dictée prédéfinie. **Une leçon s'épingle À UNE CLASSE (#573)** : id de file
+`lessonId@niveau` (`core/revoir-cible.ts`), de sorte que la version CE2 et la version CM1 d'une
+même leçon sont deux épingles indépendantes — les boutons « Épingler »/« Retirer » portent
+`data-entry` (id de file) et `data-lesson` (id nu). Un id nu d'avant #573 reste lu et joué à la
+classe suivie. Au lancement depuis l'accueil, la leçon se joue à la classe épinglée (niveau
+imposé par le hash, cf. [Modes & navigation](modes-et-navigation.md)) ; rien de visible côté
+enfant ne dépend de la classe (#232).
 
 **Depuis #490, l'ENFANT peut aussi y ajouter une entrée** : le panneau d'étayage de la
 notion (cf. [Rendu & interactions](ui.md)), quand il renvoie à une leçon prérequise,
@@ -973,6 +992,23 @@ existé). Motif ABSENT sur une trace d'avant #571 : la ligne n'affiche que la da
 supposer un. **Le retrait lui-même ne change pas** : même critère de solidité pour toutes les
 entrées (mêmes « Deux garde-fous » ci-dessus) — le motif ne s'ajoute PAS comme un troisième
 garde-fou, il ne change que ce que la trace en DIT, jamais si l'entrée est retirée.
+
+**Une épingle d'une classe antérieure, réussie : la « sonde » (#573)** : « Clique sur le nom »
+(CE2) et « Clique sur le nom noyau » (CM1) sont deux notions, la seconde s'appuyant sur la
+première. Réussir la version CE2 ne vaut donc pas maîtrise de la CM1 (c'est le sens de
+l'infobulle du badge d'origine d'une épingle « en dessous »). Quand une telle épingle devient
+solide et que la leçon existe dans la classe suivie, l'épingle reste dans « Épinglées » avec une
+ligne secondaire qui l'explique (« Réussie en CE2. Sa version de CM1 est maintenant proposée à
+l'enfant, une seule fois. »), et l'accueil de l'enfant propose la version de la classe suivie.
+Au premier essai complet en mode leçon à cette classe, réussi ou non, l'épingle sort de la file
+(`cloreSondesRevoir`, cf. [Logique pure](core.md)) et « Retirées automatiquement » en garde la
+trace (`motif: 'version-suivie'`) : « Réussie en CE2, puis « … » (CM1) réussie aussi. » ou
+« … mais « … » (CM1) ne l'est pas encore. La version CE2 ne sera pas reproposée : c'est à vous
+de décider de la suite. » Le bouton « Épingler » de la ligne ré-épingle la version antérieure.
+
+*Limite connue, hors périmètre de #573* : l'étape « une leçon précise » du composeur de
+séance (ci-dessous) stocke encore un id NU. Elle joue donc la version de la classe suivie,
+même si l'adulte a choisi la version d'une autre classe dans le sélecteur.
 
 ## Récap du mode Révision espacée (#423)
 

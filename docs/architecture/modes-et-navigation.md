@@ -7,7 +7,10 @@
 Vues routées **par hash** (le Précédent/Suivant du navigateur fonctionne, et un
 hébergement statique sous sous-chemin `/Ludaskia/` ne nécessite aucune config de
 fallback SPA) : `#accueil` · `#matieres` · `#matiere-<id>` · `#categorie-<id>` ·
-`#lecon-<id>` · `#mode-<id>` (choix de mode d'une leçon, #69) · `#sprint-config` ·
+`#lecon-<id>` · `#mode-<id>` (choix de mode d'une leçon, #69 ; l'id peut porter un
+**niveau imposé**, `#lecon-<id>@ce2` / `#mode-<id>@ce2`, #573 : posé par le routeur à
+l'entrée de ces deux écrans, levé à chaque changement d'écran, cf. [Niveaux
+scolaires](niveaux-scolaires.md)) · `#sprint-config` ·
 `#sprint` · `#bilan-custom` · `#bilan-cat-<id>` · `#ortho-mode-<id>` (choix de mode
 d'une liste d'ortho) · `#ortho-new` · `#ortho-edit-<id>` · `#ortho-revoir-<id>`
 (création / édition / relecture des listes d'ortho) · `#ortho-revoir` (#618 : relecture
@@ -240,6 +243,12 @@ natures étant reprenables) et **expire** en silence après 7 j. Le **sprint** e
 la **révision espacée** restent hors périmètre (on **confirme** avant de
 quitter ces modes, faute de reprise). Détail des modules côté rendu :
 `ui/resume.ts` et `ui/runner-reprise.ts`, cf. [Rendu & interactions](ui.md).
+
+*Rejet écrit* (#573) : **la reprise d'une série jouée sous niveau imposé n'est pas offerte**
+(`startLecon`/`chooseMode` lancent directement, `runner-reprise.ts` ne retient pas la
+session). L'instantané est rangé sous l'id NU de la leçon et relancé par la carte « À
+continuer », hors du hash qui porte le niveau : une série CE2 reviendrait en CM1. La série
+imposée, courte, repart à neuf.
 
 ## Pipeline multi-matières
 

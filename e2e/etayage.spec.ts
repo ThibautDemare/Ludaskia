@@ -237,7 +237,8 @@ test('soustraction posée : mettre la leçon d’avant de côté l’ajoute à �
 
 	// La file « à revoir » du profil (clé préfixée) porte bien la leçon prérequise.
 	const revoir = await page.evaluate(() => localStorage.getItem('e2e/ludaskia_revoir'));
-	expect(JSON.parse(revoir ?? '[]')).toContain('calc-addition-posee');
+	// #573 : la file stocke `id@niveau`, ici la classe d'origine du prérequis (CE2).
+	expect(JSON.parse(revoir ?? '[]')).toContain('calc-addition-posee@ce2');
 
 	expect(errors).toEqual([]);
 });

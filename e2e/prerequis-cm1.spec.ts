@@ -172,7 +172,8 @@ test('étayage OG (#724 crit. 12,18) : prérequis TABLES affiché sans classe, �
 		(uuid) => localStorage.getItem(`${uuid}/ludaskia_revoir`),
 		UUID,
 	);
-	expect(JSON.parse(revoir ?? '[]')).toContain(TABLES);
+	// #573 : la file stocke `id@niveau`, ici la classe d'origine du prérequis (CE2).
+	expect(JSON.parse(revoir ?? '[]')).toContain(`${TABLES}@ce2`);
 
 	await gotoHash(page, 'accueil');
 	await expect(page.locator('#aRevoir')).toHaveAttribute('data-lesson', TABLES);
@@ -288,8 +289,9 @@ test('encadrant (#724 crit. 13) : bloc « Prérequis » sur OG nomme TABLES + so
 		UUID,
 	);
 	const liste = JSON.parse(revoir ?? '[]');
-	expect(liste).toContain(TABLES);
-	expect(liste).not.toContain(OG);
+	// #573 : entrées scopées `id@niveau` ; aucune entrée ne vise OG, id nu ou `OG@…`.
+	expect(liste).toContain(`${TABLES}@ce2`);
+	expect((liste as string[]).filter((e) => e === OG || e.startsWith(`${OG}@`))).toEqual([]);
 
 	// Infobulle APRÈS l'épinglage : le re-rendu remplace le DOM du groupe (il
 	// se replie, aucun état `open` n'est conservé côté rendu) — on le rouvre

@@ -140,6 +140,10 @@ faut.**
   partagée garde `partage` non nul après la séance : c'est l'entrée du jeu libre
   (`demarrer(…)`) qui le remet à `null`. Exiger le test qui joue les deux à la suite sans
   recharger la page. Cas d'origine : les runners en séance partagée (#734).
+  Variante : un état de module qui vaut pour la durée d'un ÉCRAN (le niveau imposé d'une
+  épingle, #573) est posé ET levé par `route()`, jamais par l'écran lui-même ; et toute
+  écriture différée (microtâche, `setTimeout`) qui lit cet état résout ses clés AU MOMENT
+  de l'appel, pas à son exécution (cf. `monteesPalierCles`, `progress.ts`).
 - **Une règle de correction n'a qu'une source.** Un écran qui doit juger SANS marquer
   (séance partagée, aperçu) appelle la règle que `verify()` utilise lui-même
   (`juste()` d'un widget, `jugerTableau`, `etapeJuste`), jamais une copie. Deux

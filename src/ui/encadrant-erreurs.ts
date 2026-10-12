@@ -42,7 +42,7 @@ import {
 	niveauProfilMatiere,
 } from '../core/encadrant-stats';
 import { LEVEL_LABEL, effectiveLevel, labelLecon } from '../core/levels';
-import { entreeEpinglee, revoirLeconId } from '../core/revoir-cible';
+import { epingleLecon } from '../core/revoir-cible';
 import { lsGetRaw } from '../core/storage';
 import { ORTHO_KEY } from '../core/orthographe/store';
 import { labelLeconOrtho, libelleOrthoIntrouvable } from '../core/orthographe/lessons';
@@ -169,17 +169,14 @@ function prerequisDuGroupe(
 	return prerequisOuverts(lesson, suivi, cartes);
 }
 
-/* Épingle d'une leçon À UN NIVEAU dans la file du profil consulté (#573) : l'id qui l'épingle
-   déjà (scopé, ou nu d'avant #573 s'il se joue à ce niveau), sinon l'id scopé à poser. Le
-   bouton porte cet id tel quel : retirer une épingle d'avant #573 retire bien l'id nu. */
-function epingleLecon(
+/* Épingle d'une leçon À UNE CLASSE dans la file du profil consulté (#573, cf. `epingleLecon`). */
+function epingleAuNiveau(
 	file: ReadonlySet<string>,
 	lesson: LessonDef,
 	niveau: SchoolLevel,
 	consulte: Profile,
 ): { entryId: string; epingle: boolean } {
-	const deja = entreeEpinglee(file, lesson, niveau, niveauProfilMatiere(consulte, lesson.subject));
-	return { entryId: deja ?? revoirLeconId(lesson.id, niveau), epingle: deja != null };
+	return epingleLecon(file, lesson, niveau, niveauProfilMatiere(consulte, lesson.subject));
 }
 
 /* Lignes « Prérequis : X » d'un groupe : une cause probable d'une partie de ses erreurs. Un
@@ -195,7 +192,7 @@ function prerequisGroupeHTML(
 	return joindre(
 		ouverts.map((p) => {
 			const label = labelLecon(p.lesson, p.niveau);
-			const { entryId, epingle } = epingleLecon(epinglees, p.lesson, p.niveau, consulte);
+			const { entryId, epingle } = epingleAuNiveau(epinglees, p.lesson, p.niveau, consulte);
 			const verbe = epingle ? 'Retirer' : 'Épingler';
 			return html`<p class="enc-err-prerequis" data-prerequis="${p.lesson.id}">
           <span>Prérequis : ${label}</span>
@@ -239,7 +236,7 @@ function groupeHTML(
 	// (ni leçon, ni liste connue).
 	const pin =
 		lesson && niveau
-			? epingleLecon(epinglees, lesson, niveau, consulte)
+			? epingleAuNiveau(epinglees, lesson, niveau, consulte)
 			: labelOrtho
 				? {
 						entryId: orthoRevoirId(g.lessonId),

@@ -68,7 +68,7 @@ import { BLOCAGES_SIGNAL_ADULTE, type EtatReport } from './report-lecon';
 import { consolidationBasNiveau } from './consolidation-bas-niveau';
 import { niveauActifMatiere } from './niveau-actif';
 import { activeProfile, touchProfile, type Profile } from './profiles';
-import { entreeEpinglee, lireRevoirLecon, niveauEntreeLecon, revoirLeconId } from './revoir-cible';
+import { epingleLecon, lireRevoirLecon, niveauEntreeLecon } from './revoir-cible';
 import {
 	loadOrtho,
 	loadOrthoFor,
@@ -1151,14 +1151,14 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 		const k = l.id + '@' + niveau;
 		const stat = statsRaw[k];
 		const etat = niveauNotion(stat, (starsRaw[k] || 0) > 0);
-		const epinglee = entreeEpinglee(file, l, niveau, niveauProfilMatiere(profile, l.subject));
+		const pin = epingleLecon(file, l, niveau, niveauProfilMatiere(profile, l.subject));
 		return {
 			lessonId: l.id,
 			label: labelLecon(l, niveau),
 			niveau: etat,
 			pctRecent: perfRecente(stat)?.pct ?? null,
-			epingle: epinglee != null,
-			entryId: epinglee ?? revoirLeconId(l.id, niveau),
+			epingle: pin.epingle,
+			entryId: pin.entryId,
 			vues: stat?.attempts ?? 0,
 			derniereFois: stat?.lastAt ?? null,
 			tendance: tendanceNotion(stat),

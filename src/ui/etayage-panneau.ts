@@ -36,7 +36,7 @@ import { derouleMontrable, type PasEtayage } from '../core/etayage-deroule';
 import { moteurEtayage, type MoteurEtayage } from './etayage-visuels';
 import type { PosedSpec } from '../core/items';
 import { loadRevoir, revoirActives, toggleRevoirFor } from '../core/encadrant-stats';
-import { entreeEpinglee, revoirLeconId } from '../core/revoir-cible';
+import { epingleLecon } from '../core/revoir-cible';
 import { labelLecon } from '../core/levels';
 import { niveauActifMatiere, niveauLecon } from '../core/niveau-actif';
 import { activeProfile, lectureConsigneAuto } from '../core/profiles';
@@ -490,9 +490,9 @@ function prerequisHTML(d: EtayageDemande): SafeHtml {
 	const avant = trouve.lesson;
 	// L'épingle vise la leçon d'avant DANS SA CLASSE (#573) : mise de côté depuis une leçon
 	// CM1, la version CE2 d'une leçon qui existe aussi en CM1 doit revenir en CE2.
-	const suivi = niveauActifMatiere(avant.subject);
-	const deja = entreeEpinglee(loadRevoir(), avant, trouve.niveau, suivi);
-	return html`<div class="etay-prerequis" data-prerequis="${avant.id}" data-entry="${deja ?? revoirLeconId(avant.id, trouve.niveau)}">
+	const pin = epingleLecon(loadRevoir(), avant, trouve.niveau, niveauActifMatiere(avant.subject));
+	const deja = pin.epingle;
+	return html`<div class="etay-prerequis" data-prerequis="${avant.id}" data-entry="${pin.entryId}">
 			<p class="etay-prerequis-txt">Si c'est encore trop dur, tu peux revoir « ${labelLecon(avant, trouve.niveau)} ».</p>
 			${
 				deja

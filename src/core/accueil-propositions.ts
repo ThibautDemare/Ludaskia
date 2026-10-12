@@ -29,21 +29,25 @@ import type { RevoirEntry } from './encadrant-stats';
 /* Entrée que la carte « À revoir » doit afficher parmi `entrees` (déjà filtrées sur
    les actives, cf. `revoirActives`).
 
-   - `cibleId` (bouton « Voir une autre leçon ») force une entrée précise et court-circuite
-     tout : c'est un choix explicite de l'enfant, il ne se fait pas dédupliquer.
+   - `cibleEntryId` (bouton « Voir une autre leçon ») force une entrée précise et court-circuite
+     tout : c'est un choix explicite de l'enfant, il ne se fait pas dédupliquer. Désignée par
+     son id de FILE : une leçon épinglée dans deux classes (#573) donne deux entrées de même
+     id nu.
    - sinon on prend la première entrée qui n'est PAS la leçon du jour, et on retombe sur
-     la tête de file s'il n'y a pas d'alternative (règle 1 ci-dessus).
+     la tête de file s'il n'y a pas d'alternative (règle 1 ci-dessus). La comparaison se fait
+     sur l'id NU (#573) : la version CE2 épinglée d'une leçon dont le fil propose la version
+     CM1 est la même leçon pour l'accueil, deux cartes côte à côte seraient un doublon.
 
    Seules les entrées `kind === 'lecon'` peuvent entrer en collision : une liste de dictée
    (`kind === 'ortho'`) n'est pas dans le catalogue, son id ne se compare pas à une leçon. */
 export function choisirARevoir(
 	entrees: RevoirEntry[],
 	leconDuJourId: string | null,
-	cibleId?: string,
+	cibleEntryId?: string,
 ): RevoirEntry | null {
 	if (entrees.length === 0) return null;
-	if (cibleId) {
-		const forcee = entrees.find((e) => e.id === cibleId);
+	if (cibleEntryId) {
+		const forcee = entrees.find((e) => e.entryId === cibleEntryId);
 		if (forcee) return forcee;
 	}
 	if (!leconDuJourId) return entrees[0];

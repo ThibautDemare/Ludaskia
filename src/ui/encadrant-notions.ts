@@ -133,7 +133,7 @@ export function notionsHTML(recap: RecapProfil): SafeHtml {
           <span class="enc-detail-mot"><span class="sr-only">Niveau : </span>${MOT_NIVEAU[l.niveau]}</span>
           ${tendanceHTML(l.tendance)}
           <span class="enc-actions">
-            <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${l.lessonId}">${l.epingle ? 'Retirer' : 'Épingler'}</button>
+            <button type="button" class="enc-btn-sec${l.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${l.lessonId}" data-entry="${l.entryId}">${l.epingle ? 'Retirer' : 'Épingler'}</button>
             ${boutonsImpression(l.lessonId, l.label)}
           </span>
           ${friseNotionHTML(l.frise, now)}

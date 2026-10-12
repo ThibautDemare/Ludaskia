@@ -123,6 +123,18 @@ const REPONSES: ReponseItem[] = [
 	{ lecon: LECON_C, enonce: '347 + 285', saisie: '522', attendue: '632', statut: 'faux' },
 ];
 
+/* Classe d'une erreur importée (#573) : celle à laquelle la leçon a été JOUÉE dans la
+   séance, c'est-à-dire la classe de l'envoi (CM1 ici) ramenée aux classes que la leçon
+   couvre — repli sur la plus haute en dessous. Jamais celle du profil qui importe.
+   - LECON_A, les tables d'addition : CE2 seulement → jouée en CE2 ;
+   - LECON_B, la valeur des chiffres : CE2 et CM1 (#240, jusqu'au million) → CM1 ;
+   - LECON_C, l'addition posée : CE2 seulement → jouée en CE2.
+   Le mélange est voulu : une classe recopiée de l'envoi sans repli donnerait CM1
+   partout, une classe tirée du profil actif ne suivrait pas la leçon. */
+const NIVEAU_A = 'ce2';
+const NIVEAU_B = 'cm1';
+const NIVEAU_C = 'ce2';
+
 /** Ce que le contrat dit de `REPONSES`, écrit à la main. */
 const ERREURS_ATTENDUES: ErreurEntry[] = [
 	{
@@ -132,6 +144,7 @@ const ERREURS_ATTENDUES: ErreurEntry[] = [
 		question: '3 + 5 = …',
 		donnee: '9',
 		attendue: '8',
+		niveau: NIVEAU_A,
 	},
 	{
 		ts: DATE_FIN,
@@ -141,6 +154,7 @@ const ERREURS_ATTENDUES: ErreurEntry[] = [
 		donnee: '',
 		attendue: '1',
 		sansTentative: true,
+		niveau: NIVEAU_B,
 	},
 	{
 		ts: DATE_FIN,
@@ -149,6 +163,7 @@ const ERREURS_ATTENDUES: ErreurEntry[] = [
 		question: '347 + 285',
 		donnee: '522',
 		attendue: '632',
+		niveau: NIVEAU_C,
 	},
 ];
 
@@ -304,8 +319,27 @@ describe('erreursDuResultat — une entrée par erreur ciblable (critère 21)', 
 				donnee: '',
 				attendue: '1',
 				sansTentative: true,
+				niveau: NIVEAU_B,
 			},
 		]);
+	});
+
+	it('#573 : un envoi sans classe ne donne AUCUNE clé `niveau`, même si le profil actif a une classe', () => {
+		// Le profil actif en CM1 : un repli sur sa classe poserait `niveau: 'cm1'` sur
+		// LECON_B. Pas de clé du tout (toStrictEqual) : l'entrée se lit comme les
+		// entrées d'avant #573.
+		setNiveauReference('cm1');
+		const r = resultat({ envoi: { id: ID_ENVOI, libelle: 'Fiche du lundi' } });
+		const sansClasse = ERREURS_ATTENDUES.map((e) => {
+			const copie = { ...e };
+			delete copie.niveau;
+			return copie;
+		});
+		expect(
+			sansClasse.some((e) => 'niveau' in e),
+			'précondition : attendu sans clé',
+		).toBe(false);
+		expect(erreursDuResultat(r)).toStrictEqual(sansClasse);
 	});
 
 	it('un résultat sans faux ni « je ne sais pas » ne donne aucune erreur', () => {
@@ -595,6 +629,7 @@ describe('importerResultat — textes gardés tels quels', () => {
 				question: '<img src=x onerror=alert(1)>',
 				donnee: '"><svg onload=alert(1)>',
 				attendue: 'a < b & c',
+				niveau: NIVEAU_A,
 			},
 		]);
 	});

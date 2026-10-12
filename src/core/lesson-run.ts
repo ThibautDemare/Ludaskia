@@ -17,6 +17,10 @@ import {
 	niveauDepuisXP,
 } from './progress';
 import { updateGoal, evaluateTrophies } from './rewards';
+import { getLessonById } from './catalog';
+import { niveauLecon } from './niveau-actif';
+import { estNotionSolide } from './maitrise';
+import { cloreSondesRevoir } from './encadrant-stats';
 import type { Trophy } from './rewards';
 import { recompensesEntre } from './unlocks';
 import type { Recompense } from './unlocks';
@@ -83,7 +87,19 @@ export function recordLessonRun(p: LessonRunInput): LessonRunOutcome {
 		starInfo = { perfect, newStar: res.newStar, count: res.count };
 		// Avancement / report de la leçon du jour (#485) : SEUL endroit où le score d'un
 		// essai COMPLET est enregistré pour ce calcul (ni sprint ni bilan, cf. report-lecon.ts).
-		if (p.questionCount > 0) recordEssaiLecon(p.lessonId!, lessonPct, Date.now(), res.count > 0);
+		if (p.questionCount > 0) {
+			recordEssaiLecon(p.lessonId!, lessonPct, Date.now(), res.count > 0);
+			// Même essai complet : c'est lui, et lui seul, qui clôt la tentative de la version
+			// de la classe suivie proposée après une épingle antérieure réussie (#573).
+			const lesson = getLessonById(p.lessonId!);
+			if (lesson)
+				cloreSondesRevoir(
+					lesson.id,
+					niveauLecon(lesson),
+					estNotionSolide(perfect, lessonPct),
+					Date.now(),
+				);
+		}
 	} else {
 		recordRun(p.mode, p.ok, p.questionCount, p.ms);
 	}

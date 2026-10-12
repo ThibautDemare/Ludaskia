@@ -36,6 +36,7 @@ import { derouleMontrable, type PasEtayage } from '../core/etayage-deroule';
 import { moteurEtayage, type MoteurEtayage } from './etayage-visuels';
 import type { PosedSpec } from '../core/items';
 import { loadRevoir, revoirActives, toggleRevoirFor } from '../core/encadrant-stats';
+import { entreeEpinglee, revoirLeconId } from '../core/revoir-cible';
 import { labelLecon } from '../core/levels';
 import { niveauActifMatiere, niveauLecon } from '../core/niveau-actif';
 import { activeProfile, lectureConsigneAuto } from '../core/profiles';
@@ -487,8 +488,11 @@ function prerequisHTML(d: EtayageDemande): SafeHtml {
 	);
 	if (!trouve) return VIDE;
 	const avant = trouve.lesson;
-	const deja = loadRevoir().includes(avant.id);
-	return html`<div class="etay-prerequis" data-prerequis="${avant.id}">
+	// L'épingle vise la leçon d'avant DANS SA CLASSE (#573) : mise de côté depuis une leçon
+	// CM1, la version CE2 d'une leçon qui existe aussi en CM1 doit revenir en CE2.
+	const suivi = niveauActifMatiere(avant.subject);
+	const deja = entreeEpinglee(loadRevoir(), avant, trouve.niveau, suivi);
+	return html`<div class="etay-prerequis" data-prerequis="${avant.id}" data-entry="${deja ?? revoirLeconId(avant.id, trouve.niveau)}">
 			<p class="etay-prerequis-txt">Si c'est encore trop dur, tu peux revoir « ${labelLecon(avant, trouve.niveau)} ».</p>
 			${
 				deja
@@ -510,11 +514,11 @@ const PREREQUIS_DEJA_SUE = 'Tu la réussis déjà ! Tu peux la relancer quand tu
    passer. Ajoute seulement (le bouton n'est rendu que si la leçon n'y est pas) : le
    dés-épinglage reste un geste de l'adulte, dans l'espace encadrant. */
 function epinglerPrerequis(zone: HTMLElement): void {
-	const id = zone.dataset.prerequis;
+	const entryId = zone.dataset.entry;
 	const uuid = activeProfile()?.uuid;
-	if (!id || !uuid) return;
-	toggleRevoirFor(uuid, id);
-	const actif = revoirActives(dicteeDisponible()).some((e) => e.id === id);
+	if (!entryId || !uuid) return;
+	toggleRevoirFor(uuid, entryId);
+	const actif = revoirActives(dicteeDisponible()).some((e) => e.entryId === entryId);
 	const dit = document.createElement('p');
 	dit.className = 'etay-prerequis-ok';
 	dit.setAttribute('role', 'status');

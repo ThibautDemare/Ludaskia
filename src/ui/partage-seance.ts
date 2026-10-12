@@ -89,6 +89,7 @@ import { goHome, setCurrentLessonId, setCurrentMode, setRenderCtx, setToolbar } 
 import { itemsResultatHTML } from './partage-resultat';
 import type { ErreurRunner, JeuSeance, SeanceRunner } from './runner-partage';
 import type { TypeRunner } from '../core/exercise';
+import type { SchoolLevel } from '../core/catalog';
 import { jouerPartageQcm } from './lecon-qcm';
 import { jouerPartageTuiles } from './lecon-tuiles';
 import { jouerPartageOrdre } from './lecon-ordre';
@@ -519,7 +520,7 @@ function terminer(el: HTMLElement): void {
 	s.finie = true;
 	const fiche = el.querySelector<HTMLElement>('#partageFiche');
 	try {
-		journaliser(items, verdicts);
+		journaliser(items, verdicts, s.envoi.niveau);
 		marquerChamps(inputs, statuses, s.ctx.items);
 		revelerQuestions(questions, verdicts);
 		figerFiche(el);
@@ -551,8 +552,14 @@ function figerPremierPassage(s: SeanceEnCours): Resultat {
 
 /* Journal d'erreurs (#391, critère 25) : une entrée par question fausse ou passée par
    « je ne sais pas » (marquée « n'a pas essayé », comme #467). Entraînement compris :
-   tout chemin qui corrige une réponse d'enfant journalise. */
-function journaliser(items: ItemPassage[], verdicts: Verdict[]): void {
+   tout chemin qui corrige une réponse d'enfant journalise. `niveau` = classe de l'envoi (#573) :
+   la séance se joue à la classe choisie par l'adulte qui l'a composée, pas à celle que suit
+   le profil qui la passe. */
+function journaliser(
+	items: ItemPassage[],
+	verdicts: Verdict[],
+	niveau: SchoolLevel | undefined,
+): void {
 	verdicts.forEach((v, i) => {
 		if (v.statut !== 'faux' && v.statut !== 'jnsp') return;
 		const ip = items[i];
@@ -563,6 +570,7 @@ function journaliser(items: ItemPassage[], verdicts: Verdict[]): void {
 			lessonId: ip.capture.lecon,
 			mode: MODE_PARTAGE,
 			sansTentative: v.statut === 'jnsp',
+			niveau,
 		});
 	});
 }
@@ -737,7 +745,7 @@ function terminerEnRunner(el: HTMLElement, s: SeanceEnCours): void {
 	s.finie = true;
 	el.innerHTML = repereHTML(s.envoi, s.entrainement).balisage;
 	try {
-		journaliserRunner(s.erreurs);
+		journaliserRunner(s.erreurs, s.envoi.niveau);
 	} catch {
 		// Le journal est un confort pour l'adulte : il ne doit coûter ni le lien ni la correction.
 	}
@@ -757,9 +765,13 @@ function terminerEnRunner(el: HTMLElement, s: SeanceEnCours): void {
 }
 
 /* Journal d'erreurs (critère 25) : les entrées notées par le runner, à la granularité de
-   son format, sous le mode « séance partagée ». Entraînement compris, comme la fiche. */
-function journaliserRunner(erreurs: readonly ErreurRunner[]): void {
-	for (const e of erreurs) capterErreur({ ...e, mode: MODE_PARTAGE });
+   son format, sous le mode « séance partagée ». Entraînement compris, comme la fiche. Même
+   classe que la fiche : celle de l'envoi (#573). */
+function journaliserRunner(
+	erreurs: readonly ErreurRunner[],
+	niveau: SchoolLevel | undefined,
+): void {
+	for (const e of erreurs) capterErreur({ ...e, mode: MODE_PARTAGE, niveau });
 }
 
 /* La correction d'une séance en runner : la liste des réponses du résultat, comme

@@ -21,7 +21,7 @@
    ============================================================ */
 
 import { icon } from './icon';
-import { getLessonById } from '../core/catalog';
+import { getLessonById, type LessonDef, type SchoolLevel } from '../core/catalog';
 import type { Profile } from '../core/profiles';
 import type { CartesBrutes } from '../core/consolidation-bas-niveau';
 import { prerequisOuverts, type PrerequisOuvert } from '../core/prerequis';
@@ -41,13 +41,14 @@ import {
 	orthoRevoirId,
 	niveauProfilMatiere,
 } from '../core/encadrant-stats';
-import { LEVEL_LABEL, labelLecon } from '../core/levels';
+import { LEVEL_LABEL, effectiveLevel, labelLecon } from '../core/levels';
+import { entreeEpinglee, revoirLeconId } from '../core/revoir-cible';
 import { lsGetRaw } from '../core/storage';
 import { ORTHO_KEY } from '../core/orthographe/store';
 import { labelLeconOrtho, libelleOrthoIntrouvable } from '../core/orthographe/lessons';
 import { badgeClasseOrigine, container, renderEspace } from './encadrant-commun';
 import { segmentHTML } from './segment';
-import { html, VIDE, type SafeHtml, joindre } from '../core/html';
+import { html, VIDE, type SafeHtml, joindre, attribut } from '../core/html';
 
 /* Nombre d'erreurs (dédoublonnées) montrées par leçon avant le repli « + N plus
    anciennes » (avis designer : 3-5 max pour rester lisible). */
@@ -153,15 +154,32 @@ const INFOBULLE_PREREQUIS = {
 };
 
 /* Prérequis de la classe précédente encore ouverts pour la leçon d'un groupe (#724),
-   travaillés ou non, lus au niveau suivi par le profil CONSULTÉ. */
+   travaillés ou non, lus au niveau suivi par le profil CONSULTÉ. Seulement pour un groupe
+   d'erreurs faites DANS la classe suivie (#573) : un prérequis du CE2 explique une erreur sur
+   la version CM1 d'une leçon, pas une erreur faite sur sa version CE2. */
 function prerequisDuGroupe(
-	lessonId: string,
+	g: GroupeErreursLecon,
 	consulte: Profile,
 	cartes: CartesBrutes,
 ): PrerequisOuvert[] {
-	const lesson = getLessonById(lessonId);
+	const lesson = getLessonById(g.lessonId);
 	if (!lesson) return [];
-	return prerequisOuverts(lesson, niveauProfilMatiere(consulte, lesson.subject), cartes);
+	const suivi = niveauProfilMatiere(consulte, lesson.subject);
+	if (g.niveau !== effectiveLevel(lesson, suivi)) return [];
+	return prerequisOuverts(lesson, suivi, cartes);
+}
+
+/* Épingle d'une leçon À UN NIVEAU dans la file du profil consulté (#573) : l'id qui l'épingle
+   déjà (scopé, ou nu d'avant #573 s'il se joue à ce niveau), sinon l'id scopé à poser. Le
+   bouton porte cet id tel quel : retirer une épingle d'avant #573 retire bien l'id nu. */
+function epingleLecon(
+	file: ReadonlySet<string>,
+	lesson: LessonDef,
+	niveau: SchoolLevel,
+	consulte: Profile,
+): { entryId: string; epingle: boolean } {
+	const deja = entreeEpinglee(file, lesson, niveau, niveauProfilMatiere(consulte, lesson.subject));
+	return { entryId: deja ?? revoirLeconId(lesson.id, niveau), epingle: deja != null };
 }
 
 /* Lignes « Prérequis : X » d'un groupe : une cause probable d'une partie de ses erreurs. Un
@@ -169,16 +187,20 @@ function prerequisDuGroupe(
    donc ici (et dans l'étayage) qu'il se propose. Le bouton épingle le PRÉREQUIS, pas la
    leçon du groupe, et son nom dit la classe : deux leçons de classes différentes peuvent
    être homonymes. */
-function prerequisGroupeHTML(ouverts: PrerequisOuvert[], epinglees: Set<string>): SafeHtml {
+function prerequisGroupeHTML(
+	ouverts: PrerequisOuvert[],
+	epinglees: ReadonlySet<string>,
+	consulte: Profile,
+): SafeHtml {
 	return joindre(
 		ouverts.map((p) => {
 			const label = labelLecon(p.lesson, p.niveau);
-			const epingle = epinglees.has(p.lesson.id);
+			const { entryId, epingle } = epingleLecon(epinglees, p.lesson, p.niveau, consulte);
 			const verbe = epingle ? 'Retirer' : 'Épingler';
 			return html`<p class="enc-err-prerequis" data-prerequis="${p.lesson.id}">
           <span>Prérequis : ${label}</span>
           ${badgeClasseOrigine(p.niveau, epingle ? INFOBULLE_PREREQUIS.epingle : INFOBULLE_PREREQUIS.libre)}
-          <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${p.lesson.id}" aria-label="${verbe} « ${label} » (${LEVEL_LABEL[p.niveau]})">${verbe}</button>
+          <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${p.lesson.id}" data-entry="${entryId}" aria-label="${verbe} « ${label} » (${LEVEL_LABEL[p.niveau]})">${verbe}</button>
         </p>`;
 		}),
 	);
@@ -186,7 +208,7 @@ function prerequisGroupeHTML(ouverts: PrerequisOuvert[], epinglees: Set<string>)
 
 function groupeHTML(
 	g: GroupeErreursLecon,
-	epinglees: Set<string>,
+	epinglees: ReadonlySet<string>,
 	orthoListes: readonly { id: string; label: string }[],
 	now: number,
 	consulte: Profile,
@@ -195,31 +217,46 @@ function groupeHTML(
 	// Résolution du libellé : leçon du catalogue, sinon liste d'orthographe (prédéfinie
 	// ou du profil consulté), sinon un titre de repli pour une liste absente de ce profil
 	// (supprimée, ou arrivée par une dictée envoyée d'un autre profil, #734), sinon l'id
-	// brut en dernier recours. Le libellé de leçon est
-	// résolu AU NIVEAU DU PROFIL CONSULTÉ (#436, `labelNiveau`), comme le récap de
-	// progression et le programme de séance : les erreurs d'un CM1 sur « Clique sur le nom
-	// noyau » ne doivent pas se regrouper sous le libellé d'une autre classe.
+	// brut en dernier recours.
+	// Le libellé de leçon est celui de la classe où les erreurs ont été FAITES (#573), pas
+	// de la classe suivie aujourd'hui : un même groupe ne doit pas changer de titre quand
+	// l'adulte fait passer la matière en CM1, et des erreurs faites en CE2 ne doivent pas
+	// s'afficher sous « Clique sur le nom noyau ». Le badge de classe dit d'où elles viennent,
+	// sur CHAQUE groupe de leçon, même quand une seule classe est présente : deux leçons
+	// homonymes de deux classes resteraient sinon indiscernables.
 	const lesson = getLessonById(g.lessonId);
+	const niveau = lesson ? effectiveLevel(lesson, g.niveau ?? 'ce2') : null;
 	const labelOrtho = lesson ? null : labelLeconOrtho(g.lessonId, orthoListes);
-	const label = lesson
-		? labelLecon(lesson, niveauProfilMatiere(consulte, lesson.subject))
-		: (labelOrtho ?? libelleOrthoIntrouvable(g.lessonId) ?? g.lessonId);
+	const label =
+		lesson && niveau
+			? labelLecon(lesson, niveau)
+			: (labelOrtho ?? libelleOrthoIntrouvable(g.lessonId) ?? g.lessonId);
 	const quand = libelleDerniereFois(g.derniereFois, now);
 	const visibles = g.erreurs.slice(0, MAX_PAR_LECON);
 	const anciennes = g.erreurs.slice(MAX_PAR_LECON);
-	// Entrée « à revoir » : id du catalogue pour une leçon, id de dictée préfixé pour une
-	// liste d'orthographe. On peut désormais épingler l'une comme l'autre ; l'action n'est
-	// masquée que pour un id non résolu (ni leçon, ni liste connue).
-	const entryId = lesson ? g.lessonId : labelOrtho ? orthoRevoirId(g.lessonId) : null;
-	const epingle = entryId ? epinglees.has(entryId) : false;
-	const actions = entryId
+	// Entrée « à revoir » : la leçon DANS LA CLASSE DU GROUPE (#573), ou l'id de dictée
+	// préfixé pour une liste d'orthographe. L'action n'est masquée que pour un id non résolu
+	// (ni leçon, ni liste connue).
+	const pin =
+		lesson && niveau
+			? epingleLecon(epinglees, lesson, niveau, consulte)
+			: labelOrtho
+				? {
+						entryId: orthoRevoirId(g.lessonId),
+						epingle: epinglees.has(orthoRevoirId(g.lessonId)),
+					}
+				: null;
+	// Nom accessible : la classe y figure pour une leçon, deux groupes pouvant porter le même
+	// libellé (leçon sans libellé propre à chaque classe).
+	const nom = `${pin?.epingle ? 'Retirer' : 'Épingler'} « ${label} »${niveau ? ` (${LEVEL_LABEL[niveau]})` : ''}`;
+	const actions = pin
 		? html`<div class="enc-actions">
-        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${epingle ? 'Retirer' : 'Épingler'} « ${label} »">${epingle ? 'Retirer' : 'Épingler'}</button>
+        <button type="button" class="enc-btn-sec${pin.epingle ? ' on' : ''}" data-act="epingler" data-lesson="${lesson ? g.lessonId : pin.entryId}" data-entry="${pin.entryId}" aria-label="${nom}">${pin.epingle ? 'Retirer' : 'Épingler'}</button>
       </div>`
 		: VIDE;
-	return html`<details class="enc-err-lecon">
+	return html`<details class="enc-err-lecon"${niveau ? attribut('data-niveau', niveau) : VIDE}>
       <summary class="enc-err-sum">
-        <span class="enc-err-lecon-lab">${label}</span>
+        <span class="enc-err-tete"><span class="enc-err-lecon-lab">${label}</span>${niveau ? badgeClasseOrigine(niveau) : ''}</span>
         <span class="enc-err-count">${g.total} erreur${g.total > 1 ? 's' : ''}</span>
         ${quand ? html`<span class="enc-err-quand">dernière fois ${quand}</span>` : ''}
         ${
@@ -230,7 +267,7 @@ function groupeHTML(
 						: ''
 				}
       </summary>
-      ${prerequisGroupeHTML(prerequis, epinglees)}
+      ${prerequisGroupeHTML(prerequis, epinglees, consulte)}
       <ul class="enc-err-list">${joindre(visibles.map((e) => erreurLigneHTML(e, now)))}</ul>
       ${anciennesHTML(anciennes, now, label)}
       ${actions}
@@ -295,9 +332,7 @@ export function erreursHTML(consulte: Profile, now: number): SafeHtml {
 	const epinglees = new Set(loadRevoirFor(consulte.uuid));
 	const orthoListes = orthoListesFor(consulte.uuid);
 	const cartes = loadCartesBrutesFor(consulte.uuid);
-	const prerequis = new Map(
-		groupes.map((g) => [g, prerequisDuGroupe(g.lessonId, consulte, cartes)]),
-	);
+	const prerequis = new Map(groupes.map((g) => [g, prerequisDuGroupe(g, consulte, cartes)]));
 	// L'explication du mot « Prérequis » est dite UNE fois, en tête de bloc, et seulement quand
 	// une ligne en porte : répétée sur chaque groupe, elle noierait les erreurs.
 	const aide = [...prerequis.values()].some((p) => p.length)

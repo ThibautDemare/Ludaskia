@@ -10,6 +10,7 @@
    history.pushState) pour rester compatible avec file://.
    ============================================================ */
 import { getAllLessons, getLessonById } from '../core/catalog';
+import type { LessonDef, SchoolLevel } from '../core/catalog';
 import { defaultMode, modesPourNiveau, seJoueEnRunner } from '../core/exercise';
 import type { ExerciseMode, TypeRunner } from '../core/exercise';
 
@@ -25,8 +26,15 @@ import { runLeconDroiteGraduee } from './lecon-droite-graduee';
 import { runLeconProbleme } from './lecon-probleme';
 import { runLeconTableau, leconTableauCleanup } from './lecon-tableau';
 import { brancherEtayageEcran } from './etayage-panneau';
-import { labelLecon } from '../core/levels';
-import { niveauLecon } from '../core/niveau-actif';
+import { effectiveLevel, labelLecon } from '../core/levels';
+import {
+	niveauLecon,
+	niveauActifMatiere,
+	imposerNiveauLecon,
+	leverNiveauImpose,
+	niveauImpose,
+} from '../core/niveau-actif';
+import { lireRevoirLecon } from '../core/revoir-cible';
 import { renderItem, createRenderContext } from '../core/items';
 import type { Item, RenderContext } from '../core/items';
 import { startChrono, resetChrono } from './chrono';
@@ -197,22 +205,67 @@ export function showEncadrant() {
 export function startSeance() {
 	location.hash = 'seance';
 }
-export function startLecon(id: string, origine: OrigineActivite = 'catalogue') {
+/* ---------- Leçon jouée à un niveau IMPOSÉ (#573) ----------
+   Une épingle posée par l'adulte sur la version CE2 d'une leçon qui existe aussi en CM1 se
+   joue en CE2, même si la matière est suivie en CM1 : énoncés, consigne, libellé ET stockage
+   du résultat. Tout le code d'une leçon lit son niveau par `niveauLecon`, qui honore le
+   niveau imposé (core/niveau-actif.ts) ; reste à dire QUAND l'imposer.
+
+   Le niveau voyage dans le HASH (`#lecon-<id>@ce2`, `#mode-<id>@ce2`) : le routeur l'impose à
+   l'entrée de ces deux écrans et le lève sur tous les autres. Il vit donc exactement le temps
+   de la leçon, sans état à nettoyer à la main : quitter l'écran par n'importe quelle porte
+   (accueil, Précédent, lien) le lève, un rechargement le retrouve. Le suffixe n'est posé que
+   s'il change quelque chose : une leçon jouée à son niveau ordinaire garde son hash nu.
+
+   PAS DE REPRISE sous niveau imposé : l'instantané de reprise (#63, #498) est rangé sous l'id
+   nu de la leçon et relancé par la carte « À continuer », hors du hash. Une série CE2
+   interrompue reviendrait donc en CM1, ou l'inverse. La série imposée, courte, repart à neuf. */
+function cibleHash(lesson: LessonDef, niveau: SchoolLevel | undefined): string {
+	if (!niveau) return lesson.id;
+	const joue = effectiveLevel(lesson, niveau);
+	const ordinaire = effectiveLevel(lesson, niveauActifMatiere(lesson.subject));
+	return joue === ordinaire ? lesson.id : `${lesson.id}@${joue}`;
+}
+/* Lit la cible d'un hash de leçon (`<id>` ou `<id>@<niveau>`, même forme qu'une épingle de la
+   file « à revoir »), impose le niveau s'il y en a un et rend l'id nu. Un niveau que la leçon
+   ne porte pas est ignoré (lien bricolé, leçon retirée d'une classe par une mise à jour) : la
+   leçon se joue alors à son niveau ordinaire plutôt que de tomber sur un écran vide. */
+function lireCibleHash(cible: string): string {
+	const { lessonId, niveau } = lireRevoirLecon(cible);
+	const lesson = getLessonById(lessonId);
+	if (lesson && niveau && lesson.levels.includes(niveau)) imposerNiveauLecon(lessonId, niveau);
+	return lessonId;
+}
+
+/* `niveau` (#573) : niveau auquel jouer la leçon, quand l'appelant le connaît (épingle de la
+   file « à revoir ») ; absent, la leçon se joue à son niveau ordinaire. */
+export function startLecon(
+	id: string,
+	origine: OrigineActivite = 'catalogue',
+	niveau?: SchoolLevel,
+) {
 	const lesson = getLessonById(id);
 	if (!lesson) return;
 	setOrigineActivite(origine, id); // provenance du lancement (#461) : conditionne le retour de fin
+	const cible = cibleHash(lesson, niveau);
+	const joue = niveau ? effectiveLevel(lesson, niveau) : niveauLecon(lesson);
+	// Plusieurs modes (ex. conjugaison saisie/QCM) → écran de choix (#69). Compté APRÈS
+	// filtrage par niveau (#711) : un mode réservé au CM1 ne doit pas ouvrir un écran de
+	// choix à un CE2 qui n'y verrait qu'un seul bouton.
+	const lancer = () => {
+		location.hash =
+			(modesPourNiveau(lesson.exerciseType, joue).length > 1 ? 'mode-' : 'lecon-') + cible;
+	};
+	// Niveau imposé : pas de reprise (cf. en-tête de section), lancement direct.
+	if (cible !== id) {
+		lancer();
+		return;
+	}
 	// Reprise éventuelle → Continuer / Recommencer, AVANT l'écran de choix de mode : depuis
 	// #498 les runners « une question à la fois » sont eux aussi reprenables, et leur
 	// instantané porte déjà le mode joué — redemander lequel n'aurait pas de sens.
 	// « Recommencer » repart du parcours normal, écran de choix compris.
-	maybeRelaunch(leconKey(id), labelLecon(lesson, niveauLecon(lesson)), () => {
-		// Plusieurs modes (ex. conjugaison saisie/QCM) → écran de choix (#69). Compté APRÈS
-		// filtrage par niveau (#711) : un mode réservé au CM1 ne doit pas ouvrir un écran de
-		// choix à un CE2 qui n'y verrait qu'un seul bouton.
-		location.hash =
-			(modesPourNiveau(lesson.exerciseType, niveauLecon(lesson)).length > 1 ? 'mode-' : 'lecon-') +
-			id;
-	});
+	maybeRelaunch(leconKey(id), labelLecon(lesson, joue), lancer);
 }
 /* Écran de choix du sous-exercice / mode (#69) : gros boutons dérivés des modes
    du type d'exercice (jamais codés en dur). Le mode conseillé est mis en avant. */
@@ -224,8 +277,9 @@ export function showModeChoice(id: string) {
 	const opts = lesson ? modesPourNiveau(lesson.exerciseType, niveauLecon(lesson)) : undefined;
 	if (!lesson || !opts || opts.length <= 1) {
 		// Pas de choix réel → lancement direct (cohérent avec le mono-mode). On PROPAGE
-		// l'origine (#461) : cet écran est une étape du lancement, pas une nouvelle entrée.
-		startLecon(id, origineActivite());
+		// l'origine (#461) et le niveau imposé (#573) : cet écran est une étape du
+		// lancement, pas une nouvelle entrée.
+		startLecon(id, origineActivite(), niveauImpose(id) ?? undefined);
 		return;
 	}
 	resetSessionUI();
@@ -271,7 +325,10 @@ function chooseMode(id: string, mode: ExerciseMode) {
 	// Les modes « une question à la fois » (QCM, tuiles, problème) ne sont pas des
 	// grilles : pas d'offre de reprise. Seule la saisie (fiche grille) la propose.
 	const type = lesson.exerciseType.generate({ mode }).type;
+	// Le hash garde le niveau imposé (#573), qui n'offre pas de reprise (cf. `cibleHash`).
+	const cible = cibleHash(lesson, niveauImpose(id) ?? undefined);
 	if (
+		cible !== id ||
 		type === 'qcm' ||
 		type === 'qcmMulti' ||
 		type === 'tuilesNombre' ||
@@ -279,7 +336,7 @@ function chooseMode(id: string, mode: ExerciseMode) {
 		type === 'probleme' ||
 		type === 'tableauConversion'
 	) {
-		location.hash = 'lecon-' + id;
+		location.hash = 'lecon-' + cible;
 	} else {
 		maybeRelaunch(leconKey(id), labelLecon(lesson, niveauLecon(lesson)), () => {
 			location.hash = 'lecon-' + id;
@@ -315,6 +372,9 @@ export function route() {
 	// bootstrap et chaque bascule de profil, qui passent toutes par route()).
 	applyPreferences();
 	const h = (location.hash || '').replace(/^#/, '');
+	// Niveau imposé (#573) : levé à chaque changement d'écran, reposé par les seuls écrans
+	// d'une leçon dont le hash le porte (cf. `lireCibleHash`).
+	leverNiveauImpose();
 	// Séance partagée (#734) : `#envoi/<code>` (l'enfant joue), `#resultat/<code>` (l'adulte
 	// lit). Le code ne se lit qu'ici, jamais ailleurs.
 	const lien = lireFragment(location.hash);
@@ -344,11 +404,11 @@ export function route() {
 		if (CATEGORIES.find((c) => c.id === id)) showCategorieView(id);
 		else showMatieresView();
 	} else if (h.startsWith('lecon-')) {
-		const id = h.slice(6);
+		const id = lireCibleHash(h.slice(6));
 		if (getAllLessons().find((l) => l.id === id)) runLecon(id);
 		else showHomeView();
 	} else if (h.startsWith('mode-')) {
-		const id = h.slice(5);
+		const id = lireCibleHash(h.slice(5));
 		if (getAllLessons().find((l) => l.id === id)) showModeChoice(id);
 		else showHomeView();
 	} else if (h === 'ortho-new') {
@@ -718,15 +778,18 @@ export function runLecon(id: string) {
 	}
 	currentMode = 'lecon';
 	currentLessonId = id;
-	// Contexte de reprise : cette leçon devient « l'exercice en cours » (#63).
-	setResumeCtx({
-		key: leconKey(id),
-		mode: 'lecon',
-		label: labelLecon(lesson, niveauLecon(lesson)),
-		icon: SUBJECT_ICON[lesson.subject] ?? 'book-open',
-		categoryId: lesson.category,
-		relaunch: { type: 'lecon', lessonId: id },
-	});
+	// Contexte de reprise : cette leçon devient « l'exercice en cours » (#63) — sauf sous
+	// niveau imposé (#573), qui ne se reprend pas (cf. `cibleHash`).
+	if (niveauImpose(id)) clearResumeCtx();
+	else
+		setResumeCtx({
+			key: leconKey(id),
+			mode: 'lecon',
+			label: labelLecon(lesson, niveauLecon(lesson)),
+			icon: SUBJECT_ICON[lesson.subject] ?? 'book-open',
+			categoryId: lesson.category,
+			relaunch: { type: 'lecon', lessonId: id },
+		});
 	const ctx = createRenderContext();
 	setRenderCtx(ctx);
 	// Aiguille math (rendu riche) / autres matières (texte). Le MODE retenu est transmis

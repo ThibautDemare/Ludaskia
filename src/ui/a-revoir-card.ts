@@ -40,11 +40,13 @@ function actives(): RevoirEntry[] {
 	return revoirActives(dicteeDisponible());
 }
 
-/* Entrée « à revoir » suivante dans la liste active (cyclique → ne bloque jamais). */
-function suivante(apresId: string): RevoirEntry | null {
+/* Entrée « à revoir » suivante dans la liste active (cyclique → ne bloque jamais). Repérée
+   par son id de FILE (`entryId`) : la même leçon peut être épinglée dans deux classes (#573),
+   et son id nu ne désigne alors plus une seule entrée. */
+function suivante(apresEntryId: string): RevoirEntry | null {
 	const entrees = actives();
 	if (entrees.length === 0) return null;
-	const i = entrees.findIndex((e) => e.id === apresId);
+	const i = entrees.findIndex((e) => e.entryId === apresEntryId);
 	return i < 0 ? entrees[0] : entrees[(i + 1) % entrees.length];
 }
 
@@ -70,10 +72,15 @@ function visuel(entree: RevoirEntry): { tint: string; ico: SafeHtml; sousTitre: 
 	};
 }
 
-/* Rend la carte dans `el`. `cibleId` force une entrée précise (« voir une autre »).
-   Renvoie l'id de la LEÇON affichée (`null` si carte masquée ou entrée de dictée) : c'est
-   ce que « Ta prochaine leçon » doit éviter à son tour (#516). */
-export function renderARevoir(el: HTMLElement | null, cibleId?: string): string | null {
+/* Rend la carte dans `el`. `cibleEntryId` force une entrée précise (« voir une autre »), par
+   son id de file. Renvoie l'id NU de la LEÇON affichée (`null` si carte masquée ou entrée de
+   dictée) : c'est ce que « Ta prochaine leçon » doit éviter à son tour (#516), quelle que soit
+   la classe épinglée (#573).
+
+   Rien, dans le rendu, ne dépend de la classe de l'entrée (#573, règle #232) : une leçon
+   épinglée dans une classe antérieure s'affiche exactement comme une autre. Seul son libellé,
+   celui de la classe où elle se joue, la distingue — comme partout ailleurs dans l'appli. */
+export function renderARevoir(el: HTMLElement | null, cibleEntryId?: string): string | null {
 	if (!el) return null;
 	// Nettoyage DUR de la file avant lecture (#465) : l'accueil est le passage obligé après
 	// chaque session, c'est donc ici que la file du profil actif se débarrasse des entrées
@@ -84,6 +91,7 @@ export function renderARevoir(el: HTMLElement | null, cibleId?: string): string 
 	if (entrees.length === 0) {
 		el.style.display = 'none';
 		delete el.dataset.lesson;
+		delete el.dataset.entry;
 		delete el.dataset.kind;
 		el.innerHTML = '';
 		return null;
@@ -91,8 +99,9 @@ export function renderARevoir(el: HTMLElement | null, cibleId?: string): string 
 	el.style.display = '';
 	// Déduplication avec « Ta prochaine leçon » (#516) : on évite la leçon du jour tant
 	// qu'il reste une autre entrée épinglée à proposer (cf. core/accueil-propositions.ts).
-	const entree = choisirARevoir(entrees, leconDuJour()?.id ?? null, cibleId) ?? entrees[0];
+	const entree = choisirARevoir(entrees, leconDuJour()?.id ?? null, cibleEntryId) ?? entrees[0];
 	el.dataset.lesson = entree.id;
+	el.dataset.entry = entree.entryId;
 	el.dataset.kind = entree.kind;
 	const { tint, ico, sousTitre } = visuel(entree);
 	// « Voir une autre » n'a de sens que s'il reste plus d'une entrée à revoir.
@@ -122,17 +131,19 @@ export function renderARevoir(el: HTMLElement | null, cibleId?: string): string 
 function onARevoirClick(e: Event): void {
 	const el = e.currentTarget as HTMLElement;
 	if ((e.target as HTMLElement).closest('[data-ar="autre"]')) {
-		const next = suivante(el.dataset.lesson ?? '');
+		const next = suivante(el.dataset.entry ?? '');
 		// Le défilement n'est PAS dédupliqué ici (#516), à la différence de celui de la carte
 		// du fil : la file épinglée est COURTE et entièrement voulue par l'encadrant, donc en
 		// faire le tour doit tout montrer, y compris l'entrée qui se trouve être la leçon du
 		// jour. Le doublon peut réapparaître le temps d'un tour de boucle, sur action explicite
 		// de l'enfant et réversible d'un clic ; l'accueil, lui, repart toujours dédupliqué.
-		renderARevoir(el, next ? next.id : undefined);
+		renderARevoir(el, next ? next.entryId : undefined);
 		return;
 	}
-	const id = el.dataset.lesson;
-	if (!id) return;
-	if (el.dataset.kind === 'ortho') startOrthoLecon(id);
-	else startLecon(id);
+	// Relue au clic plutôt que gardée du rendu : une session a pu passer entre les deux, et
+	// c'est la file du moment qui dit à quel niveau jouer l'entrée.
+	const entree = actives().find((x) => x.entryId === el.dataset.entry);
+	if (!entree) return;
+	if (entree.kind === 'ortho') startOrthoLecon(entree.id);
+	else startLecon(entree.id, 'catalogue', entree.niveau);
 }

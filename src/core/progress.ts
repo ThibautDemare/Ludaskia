@@ -400,7 +400,9 @@ export function recordLessonStats(
 	// d'activité, plutôt qu'un `Date.now()` relu en fin de session comme le faisaient les
 	// appelants : une seule date pour toute la session, donc trois journaux qui l'attribuent à la
 	// même semaine.
-	queueMicrotask(() => recordMonteesPalier(travaillees, now));
+	// Clés résolues MAINTENANT, pas dans la microtâche (cf. `monteesPalierCles`).
+	const cles = travaillees.map((id) => nsKey(id, niveauStockage(id)));
+	queueMicrotask(() => monteesPalierCles(cles, now));
 }
 /* ---------- Journal d'activité : sessions finalisées (#234, typé #319) ----------
    Une entrée par session d'entraînement finalisée (tout ce qui passe par
@@ -609,6 +611,17 @@ function loadPaliersRaw(): Record<string, PaliersNotion> {
    « acquis » ne compte qu'UNE marche (« acquis ») : on ne fabrique pas rétroactivement un
    palier « en cours ». */
 export function recordMonteesPalier(lessonIds: string[], now: number) {
+	monteesPalierCles(
+		lessonIds.map((id) => nsKey(id, niveauStockage(id))),
+		now,
+	);
+}
+/* Même journal, sur des clés `lessonId@niveau` déjà résolues. C'est la forme qu'utilise la
+   fin de session, qui passe par une microtâche : résoudre le niveau AU MOMENT de la session
+   et non à l'exécution de la microtâche, parce qu'un niveau imposé (#573) peut avoir été
+   levé entre-temps — la montée « acquis » d'une épingle jouée en CE2 serait sinon relue en
+   CM1, donc perdue. */
+function monteesPalierCles(cles: string[], now: number) {
 	// Borne de mise en service : posée même si cette session ne franchit aucun palier, et même si
 	// la liste est vide — cas qu'aucun point d'activité ne couvre, faute de session à journaliser.
 	marquerDebutSuivi(now);
@@ -616,8 +629,7 @@ export function recordMonteesPalier(lessonIds: string[], now: number) {
 	const stars = loadStarsRaw();
 	const stats = loadLessonStatsRaw();
 	let changed = false;
-	for (const id of lessonIds) {
-		const k = nsKey(id, niveauStockage(id));
+	for (const k of cles) {
 		const niveau = niveauNotion(stats[k], (stars[k] || 0) > 0);
 		const rec = paliers[k] ?? {};
 		if (niveau === 'acquis' && rec.acquis == null) {

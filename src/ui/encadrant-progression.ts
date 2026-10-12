@@ -22,15 +22,18 @@
    `boutonsImpression`, y a migré (#534).
    ============================================================ */
 import { enumererFr } from '../core/utils';
-import { labelLecon, LEVEL_LABEL } from '../core/levels';
+import { labelLecon, LEVEL_LABEL, LEVEL_ORDER } from '../core/levels';
+import { entreeEpinglee, lireRevoirLecon, revoirLeconId } from '../core/revoir-cible';
 import { icon } from './icon';
 import { listProfiles, activeProfile, type Profile } from '../core/profiles';
 import {
 	toggleRevoirFor,
+	loadRevoirFor,
 	niveauProfilMatiere,
 	echelleActivite,
 	libelleDerniereFois,
 	orthoRevoirId,
+	isOrthoRevoirId,
 	listesOrthoProfil,
 	dicteesProposees,
 	epingleesProfil,
@@ -47,7 +50,13 @@ import {
 	type FriseComposition,
 } from '../core/encadrant-stats';
 import type { RangMot } from '../core/orthographe/etapes';
-import { getAllLessons, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
+import {
+	getAllLessons,
+	getLessonById,
+	CATEGORIES,
+	ORTHO_CATEGORY_ID,
+	type SchoolLevel,
+} from '../core/catalog';
 import { BLOCAGES_SIGNAL_ADULTE } from '../core/report-lecon';
 import { dicteeDisponible } from './tts';
 import { printScope } from './session';
@@ -735,7 +744,31 @@ function quandRetrait(r: RetraitAuto, now: number): string {
 	const quand = libelleDerniereFois(r.at, now);
 	if (r.motif === 'maitrise') return `${quand}, de nouveau maîtrisée`;
 	if (r.motif === 'essai') return `${quand}, essai réussi`;
-	return quand;
+	return quand; // 'version-suivie' : le récit est dans la ligne secondaire (`metaVersionSuivie`)
+}
+
+/* Épingle d'une classe antérieure réussie, dont la version de la classe suivie est proposée une
+   fois à l'enfant avant que l'épingle quitte la file (#573, critère 11). L'adulte doit savoir
+   pourquoi une notion « acquise » reste épinglée, et ce que l'enfant va voir à la place. */
+function metaSonde(origine: SchoolLevel, suivie: SchoolLevel): string {
+	return `Réussie en ${LEVEL_LABEL[origine]}. Sa version de ${LEVEL_LABEL[suivie]} est maintenant proposée à l'enfant, une seule fois.`;
+}
+
+/* Retrait après la tentative de la version de la classe suivie (#573, critère 12). En clair, et
+   sans rien relancer : la version antérieure ne revient sur l'accueil que si l'adulte la
+   ré-épingle (bouton de la ligne), la version suivie se trouve dans l'onglet Suivi. */
+function metaVersionSuivie(r: RetraitAuto): string {
+	const v = r.versionSuivie;
+	if (!v) return '';
+	const origine = lireRevoirLecon(r.id).niveau;
+	const classe = origine ? LEVEL_LABEL[origine] : null;
+	const avant = classe ? `Réussie en ${classe}` : 'Réussie';
+	const suivie = `« ${v.label} » (${LEVEL_LABEL[v.niveau]})`;
+	// Jamais de pronom seul : la ligne nomme deux versions de la leçon, et « elle » pourrait
+	// renvoyer à l'une comme à l'autre (relecture langue #573).
+	return v.reussie
+		? `${avant}, puis ${suivie} réussie aussi.`
+		: `${avant}, mais ${suivie} ne l'est pas encore. ${classe ? `La version ${classe}` : 'Cette leçon'} ne sera pas reproposée : c'est à vous de décider de la suite.`;
 }
 
 /* Infobulle du badge de classe d'origine, par sens de l'écart. Le badge ne dit que la classe :
@@ -745,8 +778,11 @@ const INFOBULLE_ORIGINE: Record<Exclude<OrigineLecon['direction'], 'classe-suivi
 	// « pour cette classe-là », jamais « à ce niveau-là » : le badge d'état voisin porte déjà
 	// un « Niveau : » non visuel, et une navigation à la voix enchaînerait les deux sens du
 	// mot sur la même ligne (classe scolaire / cran d'acquisition).
+	// La 2e phrase (#573, critère 13) : réussir la version d'une classe antérieure ne prouve
+	// rien sur celle de la classe suivie, qui peut être une autre notion (« Clique sur le nom »
+	// au CE2, « Clique sur le nom noyau » au CM1) — d'où la tentative proposée ensuite.
 	'en-dessous':
-		"Leçon d'une classe précédente : épinglée volontairement, elle revient bien sur l'accueil de l'enfant, et son avancement se lit pour cette classe-là.",
+		"Leçon d'une classe précédente : épinglée volontairement, elle revient bien sur l'accueil de l'enfant, et son avancement se lit pour cette classe-là. Réussir cette version ne vaut pas maîtrise de celle de la classe suivie : si elle existe, elle est proposée une fois ensuite.",
 	'au-dessus':
 		"Leçon d'une classe suivante : on montre ce qui s'est passé le jour de l'essai, sans en tirer un niveau d'acquisition sur une notion pas encore travaillée en classe.",
 };
@@ -809,6 +845,9 @@ function ligneRevoir(
 	// Hors classe suivie, le nom du bouton dit aussi la classe (#723) : « Je reconnais les
 	// solides » existe au CE2 et au CM1, et deux boutons homonymes sont indiscernables à la voix.
 	const nomBouton = `${epingle ? 'Retirer' : 'Épingler'} « ${label} »${horsClasse ? ` (${LEVEL_LABEL[horsClasse.niveau]})` : ''}`;
+	// `data-lesson` garde l'id NU de la leçon (ou l'id préfixé d'une dictée) : c'est l'identité
+	// de la notion. `data-entry` porte l'id de FILE à basculer, scopé par classe depuis #573.
+	const lessonId = isOrthoRevoirId(entryId) ? entryId : lireRevoirLecon(entryId).lessonId;
 	return html`<li class="enc-revoir-item">
       <span class="enc-revoir-main">
         <span class="enc-revoir-lab">${label}</span>
@@ -816,8 +855,8 @@ function ligneRevoir(
       </span>
       ${classe}${badge}${signalBlocage(blocages)}
       <span class="enc-actions">
-        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${entryId}" aria-label="${nomBouton}">${epingle ? 'Retirer' : 'Épingler'}</button>
-        ${imprimable ? boutonsImpression(entryId, label) : ''}
+        <button type="button" class="enc-btn-sec${epingle ? ' on' : ''}" data-act="epingler" data-lesson="${lessonId}" data-entry="${entryId}" aria-label="${nomBouton}">${epingle ? 'Retirer' : 'Épingler'}</button>
+        ${imprimable ? boutonsImpression(lessonId, label) : ''}
       </span>
       ${mots ? motsDicteeHTML(mots, label) : ''}
     </li>`;
@@ -830,6 +869,22 @@ function ligneRevoir(
    geste naturel quand on vient de lire l'état d'une notion : les deux écrivent la même file. */
 const ID_SELECTEUR_EPINGLE = 'revoir-epingler';
 
+/* Épingle d'une leçon à UNE classe dans la file du profil consulté (#573) : l'id qui l'épingle
+   déjà (scopé, ou nu d'avant #573 s'il se joue à cette classe), sinon l'id scopé à poser.
+   `null` pour un id hors catalogue. */
+function entreeLeconSelecteur(
+	file: ReadonlySet<string>,
+	consulte: Profile,
+	lessonId: string,
+	niveau: SchoolLevel,
+): { entryId: string; epingle: boolean } | null {
+	const lesson = getLessonById(lessonId);
+	if (!lesson) return null;
+	const deja = entreeEpinglee(file, lesson, niveau, niveauProfilMatiere(consulte, lesson.subject));
+	return { entryId: deja ?? revoirLeconId(lessonId, niveau), epingle: deja != null };
+}
+const estNiveau = (v: string): v is SchoolLevel => (LEVEL_ORDER as string[]).includes(v);
+
 function epinglerHTML(consulte: Profile, epinglees: ReadonlySet<string>): SafeHtml {
 	// `data-act` propre au sélecteur, alors que le geste est le même que `epingler` : une leçon
 	// déjà épinglée porte DEUX boutons sur la page (sa ligne en haut, sa ligne dans l'arbre), et
@@ -837,12 +892,15 @@ function epinglerHTML(consulte: Profile, epinglees: ReadonlySet<string>): SafeHt
 	// chaque clic dans l'arbre.
 	// Une dictée (#722) s'épingle sous son id de file (`ortho:` + id, #424, cf. le handler) :
 	// c'est la MÊME épingle que celle de la ligne du bloc « Dictées », les deux boutons disent
-	// donc la même chose. `epinglees` porte les ids BRUTS des deux natures (`EpingleEntry.id`),
-	// d'où une comparaison directe, sans préfixe.
+	// donc la même chose. Une leçon s'épingle DANS LA CLASSE DE LA LIGNE (#573) : la version CE2
+	// et la version CM1 d'une même leçon sont deux épingles distinctes.
 	const action: ActionLigne = {
 		act: 'epingler-selecteur',
 		etat: (l) => {
-			const on = epinglees.has(l.id);
+			const on =
+				l.kind === 'dictee'
+					? epinglees.has(orthoRevoirId(l.id))
+					: entreeLeconSelecteur(epinglees, consulte, l.id, l.niveau)?.epingle === true;
 			return { label: on ? 'Retirer' : 'Épingler', on };
 		},
 	};
@@ -864,9 +922,9 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): SafeHtml {
 	const now = Date.now();
 	// Entrées actuellement épinglées (leçons du catalogue ET listes de dictée), résolues.
 	const pinned = epingleesProfil(consulte, dicteeDisponible());
-	const epingleeIds = new Set(pinned.map((e) => e.id));
-	// Suggestions AUTO : leçons « faiblardes » (perf récente < 70 %) non déjà épinglées (max 3).
-	const suggestions = recap.aRevoir.filter((n) => !epingleeIds.has(n.lessonId)).slice(0, 3);
+	// Suggestions AUTO : leçons « faiblardes » (perf récente < 70 %) non déjà épinglées DANS LA
+	// CLASSE SUIVIE (max 3) — une épingle de la version CE2 n'épingle pas la version CM1 (#573).
+	const suggestions = recap.aRevoir.filter((n) => !n.epingle).slice(0, 3);
 	// Trace des retraits automatiques (#465) : une épingle ne disparaît pas sans explication,
 	// et se remet d'un clic (« Épingler » → l'entrée est alors conservée, cf. purgeRevoirSolides).
 	const retraits = retraitsAutoProfil(consulte, now);
@@ -882,10 +940,13 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): SafeHtml {
 						// le signal « reste un point dur » (#492), qui supposent du contenu de la classe
 						// suivie : `blocages` vient du récap scopé, il est donc vide pour elle par
 						// construction, et son état est un compte-rendu factuel, jamais un cran.
-						blocages: blocages.get(e.id),
+						// Une épingle d'une autre classe ne reprend pas les blocages de la classe
+						// suivie (#573) : ce sont deux versions de la leçon.
+						blocages: e.origine?.direction === 'classe-suivie' ? blocages.get(e.lessonId) : 0,
 						etat: e.etat.kind === 'acquisition' ? e.etat.niveau : undefined,
 						essai: e.etat.kind === 'essai' ? e.etat : undefined,
 						origine: e.origine,
+						meta: e.sonde && e.origine ? metaSonde(e.origine.niveau, e.sonde.niveau) : undefined,
 					}),
 				),
 			)}</ul>`
@@ -895,23 +956,21 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): SafeHtml {
        <p class="enc-hint">Leçons qui gagneraient à être revues :</p>
        <ul class="enc-revoir">${joindre(
 					suggestions.map((n) =>
-						ligneRevoir(n.lessonId, n.label, false, { etat: n.niveau, blocages: n.blocages }),
+						ligneRevoir(n.entryId, n.label, false, { etat: n.niveau, blocages: n.blocages }),
 					),
 				)}</ul>`
 		: VIDE;
 	// Classe précédente (#723) : le sous-bloc reçoit le rendu de ligne des épingles (pas de
 	// cycle d'import, et une ligne identique une fois épinglée).
 	const ligneClassePrecedente: LigneClassePrecedente = (n, { origine, infobulle }) =>
-		ligneRevoir(n.lessonId, n.label, false, {
+		ligneRevoir(n.entryId, n.label, false, {
 			etat: n.niveau,
 			origine,
 			infobulle,
 			blocages: n.blocages,
 		});
 	const blocClassePrecedente = joindre(
-		recap.classePrecedente.map((c) =>
-			classePrecedenteHTML(c, consulte, epingleeIds, ligneClassePrecedente),
-		),
+		recap.classePrecedente.map((c) => classePrecedenteHTML(c, consulte, ligneClassePrecedente)),
 	);
 	const blocRetraits = retraits.length
 		? html`<h4 class="enc-sub-lab">Retirées automatiquement</h4>
@@ -921,6 +980,7 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): SafeHtml {
 						ligneRevoir(r.id, r.label, false, {
 							imprimable: r.kind === 'lecon',
 							quand: quandRetrait(r, now),
+							meta: r.versionSuivie ? metaVersionSuivie(r) : undefined,
 						}),
 					),
 				)}</ul>`
@@ -934,7 +994,7 @@ export function aRevoirHTML(recap: RecapProfil, consulte: Profile): SafeHtml {
       ${blocSuggestions}
       ${blocClassePrecedente}
       ${blocRetraits}
-      ${epinglerHTML(consulte, new Set(pinned.map((e) => e.id)))}
+      ${epinglerHTML(consulte, new Set(loadRevoirFor(consulte.uuid)))}
     </div>`;
 }
 
@@ -961,18 +1021,30 @@ export function progressionClick(act: string, el: HTMLElement): boolean {
 			return true;
 		case 'epingler-selecteur': {
 			const uuid = consulteUuid();
+			const consulte = listProfiles().find((x) => x.uuid === uuid);
 			const brut = el.dataset.lesson;
-			if (uuid && brut) {
-				// La ligne porte l'id BRUT et sa nature : une dictée (#722) s'épingle sous `ortho:`.
+			const niveau = el.dataset.niveau ?? '';
+			if (uuid && consulte && brut) {
+				// La ligne porte l'id BRUT, sa nature et sa classe : une dictée (#722) s'épingle sous
+				// `ortho:`, une leçon dans la classe de la ligne (#573).
 				const kind = el.dataset.kind === 'dictee' ? 'dictee' : 'lecon';
-				toggleRevoirFor(uuid, kind === 'dictee' ? orthoRevoirId(brut) : brut);
-				renderEspace();
+				const entryId =
+					kind === 'dictee'
+						? orthoRevoirId(brut)
+						: estNiveau(niveau)
+							? entreeLeconSelecteur(new Set(loadRevoirFor(uuid)), consulte, brut, niveau)?.entryId
+							: undefined;
+				if (entryId) {
+					toggleRevoirFor(uuid, entryId);
+					renderEspace();
+				}
 				// Focus rendu au bouton de la MÊME leçon DANS l'arbre : la ligne existe aussi, une
 				// fois épinglée, dans le bloc « Épinglées » juste au-dessus — y renvoyer ferait
-				// perdre sa place dans l'arbre à qui en épingle plusieurs d'affilée.
+				// perdre sa place dans l'arbre à qui en épingle plusieurs d'affilée. La classe fait
+				// partie du repère : l'arbre « toutes classes » liste une leçon une fois par classe.
 				container()
 					?.querySelector<HTMLElement>(
-						`#sel-corps-${CSS.escape(ID_SELECTEUR_EPINGLE)} [data-act="epingler-selecteur"][data-lesson="${CSS.escape(brut)}"][data-kind="${kind}"]`,
+						`#sel-corps-${CSS.escape(ID_SELECTEUR_EPINGLE)} [data-act="epingler-selecteur"][data-lesson="${CSS.escape(brut)}"][data-kind="${kind}"][data-niveau="${CSS.escape(niveau)}"]`,
 					)
 					?.focus({ preventScroll: true });
 			}
@@ -980,7 +1052,9 @@ export function progressionClick(act: string, el: HTMLElement): boolean {
 		}
 		case 'epingler': {
 			const uuid = consulteUuid();
-			const entryId = el.dataset.lesson;
+			// Id de FILE (`data-entry`, scopé par classe depuis #573) ; `data-lesson` pour les
+			// boutons qui n'en portent pas (dictées : leur id préfixé est déjà l'id de file).
+			const entryId = el.dataset.entry ?? el.dataset.lesson;
 			if (uuid && entryId) {
 				toggleRevoirFor(uuid, entryId);
 				renderEspace();
@@ -990,7 +1064,7 @@ export function progressionClick(act: string, el: HTMLElement): boolean {
 				// l'utilisateur clavier repart du début du document.
 				container()
 					?.querySelector<HTMLElement>(
-						`[data-act="epingler"][data-lesson="${CSS.escape(entryId)}"]`,
+						`[data-act="epingler"][data-entry="${CSS.escape(entryId)}"], [data-act="epingler"][data-lesson="${CSS.escape(entryId)}"]`,
 					)
 					?.focus({ preventScroll: true });
 			}

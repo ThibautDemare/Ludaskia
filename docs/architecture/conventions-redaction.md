@@ -692,3 +692,16 @@ poser dans le tableau (`ecritureAttendue`, `noteOubli`, `core/tableau-verdict.ts
   entiers.** L'énoncé et la réponse révélée les emploient déjà, l'enfant les lit dans
   l'en-tête de chaque colonne, et la forme à quatre rangs dépasserait vingt-cinq mots en
   toutes lettres.
+
+## Libellé adulte qui nomme deux versions d'une leçon : jamais de pronom seul (#573)
+
+Depuis #573, une même leçon peut apparaître sur une ligne de l'espace encadrant sous ses
+deux classes (« Clique sur le nom » au CE2, « Clique sur le nom noyau » au CM1). Dès qu'un
+libellé en nomme deux, **chaque reprise nomme la version** (« la version CE2 »), jamais un
+pronom seul. Cas posé par la trace d'une tentative CM1 non réussie : « … mais « Clique sur
+le nom noyau » (CM1) n'est pas encore réussie. Elle ne lui est plus proposée » laissait
+l'adulte se demander laquelle ne revenait plus, alors que l'écart entre les deux est
+justement ce qu'on lui dit. Retenu : « La version CE2 ne sera pas reproposée ». Même règle
+pour un participe en tête de phrase (« Réussie en CE2 ») : son sujet implicite est la
+leçon du LIBELLÉ de la ligne, donc la phrase suivante repart d'un sujet explicite (« Sa
+version de CM1… »).

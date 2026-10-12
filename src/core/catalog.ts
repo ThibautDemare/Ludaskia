@@ -61,6 +61,7 @@ import { FIGURES_PROPRIETES_LESSONS } from '../data/maths/figures-proprietes';
 import { SYMETRIE_LESSONS } from '../data/maths/symetrie-axiale';
 import { ANGLES_LESSONS } from '../data/maths/angles';
 import { PROBLEMES_LESSONS } from '../data/maths/problemes';
+import { PROPORTIONNALITE_LESSONS } from '../data/maths/proportionnalite';
 import { DIVISION_LESSONS, DIVISION_EUCLIDIENNE_LESSONS } from '../data/maths/division';
 import { ETAYAGES_CALCUL_MENTAL } from '../data/maths/calcul-mental-etayage';
 import { DIVISIBILITE_LESSONS } from '../data/maths/divisibilite';
@@ -737,11 +738,20 @@ const FRACTIONS_LESSONS_DEFS: LessonDef[] = toLessonDefs(FRACTIONS_LESSONS, {
    problème à la fois ; réponse numérique. Exclus du sprint chronométré.
    Niveaux DÉRIVÉS du moteur (`exerciseType.levels`, comme les leçons multi-niveaux) :
    quatre structures sont ouvertes au CM1 en décimal (#255) et déclarent ['ce2','cm1'] ;
-   les autres restent CE2-only (défaut ['ce2']). */
-const PROBLEMES_LESSONS_DEFS: LessonDef[] = toLessonDefs(PROBLEMES_LESSONS, {
+   les autres restent CE2-only (défaut ['ce2']).
+   Proportionnalité CM1 (#258) : deux leçons CM1-only rangées ici — « Est-ce
+   proportionnel ? » (QCM Oui/Non, EXCLUE du sprint : devinable à 50 %) et « Problèmes de
+   proportionnalité » (runner problème). L'exclusion du sprint est donc transmise depuis
+   l'entrée ; les six leçons historiques ne la déclarent pas, elles restent inchangées. */
+const PROBLEMES_INPUTS: (LessonInput & { excludeFromSprint?: boolean })[] = [
+	...PROBLEMES_LESSONS,
+	...PROPORTIONNALITE_LESSONS,
+];
+const PROBLEMES_LESSONS_DEFS: LessonDef[] = toLessonDefs(PROBLEMES_INPUTS, {
 	subject: 'math',
 	category: 'math-problemes',
 	levels: (d) => d.exerciseType.levels ?? ['ce2'],
+	excludeFromSprint: (d) => d.excludeFromSprint,
 });
 
 /* ---------- Catalogue des leçons « Division par le sens » (#104) ----------

@@ -23,7 +23,7 @@
    ============================================================ */
 import { enumererFr } from '../core/utils';
 import { labelLecon, LEVEL_LABEL, LEVEL_ORDER } from '../core/levels';
-import { entreeEpinglee, lireRevoirLecon, revoirLeconId } from '../core/revoir-cible';
+import { epingleLecon, lireRevoirLecon } from '../core/revoir-cible';
 import { icon } from './icon';
 import { listProfiles, activeProfile, type Profile } from '../core/profiles';
 import {
@@ -869,8 +869,7 @@ function ligneRevoir(
    geste naturel quand on vient de lire l'état d'une notion : les deux écrivent la même file. */
 const ID_SELECTEUR_EPINGLE = 'revoir-epingler';
 
-/* Épingle d'une leçon à UNE classe dans la file du profil consulté (#573) : l'id qui l'épingle
-   déjà (scopé, ou nu d'avant #573 s'il se joue à cette classe), sinon l'id scopé à poser.
+/* Épingle d'une leçon à UNE classe dans la file du profil consulté (#573, cf. `epingleLecon`) ;
    `null` pour un id hors catalogue. */
 function entreeLeconSelecteur(
 	file: ReadonlySet<string>,
@@ -880,8 +879,7 @@ function entreeLeconSelecteur(
 ): { entryId: string; epingle: boolean } | null {
 	const lesson = getLessonById(lessonId);
 	if (!lesson) return null;
-	const deja = entreeEpinglee(file, lesson, niveau, niveauProfilMatiere(consulte, lesson.subject));
-	return { entryId: deja ?? revoirLeconId(lessonId, niveau), epingle: deja != null };
+	return epingleLecon(file, lesson, niveau, niveauProfilMatiere(consulte, lesson.subject));
 }
 const estNiveau = (v: string): v is SchoolLevel => (LEVEL_ORDER as string[]).includes(v);
 

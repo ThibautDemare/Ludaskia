@@ -1006,6 +1006,13 @@ trace (`motif: 'version-suivie'`) : « Réussie en CE2, puis « … » (CM1) ré
 « … mais « … » (CM1) ne l'est pas encore. La version CE2 ne sera pas reproposée : c'est à vous
 de décider de la suite. » Le bouton « Épingler » de la ligne ré-épingle la version antérieure.
 
+*Rejet écrit (relecture qualité #573)* : la sonde se clôt à **tout** essai complet en mode leçon
+de la classe suivie, quelle que soit la porte de lancement (carte « À revoir », catalogue,
+programme). On ne la réserve pas à la carte : c'est la tentative de la version suivie qui
+compte, pas le chemin par lequel l'enfant y arrive, et un essai lancé depuis le catalogue juste
+après la réussite CE2 serait sinon suivi d'une seconde proposition de la même chose. Un sprint,
+un bilan ou une session jouée à une autre classe ne la closent pas.
+
 *Limite connue, hors périmètre de #573* : l'étape « une leçon précise » du composeur de
 séance (ci-dessous) stocke encore un id NU. Elle joue donc la version de la classe suivie,
 même si l'adulte a choisi la version d'une autre classe dans le sélecteur.

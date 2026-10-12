@@ -56,6 +56,16 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
   (= `niveauParMatiere[subject] ?? niveauReference ?? niveauDefautCatalogue(getAllLessons())`), `niveauLecon(lesson)`
   (= `effectiveLevel` sur la matière, **passé à `generate`/`genLessonItem`** par
   `build`/runners/`revision`/`sprint`), `besoinChoixNiveau()`, `lessonsNiveauActif()`.
+  **Niveau IMPOSÉ à une leçon (#573)** : `imposerNiveauLecon(lessonId, niveau)` /
+  `leverNiveauImpose()` / `niveauImpose(lessonId)` (état de module, UNE leçon à la fois, à
+  lever dans les tests) passent devant le niveau de la matière dans `niveauLecon` : une
+  épingle posée sur la version CE2 d'une leçon aussi présente en CM1 se joue en CE2 (énoncés,
+  consigne, libellé, stockage) même si la matière est suivie en CM1, sans passer le niveau de
+  fonction en fonction. C'est le routeur (`ui/navigation.ts`) qui pose et lève : le niveau
+  voyage dans le hash (`#lecon-<id>@ce2`, `#mode-<id>@ce2`, même forme qu'une épingle),
+  levé à chaque `route()`, reposé par les seuls écrans de leçon dont le hash le porte ; un
+  niveau que la leçon ne porte pas est ignoré (jeu au niveau ordinaire). Le suffixe n'est posé
+  que s'il diffère du niveau ordinaire. Détail : [Modes & navigation](modes-et-navigation.md).
 - **`consolidation-bas-niveau.ts`** (pur, #723) — ce qui reste, par matière, de la
   classe **juste en dessous** de la classe suivie, quand la matière est passée à la suivante :
   leçons propres à cette classe précédente (une leçon aussi présente à la classe

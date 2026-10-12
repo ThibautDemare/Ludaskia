@@ -89,7 +89,8 @@ la liste d'orthographe travaillée, uniquement quand la session en vise UNE seul
 programme du jour à ce qui a été réellement fait, cf. [Modes &
 navigation](modes-et-navigation.md)), `ludaskia_revoir`
 (#234 : ids épinglés « à revoir » par l'encadrant → carte d'accueil de l'enfant — un
-`string[]` mêlant des ids de leçon du catalogue et, depuis #424, des entrées de **liste
+`string[]` mêlant des ids de leçon du catalogue — **scopés par classe `lessonId@niveau`
+depuis #573**, `core/revoir-cible.ts` ; un id nu d'avant est joué à la classe suivie — et, depuis #424, des entrées de **liste
 de dictée** d'orthographe **préfixées `ortho:`** — `orthoRevoirId`/`isOrthoRevoirId`,
 `core/encadrant-stats.ts` — id opaque pour une liste du parent, `fr-ortho-*` pour une
 dictée prédéfinie ; rétro-compatible, la nature de chaque entrée tient au seul préfixe ;
@@ -103,9 +104,11 @@ automatique ; clé **ABSENTE** = jamais encore purgée pour ce profil, ce qui d�
 l'adoption de toute la file existante au premier passage, cf.
 `core/encadrant-stats.ts:purgeRevoirSolides`), `ludaskia_revoirAuto` (#465 : journal
 **daté** des retraits automatiques de la file « à revoir », borné à 10 entrées et 30
-jours, libellé figé à l'instant du retrait — base du bloc « Retirées automatiquement »
+jours, libellé figé à l'instant du retrait, avec son motif — dont `'version-suivie'` et
+`versionSuivie` depuis #573 — base du bloc « Retirées automatiquement »
 de l'espace encadrant, cf. [Espace encadrant](espace-encadrant.md)), `ludaskia_erreurs` (#391 : journal des erreurs commises — question posée,
-réponse donnée, réponse attendue, leçon, mode, horodatage — plafonné aux 150 entrées
+réponse donnée, réponse attendue, leçon, mode, horodatage, et depuis #573 la **classe jouée**
+`niveau` (optionnelle ; absente = CE2) — plafonné aux 150 entrées
 les plus récentes ; base du bloc « Ce qui a été difficile récemment » de l'espace
 encadrant, voir `core/erreurs-journal.ts`), `ludaskia_retards`
 (#691 : journal du **retard** avec lequel un rendez-vous de révision espacée a été

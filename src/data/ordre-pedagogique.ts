@@ -239,6 +239,12 @@ export const ORDRE_LECONS: Record<SubjectId, Partial<Record<SchoolLevel, string[
 			'math-prob-transformation',
 			'math-prob-comparaison',
 			'math-prob-multiplication',
+			// Proportionnalité (#258) : prolonge les problèmes multiplicatifs (programme CM1,
+			// §5 : « dans la continuité du travail sur la résolution de problèmes
+			// multiplicatifs »), d'où sa place juste après « Des groupes égaux ». IDENTIFIER
+			// une situation de proportionnalité avant de RÉSOUDRE un problème qui la suppose.
+			'math-prob-proportion-identifier',
+			'math-prob-proportion-resoudre',
 		],
 	},
 	francais: {

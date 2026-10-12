@@ -251,7 +251,7 @@ test('round-trip encadrant CM1 : le groupe d’erreurs porte le libellé RÉSOLU
 	await lecon.locator('.enc-err-sum').click();
 	await expect(lecon.locator('[data-act="epingler"]')).toHaveAttribute(
 		'aria-label',
-		'Épingler « Clique sur le nom noyau »',
+		'Épingler « Clique sur le nom noyau » (CM1)',
 	);
 
 	expect(errors).toEqual([]);

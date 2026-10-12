@@ -35,11 +35,11 @@ import { listOrthoLecons } from '../core/orthographe/lessons';
 import { evaluateTrophies } from '../core/rewards';
 import {
 	revoirActives,
-	orthoRevoirId,
 	isOrthoRevoirId,
 	orthoIdFromRevoir,
 	type RevoirEntry,
 } from '../core/encadrant-stats';
+import { lireRevoirLecon } from '../core/revoir-cible';
 import {
 	vueSeanceDuJour,
 	marquerEtapeLancee,
@@ -93,13 +93,13 @@ function favorisDisponibles(): FavoriDispo[] {
 /* ---------- Cibles d'une étape « à revoir » (#464) ---------- */
 /* Pool DYNAMIQUE de l'étape « à revoir » : les entrées épinglées par l'encadrant encore
    à travailler (revoirActives fait l'auto-nettoyage — une notion redevenue solide sort).
-   On garde l'id de FILE (préfixé `ortho:` pour une dictée) : il porte la nature de
-   l'entrée, ce qui suffit à la lancer et à l'attribuer sans re-résoudre le catalogue. */
+   On garde l'id de FILE (préfixé `ortho:` pour une dictée, `@niveau` pour une leçon depuis
+   #573) : il porte la nature de l'entrée et la classe où la jouer. */
 function aRevoirEntrees(): RevoirEntry[] {
 	return revoirActives(dicteeDisponible());
 }
 function aRevoirPool(): string[] {
-	return aRevoirEntrees().map((e) => (e.kind === 'ortho' ? orthoRevoirId(e.id) : e.id));
+	return aRevoirEntrees().map((e) => e.entryId);
 }
 
 /* Contexte du jour passé à toutes les lectures de la séance (cf. en-tête). Les ids sont
@@ -108,7 +108,9 @@ function aRevoirPool(): string[] {
 function contexteProgramme(): ContexteSeance {
 	const entrees = aRevoirEntrees();
 	return {
-		aRevoirLecons: entrees.filter((e) => e.kind === 'lecon').map((e) => e.id),
+		// Ids NUS, dédoublonnés : une leçon épinglée dans deux classes (#573) est une seule
+		// leçon pour le journal d'activité, qui ne note pas la classe.
+		aRevoirLecons: [...new Set(entrees.filter((e) => e.kind === 'lecon').map((e) => e.id))],
 		aRevoirDictees: entrees.filter((e) => e.kind === 'ortho').map((e) => e.id),
 		// #657 : MÊME source que `lancable` et `tirageEtape` ci-dessous. Deux sources, et le
 		// programme proposerait une étape que le clic ne saurait pas ouvrir (ou escamoterait
@@ -257,13 +259,16 @@ export function lancerEtapeProgramme(etapeId: string): void {
 	// dictée, préfixée) car c'est ce qui dit quoi lancer ; le MARQUEUR, lui, mémorise l'id
 	// BRUT, comme le journal d'activité. Sans ce dé-préfixage, l'archive des séances
 	// mélangerait deux conventions d'id selon que l'étape a été créditée par le marqueur ou
-	// par le journal, et un futur récap encadrant lirait des cibles incomparables.
+	// par le journal, et un futur récap encadrant lirait des cibles incomparables. Une leçon
+	// épinglée perd de même sa classe (`@niveau`, #573), que le journal ne note pas.
 	const cible = tirageEtape(e);
-	marquerEtapeLancee(
-		etapeId,
-		Date.now(),
-		cible && isOrthoRevoirId(cible) ? orthoIdFromRevoir(cible) : cible,
-	);
+	const brute =
+		e.kind !== 'aRevoir' || !cible
+			? cible
+			: isOrthoRevoirId(cible)
+				? orthoIdFromRevoir(cible)
+				: lireRevoirLecon(cible).lessonId;
+	marquerEtapeLancee(etapeId, Date.now(), brute);
 	switch (e.kind) {
 		case 'sprint':
 			// Depuis le programme, l'enfant ne configure pas : lancement direct avec la
@@ -297,11 +302,14 @@ export function lancerEtapeProgramme(etapeId: string): void {
 			if (favori) lancerFavori(favori);
 			break;
 		}
-		case 'aRevoir':
-			// L'id de file porte la nature de l'entrée tirée : dictée (préfixe) ou leçon.
-			if (cible && isOrthoRevoirId(cible)) startOrthoLecon(orthoIdFromRevoir(cible), 'programme');
-			else if (cible) startLecon(cible, 'programme');
+		case 'aRevoir': {
+			// L'id de file désigne l'entrée tirée ; c'est elle qui dit sa nature (dictée ou
+			// leçon) et, pour une leçon, la classe où la jouer (#573).
+			const entree = aRevoirEntrees().find((x) => x.entryId === cible);
+			if (entree?.kind === 'ortho') startOrthoLecon(entree.id, 'programme');
+			else if (entree) startLecon(entree.id, 'programme', entree.niveau);
 			break;
+		}
 	}
 }
 

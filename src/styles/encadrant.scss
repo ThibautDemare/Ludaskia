@@ -1734,10 +1734,19 @@ $frise-neutre: #7c8494;
 .enc-err-lecon[open] .enc-err-sum::after {
 	content: '▾';
 }
+/* Tête du résumé : libellé + badge de classe (#573), sur la 1re ligne de la grille. Un
+   conteneur plutôt que deux enfants de grille : un badge placé seul en colonne 1 décalerait
+   le compteur d'une ligne, et la date de la colonne 2 ne serait plus en face de lui. */
+.enc-err-tete {
+	grid-column: 1;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.15rem 0.5rem;
+}
 .enc-err-lecon-lab {
 	font-weight: 800;
 	font-size: 0.9rem;
-	grid-column: 1;
 }
 .enc-err-count {
 	font-size: 0.78rem;

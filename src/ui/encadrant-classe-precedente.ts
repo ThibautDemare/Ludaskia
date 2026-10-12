@@ -45,7 +45,6 @@ const INFOBULLE_CLASSE_PRECEDENTE =
 export function classePrecedenteHTML(
 	c: RecapClassePrecedente,
 	consulte: Profile,
-	epinglees: ReadonlySet<string>,
 	ligne: LigneClassePrecedente,
 ): SafeHtml {
 	const classe = LEVEL_LABEL[c.niveau];
@@ -58,7 +57,9 @@ export function classePrecedenteHTML(
 
 	const suivie = LEVEL_LABEL[niveauProfilMatiere(consulte, c.subject)];
 	const origine: OrigineLecon = { niveau: c.niveau, direction: 'en-dessous' };
-	const lignes = c.fragiles.filter((n) => !epinglees.has(n.lessonId));
+	// Épinglée DANS CETTE CLASSE-CI (#573) : une épingle de la version de la classe suivie ne
+	// retire pas la version précédente de cette liste.
+	const lignes = c.fragiles.filter((n) => !n.epingle);
 	const corps =
 		lignes.length === 0
 			? html`<p class="enc-hint">Elles sont toutes épinglées ci-dessus.</p>`

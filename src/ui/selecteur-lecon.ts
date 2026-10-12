@@ -167,10 +167,12 @@ function ligneHTML(lecon: LeconArbre, action: ActionLigne): SafeHtml {
 	// Le nom accessible reprend le libellé VISIBLE de la leçon (SC 2.5.3) : « Choisir » seul,
 	// répété sur des dizaines de lignes, ne dirait rien en navigation par contrôles.
 	// `data-kind` sur la ligne ET sur le bouton (#722) : la ligne pour qui cherche dans le DOM,
-	// le bouton pour le handler, qui n'a que lui sous la main.
+	// le bouton pour le handler, qui n'a que lui sous la main. `data-niveau` (#573) : la classe
+	// sous laquelle la ligne propose la leçon, que le handler doit connaître pour épingler CETTE
+	// version-là d'une leçon présente dans deux classes.
 	return html`<li class="enc-sel-item" data-kind="${lecon.kind}" data-lesson="${lecon.id}">
       <span class="enc-sel-lab">${lecon.label}</span>
-      <button type="button" class="enc-btn-sec${on ? ' on' : ''}" data-act="${action.act}" data-lesson="${lecon.id}" data-kind="${lecon.kind}"${extra} aria-label="${`${label} « ${lecon.label} »`}">${label}</button>
+      <button type="button" class="enc-btn-sec${on ? ' on' : ''}" data-act="${action.act}" data-lesson="${lecon.id}" data-kind="${lecon.kind}" data-niveau="${lecon.niveau}"${extra} aria-label="${`${label} « ${lecon.label} »`}">${label}</button>
     </li>`;
 }
 

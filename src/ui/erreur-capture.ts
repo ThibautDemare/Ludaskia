@@ -25,6 +25,7 @@
 import { journaliserErreur } from '../core/erreurs-journal';
 import { questionPourJournal } from '../core/erreur-representation';
 import { type SafeHtml } from '../core/html';
+import type { SchoolLevel } from '../core/catalog';
 
 /* Mise en forme de l'énoncé et des choix : partagée avec la séance partagée (#734), donc
    logée dans le cœur pur (`core/erreur-representation.ts`) et réexportée d'ici pour les
@@ -43,6 +44,10 @@ export interface CaptureErreurOpts {
 	   drapeau ; `capterErreur` normalise et ne journalise le marqueur que s'il est
 	   vrai. Un item passé n'a pas de réponse donnée : passer `donnee: ''`. */
 	sansTentative?: boolean;
+	/* Classe où l'item a été joué (#573), quand elle n'est pas celle du profil actif : la
+	   séance partagée passe la classe de l'envoi. Absente, le journal prend la classe où la
+	   leçon se joue ici (`niveauLecon`, niveau imposé par une épingle compris). */
+	niveau?: SchoolLevel;
 }
 
 /* Journalise une erreur depuis un runner (profil actif). Sans-effet si la leçon
@@ -61,5 +66,6 @@ export function capterErreur(opts: CaptureErreurOpts): void {
 		// Marqueur écrit seulement s'il est vrai (`undefined` disparaît du JSON stocké) :
 		// absent ⇒ tentative faite, cf. ErreurEntry.sansTentative.
 		sansTentative: opts.sansTentative ? true : undefined,
+		niveau: opts.niveau,
 	});
 }

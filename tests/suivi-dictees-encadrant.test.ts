@@ -759,6 +759,9 @@ describe('epingleesProfil — résolution des entrées épinglées', () => {
 		expect(lecon).toEqual({
 			kind: 'lecon',
 			id: 'math-complements',
+			// Id nu de la notion (#573) : épinglée sans classe, l'id de file l'est déjà, les deux
+			// coïncident.
+			lessonId: 'math-complements',
 			label: lecon!.label,
 			origine: { niveau: 'ce2', direction: 'classe-suivie' },
 			etat: { kind: 'acquisition', niveau: 'a-decouvrir' },
@@ -767,6 +770,7 @@ describe('epingleesProfil — résolution des entrées épinglées', () => {
 		expect(parent).toEqual({
 			kind: 'ortho',
 			id: l.id,
+			lessonId: l.id, // dictée : son id brut, le même que `id`
 			label: 'Ma dictée',
 			// Une liste du parent n'appartient à aucune classe : rien à nommer.
 			origine: null,
@@ -774,6 +778,7 @@ describe('epingleesProfil — résolution des entrées épinglées', () => {
 		});
 		const pred = ep.find((e) => e.kind === 'ortho' && e.id === 'fr-ortho-invariables-1');
 		expect(pred).toBeTruthy();
+		expect(pred!.lessonId).toBe('fr-ortho-invariables-1'); // id brut, sans préfixe de file
 		expect(pred!.label.length).toBeGreaterThan(0); // libellé résolu depuis ORTHO_PREDEF
 		// Prédéfinie CE2 sur un profil CE2 : dans le périmètre, donc jugée comme sa classe.
 		expect(pred!.etat?.kind).toBe('acquisition');

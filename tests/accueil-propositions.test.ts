@@ -49,6 +49,8 @@ const lecon = (id: string): LessonDef => ({
 const epingleLecon = (id: string): RevoirEntry => ({
 	kind: 'lecon',
 	id,
+	entryId: `${id}@ce2`,
+	niveau: 'ce2',
 	label: `Leçon ${id}`,
 	lesson: lecon(id),
 });
@@ -57,6 +59,7 @@ const epingleLecon = (id: string): RevoirEntry => ({
 const epingleOrtho = (id: string): RevoirEntry => ({
 	kind: 'ortho',
 	id,
+	entryId: `ortho:${id}`,
 	label: `Dictée ${id}`,
 	source: 'liste',
 });
@@ -149,12 +152,12 @@ describe('choisirARevoir — une dictée n’entre pas en collision (règle 4)',
 describe('choisirARevoir — « Voir une autre leçon » force l’entrée (règle 5)', () => {
 	it('l’entrée demandée est affichée MÊME si c’est la leçon du jour', () => {
 		const entrees = [epingleLecon('b'), epingleLecon('a')];
-		expect(choisirARevoir(entrees, 'a', 'a')).toBe(entrees[1]);
+		expect(choisirARevoir(entrees, 'a', entrees[1].entryId)).toBe(entrees[1]);
 	});
 
 	it('l’entrée demandée est affichée même quand elle n’est pas en tête', () => {
 		const entrees = [epingleLecon('a'), epingleLecon('b'), epingleLecon('c')];
-		expect(choisirARevoir(entrees, 'z', 'c')).toBe(entrees[2]);
+		expect(choisirARevoir(entrees, 'z', entrees[2].entryId)).toBe(entrees[2]);
 	});
 
 	it('cible inconnue (entrée sortie de la file entre-temps) : retour au comportement dédupliqué', () => {
@@ -168,7 +171,7 @@ describe('choisirARevoir — « Voir une autre leçon » force l’entrée (règ
 
 	it('cible désignant une dictée : elle est affichée', () => {
 		const entrees = [epingleLecon('a'), epingleOrtho('dictee-1')];
-		expect(choisirARevoir(entrees, 'z', 'dictee-1')).toBe(entrees[1]);
+		expect(choisirARevoir(entrees, 'z', entrees[1].entryId)).toBe(entrees[1]);
 	});
 });
 
@@ -323,7 +326,7 @@ describe('accueil — invariants sur échantillon large', () => {
 				fc.option(fc.constantFrom(...ids), { nil: null }),
 				(entrees, jour) => {
 					for (const cible of entrees) {
-						const rendue = choisirARevoir(entrees, jour, cible.id);
+						const rendue = choisirARevoir(entrees, jour, cible.entryId);
 						// Choix explicite : jamais dédupliqué. (À id égal, la file peut contenir
 						// deux entrées de `kind` différents : c'est bien cet ID qui est rendu.)
 						expect(rendue?.id).toBe(cible.id);

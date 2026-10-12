@@ -20,6 +20,9 @@
    ============================================================ */
 import { lsGet, lsSet, lsGetRaw, lsSetRaw } from './storage';
 import { debutJourLocal } from './utils';
+import { getLessonById, type SchoolLevel } from './catalog';
+import { LEVEL_ORDER, effectiveLevel } from './levels';
+import { niveauLecon } from './niveau-actif';
 
 /* Clé de stockage (préfixée par le profil actif en écriture ; lue en brut par UUID). */
 export const ERREURS_KEY = 'ludaskia_erreurs';
@@ -48,12 +51,33 @@ export interface ErreurEntry {
 	   (sans le champ) restent valides, et le journal ne se charge pas d'un `false`
 	   répété sur des centaines d'entrées. Absent ⇒ tentative faite. */
 	sansTentative?: true;
+	/* Classe dans laquelle la leçon a été JOUÉE (#573) : celle que suivait la matière à
+	   l'instant de l'erreur, ou celle imposée par une épingle. Une même leçon peut être deux
+	   notions selon la classe (« Clique sur le nom » / « Clique sur le nom noyau ») : sans ce
+	   champ, leurs erreurs tombaient dans un seul groupe, titré d'après la classe suivie au
+	   moment de la LECTURE. Écrit pour les leçons du catalogue seulement ; une liste
+	   d'orthographe n'a pas de classe. ABSENT sur les entrées d'avant #573, lues comme du CE2
+	   (cf. `niveauErreur`). */
+	niveau?: SchoolLevel;
+}
+
+/* Classe d'une erreur, telle que le regroupement et l'affichage la lisent (#573) : `null` hors
+   catalogue (liste d'orthographe, jamais scopée) ; sinon la classe enregistrée, ou CE2 pour
+   une entrée d'avant #573 (tout l'existant l'était) ou dont le champ est illisible. Toujours
+   ramenée aux classes de la leçon : une leçon CM1 seule n'affiche pas ses anciennes erreurs
+   dans un groupe « CE2 » homonyme du sien. */
+export function niveauErreur(e: ErreurEntry): SchoolLevel | null {
+	const lesson = getLessonById(e.lessonId);
+	if (!lesson) return null;
+	const n = (LEVEL_ORDER as unknown[]).includes(e.niveau) ? (e.niveau as SchoolLevel) : 'ce2';
+	return effectiveLevel(lesson, n);
 }
 
 /* Garde de forme : n'accepte qu'une entrée bien formée (défensif à la lecture
    d'un localStorage potentiellement corrompu / issu d'une autre version).
    `sansTentative` n'est PAS exigé (les entrées d'avant #467 n'en ont pas) : on ne
-   valide son type que s'il est présent. */
+   valide son type que s'il est présent. `niveau` n'est PAS contrôlé ici : un niveau
+   illisible ne coûte pas l'entrée, il est lu comme une absence (`niveauErreur`). */
 function estErreurValide(e: unknown): e is ErreurEntry {
 	if (!e || typeof e !== 'object') return false;
 	const o = e as Record<string, unknown>;
@@ -83,12 +107,19 @@ export function ajouterErreur(
    comme le reste de la progression (recordMonteesPalier…) ; la logique pure de
    rétention est déléguée à `ajouterErreur`. Une entrée sans leçon identifiée
    n'est pas journalisable (rien à regrouper / afficher) et est ignorée par les
-   sites de capture en amont ; on la re-garde ici par sécurité. */
+   sites de capture en amont ; on la re-garde ici par sécurité.
+   Classe (#573) : celle que l'appelant fournit (séance partagée : la classe de l'envoi),
+   sinon celle où la leçon se joue sur le profil actif (`niveauLecon`, niveau imposé
+   compris) ; jamais pour un id hors catalogue. */
 export function journaliserErreur(e: Omit<ErreurEntry, 'ts'>): void {
 	if (!e.lessonId) return;
 	const brut = lsGet(ERREURS_KEY, []);
 	const liste = Array.isArray(brut) ? (brut.filter(estErreurValide) as ErreurEntry[]) : [];
-	lsSet(ERREURS_KEY, ajouterErreur(liste, { ...e, ts: Date.now() }));
+	const { niveau: demande, ...reste } = e;
+	const entree: ErreurEntry = { ...reste, ts: Date.now() };
+	const lesson = getLessonById(e.lessonId);
+	if (lesson) entree.niveau = demande ? effectiveLevel(lesson, demande) : niveauLecon(lesson);
+	lsSet(ERREURS_KEY, ajouterErreur(liste, entree));
 }
 
 /* Ajoute des erreurs au journal d'un profil donné par UUID, actif ou non : import d'un
@@ -202,20 +233,30 @@ export interface ErreurAffichee {
 }
 export interface GroupeErreursLecon {
 	lessonId: string;
+	/** Classe des erreurs du groupe (#573, cf. `niveauErreur`) ; `null` hors catalogue. Une
+	    leçon présente dans deux classes donne deux groupes : ce sont deux notions. */
+	niveau: SchoolLevel | null;
 	total: number; // nombre total d'erreurs de la leçon (occurrences cumulées)
 	derniereFois: number; // horodatage de l'erreur la plus récente de la leçon
 	erreurs: ErreurAffichee[]; // dédoublonnées, plus récent d'abord
 }
 
 export function grouperErreursParLecon(liste: ErreurEntry[]): GroupeErreursLecon[] {
-	const parLecon = new Map<string, ErreurEntry[]>();
+	// Un seau par (leçon, classe) — `niveauErreur` résolu une fois par leçon, il ne dépend que
+	// d'elle et du champ de l'entrée.
+	const parLecon = new Map<
+		string,
+		{ lessonId: string; niveau: SchoolLevel | null; entries: ErreurEntry[] }
+	>();
 	for (const e of liste) {
-		const bucket = parLecon.get(e.lessonId);
-		if (bucket) bucket.push(e);
-		else parLecon.set(e.lessonId, [e]);
+		const niveau = niveauErreur(e);
+		const cle = JSON.stringify([e.lessonId, niveau]);
+		const bucket = parLecon.get(cle);
+		if (bucket) bucket.entries.push(e);
+		else parLecon.set(cle, { lessonId: e.lessonId, niveau, entries: [e] });
 	}
 	const groupes: GroupeErreursLecon[] = [];
-	for (const [lessonId, entries] of parLecon) {
+	for (const { lessonId, niveau, entries } of parLecon.values()) {
 		const parCle = new Map<string, ErreurAffichee>();
 		for (const e of entries) {
 			// Clé sans risque de collision de séparateur. Le marqueur est NORMALISÉ en
@@ -241,6 +282,7 @@ export function grouperErreursParLecon(liste: ErreurEntry[]): GroupeErreursLecon
 		const erreurs = [...parCle.values()].sort((a, b) => b.ts - a.ts);
 		groupes.push({
 			lessonId,
+			niveau,
 			total: entries.length,
 			derniereFois: Math.max(...entries.map((e) => e.ts)),
 			erreurs,

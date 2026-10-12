@@ -75,6 +75,10 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
   et polluent le nom accessible. Exiger une icône `icon(…)` (décorative,
   `aria-hidden` par défaut) ou un `<span aria-hidden="true">`. Cas d'origine : le
   `<summary>` de la zone « Déjà terminés pour cette liste » (2026-10-07).
+- **Badge de contexte dans un `<summary>`** : son préfixe (« Classe d'origine : »)
+  est en `.sr-only`, pas en `title` ni seulement en infobulle. Le nom du `<summary>`
+  est lu d'un bloc ; un `title` n'y entre pas et ne s'ouvre ni au doigt ni au
+  clavier. Cas d'origine : les groupes d'erreurs scopés par classe (#573).
 - **Audio / TTS** : le bouton « Écouter la consigne » (`ui/consigne-tts.ts`,
   `core/tts-text.ts`) reste un **appui** (jamais imposé, absent sans voix FR), et
   le texte parlé ne **trahit pas** la réponse (règle du champ `parle`).

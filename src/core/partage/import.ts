@@ -15,7 +15,8 @@
    Tout s'écrit PAR UUID, sans changer le profil actif : l'appareil reste à l'enfant qui
    jouait.
    ============================================================ */
-import type { SchoolLevel } from '../catalog';
+import { getLessonById, type SchoolLevel } from '../catalog';
+import { effectiveLevel } from '../levels';
 import { ERREURS_KEY, journaliserErreursFor, type ErreurEntry } from '../erreurs-journal';
 import {
 	addProfile,
@@ -43,7 +44,10 @@ export type Import =
 /** Les erreurs d'un résultat, telles que le journal les garde : une par question fausse
  *  ou passée par « je ne sais pas » (marquée « n'a pas essayé », comme dans la séance),
  *  dans l'ordre des questions. Le même tri que la séance de l'enfant, qui journalise ces
- *  deux statuts et eux seuls. */
+ *  deux statuts et eux seuls.
+ *  Classe (#573) : celle de l'ENVOI, à laquelle la séance a été jouée, et jamais celle du
+ *  profil qui importe — l'adulte peut importer le résultat d'une séance CM1 dans le suivi
+ *  d'un enfant qui suit le CE2. Sans classe d'envoi, rien : l'entrée se lira comme du CE2. */
 export function erreursDuResultat(r: Resultat): ErreurEntry[] {
 	const erreurs: ErreurEntry[] = [];
 	for (const item of r.reponses) {
@@ -57,6 +61,8 @@ export function erreursDuResultat(r: Resultat): ErreurEntry[] {
 			attendue: item.attendue,
 		};
 		if (item.statut === 'jnsp') e.sansTentative = true;
+		const lesson = getLessonById(item.lecon);
+		if (lesson && r.envoi.niveau) e.niveau = effectiveLevel(lesson, r.envoi.niveau);
 		erreurs.push(e);
 	}
 	return erreurs;

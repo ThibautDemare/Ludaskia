@@ -28,8 +28,7 @@ import {
 	ACTIVITY_KEY,
 	LESSON_REVISION_KEY,
 	LESSON_REPORT_KEY,
-	loadLessonStatsStockage,
-	loadStarsStockage,
+	loadCartesBrutes,
 	etoilesParNiveau,
 	type EtoilesNiveau,
 	normalizeActivity,
@@ -68,7 +67,8 @@ import {
 import { BLOCAGES_SIGNAL_ADULTE, type EtatReport } from './report-lecon';
 import { consolidationBasNiveau } from './consolidation-bas-niveau';
 import { niveauActifMatiere } from './niveau-actif';
-import { touchProfile, type Profile } from './profiles';
+import { activeProfile, touchProfile, type Profile } from './profiles';
+import { entreeEpinglee, lireRevoirLecon, niveauEntreeLecon, revoirLeconId } from './revoir-cible';
 import {
 	loadOrtho,
 	loadOrthoFor,
@@ -118,7 +118,9 @@ const SEMAINES_FRISE = 12; // frise d'états par leçon (#521) : 12 dernières s
 
 /* ---------- File « à revoir » (suggestions de l'encadrant) ----------
    IDs de leçons épinglées par l'encadrant ; rendues comme une carte sur l'accueil
-   de l'enfant (cf. ui/a-revoir-card.ts). Stockée par profil (clé préfixée). */
+   de l'enfant (cf. ui/a-revoir-card.ts). Stockée par profil (clé préfixée).
+   Une leçon y est épinglée À UNE CLASSE depuis #573 (`lessonId@niveau`, cf.
+   core/revoir-cible.ts) ; les ids nus d'avant se jouent toujours à la classe suivie. */
 export const REVOIR_KEY = 'ludaskia_revoir';
 /* File du profil ACTIF (lecture sur l'accueil enfant). */
 export function loadRevoir(): string[] {
@@ -206,9 +208,15 @@ export interface OrigineLecon {
 	    au-dessus) et porte l'infobulle. */
 	direction: DirectionNiveau;
 }
-export function origineLecon(lesson: LessonDef, profile: Profile): OrigineLecon {
+/* `niveauJoue` (#573) : la classe d'une épingle qui en porte une ; absent, la leçon se joue à
+   la classe suivie (résolue sur ses classes). */
+export function origineLecon(
+	lesson: LessonDef,
+	profile: Profile,
+	niveauJoue?: SchoolLevel,
+): OrigineLecon {
 	const suivi = niveauProfilMatiere(profile, lesson.subject);
-	const niveau = effectiveLevel(lesson, suivi);
+	const niveau = effectiveLevel(lesson, niveauJoue ?? suivi);
 	const ecart = LEVEL_ORDER.indexOf(niveau) - LEVEL_ORDER.indexOf(suivi);
 	return {
 		niveau,
@@ -248,7 +256,10 @@ export interface RecapNotion {
 	label: string;
 	niveau: NiveauNotion;
 	pctRecent: number | null; // sert au tri/seuil — JAMAIS affiché en nombre côté UI
-	epingle: boolean; // présente dans la file « à revoir »
+	epingle: boolean; // présente dans la file « à revoir » À CETTE CLASSE-CI (#573)
+	/** Id de file de la notion (#573) : celui qui l'épingle déjà, sinon celui à poser — la
+	    leçon à la classe de la ligne. C'est ce que bascule le bouton « Épingler ». */
+	entryId: string;
 	vues: number; // nombre de sessions travaillées (stat.attempts) ; 0 si jamais abordée
 	derniereFois: number | null; // horodatage (ms) de la dernière session (stat.lastAt), null si inconnue
 	tendance: TendanceNotion | null; // direction récente ; null si trop peu de questions (#541)
@@ -1131,21 +1142,23 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 	const debutSuivi = debutSuiviPaliers(lsGetRaw(uuid + '/' + PALIERS_DEBUT_KEY, null), paliersRaw);
 	const reportsRaw = lsGetRaw(uuid + '/' + LESSON_REPORT_KEY, {}) as Record<string, EtatReport>;
 	const file = loadRevoirFor(uuid);
-	const fileSet = new Set(file);
 
 	// Détail d'une leçon à UN niveau de stockage (état + épinglage + vues/dernière fois/
 	// tendance/frise). Partagé par le récap par catégorie (classe suivie) et par la classe
-	// précédente (#723) : une même leçon se lit ainsi pareil des deux côtés.
+	// précédente (#723) : une même leçon se lit ainsi pareil des deux côtés. L'épinglage aussi
+	// se lit à ce niveau (#573) : épingler la version CE2 n'épingle pas la ligne CM1.
 	const notionDe = (l: LessonDef, niveau: SchoolLevel): RecapNotion => {
 		const k = l.id + '@' + niveau;
 		const stat = statsRaw[k];
 		const etat = niveauNotion(stat, (starsRaw[k] || 0) > 0);
+		const epinglee = entreeEpinglee(file, l, niveau, niveauProfilMatiere(profile, l.subject));
 		return {
 			lessonId: l.id,
 			label: labelLecon(l, niveau),
 			niveau: etat,
 			pctRecent: perfRecente(stat)?.pct ?? null,
-			epingle: fileSet.has(l.id),
+			epingle: epinglee != null,
+			entryId: epinglee ?? revoirLeconId(l.id, niveau),
 			vues: stat?.attempts ?? 0,
 			derniereFois: stat?.lastAt ?? null,
 			tendance: tendanceNotion(stat),
@@ -1267,17 +1280,77 @@ export function progressionProfil(profile: Profile, now: number): RecapProfil {
 	};
 }
 
+/* ---------- Lecture d'une épingle de leçon (#573) ----------
+   Une épingle porte sa classe (`lessonId@niveau`, core/revoir-cible.ts) : son état se lit À
+   CETTE CLASSE, pas à la classe suivie. Et quand une épingle d'une classe ANTÉRIEURE devient
+   solide alors que la leçon existe dans la classe suivie, elle ne quitte pas la file tout de
+   suite : la version de la classe suivie est d'abord proposée UNE FOIS (la « sonde »).
+   Pourquoi (avis pédagogue, issue #573) : « Clique sur le nom » (CE2) et « Clique sur le nom
+   noyau » (CM1) ne sont pas une même tâche recalibrée mais deux notions, la seconde
+   s'appuyant sur la première. Réussir la version CE2 ne prouve rien sur la version CM1, et un
+   retrait immédiat ferait croire à l'adulte que le point est réglé.
+
+   Sonde, conditions cumulées : classe épinglée STRICTEMENT inférieure à la classe suivie, leçon
+   présente dans la classe suivie, solide à la classe épinglée, et CANDIDATE au retrait (vue
+   fragile alors qu'épinglée, cf. le désépinglage automatique #465 plus bas) — une épingle
+   posée sur une notion déjà solide reste le choix assumé de l'adulte, sans sonde ni retrait.
+   Elle prend fin au premier essai complet de la leçon joué à la classe suivie
+   (`cloreSondesRevoir`), réussi ou non : l'épingle sort alors de la file, avec une trace
+   lisible par l'adulte, et rien ne renvoie l'enfant à la version antérieure sans lui.
+
+   Une seule lecture pour les quatre lecteurs (affichage enfant, liste adulte, désépinglage,
+   fin de sonde) : deux façons de répondre à la même question divergeraient en silence. */
+interface LectureEpingle {
+	lesson: LessonDef;
+	/** Classe épinglée, résolue (id nu : la classe suivie). */
+	niveau: SchoolLevel;
+	suivi: SchoolLevel;
+	/** Solide à la classe épinglée (même prédicat que l'affichage enfant, #465). */
+	solide: boolean;
+	/** Classe suivie dont la version est proposée une fois ; `null` hors sonde. */
+	sonde: SchoolLevel | null;
+}
+function lireEpingleLecon(
+	entryId: string,
+	suiviDe: (subject: SubjectId) => SchoolLevel,
+	starsRaw: Record<string, number>,
+	statsRaw: Record<string, LessonStat>,
+	candidate: boolean,
+): LectureEpingle | null {
+	const { lessonId, niveau: epingle } = lireRevoirLecon(entryId);
+	const lesson = getLessonById(lessonId);
+	if (!lesson) return null; // cible sortie du catalogue (mise à jour de l'appli)
+	const suivi = suiviDe(lesson.subject);
+	const niveau = niveauEntreeLecon(lesson, epingle, suivi);
+	const k = lesson.id + '@' + niveau;
+	const solide = estNotionSolide((starsRaw[k] || 0) > 0, perfRecente(statsRaw[k])?.pct ?? null);
+	const anterieure = LEVEL_ORDER.indexOf(niveau) < LEVEL_ORDER.indexOf(suivi);
+	const sonde = solide && candidate && anterieure && lesson.levels.includes(suivi) ? suivi : null;
+	return { lesson, niveau, suivi, solide, sonde };
+}
+
 /* ---------- File « à revoir » côté enfant (union catalogue / dictée) ----------
    Une entrée épinglée est soit une leçon du catalogue, soit une liste de dictée. La
-   carte d'accueil résout le libellé/lancement selon `kind`. `id` = id BRUT (sans préfixe),
-   utilisé pour le lancement (startLecon / startOrthoLecon). */
+   carte d'accueil résout le libellé/lancement selon `kind`. `id` = id BRUT (sans préfixe ni
+   classe), utilisé pour le lancement (startLecon / startOrthoLecon) et pour la comparaison
+   avec la leçon du jour (#516, #573) ; `entryId` = id tel que stocké dans la file, seul à
+   désigner UNE entrée quand une leçon est épinglée dans deux classes ; `niveau` = classe où
+   jouer la leçon. */
 export type RevoirEntry =
-	| { kind: 'lecon'; id: string; label: string; lesson: LessonDef }
-	| { kind: 'ortho'; id: string; label: string; source: SourceLecon };
+	| {
+			kind: 'lecon';
+			id: string;
+			entryId: string;
+			niveau: SchoolLevel;
+			label: string;
+			lesson: LessonDef;
+	  }
+	| { kind: 'ortho'; id: string; entryId: string; label: string; source: SourceLecon };
 
 /* Entrées « à revoir » actuellement actives pour le profil ACTIF, filtrées sur celles
    ENCORE à travailler (auto-nettoyage : une leçon/liste redevenue solide quitte la boucle) :
-   - leçon du catalogue : non étoilée ET (jamais re-travaillée OU perf récente < seuil) ;
+   - leçon du catalogue : non étoilée ET (jamais re-travaillée OU perf récente < seuil), à sa
+     classe épinglée — ou, en sonde, rendue à la classe suivie (cf. `lireEpingleLecon`) ;
    - liste de dictée : pas encore « acquise » (tous les mots maîtrisés).
    Sert à la carte d'accueil de l'enfant (ui/a-revoir-card.ts). Lit le profil actif.
    `dicteeDispo` (dispo du TTS, fourni par l'UI) conditionne l'« acquis » d'une dictée.
@@ -1285,18 +1358,23 @@ export type RevoirEntry =
    Une leçon d'une AUTRE classe que celle suivie est rendue comme les autres (#556) : c'est
    l'objet même de l'assignation hors classe, l'adulte l'a désignée pour qu'elle revienne sur
    l'accueil. Ce qu'elle change, c'est le NIVEAU DE LECTURE de son état — il faut la lire là
-   où elle est jouée et stockée (`scopeStockage`), sinon une leçon CE2 épinglée pour un CM1
-   paraîtrait éternellement « jamais travaillée » et ne quitterait jamais la boucle. L'enfant,
-   lui, ne voit aucune étiquette de classe : la carte d'accueil est identique (#232). */
+   où elle est jouée et stockée, sinon une leçon CE2 épinglée pour un CM1 paraîtrait
+   éternellement « jamais travaillée » et ne quitterait jamais la boucle. L'enfant, lui, ne
+   voit aucune étiquette de classe : la carte d'accueil est identique (#232).
+   Deux entrées qui se joueraient pareil (même leçon, même classe : une sonde CM1 et une
+   épingle CM1, ou un id nu et son équivalent scopé) n'en font qu'une, et c'est l'épingle
+   ordinaire qui la porte plutôt que la sonde : l'adulte l'a posée pour durer, la sonde n'est
+   qu'un essai proposé une fois — et la fin de sonde la retirera de toute façon au premier
+   essai de cette classe. */
 export function revoirActives(dicteeDispo = false): RevoirEntry[] {
 	const ids = loadRevoir();
 	if (ids.length === 0) return [];
-	// Vues du profil ACTIF, chaque leçon lue à SON niveau de stockage (clés `lessonId` simples).
-	const stats = loadLessonStatsStockage();
-	const stars = loadStarsStockage();
+	// Cartes BRUTES du profil actif : chaque épingle se lit à SA classe (#573).
+	const { stars, stats } = loadCartesBrutes();
+	const marques = loadFragiles(activeProfile().uuid);
 	// État orthographe du profil actif, chargé une seule fois si au moins une dictée est épinglée.
 	const ortho = ids.some(isOrthoRevoirId) ? loadOrtho() : null;
-	const out: RevoirEntry[] = [];
+	const out: { entree: RevoirEntry; sonde: boolean }[] = [];
 	for (const entryId of ids) {
 		if (isOrthoRevoirId(entryId)) {
 			if (!ortho) continue;
@@ -1305,22 +1383,51 @@ export function revoirActives(dicteeDispo = false): RevoirEntry[] {
 			if (!ref) continue; // liste supprimée / dictée inconnue → ignorée
 			// Encore « à revoir » tant que la liste n'est pas entièrement maîtrisée.
 			if (niveauListeOrtho(ortho, orthoId, dicteeDispo) === 'acquis') continue;
-			out.push({ kind: 'ortho', id: orthoId, label: ref.label, source: ref.source });
+			out.push({
+				entree: { kind: 'ortho', id: orthoId, entryId, label: ref.label, source: ref.source },
+				sonde: false,
+			});
 			continue;
 		}
-		const lesson = getAllLessons().find((l) => l.id === entryId);
-		if (!lesson) continue; // cible sortie du catalogue (mise à jour de l'appli) → ignorée
-		// Niveau auquel l'enfant va RÉELLEMENT la jouer : celui de la classe suivie si la leçon
-		// l'a, sinon le plus proche (repli/clamp) — le même que la génération et le stockage.
-		const niveau = effectiveLevel(lesson, niveauActifMatiere(lesson.subject));
-		const etoilee = (stars[entryId] || 0) > 0;
-		const stat = stats[entryId];
-		// Encore « à revoir » tant que la notion n'est pas solide (non étoilée ET jamais
-		// re-travaillée ou perf récente sous le seuil) — MÊME prédicat que la purge (#465).
-		if (!estNotionSolide(etoilee, perfRecente(stat)?.pct ?? null))
-			out.push({ kind: 'lecon', id: entryId, label: labelLecon(lesson, niveau), lesson });
+		const e = lireEpingleLecon(
+			entryId,
+			niveauActifMatiere,
+			stars,
+			stats,
+			marques == null || marques.includes(entryId),
+		);
+		if (!e) continue;
+		// Encore « à revoir » tant que la notion n'est pas solide à sa classe — MÊME prédicat que
+		// la purge (#465) ; en sonde, c'est la version de la classe suivie qui est proposée.
+		const joue = e.sonde ?? (e.solide ? null : e.niveau);
+		if (!joue) continue;
+		out.push({
+			entree: {
+				kind: 'lecon',
+				id: e.lesson.id,
+				entryId,
+				niveau: joue,
+				label: labelLecon(e.lesson, joue),
+				lesson: e.lesson,
+			},
+			sonde: e.sonde != null,
+		});
 	}
-	return out;
+	// Dédoublonnage (cf. en-tête) : une entrée cède à une autre qui se joue pareil si elle est
+	// une sonde et l'autre non, ou, à nature égale, si l'autre la précède dans la file.
+	const memeJeu = (a: RevoirEntry, b: RevoirEntry) =>
+		a.kind === 'lecon' && b.kind === 'lecon' && a.id === b.id && a.niveau === b.niveau;
+	return out
+		.filter(
+			(x, i) =>
+				!out.some(
+					(y, j) =>
+						j !== i &&
+						memeJeu(x.entree, y.entree) &&
+						(x.sonde && !y.sonde ? true : x.sonde === y.sonde && j < i),
+				),
+		)
+		.map((x) => x.entree);
 }
 
 /* ---------- Récap des listes de dictée d'un profil (espace encadrant) ----------
@@ -1449,7 +1556,12 @@ export function dicteesProposees(profile: Profile, dicteeDispo = false): DicteeP
    liste supprimée) est écartée. */
 export interface EpingleEntry {
 	kind: 'lecon' | 'ortho';
-	id: string; // id BRUT (sert au dé-épinglage : lecon → id ; ortho → orthoRevoirId(id))
+	/** Sert au dé-épinglage : leçon → id de FILE tel que stocké (`lessonId@niveau`, ou id nu
+	    d'avant #573) ; dictée → id brut, l'appelant le repréfixe (`orthoRevoirId`). */
+	id: string;
+	/** Id NU de la cible (leçon du catalogue, ou liste de dictée) : identité de la notion,
+	    pour ce qui ne connaît pas la classe (impression, blocages du récap). */
+	lessonId: string;
 	label: string;
 	/** Classe d'où vient la cible et sens de l'écart avec celle que suit le profil (#556) —
 	    `null` quand on ne sait pas la nommer (listes de dictée du parent, non taguées par
@@ -1461,6 +1573,10 @@ export interface EpingleEntry {
 	origine: OrigineLecon | null;
 	/** Ce que la ligne doit montrer de l'avancement, déjà résolu (cf. `EtatEpingle`). */
 	etat: EtatEpingle;
+	/** Épingle d'une classe antérieure réussie, dont la version de la classe suivie est
+	    proposée une fois à l'enfant (#573, cf. `lireEpingleLecon`) : sans ce mot, la ligne
+	    dirait « acquis » sur une épingle qui reste pourtant dans la file. */
+	sonde?: { niveau: SchoolLevel; label: string };
 }
 
 /** Ce qu'une ligne épinglée dit de l'avancement, selon d'où vient la leçon (#556) :
@@ -1513,6 +1629,7 @@ export function epingleesProfil(profile: Profile, dicteeDispo = false): EpingleE
 		string,
 		LessonStat
 	>;
+	const marques = loadFragiles(profile.uuid);
 	const out: EpingleEntry[] = [];
 	for (const entryId of ids) {
 		if (isOrthoRevoirId(entryId)) {
@@ -1527,25 +1644,35 @@ export function epingleesProfil(profile: Profile, dicteeDispo = false): EpingleE
 			out.push({
 				kind: 'ortho',
 				id: orthoId,
+				lessonId: orthoId,
 				label,
 				origine: null,
 				etat: etatOrthoEpingle(ortho, orthoId, auDessus, dicteeDispo),
 			});
 			continue;
 		}
-		const lesson = getLessonById(entryId);
-		if (!lesson) continue;
-		const origine = origineLecon(lesson, profile);
-		const { etoilee, stat } = etatLeconAuNiveau(lesson, origine.niveau, starsRaw, statsRaw);
+		// Lue à SA classe (#573) : celle de l'épingle, ou la classe suivie pour un id nu.
+		const e = lireEpingleLecon(
+			entryId,
+			(s) => niveauProfilMatiere(profile, s),
+			starsRaw,
+			statsRaw,
+			marques == null || marques.includes(entryId),
+		);
+		if (!e) continue;
+		const origine = origineLecon(e.lesson, profile, e.niveau);
+		const { etoilee, stat } = etatLeconAuNiveau(e.lesson, origine.niveau, starsRaw, statsRaw);
 		out.push({
 			kind: 'lecon',
 			id: entryId,
-			label: labelLecon(lesson, origine.niveau),
+			lessonId: e.lesson.id,
+			label: labelLecon(e.lesson, origine.niveau),
 			origine,
 			etat:
 				origine.direction === 'au-dessus'
 					? { kind: 'essai', essaye: !!stat?.attempts, at: stat?.lastAt ?? null, reussi: etoilee }
 					: { kind: 'acquisition', niveau: niveauNotion(stat, etoilee) },
+			...(e.sonde ? { sonde: { niveau: e.sonde, label: labelLecon(e.lesson, e.sonde) } } : {}),
 		});
 	}
 	return out;
@@ -1609,6 +1736,10 @@ export interface RetraitAuto {
 	    d'en supposer un. C'est le repli prudent — on ne prononce pas une maîtrise dont on n'a
 	    pas la trace. Ces entrées sortent d'elles-mêmes en 30 jours. */
 	motif?: MotifRetrait;
+	/** Fin de sonde (#573, motif `'version-suivie'`) : la version de la classe suivie
+	    proposée après la réussite de l'épingle, et ce qu'en a fait l'enfant. Figée elle aussi.
+	    Présente si et seulement si le motif est `'version-suivie'`. */
+	versionSuivie?: { niveau: SchoolLevel; label: string; reussie: boolean };
 }
 // Trace RÉCENTE, pas un historique : l'onglet reste lisible. Dimensionné pour absorber la
 // passe d'ADOPTION (celle qui purge d'un coup les fantômes d'avant #465) — c'est le moment
@@ -1627,9 +1758,30 @@ function loadRetraitsAuto(uuid: string): RetraitAuto[] {
 			typeof r.at === 'number' &&
 			(r.kind === 'lecon' || r.kind === 'ortho') &&
 			// `motif` n'est PAS exigé (entrées d'avant #571) ; une valeur inconnue est refusée
-			// avec toute l'entrée plutôt que silencieusement lue comme « maîtrise ».
-			(r.motif === undefined || r.motif === 'maitrise' || r.motif === 'essai'),
+			// avec toute l'entrée plutôt que silencieusement lue comme « maîtrise ». Une fin de
+			// sonde sans son récit n'aurait rien à dire : refusée de même.
+			(r.motif === undefined ||
+				r.motif === 'maitrise' ||
+				r.motif === 'essai' ||
+				(r.motif === 'version-suivie' && versionSuivieValide(r.versionSuivie))),
 	);
+}
+function versionSuivieValide(v: unknown): v is RetraitAuto['versionSuivie'] {
+	if (!v || typeof v !== 'object') return false;
+	const o = v as Record<string, unknown>;
+	return (
+		(LEVEL_ORDER as unknown[]).includes(o.niveau) &&
+		typeof o.label === 'string' &&
+		typeof o.reussie === 'boolean'
+	);
+}
+/* Ajoute des retraits à la trace d'un profil : plus récent d'abord, bornée en nombre ET en
+   ancienneté. Commun au désépinglage (#465) et à la fin de sonde (#573). */
+function tracerRetraits(uuid: string, retires: RetraitAuto[], now: number): void {
+	const journal = [...retires, ...loadRetraitsAuto(uuid)]
+		.filter((r) => now - r.at <= RETRAITS_AUTO_FENETRE_MS)
+		.slice(0, RETRAITS_AUTO_MAX);
+	lsSetRaw(uuid + '/' + REVOIR_AUTO_KEY, JSON.stringify(journal));
 }
 /* Marques de fragilité ; `null` = clé JAMAIS écrite, seul cas qui déclenche l'adoption.
    Une clé présente mais illisible (JSON cassé, mauvaise forme) rend une liste VIDE et non
@@ -1653,14 +1805,20 @@ function loadFragiles(uuid: string): string[] | null {
       alors pas de maîtrise. La ligne d'épingle refuse déjà d'écrire « acquis » sur un seul
       essai d'une notion pas encore enseignée (cf. `EtatEpingle`) ; l'annoncer ici serait un
       verdict plus fort encore, sur le même contenu, à deux blocs d'écart. Et « de nouveau »
-      supposerait une maîtrise antérieure qui n'a jamais existé. */
-export type MotifRetrait = 'maitrise' | 'essai';
+      supposerait une maîtrise antérieure qui n'a jamais existé ;
+    - `'version-suivie'` (#573) : une épingle d'une classe ANTÉRIEURE, réussie, puis la
+      version de la classe suivie tentée une fois (`RetraitAuto.versionSuivie`). Ce n'est
+      pas le désépinglage qui la retire mais la fin de sonde (`cloreSondesRevoir`). */
+export type MotifRetrait = 'maitrise' | 'essai' | 'version-suivie';
 
 interface SoliditeEpingle {
 	kind: 'lecon' | 'ortho';
 	label: string;
 	solide: boolean;
-	motif: MotifRetrait;
+	motif: Exclude<MotifRetrait, 'version-suivie'>;
+	/** En sonde (#573) : ni retirée ni oubliée — sa marque de fragilité est conservée, sans
+	    quoi la passe suivante la jugerait « posée solide » et la sonde s'éteindrait. */
+	enSonde?: true;
 }
 interface CtxSolidite {
 	starsRaw: Record<string, number>;
@@ -1668,7 +1826,12 @@ interface CtxSolidite {
 	ortho: OrthoState | null;
 	dicteeDispo: boolean;
 }
-function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): SoliditeEpingle | null {
+function etatEpingle(
+	entryId: string,
+	profile: Profile,
+	ctx: CtxSolidite,
+	candidate: boolean,
+): SoliditeEpingle | null {
 	if (isOrthoRevoirId(entryId)) {
 		if (!ctx.ortho) return null;
 		const orthoId = orthoIdFromRevoir(entryId);
@@ -1692,24 +1855,28 @@ function etatEpingle(entryId: string, profile: Profile, ctx: CtxSolidite): Solid
 			solide: ctx.dicteeDispo && niveauListeOrtho(ctx.ortho, orthoId, ctx.dicteeDispo) === 'acquis',
 		};
 	}
-	const lesson = getLessonById(entryId);
-	if (!lesson) return null;
-	// Niveau où la leçon est jouée et STOCKÉE, par la MÊME formule que l'affichage adulte
-	// (#556) : une épingle d'une autre classe se juge donc comme les autres. Depuis qu'elle
+	// Classe où la leçon est jouée et STOCKÉE, par la MÊME lecture que l'affichage enfant et
+	// la liste adulte (`lireEpingleLecon`) : celle de l'épingle (#573), ou la classe suivie pour
+	// un id nu. Une épingle d'une autre classe se juge donc comme les autres. Depuis qu'elle
 	// atteint l'accueil de l'enfant, l'écarter ici la laisserait dans la file à vie, alors que
 	// l'affichage enfant, lui, cesserait de la montrer une fois redevenue solide — le
 	// désépinglage automatique doit rester le MIROIR exact de cet affichage, jusqu'au niveau
-	// auquel il lit l'état.
-	const origine = origineLecon(lesson, profile);
-	const niveau = origine.niveau;
-	const k = lesson.id + '@' + niveau; // stats/étoiles namespacées par niveau (#225)
-	const etoilee = (ctx.starsRaw[k] || 0) > 0;
-	const pct = perfRecente(ctx.statsRaw[k])?.pct ?? null;
+	// auquel il lit l'état, sonde comprise.
+	const e = lireEpingleLecon(
+		entryId,
+		(s) => niveauProfilMatiere(profile, s),
+		ctx.starsRaw,
+		ctx.statsRaw,
+		candidate,
+	);
+	if (!e) return null;
+	const auDessus = LEVEL_ORDER.indexOf(e.niveau) > LEVEL_ORDER.indexOf(e.suivi);
 	return {
 		kind: 'lecon',
-		label: labelLecon(lesson, niveau),
-		solide: estNotionSolide(etoilee, pct), // même prédicat que le filtre d'affichage enfant
-		motif: origine.direction === 'au-dessus' ? 'essai' : 'maitrise',
+		label: labelLecon(e.lesson, e.niveau),
+		solide: e.solide && !e.sonde,
+		motif: auDessus ? 'essai' : 'maitrise',
+		...(e.sonde ? { enSonde: true as const } : {}),
 	};
 }
 
@@ -1744,9 +1911,11 @@ export function purgeRevoirSolides(profile: Profile, dicteeDispo: boolean, now: 
 	const fragiles: string[] = []; // marques de la passe suivante (les ids partis sont oubliés)
 	const retires: RetraitAuto[] = [];
 	for (const entryId of ids) {
-		const etat = etatEpingle(entryId, profile, ctx);
+		const etat = etatEpingle(entryId, profile, ctx, candidates.has(entryId));
 		// Retrait SEULEMENT si la cible est résolvable, solide, ET déjà candidate (vue fragile
 		// alors qu'épinglée) : une épingle posée sur une notion solide est un choix du parent.
+		// Une épingle en sonde (#573) n'est pas « solide » ici : elle reste, marque comprise,
+		// jusqu'à l'essai de la version de la classe suivie (`cloreSondesRevoir`).
 		if (etat != null && etat.solide && candidates.has(entryId)) {
 			retires.push({
 				id: entryId,
@@ -1764,11 +1933,7 @@ export function purgeRevoirSolides(profile: Profile, dicteeDispo: boolean, now: 
 	}
 	if (retires.length) {
 		saveRevoirFor(uuid, restants);
-		// Journal : plus récent d'abord, borné en nombre ET en ancienneté.
-		const journal = [...retires, ...loadRetraitsAuto(uuid)]
-			.filter((r) => now - r.at <= RETRAITS_AUTO_FENETRE_MS)
-			.slice(0, RETRAITS_AUTO_MAX);
-		lsSetRaw(uuid + '/' + REVOIR_AUTO_KEY, JSON.stringify(journal));
+		tracerRetraits(uuid, retires, now);
 	}
 	// Marques réécrites seulement si elles changent : le rendu est idempotent.
 	const inchangees =
@@ -1777,6 +1942,67 @@ export function purgeRevoirSolides(profile: Profile, dicteeDispo: boolean, now: 
 		fragiles.every((x, i) => marques[i] === x);
 	if (!inchangees) lsSetRaw(uuid + '/' + REVOIR_FRAGILE_KEY, JSON.stringify(fragiles));
 	return retires.map((r) => r.id);
+}
+
+/* Fin de sonde (#573, critères 11 et 12) : un essai COMPLET de `lessonId` vient d'être joué,
+   en mode leçon, à `niveauJoue`, sur le profil ACTIF. Toute épingle de cette leçon dont la
+   sonde proposait justement cette classe-là quitte la file, réussie ou non, avec une trace
+   qui le dit à l'adulte. La version antérieure n'est plus proposée : y revenir est une
+   décision d'adulte (ré-épingler la trace). Appelée par `recordLessonRun` APRÈS l'écriture de
+   l'essai, qui ne touche que la classe jouée : la lecture de la classe épinglée est intacte.
+   Un sprint, un bilan, une session jouée à une autre classe (niveau imposé) ne clôt rien : ce
+   n'est pas la tentative de la version suivie. Sans `touchProfile`, comme le désépinglage :
+   c'est un effet automatique, pas un geste de l'adulte. Rend les entryId retirés. */
+export function cloreSondesRevoir(
+	lessonId: string,
+	niveauJoue: SchoolLevel,
+	reussie: boolean,
+	now: number,
+): string[] {
+	const profile = activeProfile();
+	const uuid = profile.uuid;
+	const ids = loadRevoirFor(uuid);
+	const concernees = ids.filter(
+		(id) => !isOrthoRevoirId(id) && lireRevoirLecon(id).lessonId === lessonId,
+	);
+	if (!concernees.length) return [];
+	const marques = loadFragiles(uuid);
+	const starsRaw = lsGetRaw(uuid + '/' + STARS_KEY, {}) as Record<string, number>;
+	const statsRaw = lsGetRaw(uuid + '/' + LESSON_STATS_KEY, {}) as Record<string, LessonStat>;
+	const retires: RetraitAuto[] = [];
+	for (const entryId of concernees) {
+		const e = lireEpingleLecon(
+			entryId,
+			(s) => niveauProfilMatiere(profile, s),
+			starsRaw,
+			statsRaw,
+			marques == null || marques.includes(entryId),
+		);
+		if (!e || e.sonde !== niveauJoue) continue;
+		retires.push({
+			id: entryId,
+			kind: 'lecon',
+			label: labelLecon(e.lesson, e.niveau),
+			at: now,
+			motif: 'version-suivie',
+			versionSuivie: { niveau: e.sonde, label: labelLecon(e.lesson, e.sonde), reussie },
+		});
+	}
+	if (!retires.length) return [];
+	const partis = new Set(retires.map((r) => r.id));
+	saveRevoirFor(
+		uuid,
+		ids.filter((id) => !partis.has(id)),
+	);
+	tracerRetraits(uuid, retires, now);
+	// Sortie de la mémoire de fragilité aussi, comme tout retrait : ré-épinglée plus tard, elle
+	// repartira comme une épingle neuve.
+	if (marques != null)
+		lsSetRaw(
+			uuid + '/' + REVOIR_FRAGILE_KEY,
+			JSON.stringify(marques.filter((id) => !partis.has(id))),
+		);
+	return [...partis];
 }
 
 /* Trace des retraits automatiques d'un profil (bloc « Retirées automatiquement » de

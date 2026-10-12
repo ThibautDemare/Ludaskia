@@ -7,7 +7,7 @@
    déjà progress.ts).
    ============================================================ */
 import { lsGet, PROFILES_KEY } from './storage';
-import { getAllLessons } from './catalog';
+import { getAllLessons, getLessonById } from './catalog';
 import type { LessonDef, SchoolLevel, SubjectId } from './catalog';
 import { availableLevels, effectiveLevel, niveauDefautCatalogue } from './levels';
 
@@ -49,12 +49,39 @@ export function besoinChoixNiveau(): boolean {
 	);
 }
 
+/* ---------- Niveau IMPOSÉ à une leçon (#573) ----------
+   Une épingle posée sur la version CE2 d'une leçon qui existe aussi en CM1 se joue en CE2,
+   même si la matière est suivie en CM1 : énoncés, consigne, libellé et stockage du résultat.
+   Tout ce qui joue ou enregistre une leçon lit son niveau par `niveauLecon` ; imposer un
+   niveau ici suffit donc à tout faire suivre, sans passer le niveau de fonction en fonction.
+
+   Une seule leçon à la fois, et c'est le routeur (ui/navigation.ts) qui pose et lève : le
+   niveau voyage dans le hash de la leçon, il vit le temps de ses écrans. État de module, à
+   lever dans les tests. */
+let impose: { lessonId: string; niveau: SchoolLevel } | null = null;
+
+export function imposerNiveauLecon(lessonId: string, niveau: SchoolLevel): void {
+	impose = { lessonId, niveau };
+}
+export function leverNiveauImpose(): void {
+	impose = null;
+}
+/** Niveau imposé à cette leçon, résolu sur ses classes ; `null` si rien n'est imposé à elle. */
+export function niveauImpose(lessonId: string): SchoolLevel | null {
+	if (!impose || impose.lessonId !== lessonId) return null;
+	const lesson = getLessonById(lessonId);
+	return lesson ? effectiveLevel(lesson, impose.niveau) : impose.niveau;
+}
+
 /* Niveau effectif POUR UNE LEÇON : le niveau actif de SA MATIÈRE résolu sur les
    niveaux que la leçon supporte (repli/clamp via effectiveLevel). C'est ce qu'on
    passe à `generate`/`genLessonItem` au seam UI — une référence hors-filtre
-   (favori, révision) est ainsi calibrée sans jamais être cassée. */
+   (favori, révision) est ainsi calibrée sans jamais être cassée. Un niveau IMPOSÉ à
+   cette leçon (#573) passe devant celui de la matière. */
 export function niveauLecon(lesson: LessonDef): SchoolLevel {
-	return effectiveLevel(lesson, niveauActifMatiere(lesson.subject));
+	const demande =
+		impose?.lessonId === lesson.id ? impose.niveau : niveauActifMatiere(lesson.subject);
+	return effectiveLevel(lesson, demande);
 }
 
 /* Leçons du NIVEAU ACTIF, par matière : chaque leçon est retenue si elle est

@@ -185,9 +185,11 @@ describe('journaliserErreursFor — erreurs ajoutées au journal d’un profil p
 		journaliserErreur(enSeance); // chemin des runners : profil actif, daté de maintenant
 
 		expect(journaliserErreursFor(actif.uuid, IMPORTEES)).toBe(2);
+		// La capture en séance date l'erreur ET la range dans la classe où la leçon se joue
+		// (#573). LECON_A n'existe qu'en CE2 : quelle que soit la classe du profil, c'est CE2.
 		expect(chargerErreursFor(actif.uuid)).toStrictEqual([
 			...IMPORTEES,
-			{ ...enSeance, ts: MAINTENANT },
+			{ ...enSeance, ts: MAINTENANT, niveau: 'ce2' },
 		]);
 	});
 

@@ -25,7 +25,7 @@ import { leconKey, removeResume, RESUME_VERSION } from '../core/resume';
 import type { ResumeRunner } from '../core/resume';
 import type { LessonDef } from '../core/catalog';
 import { labelLecon } from '../core/levels';
-import { niveauLecon } from '../core/niveau-actif';
+import { niveauImpose, niveauLecon } from '../core/niveau-actif';
 import { subjectIcon } from './cat-visuals';
 import { revivreFragments } from '../core/html';
 
@@ -44,9 +44,11 @@ export interface SessionRunner {
 let sessionCourante: SessionRunner | null = null;
 
 /** Déclare le runner en cours : c'est lui que `captureResume` photographiera si l'enfant
-    quitte l'écran. À appeler au démarrage, lancement neuf comme reprise. */
+    quitte l'écran. À appeler au démarrage, lancement neuf comme reprise.
+    Une leçon jouée à un niveau IMPOSÉ (#573) n'est pas déclarée : l'instantané, rangé sous
+    l'id nu et relancé hors du hash qui porte ce niveau, reviendrait au niveau ordinaire. */
 export function declarerSessionRunner(s: SessionRunner): void {
-	sessionCourante = s;
+	sessionCourante = niveauImpose(s.lesson.id) ? null : s;
 }
 
 /** L'enfant QUITTE l'écran du runner : plus de session en cours, mais l'instantané reste

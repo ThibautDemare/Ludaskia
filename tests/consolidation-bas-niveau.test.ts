@@ -419,6 +419,7 @@ function notion(lessonId: string, epingle = false): RecapNotion {
 		niveau: 'en-cours',
 		pctRecent: 50,
 		epingle,
+		entryId: lessonId + '@ce2',
 		vues: 1,
 		derniereFois: T,
 		tendance: null,

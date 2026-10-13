@@ -90,12 +90,19 @@ const CONNECTEURS_CITES: Connecteur[] = [
 	connecteur('en plus', '(?:en|de) plus'),
 ];
 
+/* Remontée de relecture (#258) : « aussi » n'était que côté Non (« … il coûte 2 € aussi ») et y disait « la grandeur ne change pas ». */
+const CONNECTEURS_CONSTANCE: Connecteur[] = [
+	connecteur('aussi', 'aussi'),
+	connecteur('également', 'également'),
+];
+
 /* Lexique élargi : les cités, plus les connecteurs voisins qu'un lecteur pressé
    prendrait pour un signal. « puis » est celui de l'exemple même de l'issue (« 3 € de
    prise en charge, puis 1 € par kilomètre ») ; « plus…, plus… » fait croire à la
    proportionnalité dès que deux grandeurs croissent ensemble. */
 const CONNECTEURS_ELARGIS: Connecteur[] = [
 	...CONNECTEURS_CITES,
+	...CONNECTEURS_CONSTANCE,
 	connecteur('chaque', 'chaque'),
 	connecteur('même', 'mêmes?'),
 	connecteur('pareil', 'pareil(?:le)?s?'),
@@ -251,6 +258,16 @@ describe('Anti-piège mots-clés (critère 3)', () => {
 		expect(connecteursUnilateraux(etiquetes, CONNECTEURS_CITES)).toEqual([]);
 	});
 
+	it('critère 3 : « aussi » et « également » apparaissent des deux côtés, ou nulle part, dans ce que l’enfant lit avant de répondre', () => {
+		// Situation ET question posée (le texte du QCM) ; ni l'explication ni l'étayage,
+		// qui ne s'affichent qu'après la réponse.
+		const lus: Etiquete[] = ITEMS.map((it) => ({
+			texte: qcm(exerciceIdentifier(it)).question,
+			oui: it.proportionnel,
+		}));
+		expect(connecteursUnilateraux(lus, CONNECTEURS_CONSTANCE)).toEqual([]);
+	});
+
 	it(`critère 3 : un lecteur de connecteurs qui a appris leur penchant sur la banque ne dépasse pas ${REUSSITE_MAX * 100} %`, () => {
 		const r = reussiteLecteurDeConnecteurs(etiquetes, CONNECTEURS_ELARGIS);
 		const presents = repartition(etiquetes, CONNECTEURS_ELARGIS)
@@ -289,6 +306,18 @@ describe('Anti-piège mots-clés (critère 3)', () => {
 			];
 			expect(connecteursUnilateraux(neutre, CONNECTEURS_ELARGIS)).toEqual([]);
 			expect(reussiteLecteurDeConnecteurs(neutre, CONNECTEURS_ELARGIS)).toBe(0.5);
+		});
+
+		it('« aussi » en fin de phrase et « Également » sont détectés, « aussitôt » ne passe pas pour « aussi »', () => {
+			const constance: Etiquete[] = [
+				{ texte: 'Le gâteau de Léa cuit en 10 minutes aussi.', oui: false },
+				{ texte: 'Également, le pain sèche en 3 heures.', oui: false },
+				{ texte: 'Aussitôt servi, chaque bol coûte 2 €.', oui: true },
+			];
+			expect(connecteursUnilateraux(constance, CONNECTEURS_CONSTANCE)).toEqual([
+				'« aussi » : 0 Oui / 1 Non',
+				'« également » : 0 Oui / 1 Non',
+			]);
 		});
 
 		it("un connecteur présent des deux côtés n'est pas signalé et ne rapporte rien", () => {

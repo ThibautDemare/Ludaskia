@@ -20,7 +20,7 @@ import { updateGoal, evaluateTrophies } from './rewards';
 import { getLessonById } from './catalog';
 import { niveauLecon } from './niveau-actif';
 import { estNotionSolide } from './maitrise';
-import { cloreSondesRevoir } from './encadrant-stats';
+import { cloreSondesRevoir } from './revoir-file';
 import type { Trophy } from './rewards';
 import { recompensesEntre } from './unlocks';
 import type { Recompense } from './unlocks';

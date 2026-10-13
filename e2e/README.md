@@ -398,6 +398,12 @@ modifiés sur la branche via le `GITHUB_TOKEN`.
   `[update-snapshots]`) **avant** d'ouvrir la PR ; une fois les baselines commitées
   par le bot (`git fetch`), ouvrir la PR → `ci.yml` compare avec les baselines en
   place.
+- **Le workflow réécrit TOUTES les baselines**, pas seulement celles qui manquent : le
+  tirage de la galerie varie d'un run à l'autre, sous le seuil de comparaison. Après une
+  régénération faite pour une **nouvelle leçon**, ne garder dans la PR que ses nouvelles
+  baselines et restaurer les autres (`git checkout <commit d'avant> -- <fichiers>`) :
+  sinon la PR embarque une centaine de PNG modifiés sans rapport avec elle (constaté sur
+  #258, 105 fichiers).
 
 **Ne jamais** régénérer en local : sur une machine Linux le rendu diffère encore du
 runner CI, et ailleurs le moteur de texte n'est même pas le même.

@@ -118,6 +118,7 @@ import {
 	analyserResultatPosee,
 	attendueItem,
 	attendueIntervalle,
+	enonceEtapeLisible,
 } from '../core/erreur-representation';
 import { joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
 import type {
@@ -1296,7 +1297,9 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 		// pour « le problème est faux » : c'est l'étape qui dit où l'enfant décroche.
 		const toutJuste = corrigerEtapesProbleme(stage, it.etapes, (etape, saisie) =>
 			capterRev({
-				text: etape.question,
+				// L'énoncé précède la sous-question (#258) : sans les données, l'adulte ne peut
+				// pas relire l'erreur. Même forme que le runner de leçon.
+				text: enonceEtapeLisible(it.enonce, etape.question),
 				donnee: saisie,
 				attendue: attenduEtapeTexte(etape.answer, etape.unite),
 				lessonId: it.lessonId,
@@ -1322,7 +1325,7 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 	wireGiveUp(() => {
 		revelerEtapesProbleme(stage, it.etapes, (e) =>
 			capterRev({
-				text: e.etape.question,
+				text: enonceEtapeLisible(it.enonce, e.etape.question),
 				donnee: e.donnee,
 				attendue: attenduEtapeTexte(e.etape.answer, e.etape.unite),
 				lessonId: it.lessonId,

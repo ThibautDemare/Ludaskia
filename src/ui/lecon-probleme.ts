@@ -44,7 +44,7 @@ import {
 } from './lecon-passer';
 import { attenduEtapeTexte, entreesEtapesPassees, etapeJuste } from '../core/probleme-etapes';
 import type { EntreeEtapePassee } from '../core/probleme-etapes';
-import { etapesLisibles } from '../core/erreur-representation';
+import { enonceEtapeLisible, etapesLisibles } from '../core/erreur-representation';
 import { html, type SafeHtml, VIDE, joindre } from '../core/html';
 import {
 	brancherDecisionPartage,
@@ -364,10 +364,11 @@ function saisiesEtapes(): string[] {
 /* Entrée du journal d'une sous-question ratée (#391), une par étape fausse. L'attendu est ce
    que LIT le parent, dans la graphie de l'énoncé (#542) : `String(4.5)` lui écrivait « 4.5 »,
    avec un point, une notation que son enfant n'a jamais vue en classe. Partagée par le jeu
-   libre et la séance partagée, qui journalisent les mêmes erreurs. */
-function erreurEtape(etape: ProblemeEtape, saisie: string): ErreurRunner {
+   libre et la séance partagée, qui journalisent les mêmes erreurs. L'énoncé précède la
+   sous-question (#258) : sans les données, l'adulte ne peut pas relire l'erreur. */
+function erreurEtape(enonce: string, etape: ProblemeEtape, saisie: string): ErreurRunner {
 	return {
-		text: etape.question,
+		text: enonceEtapeLisible(enonce, etape.question),
 		donnee: saisie,
 		attendue: attenduEtapeTexte(etape.answer, etape.unite),
 		lessonId: lesson.id,
@@ -390,7 +391,7 @@ function verifier(): void {
 	// chaque sous-question ratée (#391) via le callback — une seule capture par essai
 	// (garde `answered`).
 	const toutJuste = corrigerEtapesProbleme(sheets(), q.etapes, (etape, saisie) =>
-		capterErreur({ ...erreurEtape(etape, saisie), mode: 'lecon' }),
+		capterErreur({ ...erreurEtape(q.enonce, etape, saisie), mode: 'lecon' }),
 	);
 	if (toutJuste) score++;
 	// Une fois la réponse validée, le bloc de décision s'efface : seul « Continuer ▶ »
@@ -455,7 +456,7 @@ function passer(): void {
 	const q = questions[idx];
 	revelerEtapesProbleme(sheets(), q.etapes, (e) =>
 		capterErreur({
-			text: e.etape.question,
+			text: enonceEtapeLisible(q.enonce, e.etape.question),
 			donnee: e.donnee,
 			attendue: attenduEtapeTexte(e.etape.answer, e.etape.unite),
 			lessonId: lesson.id,
@@ -502,7 +503,7 @@ function validerPartage(s: SeanceRunner): void {
 			attendue,
 			erreurs: q.etapes.map((et) =>
 				erreurPassee({
-					text: et.question,
+					text: enonceEtapeLisible(q.enonce, et.question),
 					attendue: attenduEtapeTexte(et.answer, et.unite),
 					lessonId: lesson.id,
 				}),
@@ -510,7 +511,7 @@ function validerPartage(s: SeanceRunner): void {
 		};
 	} else {
 		const ratees = q.etapes.flatMap((et, i) =>
-			etapeJuste(saisies[i], et.answer) ? [] : [erreurEtape(et, saisies[i])],
+			etapeJuste(saisies[i], et.answer) ? [] : [erreurEtape(q.enonce, et, saisies[i])],
 		);
 		reponse = {
 			statut: ratees.length === 0 ? 'juste' : 'faux',

@@ -73,7 +73,17 @@ export function enonceProblemeLisible(p: {
 		p.etapes.length === 1
 			? p.etapes[0].question
 			: p.etapes.map((e, i) => `${i + 1}) ${e.question}`).join(' ');
-	return `${p.enonce} ${questions}`;
+	return enonceEtapeLisible(p.enonce, questions);
+}
+
+/* Énoncé du journal d'UNE sous-question de problème ratée ou passée (#258, critère 8) : la
+   situation, puis la question de cette étape. La sous-question seule (« Combien coûtent 12
+   cahiers ? ») ne porte pas les données (« 4 cahiers coûtent 10 € ») : l'adulte lisait la
+   réponse attendue sans pouvoir distinguer une erreur de calcul d'une erreur de
+   raisonnement. Partagé par le runner de leçon (jeu libre, question passée, séance
+   partagée) et la révision, qui journalisent les mêmes étapes. */
+export function enonceEtapeLisible(enonce: string, question: string): string {
+	return `${enonce} ${question}`;
 }
 
 /* Réponses (données ou attendues) aux étapes d'un problème, en une ligne. Numérotées dès

@@ -365,6 +365,59 @@ describe('#258 — leçon B « Problèmes de proportionnalité »', () => {
 				expect(it.question.trim().endsWith('?'), it.question).toBe(true);
 			}
 		});
+
+		/* Remontée de relecture (destin « gate ») : la linéarité ne s'applique que si le
+		   texte DIT que la relation est constante. La leçon voisine « Est-ce proportionnel ? »
+		   apprend justement que « 4 baguettes 6 €, 8 baguettes 10 € » ne l'est pas ; un
+		   « 4 cahiers coûtent 10 €. Combien coûtent 12 cahiers ? » muet sur le prix de chaque
+		   cahier admet donc honnêtement « on ne peut pas savoir ».
+		   Marqueurs retenus, chacun parce qu'il pose la constance sans donner la valeur
+		   unitaire (critère 13) :
+		   - « identique(s) », « pareil(s) / pareille(s) » : les objets sont les mêmes ;
+		   - « même(s) » PRÉCÉDÉ d'un article (« le même prix », « la même recette », « au même
+		     prix », « le même nombre de ») : l'article écarte « même si », « elle-même »,
+		     « même pas », qui ne disent rien de la relation ;
+		   - « toujours » (« toujours payée autant », « toujours avec… ») ;
+		   - « chacun(e) » (« chacune en contient autant »).
+		   Limite assumée : un mot-clé ne prouve pas le sens. Le gate attrape l'oubli, pas une
+		   phrase qui contiendrait « toujours » sans parler de la relation ; ça reste à la
+		   relecture de langue. */
+		it('l’énoncé ou la question dit que la relation est constante (même prix, même recette, objets identiques…)', () => {
+			const MARQUEURS_CONSTANCE: RegExp[] = [
+				/(?<!\p{L})identiques?(?!\p{L})/iu,
+				/(?<!\p{L})pareil(?:le)?s?(?!\p{L})/iu,
+				/(?<![\p{L}-])(?:le|la|les|au|aux|du|des|un|une)\s+mêmes?(?![\p{L}-])/iu,
+				/(?<!\p{L})toujours(?!\p{L})/iu,
+				/(?<!\p{L})chacune?s?(?!\p{L})/iu,
+			];
+			const ditLaConstance = (texte: string): boolean => {
+				const t = texte.normalize('NFC');
+				return MARQUEURS_CONSTANCE.some((m) => m.test(t));
+			};
+
+			// Contrôles du détecteur : sans eux, un détecteur trop large rendrait le gate vert
+			// pour de mauvaises raisons une fois les énoncés corrigés.
+			for (const muet of [
+				'À la papeterie, 4 cahiers coûtent 10 €. Combien coûtent 12 cahiers ?',
+				'Même si 4 cahiers coûtent 10 €, Tom en veut 12. Combien paie-t-il ?',
+				'Léa pose elle-même les dalles : 3 dalles mesurent 90 cm. Et 12 dalles ?',
+			])
+				expect(ditLaConstance(muet), `faux positif du détecteur : ${muet}`).toBe(false);
+			for (const explicite of [
+				'Les cahiers sont tous au même prix : 4 cahiers coûtent 10 €.',
+				'Léa pose des dalles identiques : 3 dalles mesurent 90 cm.',
+				'Zoé suit toujours la même recette : pour 4 L, elle utilise 6 citrons.',
+			])
+				expect(ditLaConstance(explicite), `marqueur manqué par le détecteur : ${explicite}`).toBe(
+					true,
+				);
+
+			const muets = banque.filter((it) => !ditLaConstance(texteComplet(it))).map(texteComplet);
+			expect(
+				muets,
+				`${muets.length} énoncé(s) ne disent pas que la relation est constante`,
+			).toEqual([]);
+		});
 	});
 
 	describe('critère 5 — deux procédures, jamais combinées', () => {

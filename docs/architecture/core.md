@@ -1964,8 +1964,9 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   propre classe (règle de dédoublonnage ci-dessus) — pas de vue « prédéfinies de ma classe
   seule » possible pour lui, remonté puis écarté : « Sa classe » montre déjà ce que
   l'enfant voit, ce jeton n'ajouterait rien. La classe D'ORIGINE d'une leçon pour un profil
-  (`origineLecon`), elle, reste dans `encadrant-stats.ts` ci-dessous : l'y déplacer créerait
-  un cycle d'imports entre les deux modules. **`tronquerArbre(arbre, limite)`** (#571) borne
+  (`origineLecon`), elle, vit dans `niveau-profil.ts` ci-dessous (ré-exportée par
+  `encadrant-stats.ts`) : l'y déplacer créerait un cycle d'imports entre les deux modules.
+  **`tronquerArbre(arbre, limite)`** (#571) borne
   un arbre déjà construit aux `limite` premières leçons, dans l'ordre où il les présente, et
   renvoie à part le nombre laissé de côté (`restant`) ; catégories et matières vidées par la
   borne ne sont pas rendues, et `total` est recalculé sur ce qui reste — le compte affiché
@@ -2005,12 +2006,23 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   sinon. Il sert au titre d'un groupe du journal de l'encadrant et à la vue de résultat d'un
   lien partagé ; les dictées envoyées par lien sont décrites dans
   [Liens partagés](liens-partages.md) (`core/partage/dictees.ts`).
+- **`niveau-profil.ts`** (#556, #573, pur) — niveau scolaire d'un profil **désigné par
+  UUID** (`niveauProfilMatiere`) et position d'une leçon par rapport à sa classe suivie
+  (`origineLecon`, `OrigineLecon`, `DirectionNiveau`). Sorti d'`encadrant-stats` pour être
+  partagé avec `revoir-file.ts` sans cycle d'imports ; `encadrant-stats` le ré-exporte.
+- **`revoir-file.ts`** (#234, #465, #556, #573, pur + persistance) — la **file « à revoir »**
+  d'un profil : `REVOIR_KEY`, `loadRevoir`/`loadRevoirFor`/`toggleRevoirFor`, préfixe
+  `ortho:` (`orthoRevoirId`/`isOrthoRevoirId`/`orthoIdFromRevoir`), `lireEpingleLecon`,
+  `revoirActives`/`RevoirEntry`, `epingleesProfil`/`EpingleEntry`/`EtatEpingle`,
+  `purgeRevoirSolides` (`REVOIR_AUTO_KEY`/`REVOIR_FRAGILE_KEY`, `RetraitAuto`,
+  `MotifRetrait`), `cloreSondesRevoir`, `retraitsAutoProfil`. Sorti d'`encadrant-stats`
+  (#573, pur déplacement) ; `lesson-run.ts` l'importe directement, `encadrant-stats` le
+  ré-exporte. Les paragraphes ci-dessous décrivent ce bloc.
 - **`encadrant-stats.ts`** (#234, pur) — lecture de la progression **par UUID sans
-  bascule** (`progressionProfil`, `niveauProfilMatiere`) ; réexporte l'échelle de maîtrise
+  bascule** (`progressionProfil`) ; réexporte l'échelle de maîtrise
   (`niveauNotion`/`tendanceNotion`, définie dans `maitrise.ts`) pour les imports
-  historiques, **activité** et **file « à revoir »** (`loadRevoir`/`loadRevoirFor`/
-  `toggleRevoirFor`/`revoirActives`/`epingleesProfil`/`purgeRevoirSolides`/
-  `retraitsAutoProfil`). Lit les clés brutes du profil consulté.
+  historiques, **activité**, et, pour les importeurs existants, `niveau-profil.ts` et
+  `revoir-file.ts` (ci-dessus). Lit les clés brutes du profil consulté.
   **Position d'une leçon par rapport à la classe suivie (#556)** : `origineLecon(lesson,
   profile)` → `OrigineLecon {niveau, direction}` — `niveau` est celui où la leçon sera
   RÉELLEMENT jouée et stockée pour ce profil (`effectiveLevel` sur la classe suivie de sa

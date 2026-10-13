@@ -785,7 +785,7 @@ avec la recherche enfant : une catégorie qui correspond ENTRAÎNE ici toutes se
 (l'arbre EST le résultat), quand l'enfant reçoit la catégorie seule.
 
 **Trois régimes d'affichage**, selon d'où vient la cible retenue par rapport à la classe
-suivie par le profil pour la matière de la leçon (`core/encadrant-stats.ts:origineLecon` →
+suivie par le profil pour la matière de la leçon (`core/niveau-profil.ts:origineLecon` →
 `OrigineLecon {niveau, direction}`, cf. [Logique pure](core.md)) :
 - **classe suivie** — état d'acquisition habituel, sans rien de plus ;
 - **classe EN DESSOUS** — badge « classe d'origine » + état d'acquisition, lu au niveau de
@@ -896,7 +896,7 @@ sous-bloc détaillé qui porte le contexte.
 liste de dictée (#424) — `toggleRevoirFor(uuid, entryId)` → `ludaskia_revoir` du profil (cf.
 [Données & profils](donnees-et-profils.md)). La file reste un simple `string[]` : une entrée de
 dictée s'y distingue par le préfixe `ortho:` (`orthoRevoirId`/`isOrthoRevoirId`/
-`orthoIdFromRevoir`, `core/encadrant-stats.ts`) — id opaque pour une liste du parent, `fr-ortho-*`
+`orthoIdFromRevoir`, `core/revoir-file.ts`) — id opaque pour une liste du parent, `fr-ortho-*`
 pour une dictée prédéfinie. **Une leçon s'épingle À UNE CLASSE (#573)** : id de file
 `lessonId@niveau` (`core/revoir-cible.ts`), de sorte que la version CE2 et la version CM1 d'une
 même leçon sont deux épingles indépendantes — les boutons « Épingler »/« Retirer » portent
@@ -916,7 +916,7 @@ comme une leçon épinglée par l'adulte, sans aucun marquage — état ASSUMÉ 
 
 Au retour de l'enfant sur son accueil, `ui/a-revoir-card.ts` affiche une carte (`#aRevoir`,
 modèle « leçon du jour ») qui **boucle** sur `revoirActives(dicteeDispo)` — union `RevoirEntry`
-(`{kind:'lecon', lesson}` ou `{kind:'ortho', source}`, `core/encadrant-stats.ts`). Ce filtre
+(`{kind:'lecon', lesson}` ou `{kind:'ortho', source}`, `core/revoir-file.ts`). Ce filtre
 d'**affichage** ne montre que les entrées ENCORE faibles **par nature de l'entrée** : une leçon
 si non étoilée et perf récente < seuil, une liste de dictée si `niveauListeOrtho(...) !==
 'acquis'`. Icône/sous-titre : matière/catégorie réelles pour une leçon, sous-titre **fixe**
@@ -925,7 +925,7 @@ si non étoilée et perf récente < seuil, une liste de dictée si `niveauListeO
 `lecon-`/`mode-`). L'enfant n'a pas à être présent quand l'encadrant épingle.
 
 **Désépinglage automatique** (#465) : le rendu de cette carte déclenche aussi
-`purgeRevoirSolides(profile, dicteeDispo, now)` (`core/encadrant-stats.ts`), qui retire **pour
+`purgeRevoirSolides(profile, dicteeDispo, now)` (`core/revoir-file.ts`), qui retire **pour
 de bon** de `ludaskia_revoir` les entrées redevenues solides, avec le MÊME critère que le
 filtre d'affichage ci-dessus. Jusqu'ici seul l'affichage se nettoyait : la file persistée
 gardait l'entrée à vie et l'espace encadrant la listait encore (« entrée fantôme »). Deux
@@ -948,7 +948,7 @@ ci-dessus l'a déjà débarrassée des entrées redevenues solides, donc « Épi
 contenir de fantôme.
 
 **État d'acquisition sur une épinglée** (#518, révisé #556) : chaque ligne porte le même
-badge que celles des suggestions (`EpingleEntry.etat`, `core/encadrant-stats.ts`) — sans lui,
+badge que celles des suggestions (`EpingleEntry.etat`, `core/revoir-file.ts`) — sans lui,
 l'adulte ne pouvait pas juger s'il fallait désépingler. Une leçon épinglée jamais travaillée
 n'est pas un trou de données : elle est dans le récap à `'a-decouvrir'`, donc affiche
 « à découvrir » comme n'importe quelle notion neuve. Une cible d'une AUTRE classe que celle

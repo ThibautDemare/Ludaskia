@@ -126,6 +126,10 @@ code », mais **« ne pas dériver l'attendu depuis l'implémentation »** :
 - **Normalisation des réponses.** `checkItemAnswer`/`normalizeText` : accents
   exigés, **apostrophe droite `'`** (choix acté du projet), casse, espaces, formes
   équivalentes acceptées / formes fausses rejetées.
+  Dans le CODE du test (regex, chaînes de comparaison), écris les espaces insécables
+  en échappement (` `, ` `), jamais en caractère littéral : ESLint
+  (`no-irregular-whitespace`) fait échouer la CI, et l'erreur est revenue deux fois sur
+  #258.
 - **Distracteurs QCM.** De **vraies formes** (jamais une faute affichée), distincts
   entre eux et de la bonne réponse, en nombre attendu.
 - **Parité des modes** (#69) et enregistrement d'un essai (`recordLessonRun`) :

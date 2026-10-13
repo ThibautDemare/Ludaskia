@@ -1689,6 +1689,12 @@ procédure additive : la présence de deux couples peut donc **annoncer** l'addi
 à deux couples dont **un seul sert** relèvent de la procédure mixte, **CM2**, et restent
 hors périmètre.
 
+*Rejet écrit (relecture qualité #258)* : les deux banques cohabitent dans un seul fichier de
+données (`maths/proportionnalite.ts`, ~1 150 lignes de données, sans fonction longue). On ne
+le scinde pas tant qu'il reste sous ~1 500 lignes ; au-delà, ou si une troisième banque
+arrive, on l'éclate en `proportionnalite-identifier.ts` / `proportionnalite-resoudre.ts`,
+sur le modèle des deux fichiers de test.
+
 *Rejet écrit — pas de tableau de proportionnalité (critère 10).* Aucune des deux leçons ne
 propose de **tableau de proportionnalité**, ni à remplir ni à lire. Source : la ressource
 eduscol « Résoudre des problèmes de proportionnalité au cycle 3 » : « Les tableaux de

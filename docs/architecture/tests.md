@@ -126,6 +126,16 @@ C'est ce fichier qui porte les round-trips de correction ; `erreurs-encadrant.sp
 ne garde que l'**affichage** (regroupement, période, tri, dépliage) plus les deux
 scénarios hors couverture-par-format (seuil détaché, révision espacée).
 
+**Énoncé d'une étape de problème (#258, critère 8).** Une erreur sur une étape porte
+l'énoncé suivi de la sous-question. Les cinq sites qui la journalisent (jeu libre faux et
+« je ne sais pas », séance partagée, révision faux et passé) passent par la fonction pure
+`enonceEtapeLisible`, testée en Vitest (`tests/erreur-representation.test.ts`), et
+`e2e/proportionnalite.spec.ts` joue les deux chemins du jeu libre. *Rejet écrit (relecture
+qualité #258)* : pas de spec dédiée par chemin restant (séance partagée, révision). Ils
+appellent le même helper, et la couverture par format ci-dessus vérifie déjà qu'ils
+journalisent un énoncé non vide. Une spec de plus par chemin dupliquerait la preuve sans en
+apporter.
+
 **Un format peut porter plusieurs entrées, une par GESTE distinct (#716).** Chaque
 `CouvertureFormat.entrees` est un TABLEAU depuis l'origine, pas une entrée unique : un
 même `type` d'`Exercise` peut être produit par deux mécaniques d'écran différentes, et

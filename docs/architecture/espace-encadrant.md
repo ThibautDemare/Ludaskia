@@ -724,7 +724,8 @@ rangement dans l'ordre (`ui/lecon-ordre.ts`), le tri par thème (`ui/lecon-tri.t
 mot mal classé), l'appariement (`ui/lecon-appariement.ts`, une entrée par manche ratée,
 restreinte aux paires fausses), le tableau de conversion (`ui/lecon-tableau.ts`, le nombre relu
 dans l'unité cible), la résolution de problèmes (`ui/lecon-probleme.ts`, une entrée par
-sous-question ratée) et la dictée d'orthographe (`ui/ortho-runner.ts`, le **premier essai raté**
+sous-question ratée, dont l'énoncé est celui du problème suivi de la sous-question,
+`enonceEtapeLisible`) et la dictée d'orthographe (`ui/ortho-runner.ts`, le **premier essai raté**
 d'un mot — le rendu des trois tâches, lui, vit depuis #640 dans `ui/ortho-taches.ts`, partagé
 avec la révision espacée, cf. [Rendu & interactions](ui.md)). Ignore une erreur sans leçon
 rattachée ou sans énoncé affichable (rien à regrouper/montrer). Les formats **composites** délèguent leur mise en forme à

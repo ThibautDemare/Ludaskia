@@ -1937,7 +1937,10 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   révision (`ui/lecon-probleme.ts`, `ui/revision.ts`).
   **`entreesEtapesPassees(etapes, saisies)`** en dérive ce qu'un problème **passé**
   (« Je ne sais pas, montre-moi ») laisse au journal encadrant, sous-question par
-  sous-question : case vide → entrée `sansTentative` sans réponse donnée, case remplie et
+  sous-question (l'énoncé de chaque entrée est celui du problème **suivi** de la
+  sous-question, via **`enonceEtapeLisible(enonce, question)`** de `erreur-representation.ts`,
+  #258 : sans les données de la situation, la réponse attendue ne se lit pas ; même chose sur
+  les quatre chemins — jeu libre, révélation, séance partagée, révision) : case vide → entrée `sansTentative` sans réponse donnée, case remplie et
   fausse → **vraie** entrée d'erreur avec ce que l'enfant avait écrit, case remplie et juste →
   **aucune** entrée. Journaliser « n'a pas essayé » sur toutes les cases d'un problème
   partiellement rempli était faux — et le journal est ce que le parent lit. La règle des trois

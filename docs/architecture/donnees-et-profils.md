@@ -92,7 +92,7 @@ navigation](modes-et-navigation.md)), `ludaskia_revoir`
 `string[]` mêlant des ids de leçon du catalogue — **scopés par classe `lessonId@niveau`
 depuis #573**, `core/revoir-cible.ts` ; un id nu d'avant est joué à la classe suivie — et, depuis #424, des entrées de **liste
 de dictée** d'orthographe **préfixées `ortho:`** — `orthoRevoirId`/`isOrthoRevoirId`,
-`core/encadrant-stats.ts` — id opaque pour une liste du parent, `fr-ortho-*` pour une
+`core/revoir-file.ts` — id opaque pour une liste du parent, `fr-ortho-*` pour une
 dictée prédéfinie ; rétro-compatible, la nature de chaque entrée tient au seul préfixe ;
 depuis #490, l'ENFANT peut aussi y ajouter une entrée — la leçon prérequise que lui
 propose de mettre de côté le panneau d'étayage (`ui/etayage-panneau.ts:epinglerPrerequis`,
@@ -102,7 +102,7 @@ même `toggleRevoirFor`) — et la file ne distingue pas la provenance d'une ent
 fragiles depuis qu'elles sont épinglées** — seules celles-là sont candidates au retrait
 automatique ; clé **ABSENTE** = jamais encore purgée pour ce profil, ce qui déclenche
 l'adoption de toute la file existante au premier passage, cf.
-`core/encadrant-stats.ts:purgeRevoirSolides`), `ludaskia_revoirAuto` (#465 : journal
+`core/revoir-file.ts:purgeRevoirSolides`), `ludaskia_revoirAuto` (#465 : journal
 **daté** des retraits automatiques de la file « à revoir », borné à 10 entrées et 30
 jours, libellé figé à l'instant du retrait, avec son motif — dont `'version-suivie'` et
 `versionSuivie` depuis #573 — base du bloc « Retirées automatiquement »

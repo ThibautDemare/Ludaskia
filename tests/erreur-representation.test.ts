@@ -16,6 +16,7 @@ import {
 	enonceClicMotJournal,
 	enonceDroiteJournal,
 	enonceProblemeLisible,
+	enonceEtapeLisible,
 	etapesLisibles,
 	type CellulePosee,
 	type CelluleTableau,
@@ -25,7 +26,12 @@ import { labelLeconOrtho } from '../src/core/orthographe/lessons';
 import { ORTHO_PREDEF } from '../src/data/francais/orthographe';
 import { MESURE_LESSONS } from '../src/data/maths/mesures';
 import type { Exercise } from '../src/core/exercise';
-import { getLessonById, type SchoolLevel } from '../src/core/catalog';
+import {
+	getAllLessons,
+	getLessonById,
+	isProblemeLesson,
+	type SchoolLevel,
+} from '../src/core/catalog';
 import { withSeed } from '../src/core/utils';
 
 const cell = (pos: number, saisie: string, correct: boolean): CellulePosee => ({
@@ -727,5 +733,112 @@ describe('etapesLisibles — les réponses d’un problème, rattachées à leur
 		expect(t).toContain('1) 4,5');
 		expect(t).toContain('2) 3');
 		expect(t).not.toMatch(/4,5,\s?3/);
+	});
+});
+
+/* ---------------------------------------------------------------
+   Étape de problème journalisée (#258, critère 8) : l'adulte lit l'erreur HORS de l'appli.
+   La sous-question seule (« Combien coûtent 12 cahiers ? ») ne porte pas les données
+   (« 4 cahiers coûtent 10 € ») : sans elles, une erreur de calcul et une erreur de
+   raisonnement (additif au lieu de multiplicatif) se lisent pareil. Le texte d'une étape
+   est donc l'énoncé, puis la sous-question, chacun intact. C'est la forme unique des sites
+   qui journalisent une étape, et celle d'un problème entier à une seule étape.
+   --------------------------------------------------------------- */
+const NBSP = ' ';
+
+/* Le texte commence par `avant`, finit par `apres`, et ce qui les relie est lisible : au
+   moins un blanc de chaque côté (rien de collé), jamais deux espaces de suite, y compris
+   avec le dernier caractère de `avant` et le premier de `apres` (un énoncé qui finirait
+   par une espace donnerait sinon un double espace invisible au raccord). Un libellé
+   intermédiaire reste permis : l'exigence est la lisibilité, pas la forme du raccord. */
+function attendreRaccordLisible(texte: string, avant: string, apres: string, ou = ''): void {
+	const ctx = `${ou} « ${texte} »`;
+	expect(texte.startsWith(avant), `ne commence pas par « ${avant} » :${ctx}`).toBe(true);
+	expect(texte.endsWith(apres), `ne finit pas par « ${apres} » :${ctx}`).toBe(true);
+	expect(texte.length, `collés ou rognés :${ctx}`).toBeGreaterThan(avant.length + apres.length);
+	const raccord = texte.slice(avant.length, texte.length - apres.length);
+	expect(raccord, `collé à ce qui précède :${ctx}`).toMatch(/^\s/);
+	expect(raccord, `collé à ce qui suit :${ctx}`).toMatch(/\s$/);
+	expect(avant.slice(-1) + raccord + apres.slice(0, 1), `double espace :${ctx}`).not.toMatch(
+		/ {2}/,
+	);
+}
+
+describe('enonceEtapeLisible — les données du problème, puis la sous-question de l’étape (#258)', () => {
+	const ENONCE = 'Au marché, 4 cahiers identiques coûtent 10 €.';
+	const QUESTION = 'Combien coûtent 12 de ces cahiers ?';
+
+	it('critère 8 : l’énoncé (les données) d’abord, la sous-question ensuite, chacun entier', () => {
+		const t = enonceEtapeLisible(ENONCE, QUESTION);
+		expect(t.startsWith(ENONCE), `énoncé absent en tête : ${t}`).toBe(true);
+		expect(t.endsWith(QUESTION), `sous-question absente en fin : ${t}`).toBe(true);
+		// Aucun chevauchement : ni l'un ni l'autre n'est rogné pour faire tenir l'autre.
+		expect(t.length).toBeGreaterThanOrEqual(ENONCE.length + QUESTION.length);
+	});
+
+	it('séparés lisiblement : ni collés, ni double espace', () => {
+		attendreRaccordLisible(enonceEtapeLisible(ENONCE, QUESTION), ENONCE, QUESTION);
+	});
+
+	it('« € », apostrophe droite et espaces insécables passent tels quels (ni normalisés, ni échappés)', () => {
+		const enonce = `Au marché, 4 sachets d'olives identiques coûtent 10${NBSP}€.`;
+		const question = `Combien coûtent 12 sachets d'olives${NBSP}?`;
+		const t = enonceEtapeLisible(enonce, question);
+		// startsWith/endsWith sur les chaînes exactes : une insécable aplatie en espace, une
+		// apostrophe typographique ou une entité HTML (« &#39; », « &euro; ») les font échouer.
+		expect(t.startsWith(enonce), `énoncé altéré : ${JSON.stringify(t)}`).toBe(true);
+		expect(t.endsWith(question), `question altérée : ${JSON.stringify(t)}`).toBe(true);
+	});
+});
+
+describe('enonceProblemeLisible — même forme que l’étape journalisée (#258, critère 8)', () => {
+	const ENONCE = 'Pour 4 personnes, il faut 200 g de farine et 3 œufs.';
+	const Q1 = 'Combien faut-il de farine pour 8 personnes ?';
+	const Q2 = "Combien faut-il d'œufs pour 8 personnes ?";
+
+	it('une étape : exactement le texte journalisé pour cette étape (une forme, pas deux)', () => {
+		expect(enonceProblemeLisible({ enonce: ENONCE, etapes: [{ question: Q1 }] })).toBe(
+			enonceEtapeLisible(ENONCE, Q1),
+		);
+	});
+
+	it('deux étapes : l’énoncé, puis « 1) … » et « 2) … » dans l’ordre, chaque raccord lisible', () => {
+		const t = enonceProblemeLisible({
+			enonce: ENONCE,
+			etapes: [{ question: Q1 }, { question: Q2 }],
+		});
+		const q1 = `1) ${Q1}`;
+		const q2 = `2) ${Q2}`;
+		const i1 = t.indexOf(q1);
+		expect(i1, `question 1 absente, mal numérotée ou avant l'énoncé : ${t}`).toBeGreaterThanOrEqual(
+			ENONCE.length,
+		);
+		attendreRaccordLisible(t.slice(0, i1 + q1.length), ENONCE, q1, 'énoncé → 1)');
+		attendreRaccordLisible(t.slice(i1), q1, q2, '1) → 2)');
+	});
+});
+
+describe('enonceEtapeLisible sur les problèmes réellement tirés — l’énoncé clôt sa phrase', () => {
+	/* La fonction ne touche pas la ponctuation (critère 8) : c'est donc l'énoncé qui doit
+	   finir sa phrase. Sans quoi le journal lirait « … coûtent 10 € Combien coûtent… » d'un
+	   seul tenant. Toutes les leçons « problème », car toutes journalisent leurs étapes par
+	   cette forme. */
+	it('chaque leçon « problème », à chaque niveau : phrase close, raccord lisible, à chaque étape', () => {
+		const lecons = getAllLessons().filter(isProblemeLesson);
+		expect(lecons.map((l) => l.id)).toContain('math-prob-proportion-resoudre');
+		for (const lecon of lecons) {
+			for (const level of lecon.levels) {
+				for (let seed = 1; seed <= 150; seed++) {
+					const ex = withSeed(seed, () => lecon.exerciseType.generate({ level }));
+					if (ex.type !== 'probleme') throw new Error(`${lecon.id} : pas un problème`);
+					const ou = `${lecon.id} ${level} graine ${seed}`;
+					expect(ex.enonce, `${ou} : énoncé non clos`).toMatch(/[.!?…](\u00a0?[»)])?$/);
+					for (const etape of ex.etapes) {
+						const t = enonceEtapeLisible(ex.enonce, etape.question);
+						attendreRaccordLisible(t, ex.enonce, etape.question, ou);
+					}
+				}
+			}
+		}
 	});
 });

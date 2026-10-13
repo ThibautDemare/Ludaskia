@@ -96,6 +96,44 @@ test('CM1 leçon B : une mauvaise réponse est journalisée côté encadrant (cr
 	expect(errors).toEqual([]);
 });
 
+test("CM1 leçon B : « Je ne sais pas, montre-moi » journalise l'énoncé complet, marqué « sans tentative » (critère 8)", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(PROFIL('cm1'));
+	await page.addInitScript(CLEAR_PIN);
+	await gotoHash(page, 'lecon-math-prob-proportion-resoudre');
+	const input = page.locator('.prob-input').first();
+	await input.waitFor();
+	const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
+	const enonce = norm((await page.locator('.prob-enonce').first().textContent()) ?? '');
+	const sousQuestion = norm((await page.locator('.prob-q').first().textContent()) ?? '');
+	expect(enonce).not.toBe('');
+	expect(sousQuestion).not.toBe('');
+
+	// Aucune réponse saisie : l'enfant demande à voir.
+	await page.locator('#leconPasser').click();
+	await expect(page.locator('.prob-mark.correct')).toHaveCount(0);
+
+	await gotoHash(page, 'encadrant');
+	const tout = page.locator('.enc-act-mode[data-act="erreurs-periode"][data-periode="tout"]');
+	if (await tout.count()) await tout.click();
+	const groupe = page.locator('.enc-err-lecon').filter({ hasText: LIBELLE_B });
+	await expect(groupe).toHaveCount(1);
+	if (!(await groupe.evaluate((el) => (el as HTMLDetailsElement).open))) {
+		await groupe.locator('.enc-err-sum').click();
+	}
+	// Marquage « n'a pas essayé » : classe stable posée sur l'entrée (cf. je-ne-sais-pas.spec.ts).
+	const entree = groupe.locator('.enc-err-item--passe').first();
+	await expect(entree).toBeVisible();
+	const q = entree.locator('.enc-err-q');
+	await expect(q).toBeVisible();
+	const ligne = norm((await q.textContent()) ?? '');
+	expect(ligne).toContain(enonce);
+	expect(ligne).toContain(sousQuestion);
+	expect(errors).toEqual([]);
+});
+
 test('CE2 : aucune des deux leçons dans Résolution de problèmes (CM1 seul)', async ({ page }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(PROFIL('ce2'));

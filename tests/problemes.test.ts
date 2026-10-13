@@ -6,7 +6,7 @@
    ============================================================ */
 import { describe, it, expect } from 'vitest';
 import { PROBLEMES_LESSONS } from '../src/data/maths/problemes';
-import { genLessonItem, getLessonById } from '../src/core/catalog';
+import { genLessonItem, getAllLessons, getLessonById } from '../src/core/catalog';
 import { enonceTexte } from '../src/core/items';
 
 const TIRAGES = 400;
@@ -100,6 +100,38 @@ describe('problèmes — repli texte (bilan/révision via genLessonItem)', () =>
 			expect(Number.isInteger(n)).toBe(true);
 			expect(n).toBeGreaterThanOrEqual(0);
 		}
+	});
+});
+
+/* #258, critère 15 : « Aucune leçon existante ne change de comportement ». Le catalogue
+   transmet désormais `excludeFromSprint` depuis les entrées de `math-problemes`, pour la
+   seule leçon QCM Oui/Non de proportionnalité (devinable à 50 %). L'instantané couvre la
+   catégorie ENTIÈRE, tous niveaux (une leçon CE2-only échapperait à un filtre CM1) ; il
+   rougit si une leçon historique devient exclue du sprint, si une leçon disparaît, ou si
+   une nouvelle leçon arrive dans la catégorie sans que ce test soit relu. */
+describe('problèmes — #258 : les leçons historiques gardent leur statut sprint', () => {
+	it('critère 15 : aucune leçon historique ne devient exclue du sprint ; seule « Est-ce proportionnel ? » l’est', () => {
+		for (const l of PROBLEMES_LESSONS) {
+			const def = getLessonById(l.id);
+			expect(def, l.id).toBeDefined();
+			expect(def?.excludeFromSprint === true, l.id).toBe(false);
+		}
+
+		const instantane = Object.fromEntries(
+			getAllLessons()
+				.filter((l) => l.category === 'math-problemes')
+				.map((l) => [l.id, l.excludeFromSprint === true]),
+		);
+		expect(instantane).toEqual({
+			'math-prob-composition': false,
+			'math-prob-transformation': false,
+			'math-prob-multiplication': false,
+			'math-prob-partage': false,
+			'math-prob-comparaison': false,
+			'math-prob-deux-etapes': false,
+			'math-prob-proportion-identifier': true,
+			'math-prob-proportion-resoudre': false,
+		});
 	});
 });
 

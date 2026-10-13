@@ -87,6 +87,13 @@ de conception initial est `docs/design-multi-subject.md`.
 - [Niveaux scolaires (#225)](architecture/niveaux-scolaires.md) — classe par
   matière, namespacing de progression `@niveau`.
 
+### Périmètre pédagogique
+
+Ce que Ludaskia ne fait pas, par classe, dans `docs/perimetre/` (un fichier par classe) :
+notions hors format par nature, écartées pour le moment, ou faisables mais faux-amis.
+
+- [Périmètre CM1 (#260)](perimetre/cm1.md).
+
 ### Conventions & outillage
 
 - [Conventions rédactionnelles](architecture/conventions-redaction.md) — voix

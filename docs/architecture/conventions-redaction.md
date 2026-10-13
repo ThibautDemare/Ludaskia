@@ -705,3 +705,15 @@ justement ce qu'on lui dit. Retenu : « La version CE2 ne sera pas reproposée �
 pour un participe en tête de phrase (« Réussie en CE2 ») : son sujet implicite est la
 leçon du LIBELLÉ de la ligne, donc la phrase suivante repart d'un sujet explicite (« Sa
 version de CM1… »).
+
+## Périmètre par classe : pas de mot de coût dans une raison A ou C (#260)
+
+Dans `docs/perimetre/*`, une notion rangée en **A** (hors format par nature) ou en **C**
+(faux-ami) l'est pour une raison de **nature** ou de **fidélité**, jamais de coût. Sa raison
+n'emploie donc aucun mot de coût, d'effort ou de niveau (« lourd », « plus tard »,
+« prolongement », « peu rentable ») : il ferait douter du classement, et un motif de coût
+range la notion en **B**. Cas posé à la relecture de #260 : « la construction d'angle est un
+prolongement » se lisait comme un motif de programme ; la raison retenue est le geste de
+report. Même vigilance pour une entrée A trop large, qui fermerait à tort une notion voisine
+couvrable (« mesurer à la règle graduée, dont le périmètre » fermait le calcul du périmètre
+sur des longueurs données).

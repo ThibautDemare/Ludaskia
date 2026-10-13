@@ -20,16 +20,22 @@
    Les mots de CONTENU sont croisés aussi, pour qu'aucun ne devienne un indice : « carré »
    (périmètre Oui / aire Non), « aire » (rectangle de largeur fixe Oui / carré Non), « taxi »,
    « piscine », « tirelire », « canoë », « cookies », « cinéma », « baguettes », « pommes »
-   (une version Oui, une version Non). Les non proportionnelles sont les situations
-   TYPIQUES du programme : part fixe, âge et taille, aire du carré — plus l'écart constant
-   (âges de deux enfants), le prix dégressif, la grandeur qui ne bouge pas et le partage.
+   (une version Oui, une version Non). La part fixe a ses contre-exemples Oui (livraison ou
+   inscription COMPRISES dans le prix, deux montants payés par élève) : ni « livraison » ni
+   « deux nombres dans la phrase » ne suffisent à répondre Non. Les non proportionnelles sont
+   les situations TYPIQUES du programme : part fixe, âge et taille, aire du carré — plus
+   l'écart constant (âges de deux enfants), le prix dégressif, la grandeur qui ne bouge pas et
+   le partage. Les items de données sont CHIFFRÉS de façon que le test enseigné par
+   l'étayage (« 2 fois, 3 fois plus ? ») s'y applique.
    Chaque famille est d'un seul côté (Oui ou Non), et c'est le TYPE qui le garantit :
    `oui()` n'accepte qu'une famille proportionnelle, `non()` qu'une famille qui ne l'est pas.
 
    ── Leçon B : procédures visées ──────────────────────────────────────────────────
    Linéarité MULTIPLICATIVE (un couple connu, rapport entier ×k ou ÷k) et linéarité
    ADDITIVE (deux couples connus, quantité demandée = leur somme ou leur différence
-   exacte), jamais combinées (les procédures mixtes relèvent du CM2). Garde-fous :
+   exacte), jamais combinées (les procédures mixtes relèvent du CM2). Chaque énoncé DIT que
+   la relation est constante (« tous les cahiers ont le même prix », « toujours la même
+   recette », « identiques ») : sans cela, la linéarité ne s'applique pas. Garde-fous :
    - k de 3 à 10, JAMAIS 2 : sur un ×2, l'addition répétée fausse (v + v) et la
      multiplication juste donnent le même nombre (critère 6) ;
    - valeur ≠ quantité dans chaque couple : sinon l'erreur additive classique (« reporter
@@ -39,7 +45,7 @@
      décimale (4 cahiers pour 10 €) : la linéarité est la voie la plus courte ;
    - additif : la quantité demandée n'est ni le double ni la moitié d'une quantité connue,
      et, par choix, ni un multiple ni un diviseur entier d'une quantité connue — sinon un
-     rapport entier contourne la procédure additive visée (point soumis au pédagogue).
+     rapport entier contourne la procédure additive visée (règle validée par le pédagogue).
 
    INVARIANT PROJET : les réponses sont CALCULÉES puis STOCKÉES à la construction (par la
    procédure annoncée pour B), jamais recalculées au `check`. Aucun aléa à l'import : les
@@ -205,6 +211,27 @@ const SITUATIONS_OUI: ItemIdentifier[] = [
 		Q_PRIX_PAYE('au nombre de cahiers'),
 		'4 cahiers coûtent 12 €, et 8 cahiers coûtent 24 € : 2 fois plus de cahiers, 2 fois plus cher.',
 	),
+	// Contre-exemples aux indices de CONTENU de la part fixe (avis pédagogue) : une livraison
+	// COMPRISE, deux nombres dans la situation, deux montants payés par élève. Sans eux,
+	// « livraison » ou « deux montants » suffiraient à répondre Non.
+	oui(
+		'prix-quantite',
+		'Sur ce site, la livraison est comprise dans le prix de chaque livre : 9 € le livre.',
+		'Le prix de la commande est-il proportionnel au nombre de livres ?',
+		"2 livres coûtent 18 €, et 4 livres coûtent 36 € : rien d'autre ne s'ajoute, donc 2 fois plus de livres, 2 fois plus cher.",
+	),
+	oui(
+		'prix-quantite',
+		'Chaque boîte contient 6 œufs et coûte 3 €.',
+		"Le prix payé est-il proportionnel au nombre d'œufs ?",
+		"2 boîtes, ce sont 12 œufs pour 6 € ; 4 boîtes, ce sont 24 œufs pour 12 € : 2 fois plus d'œufs, 2 fois plus cher.",
+	),
+	oui(
+		'prix-quantite',
+		'Pour la sortie, chaque élève paie 5 € pour le bus et 7 € pour le musée.',
+		"Le prix payé par la classe est-il proportionnel au nombre d'élèves ?",
+		"Chaque élève paie 12 € en tout : 10 élèves paient 120 €, et 20 élèves paient 240 €. 2 fois plus d'élèves, 2 fois plus cher.",
+	),
 	// --- tarif sans part fixe ---
 	oui(
 		'tarif-sans-part-fixe',
@@ -241,6 +268,12 @@ const SITUATIONS_OUI: ItemIdentifier[] = [
 		'Au club de danse, chaque cours coûte 6 €.',
 		Q_PRIX_PAYE('au nombre de cours'),
 		'3 cours coûtent 18 €, et 6 cours coûtent 36 € : 2 fois plus de cours, 2 fois plus cher.',
+	),
+	oui(
+		'tarif-sans-part-fixe',
+		"Au club de judo, l'inscription est comprise dans le prix de chaque cours : 7 € le cours.",
+		Q_PRIX_PAYE('au nombre de cours'),
+		'3 cours coûtent 21 €, et 6 cours coûtent 42 € : 2 fois plus de cours, 2 fois plus cher.',
 	),
 	// --- recettes ---
 	oui(
@@ -338,7 +371,7 @@ const SITUATIONS_OUI: ItemIdentifier[] = [
 	),
 	oui(
 		'perimetre-carre',
-		"Pour faire le tour d'un carré, on longe ses 4 côtés.",
+		"Pour faire le tour d'un carré, on suit ses 4 côtés.",
 		Q_PERIMETRE_CARRE,
 		'Si le côté est 2 fois plus long, les 4 côtés le sont aussi : le tour est 2 fois plus long.',
 	),
@@ -370,7 +403,7 @@ const SITUATIONS_OUI: ItemIdentifier[] = [
 	),
 	oui(
 		'objets-identiques',
-		'Dans cet escalier, toutes les marches ont la même hauteur : 15 cm.',
+		'Dans un escalier, toutes les marches ont la même hauteur : 15 cm.',
 		'La hauteur montée est-elle proportionnelle au nombre de marches ?',
 		'4 marches font monter de 60 cm, et 8 marches de 120 cm : 2 fois plus de marches, 2 fois plus haut.',
 	),
@@ -380,13 +413,13 @@ const SITUATIONS_NON: ItemIdentifier[] = [
 	// --- part fixe ---
 	non(
 		'part-fixe',
-		'Le taxi de Lina fait payer 4 € de prise en charge, et 2 € pour chaque kilomètre parcouru.',
+		'Le taxi de Lina fait payer un prix de départ de 4 €, et 2 € pour chaque kilomètre parcouru.',
 		Q_COURSE,
-		'5 km coûtent 14 €, mais 10 km coûtent 24 €, pas 28 € : les 4 € de prise en charge ne doublent pas.',
+		'5 km coûtent 14 €, mais 10 km coûtent 24 €, pas 28 € : les 4 € du prix de départ ne doublent pas.',
 	),
 	non(
 		'part-fixe',
-		'À la piscine, il faut acheter une carte à 10 €, et chaque entrée coûte 2 €.',
+		'À la piscine, il faut acheter une carte à 10 €, et chaque entrée coûte le même prix : 2 €.',
 		Q_PRIX_PAYE("au nombre d'entrées"),
 		"4 entrées coûtent 18 €, mais 8 entrées coûtent 26 €, pas 36 € : la carte ne se paie qu'une fois.",
 	),
@@ -406,7 +439,7 @@ const SITUATIONS_NON: ItemIdentifier[] = [
 		'part-fixe',
 		'La boîte vide pèse 200 g, et chaque bille pèse 5 g.',
 		'La masse de la boîte remplie est-elle proportionnelle au nombre de billes ?',
-		'Avec 10 billes, la boîte pèse 250 g ; avec 20 billes, 300 g, pas 500 g : le poids de la boîte ne double pas.',
+		'Avec 10 billes, la boîte pèse 250 g ; avec 20 billes, 300 g, pas 500 g : la masse de la boîte vide ne double pas.',
 	),
 	non(
 		'part-fixe',
@@ -447,9 +480,9 @@ const SITUATIONS_NON: ItemIdentifier[] = [
 	// --- âge et taille ---
 	non(
 		'age-taille',
-		'À sa naissance, Noé mesurait 50 cm. À 4 ans, il mesurait 100 cm.',
+		'À 2 ans, Noé mesurait 85 cm. À 4 ans, il mesurait 100 cm.',
 		'La taille de Noé est-elle proportionnelle à son âge ?',
-		'À sa naissance, Noé mesurait déjà 50 cm. Et à 8 ans, il ne mesurera pas 200 cm : on grandit de moins en moins vite.',
+		"4 ans, c'est 2 fois 2 ans, mais 100 cm, ce n'est pas 2 fois 85 cm (ce serait 170 cm).",
 	),
 	non(
 		'age-taille',
@@ -496,14 +529,14 @@ const SITUATIONS_NON: ItemIdentifier[] = [
 	),
 	non(
 		'aire-carre',
-		'Mila trace deux carrés : le côté du second est 3 fois plus long que celui du premier.',
+		'Sur un quadrillage, Mila trace deux carrés : le premier a 2 carreaux de côté et couvre 4 carreaux, le second a 6 carreaux de côté et en couvre 36.',
 		Q_AIRE_CARRE,
-		'Avec un côté 3 fois plus long, le carré couvre 9 fois plus de carreaux, pas 3 fois plus.',
+		"Le côté est 3 fois plus long, mais l'aire est 9 fois plus grande : 36 carreaux, ce n'est pas 3 fois 4 carreaux (ce serait 12).",
 	),
 	// --- écart constant ---
 	non(
 		'ecart-constant',
-		'Léo est né 3 ans avant sa sœur Lina.',
+		'Léo et sa sœur Lina fêtent leur anniversaire le même jour. Léo est né 3 ans avant Lina.',
 		"L'âge de Léo est-il proportionnel à l'âge de Lina ?",
 		"Quand Lina a 2 ans, Léo a 5 ans ; quand Lina a 4 ans, Léo a 7 ans, pas 10 : l'écart reste de 3 ans.",
 	),
@@ -544,22 +577,24 @@ const SITUATIONS_NON: ItemIdentifier[] = [
 		Q_PRIX('au nombre de cahiers'),
 		"9 cahiers, c'est 3 fois plus que 3 cahiers, mais 12 €, ce n'est pas 3 fois 6 € (ce serait 18 €).",
 	),
+	// Promotions en couples chiffrés (avis pédagogue) : le test du double ou du triple doit
+	// pouvoir s'y appliquer. « 3 pour le prix de 2 » laissait 2 → 4 yaourts doubler le prix.
 	non(
 		'prix-degressif',
-		'Le magasin fait une promotion sur les yaourts : 3 yaourts pour le prix de 2.',
+		'Au magasin, 1 yaourt coûte 1 € et 3 yaourts coûtent 2 €.',
 		Q_PRIX_PAYE('au nombre de yaourts'),
-		'2 yaourts et 3 yaourts coûtent le même prix : le prix ne suit pas le nombre de yaourts.',
+		"3 yaourts, c'est 3 fois plus que 1 yaourt, mais 2 €, ce n'est pas 3 fois 1 € (ce serait 3 €).",
 	),
 	non(
 		'prix-degressif',
-		'Les sachets de bonbons sont identiques, et le magasin en offre 1 pour 3 achetés.',
-		Q_PRIX_PAYE('au nombre de sachets emportés'),
-		'Emporter 3 sachets ou 4 sachets coûte le même prix : le prix ne suit pas le nombre de sachets.',
+		'Les sachets de bonbons sont identiques : 1 sachet coûte 2 €, et 4 sachets coûtent 6 €.',
+		Q_PRIX_PAYE('au nombre de sachets'),
+		"4 sachets, c'est 4 fois plus que 1 sachet, mais 6 €, ce n'est pas 4 fois 2 € (ce serait 8 €).",
 	),
 	// --- grandeur qui ne change pas ---
 	non(
 		'grandeur-constante',
-		'Au four, une plaque de 6 cookies et une plaque de 12 cookies cuisent le même temps : 10 minutes.',
+		'Au four, une plaque de 6 cookies cuit en 10 minutes. Une plaque de 12 cookies cuit en 10 minutes aussi.',
 		'La durée de cuisson est-elle proportionnelle au nombre de cookies sur la plaque ?',
 		'Avec 2 fois plus de cookies, la cuisson dure toujours 10 minutes, pas 20 : elle ne change pas.',
 	),
@@ -567,17 +602,17 @@ const SITUATIONS_NON: ItemIdentifier[] = [
 		'grandeur-constante',
 		'Un orchestre de 4 musiciens joue un morceau en 5 minutes.',
 		'La durée du morceau est-elle proportionnelle au nombre de musiciens ?',
-		'Avec 8 musiciens, le morceau dure toujours 5 minutes, pas 10 : jouer à plus nombreux ne le rallonge pas.',
+		"Avec 8 musiciens, le morceau dure toujours 5 minutes, pas 10 : avec plus de musiciens, le morceau n'est pas plus long.",
 	),
 	non(
 		'grandeur-constante',
-		'Dans cette ville, le ticket de bus a le même prix pour 2 arrêts ou pour 10 arrêts : 2 €.',
+		'Dans cette ville, le ticket de bus coûte 2 € pour 2 arrêts. Pour 10 arrêts, il coûte 2 € aussi.',
 		"Le prix du ticket est-il proportionnel au nombre d'arrêts ?",
-		'Le trajet est 5 fois plus long, mais le ticket coûte toujours 2 € : le prix ne change pas.',
+		"Il y a 5 fois plus d'arrêts, mais le ticket coûte toujours 2 € : le prix ne change pas.",
 	),
 	non(
 		'grandeur-constante',
-		'Sur le fil, 5 chaussettes sèchent en 3 heures, et 10 chaussettes aussi.',
+		'Sur le fil, 5 chaussettes sèchent en 3 heures. 10 chaussettes sèchent en 3 heures aussi.',
 		'Le temps de séchage est-il proportionnel au nombre de chaussettes ?',
 		'Avec 2 fois plus de chaussettes, le linge sèche toujours en 3 heures, pas en 6 heures.',
 	),
@@ -675,7 +710,12 @@ interface Contexte {
 
 const euros = (v: number): string => `${formatEuros(v)} €`;
 
-/* Un contexte « prix » : la valeur est un montant en euros. */
+/* Un contexte « prix » : la valeur est un montant en euros. L'intro DIT que le prix est
+   constant (relecture #258, gate de constance) : la leçon « Est-ce proportionnel ? » apprend
+   justement qu'un prix peut ne pas l'être (lot, promotion), et un énoncé muet là-dessus
+   admettrait honnêtement « on ne peut pas savoir ». La phrase des couples emploie la forme
+   COURTE (« 3 kg »), l'intro ayant déjà nommé l'objet ; la question et l'explication, la
+   forme complète (« 9 kg de tomates »). */
 function contextePrix(
 	intro: string,
 	objets: (n: number) => string,
@@ -683,9 +723,9 @@ function contextePrix(
 ): Contexte {
 	return {
 		intro,
-		un: (c) => `${objets(c.quantite)} coûtent ${euros(c.valeur)}`,
+		un: (c) => `${objetsCourts(c.quantite)} coûtent ${euros(c.valeur)}`,
 		deux: (a, b) =>
-			`${objets(a.quantite)} coûtent ${euros(a.valeur)} et ${objetsCourts(b.quantite)} coûtent ${euros(b.valeur)}`,
+			`${objetsCourts(a.quantite)} coûtent ${euros(a.valeur)} et ${objetsCourts(b.quantite)} coûtent ${euros(b.valeur)}`,
 		question: (n) => `Combien coûtent ${objets(n)} ?`,
 		qte: objets,
 		val: euros,
@@ -696,46 +736,46 @@ function contextePrix(
 }
 
 const CAHIERS = contextePrix(
-	'À la papeterie, ',
+	'À la papeterie, tous les cahiers ont le même prix : ',
 	(n) => `${n} cahiers`,
 	(n) => `${n} cahiers`,
 );
 const TOMATES = contextePrix(
-	'Au marché, ',
+	'Au marché, les tomates sont toujours vendues au même prix : ',
 	(n) => `${n} kg de tomates`,
 	(n) => `${n} kg`,
 );
 const JUS = contextePrix(
-	'Au supermarché, ',
+	'Au supermarché, les bouteilles de jus de pomme ont toutes le même prix : ',
 	(n) => `${n} bouteilles de jus de pomme`,
 	(n) => `${n} bouteilles`,
 );
 const CINEMA = contextePrix(
-	'Au cinéma, ',
+	'Au cinéma, toutes les places ont le même prix : ',
 	(n) => `${n} places`,
 	(n) => `${n} places`,
 );
 const TISSU = contextePrix(
-	'Au magasin, ',
+	'Au magasin, ce tissu est toujours vendu au même prix : ',
 	(n) => `${n} m de tissu`,
 	(n) => `${n} m`,
 );
 const CROISSANTS = contextePrix(
-	'À la boulangerie, ',
+	'À la boulangerie, tous les croissants ont le même prix : ',
 	(n) => `${n} croissants`,
 	(n) => `${n} croissants`,
 );
 const POMMES = contextePrix(
-	'Chez le primeur, ',
+	'Chez le primeur, les pommes sont toujours vendues au même prix : ',
 	(n) => `${n} kg de pommes`,
 	(n) => `${n} kg`,
 );
 
 const CREPES: Contexte = {
-	intro: '',
-	un: (c) => `Pour faire ${c.quantite} crêpes, il faut ${c.valeur} g de farine`,
+	intro: 'Léo fait toujours ses crêpes avec la même recette : ',
+	un: (c) => `pour faire ${c.quantite} crêpes, il faut ${c.valeur} g de farine`,
 	deux: (a, b) =>
-		`Pour faire ${a.quantite} crêpes, il faut ${a.valeur} g de farine, et pour ${b.quantite} crêpes, il en faut ${b.valeur} g`,
+		`pour faire ${a.quantite} crêpes, il faut ${a.valeur} g de farine, et pour ${b.quantite} crêpes, il en faut ${b.valeur} g`,
 	question: (n) => `Combien de grammes de farine faut-il pour faire ${n} crêpes ?`,
 	qte: (n) => `${n} crêpes`,
 	val: (v) => `${v} g`,
@@ -744,10 +784,10 @@ const CREPES: Contexte = {
 };
 
 const CHOCOLAT: Contexte = {
-	intro: '',
-	un: (c) => `Pour un gâteau de ${c.quantite} personnes, il faut ${c.valeur} g de chocolat`,
+	intro: 'Maé suit toujours la même recette de gâteau au chocolat : ',
+	un: (c) => `pour un gâteau de ${c.quantite} personnes, il faut ${c.valeur} g de chocolat`,
 	deux: (a, b) =>
-		`Pour un gâteau de ${a.quantite} personnes, il faut ${a.valeur} g de chocolat, et pour ${b.quantite} personnes, il en faut ${b.valeur} g`,
+		`pour un gâteau de ${a.quantite} personnes, il faut ${a.valeur} g de chocolat, et pour ${b.quantite} personnes, il en faut ${b.valeur} g`,
 	question: (n) => `Combien de grammes de chocolat faut-il pour un gâteau de ${n} personnes ?`,
 	qte: (n) => `${n} personnes`,
 	val: (v) => `${v} g`,
@@ -772,7 +812,7 @@ const DALLES: Contexte = {
 	un: (c) => `${c.quantite} dalles mesurent ${c.valeur} cm`,
 	deux: (a, b) =>
 		`${a.quantite} dalles mesurent ${a.valeur} cm et ${b.quantite} dalles mesurent ${b.valeur} cm`,
-	question: (n) => `Quelle longueur mesurent ${n} dalles, en centimètres ?`,
+	question: (n) => `Quelle est la longueur de ${n} dalles posées bout à bout, en centimètres ?`,
 	qte: (n) => `${n} dalles`,
 	val: (v) => `${v} cm`,
 	grandeur: 'La longueur',
@@ -780,7 +820,7 @@ const DALLES: Contexte = {
 };
 
 const BABY_SITTING: Contexte = {
-	intro: 'Nina garde des enfants. ',
+	intro: 'Nina garde des enfants, toujours au même tarif. ',
 	un: (c) => `Pour ${c.quantite} heures, elle gagne ${euros(c.valeur)}`,
 	deux: (a, b) =>
 		`Pour ${a.quantite} heures, elle gagne ${euros(a.valeur)}, et pour ${b.quantite} heures, elle gagne ${euros(b.valeur)}`,
@@ -840,9 +880,12 @@ const CITRONS: Contexte = {
 	feminin: false,
 };
 
-/* Phrase d'énoncé : l'intro éventuelle, puis le corps, majuscule initiale et point final. */
+/* Phrase d'énoncé : l'intro, puis le corps, et le point final. Le corps prend la majuscule
+   quand il ouvre une phrase (pas d'intro, ou intro close par un point) ; après une intro
+   qui se termine par « : », il garde sa minuscule. */
 function phrase(ctx: Contexte, corps: string): string {
-	return `${ctx.intro ? ctx.intro + corps : cap(corps)}.`;
+	const ouvreUnePhrase = ctx.intro === '' || /[.!?]\s*$/.test(ctx.intro);
+	return `${ctx.intro}${ouvreUnePhrase ? cap(corps) : corps}.`;
 }
 
 /* Calcul de linéarité, avec l'unité de chaque opérande quand c'est un montant. */
@@ -1078,11 +1121,11 @@ export const PROPORTIONNALITE_LESSONS: ProportionnaliteLessonDef[] = [
 		etayage: [
 			etayageRedige(
 				'La proportionnalité',
-				"Deux grandeurs sont proportionnelles quand, si l'une devient 2 fois, 3 fois ou 10 fois plus grande, l'autre le devient aussi.",
+				"Deux grandeurs sont proportionnelles quand elles changent du même nombre de fois. Si l'une devient 2, 3 ou 10 fois plus grande, l'autre aussi.",
 				[
-					'Imagine que la première grandeur devient 2 fois plus grande.',
-					"Cherche ce que devient l'autre grandeur.",
-					"Si elle devient aussi 2 fois plus grande, c'est proportionnel ; sinon, ça ne l'est pas.",
+					"Imagine que la première grandeur devient 2 fois plus grande, puis calcule l'autre avec les nombres donnés.",
+					'Si elle devient aussi 2 fois plus grande, essaie avec 3 fois : un seul doublement ne suffit pas à le prouver.',
+					"Si ça marche à chaque fois, c'est proportionnel ; sinon, ça ne l'est pas.",
 				],
 			),
 		],
@@ -1102,7 +1145,7 @@ export const PROPORTIONNALITE_LESSONS: ProportionnaliteLessonDef[] = [
 				contenu: {
 					titre: 'Problèmes de proportionnalité',
 					regle:
-						'Si une quantité devient 3 fois plus grande, ce qui va avec devient 3 fois plus grand ; si tu ajoutes deux quantités, tu ajoutes aussi ce qui va avec.',
+						'Si une quantité devient 3 fois plus grande, ou 3 fois moins grande, la valeur qui lui correspond aussi. Si tu ajoutes ou enlèves des quantités, tu ajoutes ou enlèves aussi les valeurs qui leur correspondent.',
 				},
 			},
 		],

@@ -65,6 +65,11 @@ test('CM1 leçon B : une mauvaise réponse est journalisée côté encadrant (cr
 	const input = page.locator('.prob-input').first();
 	await input.waitFor();
 	const answer = (await input.getAttribute('data-answer'))!;
+	const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
+	const enonce = norm((await page.locator('.prob-enonce').first().textContent()) ?? '');
+	const sousQuestion = norm((await page.locator('.prob-q').first().textContent()) ?? '');
+	expect(enonce).not.toBe('');
+	expect(sousQuestion).not.toBe('');
 	const faux = String(Number(answer) + 1); // ≠ data-answer, quel que soit le tirage
 	await input.fill(faux);
 	await page.locator('#probVerif').click();
@@ -77,6 +82,17 @@ test('CM1 leçon B : une mauvaise réponse est journalisée côté encadrant (cr
 	const groupe = page.locator('.enc-err-lecon').filter({ hasText: LIBELLE_B });
 	await expect(groupe).toHaveCount(1);
 	await expect(groupe).toContainText(answer); // la réponse attendue est lisible
+	// Déplie le groupe s'il est replié.
+	if (!(await groupe.evaluate((el) => (el as HTMLDetailsElement).open))) {
+		await groupe.locator('.enc-err-sum').click();
+	}
+	// Critère 8 : l'énoncé (les données) ET la sous-question sont lisibles hors de l'appli,
+	// sinon l'adulte ne distingue pas une erreur de calcul d'une erreur additive.
+	const q = groupe.locator('.enc-err-q').first();
+	await expect(q).toBeVisible();
+	const ligne = norm((await q.textContent()) ?? '');
+	expect(ligne).toContain(enonce);
+	expect(ligne).toContain(sousQuestion);
 	expect(errors).toEqual([]);
 });
 

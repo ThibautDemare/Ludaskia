@@ -166,15 +166,31 @@ describe('charte des panneaux (#490 / #272) — sur chaque entrée déclarée', 
 			if (!formes.length && !isProblemeLesson(lesson)) fautes.push(`${ou} — ni exemple ni étapes`);
 		}
 		expect(fautes).toEqual([]);
-		// L'exception est bien celle qu'on croit, et elle est entière : les leçons de la
-		// catégorie « Résolution de problèmes », toutes en règle seule. Les trois autres
-		// leçons jouées par ce runner (reste, division euclidienne, durée écoulée) portent,
-		// elles, une méthode écrite — leur difficulté n'est pas l'énoncé.
+		// L'exception est bien celle qu'on croit, et elle est entière : les PROBLÈMES de la
+		// catégorie « Résolution de problèmes », tous en règle seule. C'est la NATURE de la
+		// leçon (jouée par le runner de problèmes) qui fonde l'exception, pas son rangement :
+		// la catégorie accueille aussi un QCM (« Est-ce proportionnel ? », #258), qui doit
+		// porter des étapes comme tout non-problème (boucle ci-dessus). Les trois autres
+		// leçons jouées par ce runner hors de la catégorie (reste, division euclidienne, durée
+		// écoulée) portent, elles, une méthode écrite — leur difficulté n'est pas l'énoncé.
+		const problemesDeLaCategorie = getAllLessons().filter(
+			(l) => l.category === 'math-problemes' && isProblemeLesson(l),
+		);
 		const regleSeule = ENTREES.filter((e) => !e.contenu.exemple && !e.contenu.etapes?.length);
-		expect(regleSeule.map((e) => e.ou)).toEqual(
-			getAllLessons()
-				.filter((l) => l.category === 'math-problemes')
-				.map((l) => `${l.id}[0]`),
+		expect(regleSeule.map((e) => e.ou)).toEqual(problemesDeLaCategorie.map((l) => `${l.id}[0]`));
+		// Garde-fou du filtre : vidé (prédicat renommé, `exerciseKind` perdu), il rendrait
+		// l'égalité ci-dessus triviale dès qu'aucune entrée n'est en règle seule. Les six
+		// problèmes historiques et celui de proportionnalité doivent y rester.
+		expect(problemesDeLaCategorie.map((l) => l.id)).toEqual(
+			expect.arrayContaining([
+				'math-prob-composition',
+				'math-prob-transformation',
+				'math-prob-comparaison',
+				'math-prob-multiplication',
+				'math-prob-partage',
+				'math-prob-deux-etapes',
+				'math-prob-proportion-resoudre',
+			]),
 		);
 	});
 

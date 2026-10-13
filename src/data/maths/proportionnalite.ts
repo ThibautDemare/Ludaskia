@@ -594,7 +594,7 @@ const SITUATIONS_NON: ItemIdentifier[] = [
 	// --- grandeur qui ne change pas ---
 	non(
 		'grandeur-constante',
-		'Au four, une plaque de 6 cookies cuit en 10 minutes. Une plaque de 12 cookies cuit en 10 minutes aussi.',
+		'Au four, une plaque de 6 cookies cuit en 10 minutes. Une plaque de 12 cookies cuit en 10 minutes.',
 		'La durée de cuisson est-elle proportionnelle au nombre de cookies sur la plaque ?',
 		'Avec 2 fois plus de cookies, la cuisson dure toujours 10 minutes, pas 20 : elle ne change pas.',
 	),
@@ -606,13 +606,13 @@ const SITUATIONS_NON: ItemIdentifier[] = [
 	),
 	non(
 		'grandeur-constante',
-		'Dans cette ville, le ticket de bus coûte 2 € pour 2 arrêts. Pour 10 arrêts, il coûte 2 € aussi.',
+		'Dans cette ville, le ticket de bus coûte 2 € pour 2 arrêts. Pour 10 arrêts, il coûte 2 €.',
 		"Le prix du ticket est-il proportionnel au nombre d'arrêts ?",
 		"Il y a 5 fois plus d'arrêts, mais le ticket coûte toujours 2 € : le prix ne change pas.",
 	),
 	non(
 		'grandeur-constante',
-		'Sur le fil, 5 chaussettes sèchent en 3 heures. 10 chaussettes sèchent en 3 heures aussi.',
+		'Sur le fil, 5 chaussettes sèchent en 3 heures. 10 chaussettes sèchent en 3 heures.',
 		'Le temps de séchage est-il proportionnel au nombre de chaussettes ?',
 		'Avec 2 fois plus de chaussettes, le linge sèche toujours en 3 heures, pas en 6 heures.',
 	),

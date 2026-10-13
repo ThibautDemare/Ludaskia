@@ -532,7 +532,7 @@ pure](core.md)) pour les formats composites :
   `motsMalClasses`), l'appariement (`lecon-appariement.ts` — une entrée par manche
   ratée, restreinte aux paires fausses via `pairesErreur`), le tableau de conversion
   (`lecon-tableau.ts` — le nombre relu dans l'unité cible via `nombreTableauSaisi`), la
-  résolution de problèmes (`lecon-probleme.ts` — une entrée par sous-question ratée),
+  résolution de problèmes (`lecon-probleme.ts` — une entrée par sous-question ratée, énoncé du problème + sous-question),
   « Clique sur le mot » (`lecon-clic-mot.ts` — une entrée par phrase ratée : mots choisis
   vs bon(s) mot(s), joints par `libelleCible` pour qu'une cible non adjacente se lise
   « chien et pomme ») et le **parcours d'orthographe**, ses **trois tâches** confondues —

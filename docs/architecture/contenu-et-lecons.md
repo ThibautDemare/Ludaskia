@@ -1625,7 +1625,8 @@ rapporteur (degrés) toujours **différée**.
 
 ### Résolution de problèmes
 
-Catégorie `math-problemes`, **6 leçons** (`maths/problemes.ts`), une par structure de
+Catégorie `math-problemes`, **6 leçons** de structure (`maths/problemes.ts`, plus 2 leçons
+CM1 de proportionnalité décrites plus bas, `maths/proportionnalite.ts`), une par structure de
 Vergnaud, dans l'ordre du concret à l'abstrait : **« Parties et tout »**
 (`math-prob-composition`), **« Gagner ou perdre »** (`math-prob-transformation`),
 **« Des groupes égaux »** (`math-prob-multiplication`), **« Partager et grouper »**
@@ -1661,6 +1662,51 @@ déclarant son unité plutôt que la laissant se deviner à l'inspection de la v
 
 > Recalibrage par **branchement manuel** sur `opts.level`, pas par le combinateur
 > `calibrated` — voir [Niveaux scolaires](niveaux-scolaires.md#modules).
+
+**Proportionnalité CM1 (#258).** Deux leçons **CM1-only** (`maths/proportionnalite.ts`,
+`PROPORTIONNALITE_LESSONS`, rangées dans la même catégorie `math-problemes` par
+`core/catalog.ts`), sur des moteurs **existants** (aucun nouveau runner ni `type`
+d'`Exercise`), insérées dans `ORDRE_LECONS.math.cm1` juste après « Des groupes égaux »
+(programme CM1 §5 : identifier, puis résoudre) :
+- **« Est-ce proportionnel ? »** (`math-prob-proportion-identifier`) : QCM Oui/Non sur une
+  banque figée de situations chiffrées, étayage « 2 fois, 3 fois plus ? ». **Exclue du
+  sprint** (devinable à 50 %). Les mots de liaison (« chaque », « même », « de plus »…) et
+  de contenu (carré, aire, taxi, cinéma, pommes…) sont **croisés** entre Oui et Non pour
+  qu'aucun ne devienne un indice ; chaque famille est d'un seul côté, ce que le type
+  garantit (`oui()` / `non()`).
+- **« Problèmes de proportionnalité »** (`math-prob-proportion-resoudre`) : runner
+  « problème », **une** sous-question, linéarité **multiplicative** (un couple connu, ×k ou
+  ÷k) ou **additive** (deux couples connus, somme ou différence), jamais combinées. Garde-fous
+  tenus par les tests : **×2 exclu** (k de 3 à 10 : l'addition répétée y donne le même
+  nombre), **valeur ≠ quantité** (sinon l'erreur additive « reporter l'écart » tombe juste),
+  **aucune quantité égale à 1** (le passage par l'unité, CM2, n'est ni donné ni suggéré),
+  et **constance énoncée** (« tous… ont le même prix », « toujours la même recette ») dans
+  chaque énoncé. Réponses calculées puis **stockées** à la construction, banques figées
+  (aucun aléa à l'import). Étayage : règle seule.
+
+*Limite assumée (avis pédagogue).* Un item à **deux couples connus** relève toujours de la
+procédure additive : la présence de deux couples peut donc **annoncer** l'addition. Les items
+à deux couples dont **un seul sert** relèvent de la procédure mixte, **CM2**, et restent
+hors périmètre.
+
+*Rejet écrit — pas de tableau de proportionnalité (critère 10).* Aucune des deux leçons ne
+propose de **tableau de proportionnalité**, ni à remplir ni à lire. Source : la ressource
+eduscol « Résoudre des problèmes de proportionnalité au cycle 3 » : « Les tableaux de
+proportionnalité ne doivent pas être conçus comme des objets d'enseignement ; [...] les
+opérations à réaliser pour résoudre un problème de proportionnalité au cycle 3 ne doivent pas
+se faire par un raisonnement sur des lignes ou des colonnes d'un tableau mais uniquement sur
+des cardinaux ou des grandeurs. » (issue #258). Mécanisme de **contournement** :
+sur une grille du type « 2, 4, 6, 8 / 3, ?, 9, ? », l'enfant complète en **répétant l'écart
+entre** les nombres visibles (une suite numérique) sans jamais relier les deux grandeurs ; la
+réussite ne prouve rien. Raison technique : le widget multi-cellules existant (tableau de
+conversion, `ui/lecon-tableau.ts`) ne s'y prête pas. Le raisonnement porte donc sur des
+quantités **nommées** (« 4 cahiers », « 10 € »), jamais sur des lignes ou des colonnes ; un
+test (`tests/proportionnalite-identifier.test.ts`, critère 12) refuse toute figure ou grille
+dans les items. À ne pas re-remonter en relecture.
+
+Le journal encadrant d'une sous-question de ces problèmes porte l'**énoncé complet** (cf.
+[Logique pure](core.md), `enonceEtapeLisible`) : sans les données, un adulte ne distingue
+pas une erreur de calcul d'une erreur de raisonnement.
 
 ### Organisation et gestion de données
 

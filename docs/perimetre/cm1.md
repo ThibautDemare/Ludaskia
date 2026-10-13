@@ -50,7 +50,7 @@ notion en A ou en C. Il relève de B.
 | Estimer la longueur ou la masse d'un objet au contact de l'objet réel (ma. l.181, l.200) | L'estimation se fait sur l'objet, en main ou sous les yeux. |
 
 Ce que ces entrées **ne** ferment **pas**, parce que ce sont d'autres notions, couvrables :
-reconnaître des droites perpendiculaires ou parallèles, un cercle, un patron de cube ;
+reconnaître des droites perpendiculaires ou parallèles, un cercle, un patron de cube (B) ;
 comparer et reconnaître des angles ; résoudre un problème à étapes à réponse numérique,
 choisir une opération ; calculer un périmètre sur des longueurs données ou lues ; choisir
 l'unité adaptée à un objet nommé.
@@ -62,6 +62,8 @@ l'unité adaptée à un objet nommé.
 | Construire le symétrique d'une figure sur quadrillage (ma. l.274-276) | Fidèle : sur quadrillage, le clic remplace le crayon, pas le raisonnement. La leçon `geo-symetrie-axiale` ne fait que de la **reconnaissance**. | Une grille de points cliquables, un axe horizontal ou vertical (seuls attendus du CM1), des cibles tactiles suffisantes, une correction par ensemble de points. |
 | Calcul posé, technique écrite : retenues notées par l'enfant, alignement des chiffres, virgule des décimaux, division posée (ma. l.136-140) | Faisable dans une grille : seul le coût l'a fait différer (note ci-dessous). | Un runner `posed` à cellules de retenue et à colonnes à placer, dont le `check` accepte toutes les traces valides ; pour la division, un gabarit de restes successifs. |
 | Compréhension fine de l'implicite (fr. 1.3, l.37-38) | Faisable en QCM ; le risque de réponse devinée par élimination se neutralise par construction, comme pour la proportionnalité (#258). | Des textes courts originaux, des distracteurs tous ancrés dans le texte, un test du recouvrement lexical, une banque de 50 à 100 items. |
+| Reconnaître un patron de cube (ma. l.293) | Faisable et auto-corrigeable : les patrons valides du cube forment un ensemble fini. Distinct de « construire un patron » (A). | Une figure de patron générée (assemblages de six carrés), lisible sur tablette, avec des patrons invalides discriminants (quatre carrés alignés, faces qui se chevauchent) ; à mutualiser avec le rendu des solides. |
+| Résoudre des problèmes d'assemblages de cubes (ma. 3.3, l.302) | Faisable en QCM ou en saisie sur une figure d'assemblage. | Un rendu d'assemblages de cubes en perspective, lisible sur tablette, avec des cubes cachés maîtrisés. |
 
 **Calcul posé, ce qui existe et ce qui est écarté.** Il existe trois leçons `posed`
 (addition, soustraction et multiplication posées, au CE2) où l'enfant saisit le résultat

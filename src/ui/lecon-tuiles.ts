@@ -40,7 +40,7 @@ import {
 	capterPasse,
 	decisionHTML,
 	ligneRevelation,
-	masquerDecision,
+	figerQuestion,
 	revelerSolution,
 	wirePasser,
 } from './lecon-passer';
@@ -267,14 +267,14 @@ function verifier(): void {
 	if (tranchee || verif.disabled) return; // déjà tranchée, ou pas de tuile posée
 	tranchee = true;
 	const q = questions[idx];
-	const correct = ctrl.verify(); // fige + marque la case (✓/✗)
+	const correct = ctrl.verify(); // marque la case (✓/✗) ; le figeage suit, après ce rendu
 	if (correct) score++;
 	// Journal des erreurs (#391). Une seule capture : verifier() ne corrige qu'une fois
 	// (bouton figé, puis question suivante).
 	else capterErreur({ ...erreurTuiles(q), mode: 'lecon' });
-	// Une fois la réponse validée, le bloc de décision s'efface : seul « Continuer ▶ »
-	// (#ltuiActions) reste, pour ne pas afficher deux boutons à la fois (#153).
-	masquerDecision(sheets());
+	// Question tranchée : le bloc de décision s'efface, seul « Continuer ▶ » (#ltuiActions)
+	// reste (#153), et le widget est figé par le MÊME geste qu'après « Je ne sais pas » (#543).
+	figerQuestion(sheets());
 	wireNext(
 		sheets().querySelector('#ltuiActions') as HTMLElement,
 		sheets().querySelector('#ltuiFeedback') as HTMLElement,

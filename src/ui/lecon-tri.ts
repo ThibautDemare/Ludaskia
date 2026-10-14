@@ -42,7 +42,7 @@ import {
 	capterPasse,
 	decisionHTML,
 	ligneRevelation,
-	masquerDecision,
+	figerQuestion,
 	revelerSolution,
 	wirePasser,
 } from './lecon-passer';
@@ -294,16 +294,16 @@ function verifier(): void {
 	if (tranchee || verif.disabled) return; // déjà tranchée, ou tuiles non toutes rangées
 	tranchee = true;
 	const q = questions[idx];
-	const correct = ctrl.verify(); // fige + marque chaque tuile (✓/✗)
+	const correct = ctrl.verify(); // marque chaque tuile (✓/✗) ; le figeage suit, après ce rendu
 	if (correct) score++;
 	else {
 		// Journal des erreurs (#391) : UNE entrée par mot MAL classé. Une seule capture par
 		// essai (bouton figé après validation, puis question suivante).
 		for (const e of erreursTri(q, placementPose())) capterErreur({ ...e, mode: 'lecon' });
 	}
-	// Une fois la réponse validée, le bloc de décision s'efface : seul « Continuer ▶ »
-	// (#ltriActions) reste, pour ne pas afficher deux boutons à la fois (#153).
-	masquerDecision(sheets());
+	// Question tranchée : le bloc de décision s'efface, seul « Continuer ▶ » (#ltriActions)
+	// reste (#153), et le widget est figé par le MÊME geste qu'après « Je ne sais pas » (#543).
+	figerQuestion(sheets());
 	const feedbackHTML = correct
 		? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
 		: html`<span class="lqcm-ko">Le bon classement :</span>${classementHTML(q)}`;

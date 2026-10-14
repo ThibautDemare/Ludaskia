@@ -263,12 +263,14 @@
 	height: 20px;
 	flex: none;
 }
-/* Widget neutralisé après une révélation (#467) : il reste visible (l'enfant compare ce
-   qu'il avait commencé avec la solution) mais n'est plus manipulable. Les éléments
-   focalisables sont désarmés côté DOM ; le `pointer-events` coupe en plus les cibles de
-   DÉPÔT du glisser-déposer, sans quoi un dépôt relancerait le widget. Restent
-   opérables : les actions d'après-verdict, l'aide du geste et les boutons « Écouter ». */
-.rev-stage--fige > *:not(#revAfter):not(.aide-btn) {
+/* Question tranchée (#467, #543), après « Valider » comme après « Je ne sais pas » : le
+   widget reste visible (l'enfant compare sa réponse avec la solution) mais n'est plus
+   manipulable. Les éléments focalisables sont désarmés côté DOM (ui/figeage.ts) ; le
+   `pointer-events` coupe en plus les cibles de DÉPÔT du glisser-déposer, sans quoi un dépôt
+   relancerait le widget. Restent opérables, comme dans ui/figeage.ts : les actions
+   d'après-verdict, l'aide du geste, les boutons « Écouter » et le brouillon du problème
+   (enfant direct de la carte). */
+.rev-stage--fige > *:not(#revAfter):not(.aide-btn):not(.brouillon) {
 	pointer-events: none;
 }
 .rev-stage--fige .consigne-tts,

@@ -36,6 +36,9 @@
    choix est toujours possible, et un essai de leçon n'alimente pas la répétition espacée,
    donc l'argument du « meilleur signal » de la révision ne s'y applique pas) et le parcours
    d'orthographe, qui a déjà sa sortie (deux essais puis bascule vers l'atelier du mot).
+   Le QCM simple passe en revanche par `figerQuestion`, comme les neuf autres (#543) : figer
+   une question tranchée est commun aux DIX runners, qu'ils aient un « Je ne sais pas » ou
+   non.
    ============================================================ */
 import { wireNext } from './lecon-runner-shared';
 import {
@@ -90,10 +93,11 @@ export function wirePasser(root: ParentNode, onPasser: () => void): void {
 	root.querySelector<HTMLButtonElement>(`#${PASSER_ID}`)?.addEventListener('click', onPasser);
 }
 
-/** Efface le bloc de décision (les DEUX boutons) : une fois la question tranchée — validée
-    ou révélée — seul « Continuer ▶ » reste (#153). Masquer le seul « Vérifier » laisserait
-    un « Je ne sais pas, montre-moi » cliquable sur une question déjà corrigée. */
-export function masquerDecision(root: ParentNode): void {
+/* Efface le bloc de décision (les DEUX boutons) : une fois la question tranchée — validée
+   ou révélée — seul « Continuer ▶ » reste (#153). Masquer le seul « Vérifier » laisserait
+   un « Je ne sais pas, montre-moi » cliquable sur une question déjà corrigée. Interne :
+   on n'y passe que par `figerQuestion`, qui fige le widget dans le même geste. */
+function masquerDecision(root: ParentNode): void {
 	const bloc = root.querySelector<HTMLElement>('.lecon-decide');
 	if (bloc) bloc.hidden = true;
 }
@@ -109,10 +113,17 @@ export function capterPasse(o: {
 	capterPasseNeutre({ ...o, mode: 'lecon' });
 }
 
-/* Scène à désarmer côté leçon : la carte du runner. Zones d'APRÈS-verdict à ne jamais
-   désarmer : le feedback et le bouton « Continuer ▶ ». La mécanique elle-même (et sa
-   raison d'être : ne JAMAIS appeler `ctrl.verify()`) est dans `neutraliserScene`. */
-function neutraliserWidget(root: ParentNode): void {
+/** Tranche la question à l'écran (#543) : efface le bloc de décision et FIGE le widget.
+    Appelée par les DEUX chemins de chaque runner de leçon — « Vérifier » (après
+    `ctrl.verify()`, qui a posé ses marques) et « Je ne sais pas, montre-moi » (par
+    `revelerSolution`) —, QCM compris : une seule façon de figer, donc un seul état
+    d'interaction possible pour une question tranchée.
+    Scène = la carte du runner ; zones d'APRÈS-verdict jamais désarmées : le feedback et
+    « Continuer ▶ ». Le geste et ses exceptions (chrome, brouillon, étayage) sont dans
+    ui/figeage.ts. À appeler APRÈS le dernier rendu du widget, AVANT `wireNext` (qui pose le
+    focus sur « Continuer ▶ »). */
+export function figerQuestion(root: ParentNode): void {
+	masquerDecision(root);
 	neutraliserScene({
 		scene: root.querySelector<HTMLElement>('.sprint-stage'),
 		classeFige: 'lecon-fige',
@@ -129,11 +140,6 @@ export interface RevelationOpts {
 	annonce: string; // même contenu, en TEXTE, pour la live region
 	isLast: boolean; // dernière question de la série → « Voir mon résultat ▶ »
 	onNext: () => void; // enchaînement (question suivante ou écran de résultat)
-	/* Désarmer le widget de la scène ? Défaut oui. À mettre à `false` quand le runner a DÉJÀ
-	   verrouillé sa saisie lui-même et que la scène contient des outils qui doivent rester
-	   utilisables : le brouillon du problème (ardoise ouverte, à pouvoir refermer) serait
-	   sinon désactivé, et `.lecon-fige` lui couperait le tracé. */
-	figerWidget?: boolean;
 }
 
 /** Révèle la solution d'une question passée : verdict NEUTRE (ni rouge ni ✗, aucune
@@ -143,8 +149,7 @@ export interface RevelationOpts {
     regarde. N'enregistre rien : le comptage passe par le chemin habituel du runner
     (`finishLeconRun`, dénominateur inchangé, score non incrémenté). */
 export function revelerSolution(o: RevelationOpts): void {
-	masquerDecision(o.root);
-	if (o.figerWidget !== false) neutraliserWidget(o.root);
+	figerQuestion(o.root);
 	// Un runner d'écran dédié n'a qu'UNE région live à la fois : celle de son widget
 	// (`#ltriStatus`, `#lappStatus`, `#lclicStatus`, `#probStatus`) OU la sienne, fixe
 	// (`#ltuiStatus`, `#lordStatus`, `#dgStatus`, `#lqmStatus`, `#tcStatus`) — d'où la

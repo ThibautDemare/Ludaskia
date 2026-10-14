@@ -1118,7 +1118,8 @@ pas en fiche.
   au **dénominateur** sans compter au score (0 XP, étoile perdue comme après une erreur) et
   n'est pas rejouée. Côté révision, l'équivalent vit dans `revision.ts` (`decideHTML`,
   `passerItem`, région fixe `#revStatus` posée **hors** de `#revStage`, que le verdict d'une
-  saisie ou d'un QCM remplace en entier). Le figeage y a une contrainte propre : la classe
+  RÉUSSITE de saisie ou de QCM remplace en entier — une erreur ou un « Je ne sais pas » garde la
+  carte, cf. plus bas). Le figeage y a une contrainte propre : la classe
   `rev-stage--fige` est posée sur **`#revStage`**, qui **survit** d'une question à l'autre
   (seul son contenu est remplacé — c'est ce qui permet de câbler Entrée une seule fois).
   `renderCurrent` doit donc **dégeler** la carte (`degelerStage`) à chaque question ; sans
@@ -1144,10 +1145,23 @@ pas en fiche.
   chemin d'échec d'un mot d'orthographe) : « Bravo, c'est juste. » ou « Ce n'est pas ça. La
   bonne réponse : X. » (« Une réponse possible » sur un item corrigé par intervalle, #446 —
   libellé lu par `labelReponse`, commun au verdict affiché et à son annonce). Les quatre
-  formats dont le verdict remplace toute la carte — saisie, QCM, mot, opération posée —
-  n'annonçaient rien du tout : le focus part sur « Continuer ▶ », donc un enfant qui n'y voit
-  pas ne savait pas s'il avait eu juste ou faux. Trou antérieur à #467, corrigé avec lui
-  puisque l'infrastructure était là. Les formats à widget bavard (tri, appariement, clic-mot,
+  formats sans widget — saisie, QCM, mot, opération posée — n'annonçaient rien du tout : le
+  focus part sur « Continuer ▶ », donc un enfant qui n'y voit pas ne savait pas s'il avait
+  eu juste ou faux. Trou antérieur à #467, corrigé avec lui puisque l'infrastructure était là.
+  **La question reste sur la carte après une erreur** (#503) : en saisie, QCM et opération
+  posée, `gradeErreur` fige la carte (`neutraliserWidget`) et écrit le verdict dessous
+  (`#revAfter`), précédé de « Tu as répondu X. » (`.rev-donnee`, phrase identique au sprint ;
+  `rappelDonnee`). Un « Je ne sais pas » garde de même la carte. Seule une **réussite**
+  (`grade`) remplace le stage ; le mot d'orthographe ouvre son atelier. La réponse donnée est
+  affichée telle quelle (`saisieDonnee` ne nomme que les signes de comparaison, via
+  `reponseLisible` de `core/signes.ts`, **partagée avec le sprint**) ; l'annonce dit la même
+  chose dans le même ordre (`annoncerVerdict`, `lu`).
+  **Le rouge ne marque que l'erreur** (#503) : la marque ✗ (`.rev-marque-ko`) et la réponse
+  fausse de l'enfant (`.rev-donnee strong`, `.sprint-donnee strong`) — jamais la question ni
+  le texte du message, à l'encre ; la bonne réponse reste en vert gras. Même règle dans les
+  neuf runners de leçon (`.lqcm-ko` à l'encre, `strong` en `--ok`) et au sprint.
+  **Texte de révélation variable selon la forme de l'écran, voulu** : voir
+  [conventions-redaction.md](conventions-redaction.md). Les formats à widget bavard (tri, appariement, clic-mot,
   problème) gardent leur propre annonce, `annoncerStatut` visant leur région en priorité.
 - **`tuile-interaction.ts`** (#345) — **widget « tuiles » mutualisé** pour les trois
   formats interactifs sans clavier. Point d'entrée unique :
@@ -1332,7 +1346,7 @@ pas en fiche.
   (`messageInversion`, pur et exporté ; `.lord-inverse`) — au CE2 l'erreur typique est un
   **réflexe de sens** (« du plus petit au plus grand » par habitude) et non une erreur de
   comparaison, et les deux ne s'aident pas de la même façon. Le message s'**ajoute** à la
-  révélation du bon rangement (`.lqcm-ko strong`, jamais supprimée : c'est l'information
+  révélation du bon rangement (`.lqcm-ko strong`, en vert, jamais supprimée : c'est l'information
   la plus utile, et la spec e2e y lit le sens tiré), et l'inversion **reste journalisée**
   comme toute autre erreur. Accordé à la `nature` : sens explicite pour des nombres,
   renvoi à l'ordre alphabétique pour des mots.

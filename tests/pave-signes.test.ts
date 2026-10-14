@@ -8,11 +8,19 @@
    Comportement (ui/pave-signes.ts) : le tap remplit le champ par le même chemin
    que la frappe (évènement `input`), l'état aria-pressed suit la valeur du
    champ, y compris tapée au clavier physique.
+   Rappel de la réponse donnée (#503, `reponseLisible`) : un signe isolé est nommé
+   dans « Tu as répondu … », toute autre saisie ressort telle quelle.
    ============================================================ */
 import { describe, test, expect, beforeEach } from 'vitest';
 import { renderItem, createRenderContext } from '../src/core/items';
 import type { Item } from '../src/core/items';
-import { estSigneComparaison, signeView, SIGNES_COMPARAISON } from '../src/core/signes';
+import {
+	estSigneComparaison,
+	reponseLisible,
+	signeView,
+	SIGNES_COMPARAISON,
+	type SigneComparaison,
+} from '../src/core/signes';
 import { installPaveSignes } from '../src/ui/pave-signes';
 
 const itemSigne = (answer: string): Item => ({
@@ -127,6 +135,84 @@ describe('signeView (#380)', () => {
 		expect(v.label).toBe('plus petit que');
 		expect(signeView('=').label).toBe('égal à');
 		expect(signeView('>').label).toBe('plus grand que');
+	});
+});
+
+describe('reponseLisible (#503) : la réponse donnée, lue dans « Tu as répondu … »', () => {
+	/* Les trois signes du besoin, écrits ici et non énumérés depuis SIGNES_COMPARAISON : une
+	   table source amputée d'un signe laisserait sinon la boucle verte sur ce qui reste. */
+	const SIGNES: readonly SigneComparaison[] = ['<', '=', '>'];
+	/** Forme nommée : le libellé du pavé (même source que ses boutons), puis le glyphe entre
+	    parenthèses pour que l'enfant reconnaisse ce qu'il a tapé. */
+	const nomme = (s: SigneComparaison) => `${signeView(s).label} (${s})`;
+
+	test('chacun des trois signes est nommé, glyphe entre parenthèses', () => {
+		for (const s of SIGNES) {
+			const lue = reponseLisible(s);
+			expect(lue, s).toBe(nomme(s));
+			// « Nommé » veut dire des MOTS en plus du glyphe : un libellé vide ou réduit au
+			// glyphe rendrait l'égalité ci-dessus vraie sans rien nommer.
+			expect(lue.replace(s, ''), s).toMatch(/\p{L}{2,}/u);
+		}
+		// « < » et « > » ne doivent jamais se lire pareil.
+		expect(new Set(SIGNES.map((s) => reponseLisible(s))).size).toBe(3);
+	});
+
+	test('un signe entouré d’espaces est nommé aussi, sans reporter les espaces', () => {
+		// Décision : ces espaces ne sont pas la faute à montrer, la correction les ignore déjà
+		// (`normalizeText` rogne avant de comparer). Les laisser bloquer la reconnaissance
+		// rendrait le glyphe nu, le défaut même que la fonction corrige ; les reporter autour du
+		// libellé mettrait un blanc double dans « Tu as répondu … . ». Le sprint passe la saisie
+		// SANS la rogner : le cas est atteignable.
+		const cas: [string, SigneComparaison][] = [
+			[' < ', '<'],
+			['<  ', '<'],
+			['\t>', '>'],
+			['  =', '='],
+		];
+		for (const [saisie, s] of cas)
+			expect(reponseLisible(saisie), JSON.stringify(saisie)).toBe(nomme(s));
+	});
+
+	test('deux signes, ou un signe accolé à autre chose : rendu tel quel', () => {
+		// Pas un signe ISOLÉ : nommer le premier signe trouvé cacherait la saisie réelle.
+		for (const v of ['<<', '<=', '>=', '==', '=<', '< >', '3<4', '<3', '12 >', 'x='])
+			expect(reponseLisible(v), v).toBe(v);
+	});
+
+	test('signes Unicode voisins : rendus tels quels, jamais repliés sur < = >', () => {
+		// Piège : « ≠ ≮ ≯ » se DÉCOMPOSENT (NFD) en « = < > » + barre combinante U+0338, qu'un
+		// repli de diacritiques (celui de la recherche, `utils.ts`) retire, ce qui donnerait le
+		// signe CONTRAIRE. Les formes pleine chasse « ＜ ＝ ＞ » deviennent « < = > » sous NFKC.
+		// Dans les deux cas, l'enfant lirait la bonne réponse dans le rappel de son erreur.
+		for (const v of ['≤', '≥', '≠', '≮', '≯', '＜', '＝', '＞'])
+			expect(reponseLisible(v), v).toBe(v);
+	});
+
+	test('toute autre réponse ressort à l’identique : la faute de frappe reste visible', () => {
+		const saisies = [
+			'12',
+			'122', // chiffre doublé
+			'1002050', // pas de regroupement des milliers
+			'3.5', // pas de virgule substituée
+			'3,50', // pas de zéro final retiré
+			'007', // pas de zéro de tête retiré
+			'3 4', // espace parasite au milieu
+			' 12', // … ou autour : rien n'est rogné hors signe
+			'12 ',
+			'chat',
+			'Chat', // casse conservée
+			'ecole', // accent manquant conservé
+			'',
+			'   ',
+		];
+		for (const v of saisies) expect(reponseLisible(v), JSON.stringify(v)).toBe(v);
+	});
+
+	test('du balisage ou une entité ressortent bruts : ni échappés ni décodés', () => {
+		// L'échappement revient au gabarit `html` des appelants : échapper ici le doublerait
+		// (l'enfant lirait « &lt;b&gt; »). Décoder « &lt; » en ferait un signe, aussitôt nommé.
+		for (const v of ['<b>x</b>', '&lt;', '&amp;']) expect(reponseLisible(v), v).toBe(v);
 	});
 });
 

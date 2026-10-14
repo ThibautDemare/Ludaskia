@@ -147,9 +147,6 @@
 	flex-wrap: wrap;
 	justify-content: center;
 }
-.sprint-q.wrong {
-	color: var(--ko);
-}
 /* QCM (conjugaison en sprint) : emplacement vide + propositions cliquables.
    Gros boutons tactiles (≥ 56 px) pour un doigt d'enfant sur tablette/mobile. */
 .sprint-blank {
@@ -382,17 +379,18 @@ input.frac-num-input:focus-visible {
 .sprint-correction strong {
 	color: var(--ok);
 }
-/* Rappel de la réponse envoyée, sur sa propre ligne AVANT la bonne réponse. Neutre :
-   ni rouge, ni barré (même parti pris que le journal d'erreurs de l'espace encadrant) —
-   ce sont les mots « Tu as répondu » qui portent le sens, jamais la couleur seule. Le
-   sélecteur est plus spécifique que `.sprint-correction strong` pour que le vert reste
-   réservé à la BONNE réponse : deux valeurs en vert côte à côte ne se distingueraient plus. */
+/* Rappel de la réponse envoyée, sur sa propre ligne AVANT la bonne réponse. Sa valeur est
+   ROUGE (#503) : le rouge marque ce qui est faux — la réponse donnée, comme dans la fiche et
+   les leçons —, et plus l'énoncé reconstitué, qui contient la bonne réponse (l'ancienne
+   règle `.sprint-q.wrong`, retirée). Jamais barrée, et ce sont les mots « Tu as répondu »
+   qui portent le sens, jamais la couleur seule. Le sélecteur est plus spécifique que
+   `.sprint-correction strong` pour que le vert reste réservé à la BONNE réponse. */
 .sprint-donnee {
 	display: block;
 	margin-bottom: 2px;
 }
 .sprint-correction .sprint-donnee strong {
-	color: var(--ink);
+	color: var(--ko);
 }
 
 .sprint-actions {

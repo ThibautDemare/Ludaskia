@@ -295,8 +295,12 @@ html.anim-reduced .sprint-choice.correct {
 	color: var(--ok);
 	font-weight: 700;
 }
+/* Message d'erreur des runners de leçon (QCM, tuiles, tableau, ordre, tri, appariement,
+   clic-mot, droite graduée, problème) : texte à l'ENCRE, plus en rouge (#503). Le rouge est
+   réservé à l'élément faux, déjà marqué dans le widget (`.wrong`) ; un message entièrement
+   rouge colorait jusqu'à la bonne réponse qu'il introduit. */
 .lqcm-ko {
-	color: var(--ko);
+	color: var(--ink);
 }
 .lqcm-ko strong {
 	color: var(--ok);

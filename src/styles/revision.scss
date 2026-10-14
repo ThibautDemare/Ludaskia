@@ -128,11 +128,38 @@
 .rev-feedback.ok {
 	color: var(--ok);
 }
+/* Verdict d'erreur : le texte à l'ENCRE, le ✗ seul en rouge (#503). Le message entièrement
+   rouge colorait jusqu'à la bonne réponse qu'il introduit ; le rouge est réservé à ce qui
+   est faux — la marque, et la réponse donnée du rappel (`.rev-donnee`). */
 .rev-feedback.ko {
+	color: var(--ink);
+}
+.rev-feedback.ko .rev-marque-ko {
 	color: var(--ko);
 }
 .rev-feedback.ko strong {
 	color: var(--ok);
+}
+/* Rappel de la réponse donnée après une erreur (#503), sur sa ligne, AVANT le verdict :
+   « Tu as répondu X. » La valeur en rouge, jamais barrée — c'est elle que l'enfant doit
+   relire pour y voir sa faute de frappe ou son mauvais clic. Ce sont les mots qui portent
+   le sens, jamais la couleur seule (même règle qu'au sprint, `.sprint-donnee`). Un cran
+   sous le verdict (20 px contre 22, sans gras) : c'est la bonne réponse qu'on met en avant. */
+.rev-donnee {
+	font-size: 20px;
+	color: var(--ink);
+}
+.rev-donnee strong {
+	color: var(--ko);
+}
+/* Zone d'après-validation des formats sans widget (saisie, QCM, opération posée, #503) :
+   le verdict s'y écrit SOUS la question figée, en trois lignes (rappel, verdict,
+   « Continuer ») qu'il faut aérer. Les widgets gardent leur `#revAfter` nu. */
+.rev-apres {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 14px;
 }
 /* 3e état de verdict (#467) : question RÉVÉLÉE à la demande (« Je ne sais pas,
    montre-moi »). Ni succès ni échec → ni le vert du ✓ ni le rouge du ✗, aucune

@@ -76,10 +76,12 @@ test('Révision : un verdict FAUX en saisie est annoncé dans #revStatus', async
 
 	await expect(page.locator('.rev-feedback.ko')).toBeVisible();
 	// Même format « sans région propre » que la comparaison en tuiles ci-dessus : le
-	// verdict (et la bonne réponse révélée) est annoncé dans #revStatus.
+	// verdict (la réponse donnée PUIS la bonne réponse, #503) est annoncé dans #revStatus.
 	const bonneReponse = await page.locator('.rev-feedback.ko strong').innerText();
+	await expect(page.locator('.rev-donnee strong')).toHaveText('999999');
+	const donnee = '999999';
 	await expect(page.locator('#revStatus')).toHaveText(
-		`Ce n'est pas ça. La bonne réponse : ${bonneReponse}.`,
+		`Ce n'est pas ça. Tu as répondu ${donnee}. La bonne réponse : ${bonneReponse}.`,
 	);
 	expect(errors).toEqual([]);
 });

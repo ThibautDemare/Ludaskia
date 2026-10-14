@@ -42,6 +42,19 @@ export function estSigneComparaison(answer: number | string): boolean {
 	);
 }
 
+/* Une réponse telle qu'elle se LIT dans une phrase de correction (« Tu as répondu … ») :
+   un signe de comparaison est NOMMÉ (« plus petit que (<) ») au lieu d'être laissé en glyphe
+   nu, comme la ponctuation du runner QCM (#204). Un symbole isolé au milieu d'une phrase
+   ne se lit ni à l'œil ni au lecteur d'écran. Dans l'ÉNONCÉ reconstitué, en revanche, le
+   glyphe reste nu : « 12 < 15 » se lit très bien, « 12 plus petit que (<) 15 » non.
+   Partagé par le sprint et la révision (#503), qui rappellent la réponse donnée par la même
+   phrase. Toute autre valeur ressort INCHANGÉE (ni regroupement ni virgule) : c'est la forme
+   saisie qui laisse voir une faute de frappe. */
+export function reponseLisible(valeur: string): string {
+	const signe = SIGNES_COMPARAISON.find((s) => s === valeur.trim());
+	return signe ? `${SIGNE_LABELS[signe]} (${signe})` : valeur;
+}
+
 /* Vue riche d'un bouton-signe : gros glyphe + mot dessous. Mêmes classes que les
    boutons-symboles de ponctuation (#204, stylées dans lecon-mode.scss) — un seul
    langage visuel « symbole ambigu » dans l'appli. Le libellé accessible complet

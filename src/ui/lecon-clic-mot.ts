@@ -50,7 +50,7 @@ import {
 	capterPasse,
 	decisionHTML,
 	ligneRevelation,
-	masquerDecision,
+	figerQuestion,
 	revelerSolution,
 	wirePasser,
 } from './lecon-passer';
@@ -304,12 +304,13 @@ function renderQuestion(): void {
 function verifier(): void {
 	if (answered) return;
 	const q = questions[idx];
-	const juste = ctrl.verify(); // fige + marque ✓/✗ + révèle les cibles + annonce le verdict
+	const juste = ctrl.verify(); // marque ✓/✗ + révèle les cibles + annonce le verdict
 	answered = true;
 	if (juste) score++;
 
-	// Le bloc de décision s'efface : seul « Continuer ▶ » reste (pas deux boutons, #153).
-	masquerDecision(sheets());
+	// Question tranchée : le bloc de décision s'efface, seul « Continuer ▶ » reste (#153),
+	// et la phrase est figée par le MÊME geste qu'après « Je ne sais pas » (#543).
+	figerQuestion(sheets());
 
 	if (!juste) journaliser(q, ctrl.selected());
 

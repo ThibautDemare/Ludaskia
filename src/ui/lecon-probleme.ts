@@ -37,7 +37,7 @@ import { enregistrerRunner } from './runner-reprise';
 import { capterErreur } from './erreur-capture';
 import {
 	decisionHTML,
-	masquerDecision,
+	figerQuestion,
 	REVELATION_EN_PLACE,
 	revelerSolution,
 	wirePasser,
@@ -113,7 +113,9 @@ export const PROB_STATUS_HTML = html`<p
    #466) : marque chaque `.prob-input` (couleur + classe) et sa `.prob-mark` (glyphe
    ✓/✗ + solution révélée + `aria-label` explicite, car le glyphe n'est pas fiablement
    vocalisé), annonce un résumé dans la live region `#probStatus` si l'appelant en a
-   posé une, et renvoie si TOUTES les étapes sont justes. `onErreur` (optionnel) est
+   posé une, et renvoie si TOUTES les étapes sont justes. Ne VERROUILLE pas les cases :
+   c'est le figeage commun de l'appelant (#543, ui/figeage.ts), en lecture seule et non
+   `disabled`, pour que la réponse tapée reste à plein contraste. `onErreur` (optionnel) est
    appelé par sous-question ratée — seul le runner de leçon journalise (#391) ; la
    révision l'omet, comme les autres items de sa session. Virgule française tolérée
    (réponses décimales CM1, #255) LUE dans core/probleme-etapes.ts, partagée avec la
@@ -130,7 +132,6 @@ export function corrigerEtapesProbleme(
 		const attendu = etapes[i].answer;
 		const saisie = inp.value.trim();
 		const correct = etapeJuste(saisie, attendu);
-		inp.disabled = true;
 		inp.classList.add(correct ? 'correct' : 'wrong');
 		const attenduTexte = attenduEtapeTexte(attendu, etapes[i].unite);
 		const mark = root.querySelector(`.prob-mark[data-for="${i}"]`) as HTMLElement;
@@ -156,8 +157,9 @@ export function corrigerEtapesProbleme(
 }
 
 /* Révélation NEUTRE des sous-questions d'un problème PASSÉ (#467) — partagée runner ↔
-   révision, comme la correction ci-dessus. Chaque case est verrouillée et sa solution
-   s'affiche juste à côté, SANS la marque ✗ rouge de `corrigerEtapesProbleme` : celle-ci
+   révision, comme la correction ci-dessus. La solution de chaque case s'affiche juste à
+   côté (le verrouillage des cases revient, là aussi, au figeage commun de l'appelant),
+   SANS la marque ✗ rouge de `corrigerEtapesProbleme` : celle-ci
    traiterait en fautes des cases jamais remplies, et l'enfant n'a pas échoué — il a demandé
    à voir. Décimales à la française, comme la correction (#255).
 
@@ -177,7 +179,6 @@ export function revelerEtapesProbleme(
 	root.querySelectorAll<HTMLInputElement>('.prob-input').forEach((inp) => {
 		const i = Number(inp.dataset.i);
 		saisies[i] = inp.value;
-		inp.disabled = true;
 		const attendu = attenduEtapeTexte(etapes[i].answer, etapes[i].unite);
 		const mark = root.querySelector(`.prob-mark[data-for="${i}"]`);
 		if (!mark) return;
@@ -396,8 +397,10 @@ function verifier(): void {
 	if (toutJuste) score++;
 	// Une fois la réponse validée, le bloc de décision s'efface : seul « Continuer ▶ »
 	// (#probActions) reste, pour ne pas afficher deux boutons à la fois (#153) — et pour ne
-	// pas laisser un « Je ne sais pas, montre-moi » cliquable sur une question corrigée.
-	masquerDecision(sheets());
+	// pas laisser un « Je ne sais pas, montre-moi » cliquable sur une question corrigée. Les
+	// cases sont figées par le MÊME geste qu'après « Je ne sais pas » (#543) ; le brouillon,
+	// lui, en est épargné (ardoise peut-être ouverte, à relire et à refermer).
+	figerQuestion(sheets());
 	const expl = explicationHTML(q);
 	wireNext(
 		sheets().querySelector('#probActions') as HTMLElement,
@@ -475,9 +478,6 @@ function passer(): void {
 		repHTML: REVELATION_EN_PLACE,
 		extraHTML: explicationHTML(q),
 		annonce: REVELATION_EN_PLACE.balisage,
-		// Les cases sont DÉJÀ verrouillées par la révélation ; figer la scène désactiverait en
-		// plus le brouillon (ardoise peut-être ouverte, à pouvoir refermer et à relire).
-		figerWidget: false,
 		isLast: idx >= questions.length,
 		onNext: () => {
 			if (idx >= questions.length) finish();

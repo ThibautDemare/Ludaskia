@@ -5,7 +5,8 @@
    « Je ne sais pas, montre-moi » existe sur deux écrans très différents (les neuf
    runners de leçon en `.sprint-*`, la carte de révision en `.rev-*`), mais ce que
    l'enfant obtient doit être le MÊME : le même libellé de lien, le même ton qui
-   dédramatise avant de donner la réponse, le même widget laissé visible mais désarmé,
+   dédramatise avant de donner la réponse, le même widget laissé visible mais désarmé
+   (par le même geste qu'après « Vérifier », #543, cf. ui/figeage.ts),
    la même annonce pour un lecteur d'écran, et la même entrée de journal marquée
    « n'a pas essayé ». Seuls diffèrent des SÉLECTEURS DOM et le mode du journal : ils
    sont donc des PARAMÈTRES ici, et non un prétexte à deux implémentations.
@@ -27,6 +28,7 @@
    ============================================================ */
 import { icon } from './icon';
 import { capterErreur } from './erreur-capture';
+import { figerScene } from './figeage';
 import { html, type SafeHtml } from '../core/html';
 import { sansSeparateurMilliers } from '../core/nombres';
 
@@ -87,22 +89,21 @@ export function capterPasse(o: {
 	capterErreur({ ...o, donnee: '', sansTentative: true });
 }
 
-/* Boutons du « chrome » de l'écran qui restent opérables après une révélation : l'aide du
-   geste et les boutons « Écouter » (relire ou réentendre la question à côté de la solution
-   reste utile, surtout pour un lecteur fragile). */
-const CHROME_SELECTEUR = '.aide-btn, .consigne-tts, .item-tts';
+/** Neutralise la scène d'une question tranchée : point d'entrée commun aux deux écrans et
+    aux deux chemins (#543) — « Vérifier » / « Valider » comme « Je ne sais pas, montre-moi ».
+    Le geste lui-même (ce qui est désarmé, ce qui est épargné, et pourquoi ni `inert` ni
+    `aria-hidden`) vit dans ui/figeage.ts ; ce nom reste celui que les deux écrans appellent,
+    via leur habillage (`figerQuestion` en leçon, `figerCarte` en révision).
 
-/** Neutralise la scène (widget interactif) après une révélation. On ne passe SURTOUT pas
-    par `ctrl.verify()` (idempotent et irréversible : il figerait la réponse incomplète et
-    la marquerait ✗ en rouge — l'appariement irait jusqu'à poser `.is-decoy` et annoncer
-    « non relié, incorrect » sur des liens jamais tentés) ; on désarme le DOM à la place.
-    Le widget reste VISIBLE — l'enfant compare ce qu'il avait commencé avec la solution —
-    mais n'est plus manipulable : sinon il continue à déplacer des tuiles sur une question
-    terminée, et le `onState` du binder (qui n'est muet qu'une fois `verify()` appelé)
-    réactive un bouton de validation qui n'a plus lieu d'être. Le CSS de chaque écran
-    complète en coupant les cibles de DÉPÔT du glisser-déposer, sans toucher au chrome.
+    Sur le chemin de révélation, on ne passe SURTOUT pas par `ctrl.verify()` (idempotent et
+    irréversible : il figerait la réponse incomplète et la marquerait ✗ en rouge —
+    l'appariement irait jusqu'à poser `.is-decoy` et annoncer « non relié, incorrect » sur des
+    liens jamais tentés) : c'est ce geste-ci, qui ne marque rien, qui fige le widget. Sans lui,
+    l'enfant continuerait à déplacer des tuiles sur une question terminée, et le `onState` du
+    binder (muet seulement une fois `verify()` appelé) réactiverait un bouton de validation
+    qui n'a plus lieu d'être.
 
-    - `scene` : l'élément à désarmer (`null` accepté : rien à faire) ;
+    - `scene` : l'élément dont les descendants sont désarmés (`null` accepté : rien à faire) ;
     - `classeFige` : classe de figeage attendue par le CSS de l'écran ;
     - `apres` : zones d'APRÈS-verdict à ne jamais désarmer (feedback, « Continuer ▶ »). */
 export function neutraliserScene(o: {
@@ -110,21 +111,7 @@ export function neutraliserScene(o: {
 	classeFige: string;
 	apres: string;
 }): void {
-	if (!o.scene) return;
-	o.scene.classList.add(o.classeFige);
-	for (const el of o.scene.querySelectorAll<HTMLElement>('button, input, [role="button"]')) {
-		if (el.closest(o.apres) || el.matches(CHROME_SELECTEUR)) continue;
-		if (el instanceof HTMLButtonElement || el instanceof HTMLInputElement) {
-			el.disabled = true;
-			el.removeAttribute('aria-pressed'); // l'état de bascule n'a plus de sens
-			continue;
-		}
-		// Cible de dépôt NON native (titre de colonne du tri) : plus opérable, donc plus
-		// annoncée comme un bouton ni atteignable au clavier (son texte reste lisible).
-		el.removeAttribute('role');
-		el.removeAttribute('tabindex');
-		el.removeAttribute('aria-label');
-	}
+	figerScene(o);
 }
 
 /** Annonce non visuelle d'un verdict, dans la bonne région live de l'écran. Le focus part

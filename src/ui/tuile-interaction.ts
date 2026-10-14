@@ -8,9 +8,14 @@
      - « tri »    : ranger les tuiles-mots dans deux colonnes-thèmes.
    Chaque widget gère le rendu, le TAP (fiable au doigt) et le GLISSER-DÉPOSER
    (souris/desktop), la (dé)sélection, l'activation du bouton « Vérifier », et
-   surtout — à la validation — le FIGEAGE avec marques ✓/✗ (couleur + icône, pour
-   le daltonisme). Les marques étaient absentes en révision (#345, divergence
+   surtout — à la validation — les marques ✓/✗ (couleur + icône, pour le
+   daltonisme). Les marques étaient absentes en révision (#345, divergence
    active) : elles sont désormais produites pour les deux contextes.
+
+   Le binder ne DÉSARME pas le DOM (#543) : une fois `verify()` passé, il cesse de réagir
+   (garde `frozen`) et l'appelant fige la scène par le geste commun aux deux chemins
+   (ui/figeage.ts), APRÈS ce dernier rendu. Un `disabled` posé ici au rendu faisait
+   diverger « Vérifier » de « Je ne sais pas » (la case réponse restait atteignable).
 
    Les trois widgets se redessinent par `innerHTML`, ce qui DÉTRUIT l'élément focalisé :
    « ordre » et « tri » restaurent donc le focus après chaque redraw (`pendingFocus`,
@@ -18,8 +23,8 @@
    (une seule pose, puis on valide).
 
    L'appelant garde le « chrome » (libellé de leçon / consigne, bouton Vérifier,
-   feedback, enchaînement) : le binder n'expose que `verify()` (qui fige + marque
-   + renvoie la justesse), `juste()` (la même justesse, sans rien figer : séance
+   feedback, enchaînement) : le binder n'expose que `verify()` (qui verrouille la réponse,
+   marque + renvoie la justesse), `juste()` (la même justesse, sans rien figer : séance
    partagée, #734) et notifie l'état de complétude via `onState`, pour que
    l'appelant active/désactive son propre bouton. Le runner affiche alors son
    résultat local ; la révision enregistre le grade dans sa session SR.
@@ -67,8 +72,10 @@ export type TuileReponse =
 	| { kind: 'appariement'; liens: { gauche: string; droite: string | null }[] };
 
 export interface TuileController {
-	/* Fige le widget, applique les marques ✓/✗, renvoie si la réponse est juste.
-	   Idempotent : un second appel renvoie le même verdict sans re-marquer. */
+	/* Verrouille la réponse (le widget cesse de réagir), applique les marques ✓/✗, renvoie
+	   si la réponse est juste. Idempotent : un second appel renvoie le même verdict sans
+	   re-marquer. NE DÉSARME PAS le DOM : l'appelant fige la scène ENSUITE, par le geste
+	   commun (ui/figeage.ts, #543), après ce dernier rendu. */
 	verify(): boolean;
 	/* La réponse posée est-elle juste ? LA règle de correction du widget, celle dont
 	   `verify()` se sert, mais sans rien figer, marquer ni annoncer. La séance partagée
@@ -110,15 +117,17 @@ function mountWidget(root: HTMLElement, fragment: SafeHtml): void {
 /* Une tuile du bac (réutilisée par les trois widgets). `cls` = classes propres au
    widget ; `wrap` enveloppe les grands nombres en .bignum (leçon de comparaison) ;
    `ariaLabel` = libellé vocal explicite (« Ranger le mot X ») quand le texte seul ne
-   suffit pas — sinon le lecteur d'écran annonce le contenu du bouton. */
+   suffit pas — sinon le lecteur d'écran annonce le contenu du bouton.
+   Une tuile DÉJÀ POSÉE est désactivée : c'est un état du jeu (elle n'est plus au bac), pas
+   un figeage. Le figeage d'une réponse validée, lui, n'est jamais posé au rendu (#543). */
 function tuileBtn(
 	val: string,
 	cls: string,
-	opts: { used: boolean; frozen: boolean; wrap: boolean; ariaLabel?: string },
+	opts: { used: boolean; wrap: boolean; ariaLabel?: string },
 ): SafeHtml {
 	const inner = opts.wrap ? wrapGrandsNombres(html`${val}`) : html`${val}`;
 	const usedCls = opts.used ? ' tuile-used' : '';
-	const attrs = opts.used || opts.frozen ? drapeau('disabled') : attribut('draggable', 'true');
+	const attrs = opts.used ? drapeau('disabled') : attribut('draggable', 'true');
 	const aria = opts.ariaLabel ? attribut('aria-label', opts.ariaLabel) : VIDE;
 	return html`<button type="button" class="tuile ${cls}${usedCls}" data-val="${val}"${aria}${attrs}>${inner}</button>`;
 }
@@ -156,9 +165,7 @@ function bindSlot(
 		slot.classList.toggle('correct', verdict === true);
 		slot.classList.toggle('wrong', verdict === false);
 		bac.innerHTML = joindre(
-			spec.tuiles.map((t) =>
-				tuileBtn(t, 'ltui-tuile', { used: t === placed, frozen: frozen(), wrap }),
-			),
+			spec.tuiles.map((t) => tuileBtn(t, 'ltui-tuile', { used: t === placed, wrap })),
 		).balisage;
 		bac.querySelectorAll<HTMLButtonElement>('.ltui-tuile').forEach((btn) => {
 			const val = btn.dataset.val!;
@@ -293,7 +300,8 @@ function bindOrdre(
 					: frozen
 						? `Position ${i + 1} : ${mot}, ${ok ? 'correct' : 'incorrect'}`
 						: `Position ${i + 1} : ${mot}, taper pour retirer`;
-				const dis = !rempli || frozen ? drapeau('disabled') : '';
+				// Case vide désactivée : il n'y a rien à y retirer (état du jeu, pas un figeage).
+				const dis = !rempli ? drapeau('disabled') : '';
 				return html`<button type="button" class="lord-cell${rempli ? ' rempli' : ''}${etat}" data-pos="${i}" aria-label="${label}"${dis}>
         <span class="lord-num" aria-hidden="true">${i + 1}</span>
         <span class="lord-mot">${rempli ? mot : ''}</span>${mark}
@@ -309,7 +317,6 @@ function bindOrdre(
 			spec.tuiles.map((t) =>
 				tuileBtn(t, 'lord-tuile', {
 					used: placed.includes(t),
-					frozen,
 					wrap: false,
 					ariaLabel: `Ranger ${singulier} ${t}`,
 				}),
@@ -359,7 +366,7 @@ function bindOrdre(
 			if (frozen) return juste();
 			frozen = true;
 			const correct = juste();
-			redraw(); // fige + marque chaque case (vert/alerte + ✓/✗)
+			redraw(); // marque chaque case (vert/alerte + ✓/✗) ; l'appelant fige ensuite
 			return correct;
 		},
 		juste,
@@ -429,19 +436,18 @@ function bindTri(
 							? `${mot}, ${ok ? 'correct' : 'incorrect'}`
 							: `Retirer ${mot} du thème ${spec.categories[col]}`;
 						return html`<button type="button" class="tuile ltri-posee${etat}" data-mot="${mot}"
-            aria-label="${label}"${frozen ? drapeau('disabled') : ''}>${mot}${mark}</button>`;
+            aria-label="${label}">${mot}${mark}</button>`;
 					}),
 				);
 				// Le titre de colonne est la cible de dépôt opérable au clavier (#360) : on en
 				// fait un bouton (role + tabindex) plutôt que la <div> colonne elle-même, qui
 				// contient les tuiles posées (boutons) — un role=button sur la colonne
-				// imbriquerait des boutons (ARIA invalide). Désactivé une fois figé.
-				const titreAttrs = frozen
-					? VIDE
-					: html`${attribut('role', 'button')}${attribut('tabindex', '0')}${attribut(
-							'aria-label',
-							`Déposer dans ${spec.categories[col]}`,
-						)}`;
+				// imbriquerait des boutons (ARIA invalide). Une fois la réponse tranchée, c'est le
+				// figeage commun (#543) qui lui retire rôle, tabindex et libellé d'action.
+				const titreAttrs = html`${attribut('role', 'button')}${attribut('tabindex', '0')}${attribut(
+					'aria-label',
+					`Déposer dans ${spec.categories[col]}`,
+				)}`;
 				return html`<div class="ltri-col" data-col="${col}">
         <div class="ltri-col-titre"${titreAttrs}>${spec.categories[col]}</div>
         <div class="ltri-zone" data-col="${col}">${tuiles}</div>
@@ -535,7 +541,7 @@ function bindTri(
 			if (frozen) return correct;
 			frozen = true;
 			selected = null;
-			redraw(); // fige + marque chaque tuile (vert/alerte + ✓/✗)
+			redraw(); // marque chaque tuile (vert/alerte + ✓/✗) ; l'appelant fige ensuite
 			return correct;
 		},
 		juste,

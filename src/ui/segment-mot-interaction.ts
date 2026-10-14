@@ -73,7 +73,8 @@ export interface SegmentMotOptions {
 }
 
 export interface SegmentMotController {
-	/** Fige, marque ✓/✗, révèle le segment attendu, renvoie la justesse. Idempotent. */
+	/** Verrouille, marque ✓/✗, révèle le segment attendu, renvoie la justesse. Idempotent.
+	    Ne désarme pas le DOM : l'appelant fige la scène ensuite (#543, ui/figeage.ts). */
 	verify(): boolean;
 	/** Le bloc est-il le segment attendu ? LA règle de `verify()`, sans rien figer, marquer
 	    ni annoncer (séance partagée, #734 : même contrat que `bindClicMot`). */
@@ -235,12 +236,13 @@ export function bindSegmentMot(
 			const juste = estJuste();
 			resultat = juste;
 
+			// Marquage seul : le verrouillage des mots ET de « Recommencer » (`disabled`, et le
+			// retrait de l'`aria-pressed` devenu sans objet) est le figeage commun que l'appelant
+			// applique juste après (#543, ui/figeage.ts). Ce widget figeait les mots mais oubliait
+			// « Recommencer », resté actif sur une question corrigée.
 			boutons().forEach((btn) => {
 				const i = Number(btn.dataset.i);
-				btn.disabled = true;
 				btn.classList.remove('est-ancre', 'dans-bloc', 'bloc-debut', 'bloc-fin');
-				// L'état de bascule n'a plus de sens une fois figé (parité avec bindClicMot).
-				btn.removeAttribute('aria-pressed');
 				const estCible = cible.has(i);
 				const estChoisi = selection.has(i);
 				// Les libellés disent l'APPARTENANCE AU BLOC, pas un verdict isolé : « chat,

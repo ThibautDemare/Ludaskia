@@ -23,9 +23,11 @@
    getBoundingClientRect) → indépendantes du défilement de page ; un
    ResizeObserver les recalcule au redimensionnement / zoom (SC 1.4.4/1.4.10).
 
-   Corrigé par le runner (ui/lecon-appariement.ts) : expose `verify()` (fige +
+   Corrigé par le runner (ui/lecon-appariement.ts) : expose `verify()` (verrouille +
    marque + renvoie la justesse globale), `juste()` (la même justesse, sans rien
-   figer : séance partagée, #734) et notifie la complétude via `onState`.
+   figer : séance partagée, #734) et notifie la complétude via `onState`. Comme les
+   widgets à tuiles, il ne désarme pas le DOM : l'appelant fige le board après `verify()`
+   par le geste commun aux deux chemins (#543, ui/figeage.ts).
    Modèle calqué sur les widgets à tuiles (ui/tuile-interaction.ts) dont il
    réutilise le contrat `TuileController`/`TuileOptions` et la tuile `.tuile`.
    ============================================================ */
@@ -131,8 +133,10 @@ export function bindAppariement(
 			btn.classList.toggle('is-decoy', frozen && !linked);
 			if (!frozen && side === 'g' && armed === id) btn.setAttribute('aria-pressed', 'true');
 			else btn.removeAttribute('aria-pressed');
-			btn.disabled = frozen;
-			btn.draggable = !frozen && side === 'g';
+			// Seuls les mots de GAUCHE se glissent. Ni `disabled` ni `draggable` ne dépendent ici
+			// de `frozen` : une fois la manche tranchée, c'est l'appelant qui fige le board par le
+			// geste commun (#543, ui/figeage.ts), après ce dernier rendu.
+			btn.draggable = side === 'g';
 			btn.setAttribute('aria-label', label(side, id, linked, g, ok));
 		});
 	}
@@ -285,7 +289,7 @@ export function bindAppariement(
 			if (frozen) return correct;
 			frozen = true;
 			armed = null;
-			redraw(); // fige, marque chaque lien (✓/✗, plein/pointillé) et chaque mot
+			redraw(); // marque chaque lien (✓/✗, plein/pointillé) et chaque mot ; l'appelant fige ensuite
 			announce(
 				`Vérification faite : ${gauches.filter((g) => linkOf[g] === bonneDroite.get(g)).length} bonnes paires sur ${gauches.length}.`,
 			);

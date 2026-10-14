@@ -87,7 +87,7 @@ import {
 	capterPasse,
 	decisionHTML,
 	ligneRevelation,
-	masquerDecision,
+	figerQuestion,
 	revelerSolution,
 	wirePasser,
 } from './lecon-passer';
@@ -939,8 +939,11 @@ function verifier(): void {
 	if (!correct) capterErreur({ ...erreurTableau(ex), mode: 'lecon' });
 	// Un seul bouton à la fois (#153) : le bloc de décision s'efface (les DEUX boutons — un
 	// « Je ne sais pas » cliquable sur un tableau déjà corrigé n'aurait plus de sens) et
-	// « Continuer ▶ » prend le relais.
-	masquerDecision(sheets());
+	// « Continuer ▶ » prend le relais. Les cases et le pavé sont figés par le MÊME geste qu'après
+	// « Je ne sais pas » (#543) : le drapeau `frozen` seul laissait les cases au Tab, un clic
+	// ignoré en silence. Le figeage pose `disabled`, que ces boutons n'habillent d'aucun style :
+	// une case ne se grise donc pas (cf. l'en-tête, avis dys).
+	figerQuestion(sheets());
 	const explication = explicationRangVide(ex);
 	// Erreur de virgule SEULE : on le dit, au lieu de laisser un « c'est faux » global sur un
 	// tableau dont les sept chiffres sont justes. C'est aussi ce qui permet à l'enfant de
@@ -1101,8 +1104,8 @@ function explicationRangVide(ex: Tableau): string {
    DEMANDE un verdict et l'obtient, même incomplet ; celui qui dit ne pas savoir demande la
    réponse, et lui coller des ✗ par-dessus serait lui répondre à côté.
    Les cases déjà écrites restent VISIBLES, à comparer avec la réponse, mais plus modifiables
-   (`frozen` + désarmement du DOM par `revelerSolution`). Le tableau compte au dénominateur
-   (score inchangé ⇒ 0 XP) et n'est pas rejoué. */
+   (`frozen` + figeage du DOM par `revelerSolution`, le même qu'après « Vérifier », #543).
+   Le tableau compte au dénominateur (score inchangé ⇒ 0 XP) et n'est pas rejoué. */
 function passer(): void {
 	if (frozen) return;
 	frozen = true;

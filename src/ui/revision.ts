@@ -520,16 +520,18 @@ function viderStatut(): void {
 	if (statut) statut.textContent = '';
 }
 
-/* Lève le figeage posé par une révélation précédente (#467). Indispensable, et propre à la
-   révision : `#revStage` SURVIT d'une question à l'autre (seul son contenu est remplacé —
+/* Lève le figeage posé sur la question précédente (#467, #543). Indispensable, et propre à
+   la révision : `#revStage` SURVIT d'une question à l'autre (seul son contenu est remplacé —
    c'est ce qui permet de câbler Entrée une seule fois, cf. bindEnter), donc une classe
    d'ÉTAT posée sur la carte reste collée pour toute la séance. Le mode leçon n'a pas ce
    défaut : sa scène (`.sprint-stage`) est reconstruite à chaque question, `.lecon-fige`
-   part avec. Sans ce nettoyage, un « Je ne sais pas, montre-moi » sur un widget (le seul
-   chemin qui appelle `neutraliserWidget`) rendait TOUTES les questions suivantes
-   inertes — `pointer-events: none` sur tout ce qui n'est pas `#revAfter` : plus un choix
-   de QCM ni même le lien de déblocage cliquables, seuls les boutons « Écouter » (exclus
-   du figeage) répondant encore. L'enfant n'avait plus qu'à quitter la séance. */
+   part avec. Sans ce nettoyage, une question à widget tranchée (`figerCarte`, sur
+   « Valider » comme sur « Je ne sais pas, montre-moi ») rendait TOUTES les questions
+   suivantes inertes — `pointer-events: none` sur tout ce qui n'est pas `#revAfter` : plus
+   un choix de QCM ni même le lien de déblocage cliquables, seuls les boutons « Écouter »
+   (exclus du figeage) répondant encore. L'enfant n'avait plus qu'à quitter la séance.
+   Seule la CLASSE est à lever : les éléments désarmés partent avec le contenu remplacé, et
+   le figeage ne touche jamais le nœud `#revStage` lui-même. */
 function degelerStage(): void {
 	document.getElementById('revStage')?.classList.remove('rev-stage--fige');
 }
@@ -693,12 +695,15 @@ function capterPasse(o: {
 	capterPasseNeutre({ ...o, mode: 'revision' });
 }
 
-/* Scène à désarmer côté révision : la carte de la question. `#revAfter` (verdict +
-   « Continuer ») en est exclu. La mécanique elle-même (et sa raison d'être : ne JAMAIS
-   appeler `ctrl.verify()`) est dans `neutraliserScene`. Sert aussi, depuis #503, à figer
-   la question d'une saisie, d'un QCM ou d'une opération posée après une erreur ou une
-   révélation : champ et choix restent lisibles, plus actionnables. */
-function neutraliserWidget(stage: HTMLElement): void {
+/* Fige la carte d'une question tranchée (#543), sur ses DEUX chemins : « Valider » (APRÈS
+   `ctrl.verify()` ou la correction du problème, qui ont posé leurs marques) et « Je ne sais
+   pas, montre-moi ». Une seule façon de figer, donc un seul état d'interaction possible
+   pour une question tranchée. `#revAfter` (verdict + « Continuer ») en est exclu ; le geste
+   et ses exceptions (chrome, brouillon) sont dans ui/figeage.ts. Sert aussi, depuis #503, à
+   figer la question d'une saisie, d'un QCM ou d'une opération posée après une erreur ou une
+   révélation : champ et choix restent lisibles, plus actionnables. Levé à la question
+   suivante par `degelerStage`. */
+function figerCarte(stage: HTMLElement): void {
 	neutraliserScene({ scene: stage, classeFige: 'rev-stage--fige', apres: '#revAfter' });
 }
 
@@ -809,7 +814,7 @@ function renderPosed(it: Extract<RevItem, { kind: 'num' }>) {
 				attendue: String(it.item.answer),
 				lessonId: it.lessonId,
 			});
-		neutraliserWidget(stage); // l'opération reste lisible à côté de sa réponse (#503)
+		figerCarte(stage); // l'opération reste lisible à côté de sa réponse (#503)
 		passerItem({ cible: 'after', correct: String(it.item.answer) });
 	});
 }
@@ -870,7 +875,7 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 			attendue: attendueItem(it.item),
 			lessonId: it.lessonId,
 		});
-		neutraliserWidget(stage); // l'énoncé reste lisible à côté de sa réponse (#503)
+		figerCarte(stage); // l'énoncé reste lisible à côté de sa réponse (#503)
 		passerItem({
 			cible: 'after',
 			correct: String(it.item.answer),
@@ -962,7 +967,7 @@ function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 			attendue: label(reponse),
 			lessonId: it.lessonId,
 		});
-		neutraliserWidget(stage); // la question reste lisible à côté de sa réponse (#503)
+		figerCarte(stage); // la question reste lisible à côté de sa réponse (#503)
 		// Même affichage et même annonce qu'après une erreur : mot de ponctuation, fraction dite
 		// en toutes lettres.
 		passerItem({ cible: 'after', correct: reponseAffichee, correctLu: label(reponse) });
@@ -1130,12 +1135,12 @@ function renderWordCorrection(it: Extract<RevItem, { kind: 'word' }>, saisie: st
 }
 
 /* ---------- Interactions « tuiles » (#186, mutualisées #345) ----------
-   Le widget (rendu + tap/glisser + figeage avec marques ✓/✗) est partagé avec les
-   runners de leçon via `bindTuileInteraction` (ui/tuile-interaction.ts). La
-   révision garde son « chrome » : libellé de leçon (consigneHTML), bouton « Valider »
-   et, à la validation, l'enregistrement SR. Le widget figé+marqué reste visible et
-   le verdict s'insère EN DESSOUS (#revAfter), comme les runners — c'est ce qui
-   fait apparaître les marques ✓/✗ en révision (correction de la divergence #345). */
+   Le widget (rendu + tap/glisser + marques ✓/✗) est partagé avec les runners de leçon
+   via `bindTuileInteraction` (ui/tuile-interaction.ts). La révision garde son « chrome » :
+   libellé de leçon (consigneHTML), bouton « Valider », le figeage de la carte
+   (`figerCarte`, #543) et, à la validation, l'enregistrement SR. Le widget figé+marqué
+   reste visible et le verdict s'insère EN DESSOUS (#revAfter), comme les runners — c'est
+   ce qui fait apparaître les marques ✓/✗ en révision (correction de la divergence #345). */
 
 /* Squelette commun aux cinq interactions : consigne, point de montage du widget,
    et zone d'après-validation (Valider → verdict). `extra` insère la consigne-énoncé
@@ -1160,7 +1165,8 @@ function renderTuile(it: Extract<RevItem, { kind: 'tuile' }>) {
 	);
 	verif.addEventListener('click', () => {
 		if (verif.disabled) return;
-		const reussi = ctrl.verify();
+		const reussi = ctrl.verify(); // marque le widget ; le figeage suit, après ce rendu
+		figerCarte(stage);
 		if (!reussi) {
 			const rep = ctrl.reponse?.();
 			capterRev({
@@ -1183,7 +1189,7 @@ function renderTuile(it: Extract<RevItem, { kind: 'tuile' }>) {
 			attendue: it.intervalle ? attendueIntervalle(it.intervalle) : it.answer,
 			lessonId: it.lessonId,
 		});
-		neutraliserWidget(stage);
+		figerCarte(stage);
 		passerItem({ cible: 'after', correct: it.answer, parIntervalle: !!it.intervalle });
 	});
 }
@@ -1204,7 +1210,8 @@ function renderOrdre(it: Extract<RevItem, { kind: 'ordre' }>) {
 	);
 	verif.addEventListener('click', () => {
 		if (verif.disabled) return;
-		const reussi = ctrl.verify();
+		const reussi = ctrl.verify(); // marque le widget ; le figeage suit, après ce rendu
+		figerCarte(stage);
 		if (!reussi) {
 			const rep = ctrl.reponse?.();
 			// Séparateur accordé à la nature (#448) : « ; » pour des nombres, sinon la virgule
@@ -1227,7 +1234,7 @@ function renderOrdre(it: Extract<RevItem, { kind: 'ordre' }>) {
 			attendue: ordreErreur([], it.ordre, it.nature).attendue,
 			lessonId: it.lessonId,
 		});
-		neutraliserWidget(stage);
+		figerCarte(stage);
 		passerItem({ cible: 'after', correct: it.ordre.join(' · ') });
 	});
 }
@@ -1258,7 +1265,8 @@ function renderTri(it: Extract<RevItem, { kind: 'tri' }>) {
 		.join(' — ');
 	verif.addEventListener('click', () => {
 		if (verif.disabled) return;
-		const reussi = ctrl.verify();
+		const reussi = ctrl.verify(); // marque le widget ; le figeage suit, après ce rendu
+		figerCarte(stage);
 		if (!reussi) {
 			// Une entrée par mot MAL CLASSÉ (comme le runner de leçon) : on cible le mot sur
 			// lequel aider, pas « le tri est faux ».
@@ -1281,7 +1289,7 @@ function renderTri(it: Extract<RevItem, { kind: 'tri' }>) {
 	// mots qu'on n'a aucune raison de croire acquis ou non.
 	wireGiveUp(() => {
 		capterPasse({ text: it.question, attendue: solution, lessonId: it.lessonId });
-		neutraliserWidget(stage);
+		figerCarte(stage);
 		passerItem({ cible: 'after', correct: solution });
 	});
 }
@@ -1290,8 +1298,8 @@ function renderTri(it: Extract<RevItem, { kind: 'tri' }>) {
 
 /* Appariement (#392) : relier les paires, comme à la leçon. Le widget mutualisé
    (bindAppariement) est monté sur le slot `[data-tuile-mount]` de tuileStageHTML ;
-   à la validation il fige + marque chaque lien (✓/✗) et le verdict s'insère sous
-   le widget (gradeTuile), avec les bonnes paires révélées en texte. */
+   à la validation il marque chaque lien (✓/✗), la carte est figée, et le verdict
+   s'insère sous le widget (gradeTuile), avec les bonnes paires révélées en texte. */
 function renderAppariement(it: Extract<RevItem, { kind: 'appariement' }>) {
 	const stage = document.getElementById('revStage')!;
 	stage.innerHTML = tuileStageHTML(
@@ -1307,7 +1315,8 @@ function renderAppariement(it: Extract<RevItem, { kind: 'appariement' }>) {
 	const solution = it.paires.map((p) => `${p.gauche} → ${p.droite}`).join(' · ');
 	verif.addEventListener('click', () => {
 		if (verif.disabled) return;
-		const reussi = ctrl.verify();
+		const reussi = ctrl.verify(); // marque le widget ; le figeage suit, après ce rendu
+		figerCarte(stage);
 		if (!reussi) {
 			const rep = ctrl.reponse?.();
 			if (rep?.kind === 'appariement') {
@@ -1330,7 +1339,7 @@ function renderAppariement(it: Extract<RevItem, { kind: 'appariement' }>) {
 			).attendue,
 			lessonId: it.lessonId,
 		});
-		neutraliserWidget(stage);
+		figerCarte(stage);
 		passerItem({ cible: 'after', correct: solution });
 	});
 }
@@ -1376,6 +1385,9 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 				lessonId: it.lessonId,
 			}),
 		);
+		// Cases en lecture seule (réponse à plein contraste), brouillon épargné : même geste
+		// qu'après « Je ne sais pas » (#543).
+		figerCarte(stage);
 		recordGrade(toutJuste);
 		document.getElementById('revAfter')!.innerHTML = verdictHTML({
 			etat: toutJuste ? 'ok' : 'ko',
@@ -1402,6 +1414,7 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 				sansTentative: e.sansTentative,
 			}),
 		);
+		figerCarte(stage);
 		passerItem({ cible: 'after', extra: explicationHTML(it.explication) });
 	});
 	const first = stage.querySelector<HTMLInputElement>('.prob-input');
@@ -1416,8 +1429,8 @@ function explicationHTML(explication?: string): SafeHtml {
 
 /* « Clique sur le mot » (#259) : le vrai widget de sélection dans la phrase, monté
    via le widget mutualisé (bindClicMot) sur le slot `[data-tuile-mount]`. À la
-   validation il fige + marque ✓/✗ et révèle le(s) bon(s) mot(s) en place ; le verdict
-   (+ explication) s'insère sous la phrase. La consigne d'action de l'exercice s'affiche
+   validation il marque ✓/✗ et révèle le(s) bon(s) mot(s) en place, la carte est figée ;
+   le verdict (+ explication) s'insère sous la phrase. La consigne d'action de l'exercice s'affiche
    au-dessus (le libellé de leçon reste porté par consigneHTML). */
 function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
 	const stage = document.getElementById('revStage')!;
@@ -1447,7 +1460,8 @@ function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
 	const solution = libelleCible(it.tokens, it.cibleIndices);
 	verif.addEventListener('click', () => {
 		if (verif.disabled) return;
-		const reussi = ctrl.verify();
+		const reussi = ctrl.verify(); // marque le widget ; le figeage suit, après ce rendu
+		figerCarte(stage);
 		if (!reussi) {
 			const choisis = ctrl.selected();
 			capterRev({
@@ -1470,7 +1484,7 @@ function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
 	// c'est le moment où elle sert le plus.
 	wireGiveUp(() => {
 		capterPasse({ text: enonceJournal, attendue: solution, lessonId: it.lessonId });
-		neutraliserWidget(stage);
+		figerCarte(stage);
 		passerItem({ cible: 'after', correct: solution, extra: explicationHTML(it.explication) });
 	});
 }
@@ -1813,7 +1827,7 @@ function gradeErreur(o: {
 }): void {
 	const parIntervalle = o.parIntervalle ?? false;
 	recordGrade(false);
-	neutraliserWidget(document.getElementById('revStage')!);
+	figerCarte(document.getElementById('revStage')!);
 	document.getElementById('revAfter')!.innerHTML = verdictHTML({
 		etat: 'ko',
 		correct: o.correct,

@@ -57,7 +57,7 @@ import {
 	capterPasse,
 	decisionHTML,
 	ligneRevelation,
-	masquerDecision,
+	figerQuestion,
 	revelerSolution,
 	wirePasser,
 } from './lecon-passer';
@@ -315,7 +315,7 @@ function verifier(): void {
 	if (tranchee || verif.disabled) return; // déjà tranchée, ou rangée incomplète
 	tranchee = true;
 	const q = questions[idx];
-	const correct = ctrl.verify(); // fige + marque chaque case (✓/✗)
+	const correct = ctrl.verify(); // marque chaque case (✓/✗) ; le figeage suit, après ce rendu
 	// Ordre réellement posé par l'enfant : il sert à DEUX choses, le journal d'erreurs
 	// et le diagnostic « suite inversée » — on le lit donc une seule fois, avant de
 	// brancher quoi que ce soit (aucun chemin ne doit sortir avant `capterErreur`).
@@ -332,9 +332,9 @@ function verifier(): void {
 	// Diagnostic ciblé de l'inversion : il s'AJOUTE à la révélation du bon rangement
 	// (qui reste l'information la plus utile), il ne la remplace pas.
 	const inversion = correct ? null : messageInversion(propose, q.ordre, q.nature);
-	// Une fois la réponse validée, le bloc de décision s'efface : seul « Continuer ▶ »
-	// (#lordActions) reste, pour ne pas afficher deux boutons à la fois (#153).
-	masquerDecision(sheets());
+	// Question tranchée : le bloc de décision s'efface, seul « Continuer ▶ » (#lordActions)
+	// reste (#153), et le widget est figé par le MÊME geste qu'après « Je ne sais pas » (#543).
+	figerQuestion(sheets());
 	// Annonce vocale du verdict (SC 4.1.3) : `#lordFeedback` n'est PAS une région live et
 	// `wireNext` pose le focus sur « Continuer ▶ » — sans ça, un lecteur d'écran passe
 	// par-dessus le diagnostic d'inversion ET la révélation du bon rangement. Le même

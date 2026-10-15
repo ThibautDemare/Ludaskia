@@ -381,3 +381,154 @@ test('Sprint : réponse donnée en --ko non barrée, énoncé non rouge (critèr
 	expect(await couleurDe(page, '.sprint-q')).not.toBe(ko);
 	expect(errors).toEqual([]);
 });
+
+/* ---------------- Relectures : ✗, posée, ponctuation, champ figé ---------------- */
+
+test('Révision : le ✗ décoratif est masqué au lecteur d’écran (critère 5)', async ({ page }) => {
+	const errors = watchErrors(page);
+	await ratageSaisie(page);
+	await expect(page.locator('.rev-marque-ko')).toHaveAttribute('aria-hidden', 'true');
+	expect(errors).toEqual([]);
+});
+
+test('Révision posée : annonce de la réponse donnée puis de la bonne (critère 5)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await ratagePosee(page);
+	const donnee = (await page.locator('.rev-donnee strong').innerText()).trim();
+	const bonne = (await page.locator('.rev-feedback.ko strong').innerText()).trim();
+	await expect(page.locator('#revStatus')).toHaveText(
+		`Ce n'est pas ça. Tu as répondu ${donnee}. La bonne réponse : ${bonne}.`,
+	);
+	expect(errors).toEqual([]);
+});
+
+test('Révision QCM de ponctuation : signes dits en mots, à l’annonce et à l’écran (critères 2, 5)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await ratageQcm(page, 'fr-gram-ponctuation');
+	// (a) aucune réponse n'est un signe nu dans l'annonce : un signe ne se prononce pas.
+	const annonce = await page.locator('#revStatus').innerText();
+	expect(annonce).toMatch(/^Ce n'est pas ça\. Tu as répondu /);
+	const reponses = annonce.replace(/^Ce n'est pas ça\. Tu as répondu /, '');
+	const [donnee, bonne] = reponses.split('. La bonne réponse : ');
+	expect(donnee).toMatch(/\p{L}{3,}/u);
+	expect(bonne).toMatch(/\p{L}{3,}/u);
+	expect(donnee.trim()).not.toMatch(/^[.?!]$/);
+	expect(bonne.replace(/\.$/, '').trim()).not.toMatch(/^[.?!]$/);
+	// (b) à l'écran, la bonne réponse porte le MOT du signe, pas le glyphe seul.
+	const affichee = await page.locator('.rev-feedback.ko strong').innerText();
+	expect(affichee).toMatch(/\p{L}{3,}/u);
+	expect(errors).toEqual([]);
+});
+
+/* Critère 15 — le champ de saisie a un nom accessible dérivé de l'énoncé (comme dans la fiche,
+   #577), avant ET après validation. Ni absent, ni le repli générique « réponse ». */
+test('Révision : #revInput est nommé d’après l’énoncé, avant et après une erreur (critère 15)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedDueLesson('num-valeur-position'));
+	await gotoHash(page, 'revision-espacee');
+	const input = page.locator('#revInput');
+	await expect(input).toBeVisible();
+	const mots = (await page.locator('.rev-q').innerText()).match(/\p{L}{4,}/gu) ?? [];
+	expect(mots.length).toBeGreaterThan(0);
+	const unMotDeLEnonce = new RegExp(mots.join('|'), 'i');
+
+	await expect(input).toHaveAccessibleName(/\S/);
+	await expect(input).not.toHaveAccessibleName(/^\s*réponse\s*$/i);
+	await expect(input).toHaveAccessibleName(unMotDeLEnonce);
+
+	await input.fill('999999');
+	await input.press('Enter');
+	await expect(page.locator('.rev-feedback.ko')).toBeVisible();
+	await expect(input).toBeDisabled();
+	await expect(input).toHaveAccessibleName(/\S/);
+	await expect(input).not.toHaveAccessibleName(/^\s*réponse\s*$/i);
+	await expect(input).toHaveAccessibleName(unMotDeLEnonce);
+	expect(errors).toEqual([]);
+});
+
+/* Critère 16 — posée ratée : chaque case-réponse de la grille figée est marquée `.correct` ou
+   `.wrong` selon qu'elle vaut son data-answer. On remplit tout JUSTE sauf la case `indexFaux`. */
+async function poseeUneSeuleFausse(
+	page: Page,
+	choisirIndex: (nCases: number) => number,
+): Promise<{ faux: number; n: number }> {
+	const cells = page.locator('.posee-input');
+	await expect(cells.first()).toBeVisible();
+	const n = await cells.count();
+	const faux = choisirIndex(n);
+	for (let i = 0; i < n; i++) {
+		const ans = Number((await cells.nth(i).getAttribute('data-answer')) ?? '0');
+		await cells.nth(i).fill(String(i === faux ? (ans + 1) % 10 : ans));
+	}
+	await page.locator('#revValidate').click();
+	await expect(page.locator('.rev-feedback.ko')).toBeVisible();
+	return { faux, n };
+}
+
+async function verifierMarques(page: Page, faux: number, n: number): Promise<void> {
+	const cells = page.locator('.posee-input');
+	expect(await cells.count()).toBe(n);
+	for (let i = 0; i < n; i++) {
+		if (i === faux) {
+			await expect(cells.nth(i)).toHaveClass(/\bwrong\b/);
+			await expect(cells.nth(i)).not.toHaveClass(/\bcorrect\b/);
+		} else {
+			await expect(cells.nth(i)).toHaveClass(/\bcorrect\b/);
+			await expect(cells.nth(i)).not.toHaveClass(/\bwrong\b/);
+		}
+	}
+}
+
+test('Révision posée : une seule case fausse est la seule marquée .wrong (critère 16a)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedDueLesson('calc-addition-posee'));
+	await gotoHash(page, 'revision-espacee');
+	const { faux, n } = await poseeUneSeuleFausse(page, (nb) => nb - 1);
+	await verifierMarques(page, faux, n);
+	expect(errors).toEqual([]);
+});
+
+test('Révision posée ×2 chiffres : un produit partiel faux est marqué .wrong, le résultat juste .correct (critère 16b)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedDueLesson('calc-multiplication-posee'));
+	await gotoHash(page, 'revision-espacee');
+	// ~40 % des tirages ont un multiplicateur à deux chiffres (data-pose-b ≥ 10) : on recharge
+	// (l'amorçage remet l'élément dû) jusqu'à en obtenir un. 20 essais : échec négligeable.
+	for (let essai = 0; essai < 20; essai++) {
+		await expect(page.locator('.posee')).toBeVisible();
+		const b = Number(await page.locator('.posee').getAttribute('data-pose-b'));
+		if (b >= 10) break;
+		await page.reload({ waitUntil: 'networkidle' });
+	}
+	expect(Number(await page.locator('.posee').getAttribute('data-pose-b'))).toBeGreaterThanOrEqual(
+		10,
+	);
+	// Les produits partiels précèdent le résultat dans le DOM : la 1re case en est un.
+	const { faux, n } = await poseeUneSeuleFausse(page, () => 0);
+	await verifierMarques(page, faux, n);
+	expect(errors).toEqual([]);
+});
+
+test('Révision : le champ figé après erreur reste lisible, en --ink et pleine opacité', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await ratageSaisie(page);
+	const input = page.locator('#revInput');
+	await expect(input).toBeDisabled();
+	const ink = await couleurToken(page, '--ink');
+	expect(await couleurDe(page, '#revInput')).toBe(ink);
+	const opacite = await input.evaluate((el) => getComputedStyle(el).opacity);
+	expect(opacite).toBe('1');
+	expect(errors).toEqual([]);
+});

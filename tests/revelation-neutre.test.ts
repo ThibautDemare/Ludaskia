@@ -16,8 +16,9 @@
      muets pour un lecteur d'écran, et il doit tenir quel que soit l'ordre du markup ;
    - l'entrée de journal d'un passage (sans réponse donnée, marquée « n'a pas
      essayé »), sous le mode de l'écran appelant.
-   Le reste du module (`neutraliserScene`, styles, ids des runners) est du geste
-   d'écran → e2e.
+   Le reste (styles, ids des runners) est du geste d'écran → e2e. Le figeage du widget
+   (`figerScene`, ui/figeage.ts) a ses propres tests : tests/figeage.test.ts et
+   tests/figeage-geste.test.ts.
    ============================================================ */
 import { beforeEach, describe, it, expect } from 'vitest';
 import {

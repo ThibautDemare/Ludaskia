@@ -340,10 +340,14 @@ const PAIRES_TEXTE: Paire[] = [
 	{
 		avant: '--ok',
 		arriere: '--ok-soft',
-		ou: 'lecon-mode.scss .mode-btn-badge, .sprint-choice.correct',
+		ou: 'lecon-mode.scss .mode-btn-badge, .sprint-choice.correct ; lessons.scss .posee-input.correct (fiche, et révision depuis #503)',
 	},
 	{ avant: '--ok', arriere: '--paper', ou: 'encadrant.scss (mise en avant positive)' },
-	{ avant: '--ko', arriere: '--ko-soft', ou: 'lecon-mode.scss .sprint-choice.wrong' },
+	{
+		avant: '--ko',
+		arriere: '--ko-soft',
+		ou: 'lecon-mode.scss .sprint-choice.wrong ; lessons.scss .posee-input.wrong (fiche, et révision depuis #503)',
+	},
 	{
 		avant: '--ko',
 		arriere: '--paper',

@@ -312,6 +312,19 @@ export function texteItemParle(it: Item): string {
 export const ariaChamp = (it: Item, role?: string): SafeHtml =>
 	attribut('aria-label', role ? `${nomChampReponse(it)} — ${role}` : nomChampReponse(it));
 
+/* FORMAT attendu dans le champ de réponse d'un item, à passer en `role` à `ariaChamp` — ou
+   `undefined` pour une réponse ordinaire. Sans lui, rien ne dit à qui ne voit pas l'écran
+   qu'on attend un signe (le pavé de signes) ou des lettres romaines plutôt qu'un nombre.
+   UNE seule source pour la fiche (`renderItem`) et la saisie de révision (#503) : la règle
+   recopiée de chaque côté avait déjà divergé, la révision ne nommant aucun format. Le signe
+   prime, comme dans le rendu de la fiche. */
+export function formatChampReponse(it: Item): string | undefined {
+	if (it.kind !== 'text') return undefined;
+	if (estSigneComparaison(it.answer)) return 'signe de comparaison';
+	if (it.saisieRomaine) return 'en chiffres romains';
+	return undefined;
+}
+
 /* Rend un fragment en rattachant ses champs à `lessonId` (attribut data-lesson), puis
    détache — sans toucher au compteur d'id ni à la table `items`, qui persistent pour
    garder des ids uniques dans un document multi-bloc. Centralise le motif tag→rendu→
@@ -516,15 +529,18 @@ export function renderItem(it: Item, ctx: RenderContext, extra = ''): SafeHtml {
 	const revelee = it.intervalle
 		? corrigeIntercalation(it.answer, it.intervalle)
 		: formatReponseRevelee(String(it.answer));
+	// Nom accessible, format attendu compris (signe, chiffres romains) : `formatChampReponse`,
+	// partagé avec la saisie de révision.
+	const nom = ariaChamp(it, formatChampReponse(it));
 	const field = ctx.corrigeMode
 		? html`<span class="ans-corrige ${extra}">${revelee}</span>`
 		: signe
-			? html`<input class="ans ans-signe ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)} type="text" inputmode="none" autocomplete="off" spellcheck="false" maxlength="1"${ariaChamp(it, 'signe de comparaison')}><span class="mark" data-for="${id}"></span>`
+			? html`<input class="ans ans-signe ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)} type="text" inputmode="none" autocomplete="off" spellcheck="false" maxlength="1"${nom}><span class="mark" data-for="${id}"></span>`
 			: romain
-				? html`<input class="ans ans-text ans-romain ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)}${ariaChamp(it, 'en chiffres romains')} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
+				? html`<input class="ans ans-text ans-romain ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)}${nom} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
 				: it.kind === 'text'
-					? html`<input class="ans ans-text ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)}${ariaChamp(it)} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
-					: html`<input class="ans${grand} ${extra}" id="${id}"${ansAttr}${attendueAttr}${lessonAttr(ctx)}${ariaChamp(it)} inputmode="${inputMode}" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
+					? html`<input class="ans ans-text ${extra}" id="${id}"${ansAttr}${lessonAttr(ctx)}${nom} ${TEXT_ANSWER_INPUT_ATTRS}><span class="mark" data-for="${id}"></span>`
+					: html`<input class="ans${grand} ${extra}" id="${id}"${ansAttr}${attendueAttr}${lessonAttr(ctx)}${nom} inputmode="${inputMode}" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
 	// ne doit jamais s'imprimer « en l'air » → on ajoute une ligne d'écriture finale.
 	const place = texte.balisage.includes('@') ? texte : ctx.printMode ? html`${texte} @` : texte;

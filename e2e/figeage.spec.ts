@@ -39,6 +39,9 @@ const ZONES = {
 	},
 } as const;
 
+/* Les épargnes du figeage (`EPARGNES`, `src/ui/figeage.ts`) : ce qui reste opérable. */
+const EPARGNES = '.aide-btn, .consigne-tts, .item-tts, .etayage-btn, .etay-lien, .brouillon';
+
 /* Même garde tolérante que je-ne-sais-pas.spec.ts : « Je ne sais pas » ouvre d'abord
    l'étayage de la notion quand elle en porte un ; on le referme sans en juger. */
 async function fermerEtayageSiOuvert(page: Page): Promise<void> {
@@ -76,7 +79,11 @@ async function photoDuWidget(page: Page, scene: string, exclu: string): Promise<
 			const racine = document.querySelector(scene);
 			if (!racine) return '(scène introuvable)';
 			const copie = racine.cloneNode(true) as HTMLElement;
-			copie.querySelectorAll(`${exclu}, [role="status"]`).forEach((n) => n.remove());
+			// `.tc-jauge` : jauge décorative (`aria-hidden`) du tableau de conversion, dont le
+			// curseur change de `left` dès que le tableau défile. Le `scrollIntoView` de
+			// `tenterDeManipuler` suffit à la faire bouger, widget figé ou non : ce n'est pas
+			// une modification du widget par l'enfant.
+			copie.querySelectorAll(`${exclu}, [role="status"], .tc-jauge`).forEach((n) => n.remove());
 			return copie.innerHTML;
 		},
 		{ scene, exclu },
@@ -243,6 +250,29 @@ for (const [runner, entrees] of Object.entries(COUVERTURE_FIGEAGE)) {
 					{ scene: zone.scene },
 				);
 				expect(chromeDesactive, 'critère 9 : boutons Écouter / aide désactivés').toEqual([]);
+
+				// Critère 9 (pointeur) : ce que le figeage épargne reste CLIQUABLE AU DOIGT. Le DOM
+				// seul ne le dit pas : `.etay-lien` restait non cliquable parce que les feuilles
+				// `.lecon-fige` / `.rev-stage--fige` ne lui rendaient pas le pointeur. On juge donc
+				// le `pointer-events` CALCULÉ de chaque épargne présente et de ses descendants.
+				// (Liste = `EPARGNES` de `src/ui/figeage.ts` ; les `.etay-lien` n'apparaissent que
+				// quand la leçon a un étayage ET que la réponse est ratée ou révélée.)
+				const bloques = await page.evaluate((epargnes) => {
+					const fautifs: string[] = [];
+					for (const racine of document.querySelectorAll(epargnes)) {
+						for (const el of [racine, ...racine.querySelectorAll('*')]) {
+							if (getComputedStyle(el).pointerEvents === 'none')
+								fautifs.push(
+									`${el.tagName.toLowerCase()} (dans ${racine.tagName.toLowerCase()}.${racine.getAttribute('class')})`,
+								);
+						}
+					}
+					return fautifs;
+				}, EPARGNES);
+				expect(
+					bloques,
+					'critère 9 : une épargne du figeage a `pointer-events: none` (non cliquable au doigt)',
+				).toEqual([]);
 
 				// Critère 9 : « Continuer » mène bien à la suite (la question répondue disparaît).
 				await continuer.click();

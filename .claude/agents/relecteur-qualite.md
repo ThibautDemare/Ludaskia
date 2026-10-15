@@ -117,6 +117,10 @@ faut.**
     état mutable partagé évitable, généricité que personne n'utilise. Le code doit
     rester **simple à suivre** pour le prochain contributeur — quitte à préférer
     deux fonctions claires à une fonction « maligne ».
+  - **Paramètres positionnels qui s'accumulent.** Au-delà de quatre, ou dès qu'un
+    appel passe une valeur neutre (`VIDE`, `false`, `undefined`) juste pour atteindre
+    le paramètre suivant, exiger un objet d'options nommées. Cas d'origine :
+    `verdictHTML` de la révision, passé à cinq paramètres par #503.
   - **Une classe SCSS qui fixe `display` sur un élément par ailleurs montré/caché
     par l'attribut `hidden` DOIT avoir sa règle compagnon `&[hidden] { display:
     none; }`.** Une règle d'auteur l'emporte sur celle du navigateur : sans elle

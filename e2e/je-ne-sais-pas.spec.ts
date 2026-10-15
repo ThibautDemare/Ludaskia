@@ -110,7 +110,7 @@ test('Révision (saisie libre) : « Je ne sais pas » révèle en verdict neutre
 
 /* Mêmes deux leçons, ÉCHÉANCES INVERSÉES : `num-comparer` passe en premier. Sa réponse
    est un SIGNE (< = >), donc la révision la rend en WIDGET de tuiles (jamais en saisie),
-   ce qui est le cas visé : seuls les widgets appellent `neutraliserWidget`, donc seuls
+   ce qui est le cas visé : seuls les widgets appellent `figerCarte`, donc seuls
    eux figent la carte. La 2e (num-valeur-position, réponse numérique) revient en saisie
    libre — un format sans `#revAfter`, celui où le figeage résiduel ne laissait plus RIEN
    d'opérable. */

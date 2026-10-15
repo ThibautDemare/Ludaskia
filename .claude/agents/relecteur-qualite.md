@@ -149,6 +149,11 @@ faut.**
   (`juste()` d'un widget, `jugerTableau`, `etapeJuste`), jamais une copie. Deux
   copies d'une règle de correction divergent au premier correctif. Cas d'origine : les
   runners en séance partagée (#734).
+- **Un widget répondu ne recrée plus d'élément interactif.** Le figeage (`figerScene`,
+  `src/ui/figeage.ts`) passe APRÈS le dernier rendu de `verify()` : un binder qui redessine
+  ensuite (observer, minuteur, écouteur clavier global) doit être gardé par `frozen` et ne
+  jamais recréer d'élément armé, sinon le widget se dégèle en silence. Aucun test statique
+  ne le voit : chercher tout rendu différé dans un binder touché. Cas d'origine : #543.
 - **Un `catch` n'entoure que l'appel qui peut échouer pour la raison qu'il annonce.** Un
   `try` qui englobe aussi le rendu ou l'écriture attrape un bug sous le message d'un
   échec attendu (« lexique injoignable »). Cas d'origine : l'envoi d'une dictée (#734).

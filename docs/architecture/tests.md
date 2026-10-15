@@ -222,6 +222,23 @@ Trois choix à la place :
 **déplacement** (le libellé existe, mais plus là où le guide l'annonce — le parcours n'est
 pas vérifié) et le renommage d'**un** porteur quand il y en a plusieurs.
 
+### Couverture du figeage post-réponse par runner (#543)
+
+Même forme que #581. `e2e/figeage-couverture.ts` (table, importée par Vitest : aucun
+`expect`, `import type` seulement de `@playwright/test`) déclare, par **module de runner**
+qui emprunte le chemin de révélation, un geste jusqu'à un bouton de validation cliquable.
+`tests/figeage-couverture-gate.test.ts` est le **gate** : un module de `src/ui/` qui appelle
+`revelerSolution(` ou `figerScene(` sans entrée fait échouer `npm test` ; le QCM de
+leçon, sans « Je ne sais pas », est exigé nommément et porte `sansRevelation`. Le même gate
+tient l'unicité du geste (critère 1) : chaque runner de leçon déclaré appelle
+`figerQuestion(`, la révision `figerCarte(`, et aucun runner ni binder ne désactive plus
+lui-même ses éléments. `e2e/figeage.spec.ts` joue chaque entrée par les **deux** chemins et
+mesure le figeage. `tests/figeage.test.ts` et `tests/figeage-geste.test.ts` éprouvent
+`figerScene` lui-même. Le gate garde la déclaration et l'unicité, pas la qualité du figeage.
+**Rejet écrit** : la spec e2e recopie la liste des épargnes (`EPARGNES`) au lieu de
+l'importer. C'est voulu : importée, elle suivrait le code et un retrait d'épargne ne ferait
+plus rougir le critère 9.
+
 ### Couverture e2e par surface de rendu (#598)
 
 `tests/couverture-e2e-gate.test.ts` fait respecter « pas de fonctionnalité visuelle sans sa

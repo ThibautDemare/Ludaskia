@@ -224,6 +224,18 @@ texte `sr-only` NON focusable — jamais à un conteneur portant des contrôles,
 fuir le piège à focus. Généralisable : tout écran qui pose une région `role="status"` et
 peut enchaîner sur une modale doit **exempter sa région**, pas ralentir son interface.
 
+**Rejet écrit (#543) : `inert` pour figer un widget après la réponse.** Le widget répondu
+reste visible (l'enfant compare sa tentative à la solution) mais ne doit plus être
+manipulable. `inert` y est écarté pour deux raisons : il retire de l'arbre d'accessibilité
+un contenu qui reste à l'écran, donc la correction détaillée (verdicts par élément) ; et il
+rend muettes les régions live logées dans les widgets (`#ltriStatus`, `#lappStatus`,
+`#lclicStatus`, `#probStatus`), le même piège que ci-dessus. `aria-hidden` est écarté pour
+la même raison. `aria-disabled` l'est aussi : il laisse le widget dans l'ordre de
+tabulation, l'enfant s'arrêterait sur des contrôles morts. Retenu : `figerScene`
+(`src/ui/figeage.ts`), qui pose `disabled` sur les contrôles natifs, `readOnly` +
+`tabindex="-1"` sur les champs texte, et retire le rôle des éléments non natifs à rôle de
+contrôle. Détail dans [ui.md](../architecture/ui.md).
+
 **Même checklist, cas plus général : région écrite puis `focus()` dans le même tick.**
 La modale n'est qu'une façon parmi d'autres d'avaler une annonce ; en déplacer le focus
 juste après avoir rempli un `aria-live="polite"` en est une autre, certains couples

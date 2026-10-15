@@ -39,7 +39,7 @@ import {
 	capterPasse,
 	decisionHTML,
 	ligneRevelation,
-	masquerDecision,
+	figerQuestion,
 	revelerSolution,
 	wirePasser,
 } from './lecon-passer';
@@ -271,11 +271,12 @@ function verifier(): void {
 	if (tranchee || verif.disabled) return; // déjà tranchée, ou mots de gauche non tous reliés
 	tranchee = true;
 	const q = manches[idx];
-	const correct = ctrl.verify(); // fige + marque chaque lien (✓/✗)
+	const correct = ctrl.verify(); // marque chaque lien (✓/✗) ; le figeage suit, après ce rendu
 	if (correct) score++;
 	else journaliser(q);
-	// Le bloc de décision s'efface : seul « Continuer ▶ » reste (pas deux boutons, #153).
-	masquerDecision(sheets());
+	// Question tranchée : le bloc de décision s'efface, seul « Continuer ▶ » reste (#153),
+	// et le board est figé par le MÊME geste qu'après « Je ne sais pas » (#543).
+	figerQuestion(sheets());
 	const feedbackHTML = correct
 		? html`<span class="lqcm-ok">Bravo ! 🎉</span>`
 		: html`<span class="lqcm-ko">Les bonnes paires :</span>${pairesHTML(q)}`;

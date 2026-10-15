@@ -357,6 +357,15 @@ pomme) » (« mange il mange une pomme »), et « … du verbe de « il mange un
 cesse de nommer le mot cible et oblige à écouter toute la phrase avant de savoir de quoi
 on parle. La redondance mange/mange est assumée : c'est elle qui lève l'ambiguïté.
 
+## Libellé lu par un lecteur d'écran : l'état d'abord, puis le jugement (#543)
+
+Un verdict porté par un `aria-label` (bouton figé après la réponse) dit l'**état**, puis le
+**jugement**, sans participe accordé à un nom que l'enfant n'entend pas : le lecteur d'écran
+n'énonce que le libellé, pas la proposition voisine à laquelle l'accord renverrait. Exemple,
+QCM multiple (`lecon-qcm-multi.ts`) : « tu as coché, c'est juste » / « pas coché, il fallait
+cocher », pas un « cochée, juste » qui s'accorde avec un mot absent. Règle de jugement, donc
+checklist et non gate.
+
 ## Une option de QCM ne laisse pas un verbe transitif sans son complément (#500)
 
 Écrire « porter quelque chose de lourd », pas « porter très lourd » ; « l'action d'adoucir

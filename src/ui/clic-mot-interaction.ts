@@ -6,8 +6,9 @@
    ambiguïté pour les consignes multi-mots). Même contrat que les widgets à tuiles
    (ui/tuile-interaction.ts) et d'appariement (ui/appariement.ts) : l'appelant garde
    son « chrome » (libellé de leçon, consigne, bouton Vérifier, feedback,
-   enchaînement) ; le widget expose `verify()` (fige + marque ✓/✗ + révèle les
-   cibles + renvoie la justesse) et notifie l'état de sélection via `onState`, pour
+   enchaînement) ; le widget expose `verify()` (verrouille + marque ✓/✗ + révèle les
+   cibles + renvoie la justesse ; le figeage du DOM revient à l'appelant, #543) et
+   notifie l'état de sélection via `onState`, pour
    que l'appelant (dé)active son propre bouton.
 
    Sélection MULTIPLE réversible : taper un mot le sélectionne, retaper le
@@ -51,8 +52,9 @@ export interface ClicMotOptions {
 }
 
 export interface ClicMotController {
-	/** Fige le widget, marque ✓/✗, révèle les cibles, renvoie la justesse (égalité
-	    d'ensembles exacte). Idempotent : un second appel renvoie le même verdict. */
+	/** Verrouille la sélection, marque ✓/✗, révèle les cibles, renvoie la justesse (égalité
+	    d'ensembles exacte). Idempotent : un second appel renvoie le même verdict. Ne désarme
+	    pas le DOM : l'appelant fige la scène ensuite (#543, ui/figeage.ts). */
 	verify(): boolean;
 	/** La sélection est-elle juste ? LA règle de `verify()` (égalité d'ensembles exacte),
 	    sans rien figer, marquer ni annoncer : la séance partagée (#734) note sans verdict
@@ -140,13 +142,12 @@ export function bindClicMot(
 
 			// Feedback token par token (mots seulement). Un mot choisi est marqué juste
 			// (dans la cible) / faux (hors cible) ; un mot-cible NON choisi est révélé.
+			// Marquage seul : le verrouillage des mots (`disabled`, et le retrait de leur
+			// `aria-pressed`, bascule devenue sans objet) est le figeage commun que l'appelant
+			// applique juste après (#543, ui/figeage.ts).
 			root.querySelectorAll<HTMLButtonElement>('.lclic-mot').forEach((btn) => {
 				const i = Number(btn.dataset.i);
-				btn.disabled = true;
 				btn.classList.remove('is-selected');
-				// L'état de bascule n'a plus de sens une fois figé : on le retire pour ne pas
-				// mêler un `aria-pressed` obsolète au verdict (parité avec bindAppariement, #466).
-				btn.removeAttribute('aria-pressed');
 				const estCible = cible.has(i);
 				const estChoisi = selection.has(i);
 				// Cible MULTIPLE (ni…ni, sujet composé, tous les noms / déterminants d'une phrase

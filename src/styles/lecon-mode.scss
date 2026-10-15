@@ -399,11 +399,14 @@ html.anim-reduced .sprint-choice.correct {
 	font-weight: 600;
 	color: var(--grey);
 }
-/* Widget neutralisé après une révélation : il reste visible (l'enfant compare ce qu'il
-   avait commencé avec la solution) mais n'est plus manipulable. Les éléments focalisables
-   sont désarmés côté DOM (cf. lecon-passer.ts) ; `pointer-events` coupe en plus les cibles
-   de DÉPÔT du glisser-déposer, sans quoi un dépôt relancerait le widget. Restent opérables :
-   l'après-verdict, l'aide du geste et les boutons « Écouter ». */
+/* Question tranchée (#543), après « Vérifier » comme après « Je ne sais pas » : le widget
+   reste visible (l'enfant compare sa réponse avec la solution) mais n'est plus manipulable.
+   Les éléments focalisables sont désarmés côté DOM (ui/figeage.ts) ; `pointer-events` coupe
+   en plus les cibles de DÉPÔT du glisser-déposer, sans quoi un dépôt relancerait le widget.
+   Restent opérables, la MÊME liste que les exceptions de ui/figeage.ts : l'après-verdict,
+   l'aide du geste, les boutons « Écouter », l'étayage et le brouillon du problème. Plus le
+   cadre défilant du tableau de conversion : ses cases sont désarmées, mais l'enfant doit
+   encore pouvoir faire défiler un tableau plus large que l'écran pour relire sa correction. */
 .lecon-fige {
 	pointer-events: none;
 }
@@ -411,7 +414,11 @@ html.anim-reduced .sprint-choice.correct {
 .lecon-fige .sprint-actions,
 .lecon-fige .aide-btn,
 .lecon-fige .consigne-tts,
-.lecon-fige .item-tts {
+.lecon-fige .item-tts,
+.lecon-fige .etayage-btn,
+.lecon-fige .etay-lien,
+.lecon-fige .brouillon,
+.lecon-fige .tc-wrap {
 	pointer-events: auto;
 }
 

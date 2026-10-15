@@ -45,6 +45,7 @@ import {
 } from './lecon-runner-shared';
 import { enregistrerRunner } from './runner-reprise';
 import { capterErreur, libelleChoix } from './erreur-capture';
+import { figerQuestion } from './lecon-passer';
 import { html, joindre, VIDE } from '../core/html';
 import { icon } from './icon';
 import {
@@ -298,10 +299,12 @@ function answer(choiceIdx: number): void {
 	sheets()
 		.querySelectorAll<HTMLButtonElement>('#lqcmChoices .sprint-choice')
 		.forEach((b, i) => {
-			b.disabled = true;
 			if (q.choices[i] === q.item.answer) b.classList.add('correct');
 			else if (i === choiceIdx) b.classList.add('wrong');
 		});
+	// Question tranchée : les choix sont figés par le geste COMMUN aux dix runners de leçon
+	// (#543), et non par une boucle propre — il n'existe plus qu'une façon de figer un QCM.
+	figerQuestion(sheets());
 	const fb = sheets().querySelector('#lqcmFeedback') as HTMLElement;
 	// Ponctuation (#204) : on NOMME le signe (« point d'exclamation (!) ») plutôt que
 	// d'afficher un glyphe nu, peu lisible isolé dans la phrase de feedback.

@@ -53,7 +53,7 @@ import {
 	capterPasse,
 	decisionHTML,
 	ligneRevelation,
-	masquerDecision,
+	figerQuestion,
 	revelerSolution,
 	wirePasser,
 } from './lecon-passer';
@@ -285,29 +285,33 @@ function valider(): void {
 	// TOUT-OU-RIEN, lu une seule fois (`selectionJuste`) : le même verdict sert au score, au
 	// journal et — question passée (#467) — à savoir si la grille cochée était déjà juste.
 	const correct = selectionJuste(q, selected);
+	// Marquage seul : le verrouillage des propositions est le figeage commun, juste après.
 	sheets()
 		.querySelectorAll<HTMLButtonElement>('#lqmChoices .lqcm-multi-choice')
 		.forEach((btn, i) => {
-			btn.disabled = true;
 			btn.classList.remove('is-selected');
 			const estBonne = bonnes.has(q.propositions[i]);
 			const cochee = selected.has(i);
 			const box = btn.querySelector('.lqcm-multi-box');
 			// Verdict annoncé au lecteur d'écran (la case est `aria-hidden` → l'état ne passe
 			// pas par le seul pictogramme ni la seule couleur). sr-only par bouton.
+			// Le verdict dit l'ÉTAT coché AVANT le jugement : une fois figé, le bouton n'annonce
+			// plus `aria-pressed` (#543), et « correcte » seul se comprenait « la proposition est
+			// vraie ». Aucun participe accordé : l'enfant entend le texte de la proposition, qui
+			// peut être masculin, pas le mot « proposition ».
 			let verdict = '';
 			if (estBonne && cochee) {
 				btn.classList.add('is-hit'); // coché à raison → vert + ✓
 				if (box) box.innerHTML = icon('check').balisage;
-				verdict = 'correcte';
+				verdict = "tu as coché, c'est juste";
 			} else if (estBonne && !cochee) {
 				btn.classList.add('is-missed'); // oublié → ambre (pas rouge), picto « ? » distinct
 				if (box) box.innerHTML = icon('question').balisage;
-				verdict = 'oubliée, il fallait la cocher';
+				verdict = 'pas coché, il fallait cocher';
 			} else if (!estBonne && cochee) {
 				btn.classList.add('is-false'); // coché à tort → rouge + ✗
 				if (box) box.innerHTML = icon('x').balisage;
-				verdict = 'à ne pas cocher';
+				verdict = "tu as coché, c'est faux";
 			}
 			// décoché à raison → neutre (aucune classe, aucune annonce)
 			if (verdict) {
@@ -322,8 +326,10 @@ function valider(): void {
 	// ci-dessus assure une seule capture par question.
 	if (!correct) journaliserErreurMulti(q, selected);
 	// Seul « Continuer ▶ » reste ensuite (pas deux boutons) : tout le bloc de décision
-	// s'efface, « Je ne sais pas, montre-moi » compris — la question est tranchée.
-	masquerDecision(sheets());
+	// s'efface, « Je ne sais pas, montre-moi » compris — la question est tranchée. Les
+	// propositions sont figées par le MÊME geste qu'après « Je ne sais pas » (#543), qui
+	// retire aussi leur `aria-pressed` : le verdict de chacune est dans son texte sr-only.
+	figerQuestion(sheets());
 
 	// Badge tout-ou-rien + synthèse (redondante avec les cases marquées). Échec en AMBRE et
 	// libellé NON punitif, distinct de la feature « À revoir » (révision espacée).

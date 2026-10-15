@@ -55,7 +55,7 @@ import {
 	capterPasse,
 	decisionHTML,
 	ligneRevelation,
-	masquerDecision,
+	figerQuestion,
 	revelerSolution,
 	wirePasser,
 } from './lecon-passer';
@@ -349,8 +349,10 @@ function verifier(): void {
 	afficherFigureRevelation(q, juste ? undefined : { valeur: choisie.valeur, etat: 'faux' });
 
 	// Le bloc de décision s'efface : seul « Continuer ▶ » reste (#153) — et pas de
-	// « Je ne sais pas, montre-moi » cliquable sur une droite déjà corrigée.
-	masquerDecision(sheets());
+	// « Je ne sais pas, montre-moi » cliquable sur une droite déjà corrigée. La scène est
+	// figée par le MÊME geste qu'après « Je ne sais pas » (#543), APRÈS le remplacement de la
+	// droite interactive par sa figure statique (dernier rendu de la question).
+	figerQuestion(sheets());
 
 	// Le résumé annoncé aux lecteurs d'écran est désormais passé à `wireNext`, qui le
 	// pose dans `#dgStatus` (#505) — c'était jusqu'ici une écriture à la main, recopiée

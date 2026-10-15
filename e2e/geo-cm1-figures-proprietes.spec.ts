@@ -84,3 +84,62 @@ test('mode Vrai/Faux (smoke) : figure rendue, un choix donne un retour', async (
 
 	expect(errors).toEqual([]);
 });
+
+/* ------------------------------------------------------------------
+   Verdicts lus au lecteur d'écran après « Valider » (#543). Chaque proposition porte un
+   `<span class="sr-only">` qui dit l'état coché AVANT le jugement, sans participe accordé
+   (le texte lu est celui de la proposition, de genre variable). Les libellés sont ICI
+   l'objet du test (apostrophe droite) : on les fige au mot près.
+   Les bonnes réponses ne sont pas connues d'avance (tirage aléatoire) : on coche toujours
+   les deux premières propositions, puis on lit le marquage visuel (`.is-hit`, `.is-missed`,
+   `.is-false`) pour savoir ce qu'elles étaient. On rejoue des tirages jusqu'à une question
+   qui présente les QUATRE cas (une bonne cochée, une bonne laissée, une fausse cochée, une
+   fausse laissée).
+   ------------------------------------------------------------------ */
+test('mode Coche : le verdict lu de chaque proposition dit l’état coché, dans les quatre cas', async ({
+	page,
+}) => {
+	test.setTimeout(120_000); // tirages rejoués jusqu'aux quatre cas
+	const errors = watchErrors(page);
+	const choices = page.locator('.lqcm-multi-choice');
+	const ANCIENS = /correcte|oubliée|à ne pas cocher/i;
+	let quatreCas = false;
+
+	for (let essai = 0; essai < 25 && !quatreCas; essai++) {
+		await page.goto('app.html#mode-geo-cm1-figures-proprietes', { waitUntil: 'networkidle' });
+		await page.locator('.mode-btn[data-mode="coche"]').click();
+		for (let q = 0; q < 6 && !quatreCas; q++) {
+			await expect(choices).toHaveCount(4);
+			await choices.nth(0).click();
+			await choices.nth(1).click();
+			await page.locator('#lqmValider').click();
+			await page.locator('#lqmActions button').waitFor();
+
+			const lignes = await choices.evaluateAll((btns) =>
+				btns.map((b) => ({
+					cls: ['is-hit', 'is-missed', 'is-false'].find((c) => b.classList.contains(c)) ?? 'neutre',
+					sr: Array.from(b.querySelectorAll('.sr-only')).map((e) => (e.textContent ?? '').trim()),
+				})),
+			);
+			const verdicts: Record<string, string[]> = {
+				'is-hit': ["(tu as coché, c'est juste)"], // bonne + cochée
+				'is-missed': ['(pas coché, il fallait cocher)'], // bonne + non cochée
+				'is-false': ["(tu as coché, c'est faux)"], // fausse + cochée
+				neutre: [], // fausse + non cochée : silence voulu
+			};
+			lignes.forEach((l, i) => {
+				expect(l.sr, `proposition ${i} (${l.cls})`).toEqual(verdicts[l.cls]);
+				for (const t of l.sr) expect(t).not.toMatch(ANCIENS);
+				// L'état coché annoncé est celui que l'enfant a posé (0 et 1 cochées, 2 et 3 non).
+				const cochee = l.cls === 'is-hit' || l.cls === 'is-false';
+				expect(cochee, `proposition ${i} cochée`).toBe(i < 2);
+			});
+
+			quatreCas = new Set(lignes.map((l) => l.cls)).size === 4;
+			if (!quatreCas && q < 5) await page.locator('#lqmActions button').click();
+		}
+	}
+
+	expect(quatreCas, 'aucune question tirée ne présentait les quatre cas').toBe(true);
+	expect(errors).toEqual([]);
+});

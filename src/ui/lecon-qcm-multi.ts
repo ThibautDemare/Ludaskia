@@ -295,19 +295,23 @@ function valider(): void {
 			const box = btn.querySelector('.lqcm-multi-box');
 			// Verdict annoncé au lecteur d'écran (la case est `aria-hidden` → l'état ne passe
 			// pas par le seul pictogramme ni la seule couleur). sr-only par bouton.
+			// Le verdict dit l'ÉTAT coché AVANT le jugement : une fois figé, le bouton n'annonce
+			// plus `aria-pressed` (#543), et « correcte » seul se comprenait « la proposition est
+			// vraie ». Aucun participe accordé : l'enfant entend le texte de la proposition, qui
+			// peut être masculin, pas le mot « proposition ».
 			let verdict = '';
 			if (estBonne && cochee) {
 				btn.classList.add('is-hit'); // coché à raison → vert + ✓
 				if (box) box.innerHTML = icon('check').balisage;
-				verdict = 'correcte';
+				verdict = "tu as coché, c'est juste";
 			} else if (estBonne && !cochee) {
 				btn.classList.add('is-missed'); // oublié → ambre (pas rouge), picto « ? » distinct
 				if (box) box.innerHTML = icon('question').balisage;
-				verdict = 'oubliée, il fallait la cocher';
+				verdict = 'pas coché, il fallait cocher';
 			} else if (!estBonne && cochee) {
 				btn.classList.add('is-false'); // coché à tort → rouge + ✗
 				if (box) box.innerHTML = icon('x').balisage;
-				verdict = 'à ne pas cocher';
+				verdict = "tu as coché, c'est faux";
 			}
 			// décoché à raison → neutre (aucune classe, aucune annonce)
 			if (verdict) {

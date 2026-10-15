@@ -1095,7 +1095,8 @@ pas en fiche.
   l'enfant n'a pas échoué, il a demandé à voir (`.lecon-reveal` côté leçon,
   `.rev-feedback.reveal` côté révision) —, l'entrée de journal marquée « n'a pas essayé »
   (`capterPasse({…, mode})`), le désarmement du widget sans jamais appeler `verify()`
-  (`neutraliserScene({scene, classeFige, apres})`) et l'**annonce non visuelle**
+  (`neutraliserScene({scene, classeFige, apres})`, qui **délègue** à `figerScene`, cf.
+  `figeage.ts` plus bas) et l'**annonce non visuelle**
   (`annoncerRevelation({scope, message, repli?})`). Ne varient que des **sélecteurs DOM** et
   le **mode** du journal, passés en paramètres — les deux écrans sont deux habillages, pas
   deux implémentations. Le choix de la région live vit dans **`annoncerStatut({scope, message,
@@ -1109,11 +1110,40 @@ pas en fiche.
   fonction porte désormais les verdicts **ORDINAIRES** de la révision (cf.
   `revision.ts: annoncerVerdict` plus bas) — une seule règle de repli, quelle que soit l'issue
   de la question.
+- **`figeage.ts`** (#543) — **LE geste de figeage post-réponse** : `figerScene({scene,
+  classeFige, apres})`, seul endroit qui désarme le DOM d'un widget répondu. Le widget reste
+  visible mais n'est plus manipulable, sur les **deux** chemins (« Vérifier » / « Valider »
+  et « Je ne sais pas »). **Contrat : figer APRÈS le dernier rendu de `verify()`**, jamais
+  avant, sinon le rendu recréerait des éléments armés. Les binders (`tuile-interaction`,
+  `appariement`, `clic-mot-interaction`, `segment-mot-interaction`) ne figent plus : ils
+  **marquent** (✓/✗, verdicts en `aria-label`), et leurs drapeaux `frozen` ne sont que des
+  gardes logiques. Par sorte d'élément : `disabled` pour un contrôle natif ; `readOnly` +
+  `tabindex="-1"` pour un champ texte (pas `disabled`, qui grise la réponse tapée) ; rôle,
+  libellé et état ARIA retirés pour un élément non natif à rôle de contrôle (liste fermée
+  de rôles, jamais `[role]`, qui ramasserait `role="status"`) ; tout élément sort de l'ordre
+  de tabulation, n'est plus déplaçable ni éditable. **Jamais** `inert` ni `aria-hidden`
+  (rejet écrit dans [accessibilité](../reference/accessibilite.md)) ; jamais non plus le
+  nœud `scene` lui-même (`#revStage` doit survivre). Un verdict ne doit donc pas vivre dans
+  l'`aria-label` d'un contrôle non natif. **Épargnes** : la zone d'après-verdict (`apres`),
+  le chrome utile (`.consigne-tts`, `.item-tts`, `.aide-btn`, `.etayage-btn`, `.etay-lien`)
+  et le brouillon du problème (`.brouillon`) ; le CSS de chaque écran (`.lecon-fige`,
+  `.rev-stage--fige`) leur rend le pointeur, les deux listes vont ensemble. **Deux
+  habillages** ne fixent que leurs sélecteurs : `figerQuestion` (`lecon-passer.ts`) et
+  `figerCarte` (`revision.ts`). Couverture : table `e2e/figeage-couverture.ts` jouée par
+  `e2e/figeage.spec.ts`, gardée par `tests/figeage-couverture-gate.test.ts`.
+  **Rejets écrits** : (1) un champ texte figé (`.prob-input`) n'est pas rendu différent d'un
+  champ éditable, ce qui violerait « aucun changement visuel » ; l'état passe par ✓/✗,
+  `#probStatus` et « Continuer ▶ ». (2) Le défilement **au clavier** du tableau de
+  conversion figé (`.tc-wrap`, sans enfant focalisable) repose sur les conteneurs défilants
+  focalisables par défaut (Firefox, Chromium récent) : non garanti ailleurs, non traité.
+  (3) `<summary>` n'est pas couvert par `figerScene` : aucune scène d'exercice ne contient
+  de `<details>`.
 - **`lecon-passer.ts`** (#467) — habillage **mode leçon** du module ci-dessus, partagé par
   les neuf runners d'écran dédié (cinq à widget, quatre à saisie contrainte) : bloc de
   décision `decisionHTML(verifId, opts?)` (« Vérifier » + le lien `#leconPasser` en dessous,
-  toujours actif même quand « Vérifier » est `disabled`), `wirePasser`, `masquerDecision`
-  (#153), `capterPasse` (mode `'lecon'`) et `revelerSolution(opts)` (verdict NEUTRE, widget
+  toujours actif même quand « Vérifier » est `disabled`), `wirePasser`, `figerQuestion`
+  (habillage de `figerScene`, appelé après « Vérifier » **et** après « Je ne sais pas »),
+  `capterPasse` (mode `'lecon'`) et `revelerSolution(opts)` (verdict NEUTRE, widget
   figé mais visible via `.lecon-fige`, annonce, puis `wireNext`). Une question révélée compte
   au **dénominateur** sans compter au score (0 XP, étoile perdue comme après une erreur) et
   n'est pas rejouée. Côté révision, l'équivalent vit dans `revision.ts` (`decideHTML`,

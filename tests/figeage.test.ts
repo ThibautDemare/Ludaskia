@@ -3,8 +3,9 @@
 
    Après une réponse, le widget reste visible (l'enfant compare sa tentative avec la
    solution) mais ne doit plus être manipulable. Ce fichier éprouve le GESTE de figeage
-   sur une scène synthétique, par son point d'entrée stable côté « Je ne sais pas »
-   (`neutraliserScene`, src/ui/revelation-neutre.ts). Auteur des tests distinct de
+   sur une scène synthétique, par le point d'entrée que les deux écrans appellent sur leurs
+   deux chemins (`figerScene`, src/ui/figeage.ts), avec les paramètres réels de chaque
+   écran (`figerQuestion` en leçon, `figerCarte` en révision). Auteur des tests distinct de
    l'auteur du code : les attendus viennent de l'issue, pas du sélecteur en place.
    Les parcours réels (les deux chemins, les dix runners, le focus final) sont joués par
    `e2e/figeage.spec.ts`.
@@ -39,7 +40,7 @@
    (`span[tabindex="0"]`, `input`).
    ============================================================ */
 import { beforeEach, describe, it, expect } from 'vitest';
-import { neutraliserScene } from '../src/ui/revelation-neutre';
+import { figerScene } from '../src/ui/figeage';
 
 beforeEach(() => {
 	document.body.innerHTML = '';
@@ -231,7 +232,7 @@ function monter(e: Ecran, widget = CAS.map((c) => c.markup).join('')): HTMLEleme
 	return document.querySelector<HTMLElement>(e.scene)!;
 }
 function figer(e: Ecran, scene: HTMLElement): void {
-	neutraliserScene({ scene, classeFige: e.classeFige, apres: e.apres });
+	figerScene({ scene, classeFige: e.classeFige, apres: e.apres });
 }
 
 /** Ce qui décide de l'interaction d'un élément : comparé avant/après figeage. */

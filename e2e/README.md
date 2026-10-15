@@ -224,6 +224,17 @@ Deux points de méthode si tu touches à cette table :
   explicite s'il ne peut pas produire l'erreur attendue ; les assertions vivent dans
   la spec.
 
+## Couverture du figeage post-réponse (#543)
+
+`figeage-couverture.ts` (une **table**, comme `journal-couverture.ts`, mêmes contraintes
+d'import : `import type` seulement de `@playwright/test`, aucun `expect` dans les gestes)
+déclare, par runner qui emprunte le chemin « Je ne sais pas », le geste qui amène le widget
+à un bouton de validation. `figeage.spec.ts` joue chaque entrée par les **deux** chemins
+(« Vérifier » / « Valider », puis « Je ne sais pas ») et mesure que plus rien n'est
+manipulable. Le gate est côté Vitest (`tests/figeage-couverture-gate.test.ts`) : **un
+runner à révélation sans entrée fait échouer `npm test`**. Détails dans
+[docs/architecture/tests.md](../docs/architecture/tests.md).
+
 ## Couverture par surface de rendu (#598)
 
 La règle « pas de fonctionnalité visuelle sans sa spec » est tenue par un gate Vitest,

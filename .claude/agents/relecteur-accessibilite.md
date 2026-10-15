@@ -79,11 +79,19 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
   est en `.sr-only`, pas en `title` ni seulement en infobulle. Le nom du `<summary>`
   est lu d'un bloc ; un `title` n'y entre pas et ne s'ouvre ni au doigt ni au
   clavier. Cas d'origine : les groupes d'erreurs scopés par classe (#573).
-- **Un contrôle figé reste lisible.** Un champ ou un choix désactivé qui reste à l'écran
+- **Un contrôle figé reste lisible.** Un champ ou un choix figé qui reste à l'écran
   pour être relu (la saisie de l'enfant après une erreur) garde la couleur d'encre et
-  une opacité pleine : vérifier son style `:disabled`, sans quoi chaque navigateur le
-  grise à sa façon (Firefox très pâle). La table de contraste ne le voit pas, elle ne
-  compare que des couples de tokens. Cas d'origine : la carte de révision figée (#503).
+  une opacité pleine : vérifier le style `:disabled` des choix et boutons, sans quoi
+  chaque navigateur les grise à sa façon (Firefox très pâle) ; un champ texte figé, lui,
+  est en lecture seule et non désactivé (`src/ui/figeage.ts`, #543). La table de contraste
+  ne le voit pas, elle ne compare que des couples de tokens. Cas d'origine : la carte de
+  révision figée (#503).
+- **Verdict d'un widget figé** : il vit dans l'`aria-label` (ou un `.sr-only`) d'un
+  **bouton natif**, jamais d'un contrôle non natif (`role="radio"`, cible de dépôt à
+  `role="button"`). Le figeage commun (`src/ui/figeage.ts`) retire rôle ET libellé aux
+  seconds pour qu'ils ne s'annoncent plus comme des contrôles : un verdict posé là
+  disparaîtrait. Et une fois figé, un bouton n'annonce plus `aria-pressed` : le libellé
+  du verdict dit l'état (« tu as coché, c'est juste »). Cas d'origine : #543.
 - **Audio / TTS** : le bouton « Écouter la consigne » (`ui/consigne-tts.ts`,
   `core/tts-text.ts`) reste un **appui** (jamais imposé, absent sans voix FR), et
   le texte parlé ne **trahit pas** la réponse (règle du champ `parle`).

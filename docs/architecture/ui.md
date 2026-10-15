@@ -1159,7 +1159,18 @@ pas en fiche.
   **Le rouge ne marque que l'erreur** (#503) : la marque ✗ (`.rev-marque-ko`) et la réponse
   fausse de l'enfant (`.rev-donnee strong`, `.sprint-donnee strong`) — jamais la question ni
   le texte du message, à l'encre ; la bonne réponse reste en vert gras. Même règle dans les
-  neuf runners de leçon (`.lqcm-ko` à l'encre, `strong` en `--ok`) et au sprint.
+  neuf runners de leçon (`.lqcm-ko` à l'encre, `strong` en `--ok`) et au sprint. Le ✗ est
+  `aria-hidden` : l'annonce dit déjà « Ce n'est pas ça ».
+  **QCM de ponctuation** : la bonne réponse s'affiche par son MOT (comme le bouton et le
+  rappel), dans le verdict d'erreur comme dans la révélation « Je ne sais pas » ; l'annonce
+  d'une révélation de QCM dit aussi le libellé lisible (fractions en toutes lettres).
+  **Nom accessible du champ** : `#revInput` porte un `aria-label` dérivé de l'énoncé, comme
+  la fiche (`ariaChamp` / `nomChampReponse`, #577, `core/items.ts`), avec le même complément
+  de format (ex. chiffres romains) tiré d'une source unique.
+  **Opération posée ratée** : chaque case de la grille figée est marquée `.correct` /
+  `.wrong`, comme dans la fiche. Les contrôles figés (`.rev-input`, `.rev-choice`, cases
+  posées) gardent l'encre et une opacité pleine via `:disabled` (`revision.scss`) ; les cases
+  marquées gardent leur couleur de verdict.
   **Texte de révélation variable selon la forme de l'écran, voulu** : voir
   [conventions-redaction.md](conventions-redaction.md). Les formats à widget bavard (tri, appariement, clic-mot,
   problème) gardent leur propre annonce, `annoncerStatut` visant leur région en priorité.

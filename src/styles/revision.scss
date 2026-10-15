@@ -222,13 +222,15 @@
    manipulable. Les éléments focalisables sont désarmés côté DOM (ui/figeage.ts) ; le
    `pointer-events` coupe en plus les cibles de DÉPÔT du glisser-déposer, sans quoi un dépôt
    relancerait le widget. Restent opérables, comme dans ui/figeage.ts : les actions
-   d'après-verdict, l'aide du geste, les boutons « Écouter » et le brouillon du problème
+   d'après-verdict, l'aide du geste, les boutons « Écouter », l'étayage et le brouillon du problème
    (enfant direct de la carte). */
 .rev-stage--fige > *:not(#revAfter):not(.aide-btn):not(.brouillon) {
 	pointer-events: none;
 }
 .rev-stage--fige .consigne-tts,
-.rev-stage--fige .item-tts {
+.rev-stage--fige .item-tts,
+.rev-stage--fige .etayage-btn,
+.rev-stage--fige .etay-lien {
 	pointer-events: auto;
 }
 .rev-btn {

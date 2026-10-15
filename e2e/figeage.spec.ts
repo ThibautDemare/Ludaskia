@@ -39,7 +39,9 @@ const ZONES = {
 	},
 } as const;
 
-/* Les épargnes du figeage (`EPARGNES`, `src/ui/figeage.ts`) : ce qui reste opérable. */
+/* Les épargnes du figeage : ce qui reste opérable (critère 9 de #543). COPIE VOULUE de
+   `EPARGNES` (`src/ui/figeage.ts`), pas un import : c'est l'attendu du test. Importée, la
+   liste suivrait le code, et un retrait d'épargne passerait inaperçu. */
 const EPARGNES = '.aide-btn, .consigne-tts, .item-tts, .etayage-btn, .etay-lien, .brouillon';
 
 /* Même garde tolérante que je-ne-sais-pas.spec.ts : « Je ne sais pas » ouvre d'abord

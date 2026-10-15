@@ -1095,7 +1095,7 @@ pas en fiche.
   l'enfant n'a pas échoué, il a demandé à voir (`.lecon-reveal` côté leçon,
   `.rev-feedback.reveal` côté révision) —, l'entrée de journal marquée « n'a pas essayé »
   (`capterPasse({…, mode})`), le désarmement du widget sans jamais appeler `verify()`
-  (`neutraliserScene({scene, classeFige, apres})`, qui **délègue** à `figerScene`, cf.
+  (par `figerQuestion` en leçon et `figerCarte` en révision, habillages de `figerScene`, cf.
   `figeage.ts` plus bas) et l'**annonce non visuelle**
   (`annoncerRevelation({scope, message, repli?})`). Ne varient que des **sélecteurs DOM** et
   le **mode** du journal, passés en paramètres — les deux écrans sont deux habillages, pas

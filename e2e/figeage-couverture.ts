@@ -8,7 +8,7 @@
    tuile qu'on déplace encore sur une question terminée).
 
    Clé = MODULE du runner qui emprunte le chemin de révélation (`revelerSolution(` pour
-   les runners de leçon, `neutraliserScene` côté révision), nom de fichier sans extension.
+   les runners de leçon, `figerScene` côté révision), nom de fichier sans extension.
    Elle sert de source unique à deux vérifications :
 
    - `tests/figeage-couverture-gate.test.ts` (Vitest) — le GATE : un runner qui révèle sans

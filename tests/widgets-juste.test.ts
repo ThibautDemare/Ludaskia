@@ -20,7 +20,10 @@
    Les attendus viennent de la CONSIGNE de chaque format, lue comme un enfant la lit
    (« Amène la bonne tuile dans la case », « Tape les mots dans l'ordre »…), jamais de la
    règle codée. Témoin anti-aveuglement : après chaque `juste()` sans effet, `verify()`
-   doit, lui, modifier le DOM — sinon l'égalité de DOM ne prouverait rien.
+   doit, lui, modifier le DOM en posant ses marques — sinon l'égalité de DOM ne prouverait
+   rien. Seule exception, la rangée VIDE : rien à marquer, le témoin y devient le verrou
+   (cf. ce cas). Le FIGEAGE du DOM n'est pas l'affaire de `verify()` : depuis #543, c'est
+   l'appelant qui fige, après lui (ui/figeage.ts).
 
    `ResizeObserver` de l'appariement : happy-dom n'en fournit qu'un bouchon inerte
    (observe/disconnect vides), donc l'EFFET (plus aucun recalcul au redimensionnement)
@@ -114,8 +117,8 @@ function eprouver(b: Banc, gestes: Geste[], attendu: boolean): void {
 
 	const avantVerify = b.root.innerHTML;
 	expect(b.ctrl.verify(), 'verify() rend la même chose que juste()').toBe(attendu);
-	// Témoin : verify() fige et marque, LUI. Si ce DOM ne changeait pas, l'égalité de DOM
-	// exigée de juste() ne prouverait rien.
+	// Témoin : verify() marque, LUI (✓/✗, verdicts). Si ce DOM ne changeait pas, l'égalité
+	// de DOM exigée de juste() ne prouverait rien.
 	expect(b.root.innerHTML, 'témoin : verify() modifie le DOM').not.toBe(avantVerify);
 	expect(b.ctrl.verify(), 'verify() idempotent').toBe(attendu);
 	expect(b.ctrl.juste(), 'juste() après verify()').toBe(attendu);
@@ -243,13 +246,38 @@ describe('juste() — rangement (« Tape les mots dans l’ordre »)', () => {
 	   `validerPartage`). Mais `juste()` est un contrat public : « la réponse posée est-elle
 	   juste ? ». Une rangée vide ou à moitié remplie n'est pas un rangement juste — et c'est
 	   ce que répondent déjà le tri et l'appariement sur une réponse incomplète. */
-	it.each([
-		{ nom: 'rangée VIDE', gestes: [] as Geste[] },
-		{
-			nom: 'rangée commencée juste mais INCOMPLÈTE (abricot, banane, cerise)',
-			gestes: poser('abricot', 'banane', 'cerise'),
-		},
-	])('contrat de juste() : $nom ⇒ pas juste', ({ gestes }) => eprouver(monter(), gestes, false));
+	it('contrat de juste() : rangée commencée juste mais INCOMPLÈTE (abricot, banane, cerise) ⇒ pas juste', () =>
+		eprouver(monter(), poser('abricot', 'banane', 'cerise'), false));
+
+	/* Rangée VIDE : aucune tuile posée, donc rien à marquer (ni ✓ ni ✗), et `verify()` n'a
+	   aucune raison d'y modifier le DOM. Le témoin habituel (« verify() modifie le DOM ») n'y
+	   tenait que par le `disabled` que le binder posait lui-même sur ses tuiles, soit le
+	   figeage que #543 (critère 1) retire aux binders pour le confier à l'appelant, APRÈS
+	   `verify()`. Ce que `verify()` fait ici et que `juste()` ne doit pas faire, c'est
+	   VERROUILLER la réponse (le widget cesse de réagir, contrat de `TuileController`) : on
+	   l'observe par un même geste, joué après l'un puis après l'autre, sur deux montages. */
+	it('contrat de juste() : rangée VIDE ⇒ pas juste ; juste() laisse le widget réagir, verify() le verrouille', () => {
+		const [sonde] = poser('abricot');
+
+		const libre = monter();
+		expect(sonderJuste(libre), 'juste() sur une rangée vide').toBe(false);
+		const avantSonde = libre.root.innerHTML;
+		sonde(libre);
+		expect(libre.root.innerHTML, 'après juste(), une tuile se pose encore').not.toBe(avantSonde);
+
+		const tranchee = monter();
+		expect(sonderJuste(tranchee), 'juste() sur une rangée vide').toBe(false);
+		expect(verdictsVisibles(tranchee.root), 'aucune marque de verdict avant verify()').toEqual([]);
+		expect(tranchee.ctrl.verify(), 'verify() rend la même chose que juste()').toBe(false);
+		const verrouille = tranchee.root.innerHTML;
+		sonde(tranchee);
+		expect(
+			tranchee.root.innerHTML,
+			'témoin : après verify(), le même geste ne pose plus rien',
+		).toBe(verrouille);
+		expect(tranchee.ctrl.verify(), 'verify() idempotent').toBe(false);
+		expect(tranchee.ctrl.juste(), 'juste() après verify() : la rangée reste vide').toBe(false);
+	});
 });
 
 /* ------------------------------------------------------------------ */

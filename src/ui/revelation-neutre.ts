@@ -28,7 +28,6 @@
    ============================================================ */
 import { icon } from './icon';
 import { capterErreur } from './erreur-capture';
-import { figerScene } from './figeage';
 import { html, type SafeHtml } from '../core/html';
 import { sansSeparateurMilliers } from '../core/nombres';
 
@@ -87,31 +86,6 @@ export function capterPasse(o: {
 	mode: string;
 }): void {
 	capterErreur({ ...o, donnee: '', sansTentative: true });
-}
-
-/** Neutralise la scène d'une question tranchée : point d'entrée commun aux deux écrans et
-    aux deux chemins (#543) — « Vérifier » / « Valider » comme « Je ne sais pas, montre-moi ».
-    Le geste lui-même (ce qui est désarmé, ce qui est épargné, et pourquoi ni `inert` ni
-    `aria-hidden`) vit dans ui/figeage.ts ; ce nom reste celui que les deux écrans appellent,
-    via leur habillage (`figerQuestion` en leçon, `figerCarte` en révision).
-
-    Sur le chemin de révélation, on ne passe SURTOUT pas par `ctrl.verify()` (idempotent et
-    irréversible : il figerait la réponse incomplète et la marquerait ✗ en rouge —
-    l'appariement irait jusqu'à poser `.is-decoy` et annoncer « non relié, incorrect » sur des
-    liens jamais tentés) : c'est ce geste-ci, qui ne marque rien, qui fige le widget. Sans lui,
-    l'enfant continuerait à déplacer des tuiles sur une question terminée, et le `onState` du
-    binder (muet seulement une fois `verify()` appelé) réactiverait un bouton de validation
-    qui n'a plus lieu d'être.
-
-    - `scene` : l'élément dont les descendants sont désarmés (`null` accepté : rien à faire) ;
-    - `classeFige` : classe de figeage attendue par le CSS de l'écran ;
-    - `apres` : zones d'APRÈS-verdict à ne jamais désarmer (feedback, « Continuer ▶ »). */
-export function neutraliserScene(o: {
-	scene: HTMLElement | null;
-	classeFige: string;
-	apres: string;
-}): void {
-	figerScene(o);
 }
 
 /** Annonce non visuelle d'un verdict, dans la bonne région live de l'écran. Le focus part

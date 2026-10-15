@@ -45,9 +45,9 @@ import {
 	annoncerRevelation,
 	capterPasse as capterPasseNeutre,
 	lienPasserHTML,
-	neutraliserScene,
 	REVEAL_LAB,
 } from './revelation-neutre';
+import { figerScene } from './figeage';
 import { html, type SafeHtml, drapeau } from '../core/html';
 
 /* Fond commun réexporté tel quel : les runners n'ont qu'un import pour tout ce qui touche
@@ -124,7 +124,7 @@ export function capterPasse(o: {
     focus sur « Continuer ▶ »). */
 export function figerQuestion(root: ParentNode): void {
 	masquerDecision(root);
-	neutraliserScene({
+	figerScene({
 		scene: root.querySelector<HTMLElement>('.sprint-stage'),
 		classeFige: 'lecon-fige',
 		apres: '.sprint-correction, .sprint-actions',
@@ -147,7 +147,13 @@ export interface RevelationOpts {
     laissé visible, annonce pour lecteur d'écran, puis « Continuer ▶ ». La réponse reste
     mise en valeur en `--ok` (via `.sprint-correction strong`) : c'est bien la BONNE qu'il
     regarde. N'enregistre rien : le comptage passe par le chemin habituel du runner
-    (`finishLeconRun`, dénominateur inchangé, score non incrémenté). */
+    (`finishLeconRun`, dénominateur inchangé, score non incrémenté).
+    Le widget est figé SANS `ctrl.verify()` (idempotent et irréversible : il marquerait ✗ en
+    rouge la réponse incomplète, et l'appariement irait jusqu'à poser `.is-decoy` et annoncer
+    « non relié, incorrect » sur des liens jamais tentés) : `figerQuestion` désarme sans rien
+    marquer. Sans ce figeage, l'enfant déplacerait encore des tuiles sur une question
+    terminée, et le `onState` du binder (muet seulement après `verify()`) réactiverait un
+    bouton de validation qui n'a plus lieu d'être. */
 export function revelerSolution(o: RevelationOpts): void {
 	figerQuestion(o.root);
 	// Un runner d'écran dédié n'a qu'UNE région live à la fois : celle de son widget

@@ -1137,7 +1137,12 @@ pas en fiche.
   conversion figé (`.tc-wrap`, sans enfant focalisable) repose sur les conteneurs défilants
   focalisables par défaut (Firefox, Chromium récent) : non garanti ailleurs, non traité.
   (3) `<summary>` n'est pas couvert par `figerScene` : aucune scène d'exercice ne contient
-  de `<details>`.
+  de `<details>`. (4) Pas de gate statique qui confronte `EPARGNES` aux deux feuilles de
+  figeage (`.lecon-fige`, `.rev-stage--fige`) : la spec e2e mesure le `pointer-events`
+  **calculé** de chaque épargne présente après figeage, ce qui garde l'effet réel et non
+  l'écriture des sélecteurs. **Checklist de relecture** (aucun test statique ne le voit) :
+  un binder qui redessine après `verify()` (observer, minuteur, clavier global) est gardé
+  par `frozen` et ne recrée jamais d'élément interactif.
 - **`lecon-passer.ts`** (#467) — habillage **mode leçon** du module ci-dessus, partagé par
   les neuf runners d'écran dédié (cinq à widget, quatre à saisie contrainte) : bloc de
   décision `decisionHTML(verifId, opts?)` (« Vérifier » + le lien `#leconPasser` en dessous,

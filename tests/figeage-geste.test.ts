@@ -2,10 +2,9 @@
    Le geste de figeage lui-même (`figerScene`, ui/figeage.ts, #543) : les BORDS de son
    contrat.
 
-   tests/figeage.test.ts éprouve les critères 4 et 7 par le point d'entrée des écrans
-   (`neutraliserScene`) : chaque sorte d'élément cesse d'être manipulable, et rien n'est
-   retiré aux technologies d'assistance. Ce fichier appelle le geste directement et joue ce
-   que l'autre ne joue pas :
+   tests/figeage.test.ts éprouve les critères 4 et 7 par le même geste, sur la scène
+   complète de chaque écran : chaque sorte d'élément cesse d'être manipulable, et rien n'est
+   retiré aux technologies d'assistance. Ce fichier-ci joue ce que l'autre ne joue pas :
      - les bords de « sortir du Tab » (lien, `tabindex` négatif, `input` caché) ;
      - le champ texte, figé en lecture seule et jamais grisé (critère 10) ;
      - les épargnes du critère 9 au-delà du chrome déjà couvert (étayage, brouillon) ;

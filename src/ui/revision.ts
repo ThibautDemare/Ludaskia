@@ -109,10 +109,10 @@ import {
 	capterPasse as capterPasseNeutre,
 	lienPasserHTML,
 	ligneRevelation,
-	neutraliserScene,
 	REVEAL_LAB,
 	REVELATION_EN_PLACE,
 } from './revelation-neutre';
+import { figerScene } from './figeage';
 import {
 	ordreErreur,
 	motsMalClasses,
@@ -704,7 +704,7 @@ function capterPasse(o: {
    révélation : champ et choix restent lisibles, plus actionnables. Levé à la question
    suivante par `degelerStage`. */
 function figerCarte(stage: HTMLElement): void {
-	neutraliserScene({ scene: stage, classeFige: 'rev-stage--fige', apres: '#revAfter' });
+	figerScene({ scene: stage, classeFige: 'rev-stage--fige', apres: '#revAfter' });
 }
 
 /* Zone d'après-validation des formats SANS widget (saisie, QCM, opération posée) : le bloc
@@ -1479,7 +1479,7 @@ function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
 		wireRevNext();
 	});
 	// Passé (#467) : le(s) mot(s) attendu(s) sont révélés en TEXTE et la phrase est désarmée.
-	// Pas de `ctrl.verify()html` : il marquerait ✗ en rouge les mots éventuellement sélectionnés
+	// Pas de `ctrl.verify()` : il marquerait ✗ en rouge les mots éventuellement sélectionnés
 	// et figerait la phrase comme après une erreur. L'explication, elle, est bien affichée —
 	// c'est le moment où elle sert le plus.
 	wireGiveUp(() => {

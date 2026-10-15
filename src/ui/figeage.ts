@@ -97,6 +97,7 @@ const A_DESARMER = [
 	'select',
 	'textarea',
 	'a[href]',
+	'area[href]',
 	'[tabindex]',
 	'[draggable]',
 	'[contenteditable]',

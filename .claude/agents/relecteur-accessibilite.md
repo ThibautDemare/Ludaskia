@@ -79,6 +79,11 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
   est en `.sr-only`, pas en `title` ni seulement en infobulle. Le nom du `<summary>`
   est lu d'un bloc ; un `title` n'y entre pas et ne s'ouvre ni au doigt ni au
   clavier. Cas d'origine : les groupes d'erreurs scopés par classe (#573).
+- **Un contrôle figé reste lisible.** Un champ ou un choix désactivé qui reste à l'écran
+  pour être relu (la saisie de l'enfant après une erreur) garde la couleur d'encre et
+  une opacité pleine : vérifier son style `:disabled`, sans quoi chaque navigateur le
+  grise à sa façon (Firefox très pâle). La table de contraste ne le voit pas, elle ne
+  compare que des couples de tokens. Cas d'origine : la carte de révision figée (#503).
 - **Audio / TTS** : le bouton « Écouter la consigne » (`ui/consigne-tts.ts`,
   `core/tts-text.ts`) reste un **appui** (jamais imposé, absent sans voix FR), et
   le texte parlé ne **trahit pas** la réponse (règle du champ `parle`).

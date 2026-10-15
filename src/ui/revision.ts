@@ -28,8 +28,10 @@ import { PONCT_MOTS } from './ponctuation-view';
 import { mathInline } from '../core/fraction-text';
 import type { Item } from '../core/items';
 import {
+	ariaChamp,
 	checkItemAnswer,
 	createRenderContext,
+	formatChampReponse,
 	enonceTexte,
 	figureBlock,
 	renderItem,
@@ -119,7 +121,9 @@ import {
 	attendueItem,
 	attendueIntervalle,
 	enonceEtapeLisible,
+	type ResultatPosee,
 } from '../core/erreur-representation';
+import { reponseLisible } from '../core/signes';
 import { joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
 import type {
 	ProblemeEtape,
@@ -488,10 +492,11 @@ export function runRevisionEspacee(): void {
     <!-- Région live FIXE (#467) : elle porte le VERDICT d'un item — révélé à la demande comme
          juste ou faux — pour les formats dont le widget n'annonce rien (saisie, QCM, mot,
          opération posée, tuile, rangement).
-         Posée ici, HORS de #revStage : le verdict d'une saisie ou d'un QCM remplace tout le
-         stage, donc une région rendue dans la question serait détruite dans le même souffle
-         que son texte — rien ne serait annoncé, exactement le défaut qu'on corrige. Un seul
-         nœud pour toute la séance (id fixe, vidé à chaque question par renderCurrent). -->
+         Posée ici, HORS de #revStage : le verdict d'une réussite (saisie, QCM, posée) ou
+         d'un mot remplace tout le stage, donc une région rendue dans la question serait
+         détruite dans le même souffle que son texte — rien ne serait annoncé, exactement le
+         défaut qu'on corrige. Un seul nœud pour toute la séance (id fixe, vidé à chaque
+         question par renderCurrent). -->
     <p class="sr-only" id="revStatus" role="status" aria-live="polite" aria-atomic="true"></p>
   </div>`.balisage;
 	bindEnter(); // une seule fois : #revStage persiste d'une question à l'autre
@@ -690,20 +695,39 @@ function capterPasse(o: {
 
 /* Scène à désarmer côté révision : la carte de la question. `#revAfter` (verdict +
    « Continuer ») en est exclu. La mécanique elle-même (et sa raison d'être : ne JAMAIS
-   appeler `ctrl.verify()`) est dans `neutraliserScene`. */
+   appeler `ctrl.verify()`) est dans `neutraliserScene`. Sert aussi, depuis #503, à figer
+   la question d'une saisie, d'un QCM ou d'une opération posée après une erreur ou une
+   révélation : champ et choix restent lisibles, plus actionnables. */
 function neutraliserWidget(stage: HTMLElement): void {
 	neutraliserScene({ scene: stage, classeFige: 'rev-stage--fige', apres: '#revAfter' });
 }
 
-/* Enregistre le passage et affiche le verdict NEUTRE. `cible` : 'stage' pour les formats
-   dont le verdict remplace toute la carte (saisie, QCM, posée, mot), 'after' pour ceux
-   qui gardent leur widget visible à côté de la solution (#revAfter). */
-function passerItem(o: {
+/* Zone d'après-validation des formats SANS widget (saisie, QCM, opération posée) : le bloc
+   de décision y vit avant la réponse, le verdict ensuite. Jusqu'à #503, le verdict de ces
+   formats remplaçait toute la carte — question comprise : l'enfant lisait « La bonne
+   réponse : 9 » sans plus savoir à quoi il avait répondu, ni ce qu'il avait répondu. Ils
+   s'écrivent désormais SOUS la question figée, comme ceux des widgets ; `.rev-apres` ne fait
+   qu'espacer les lignes de ce verdict plus long (rappel, verdict, « Continuer »). */
+function apresHTML(contenu: SafeHtml): SafeHtml {
+	return html`<div id="revAfter" class="rev-apres">${contenu}</div>`;
+}
+
+/* Enregistre le passage et affiche le verdict NEUTRE. `cible` : 'stage' pour le mot
+   d'orthographe, dont le verdict remplace toute la carte (sa question est une dictée ou un
+   mot caché : rien à réafficher), 'after' pour les formats qui gardent leur question
+   visible à côté de la solution (#revAfter) — widgets, et depuis #503 saisie, QCM et
+   opération posée. `correctLu` : ce que l'annonce DIT de `correct` quand l'écran le montre
+   sous une forme qui ne se lit pas telle quelle (fraction d'un QCM : « six huitièmes », pas
+   « 6/8 ») ; à défaut, l'annonce reprend `correct`. */
+type Passage = {
 	cible: 'stage' | 'after';
 	correct?: string;
+	correctLu?: string;
 	extra?: SafeHtml;
 	parIntervalle?: boolean;
-}): void {
+};
+
+function passerItem(o: Passage): void {
 	// Étayage de la notion (#490) : c'est ici que l'enfant RÉCLAME de l'aide — le meilleur
 	// moment, et celui où la méthode doit passer AVANT la réponse nue, sinon il lit le
 	// résultat et saute l'explication. Le panneau franchi (ou absent, ou écarté d'un geste),
@@ -716,12 +740,7 @@ function passerItem(o: {
 	verdictPasse(o);
 }
 
-function verdictPasse(o: {
-	cible: 'stage' | 'after';
-	correct?: string;
-	extra?: SafeHtml;
-	parIntervalle?: boolean;
-}): void {
+function verdictPasse(o: Passage): void {
 	recordGrade(false); // recul d'un cran en répétition espacée + 0 XP, exactement une fois
 	// Annonce non visuelle : la région du WIDGET si l'item en monte une (tri, appariement,
 	// clic-mot, problème — leur contenu est plus riche), sinon la région fixe #revStatus.
@@ -731,10 +750,15 @@ function verdictPasse(o: {
 		scope: document.querySelector('.revision'),
 		repli: '#revStatus',
 		message: o.correct
-			? `${o.parIntervalle ? 'Une réponse possible' : 'La réponse'} : ${formatReponseRevelee(o.correct)}.`
+			? `${o.parIntervalle ? 'Une réponse possible' : 'La réponse'} : ${o.correctLu ?? formatReponseRevelee(o.correct)}.`
 			: REVELATION_EN_PLACE.balisage, // même phrase que celle affichée, pas une version tronquée
 	});
-	const verdict = verdictHTML('reveal', o.correct, o.extra ?? VIDE, o.parIntervalle ?? false);
+	const verdict = verdictHTML({
+		etat: 'reveal',
+		correct: o.correct,
+		extra: o.extra,
+		parIntervalle: o.parIntervalle,
+	});
 	document.getElementById(o.cible === 'stage' ? 'revStage' : 'revAfter')!.innerHTML =
 		verdict.balisage;
 	wireRevNext(); // le focus part sur « Continuer », comme après une réponse
@@ -750,14 +774,29 @@ function renderPosed(it: Extract<RevItem, { kind: 'num' }>) {
 	// (`.posee-input` + data-answer), pas via la table id→Item — inutile de la conserver.
 	stage.innerHTML =
 		html`${consigneHTML(it)}${actionHTML}<div class="rev-q rev-posee">${renderItem(it.item, createRenderContext())}</div>
-    ${decideHTML()}`.balisage;
+    ${apresHTML(decideHTML())}`.balisage;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const cells = [...stage.querySelectorAll<HTMLInputElement>('.posee-input')];
 		const vide = cells.find((c) => c.value.trim() === '');
 		if (vide) return vide.focus();
-		const reussi = cells.every((c) => Number(c.value.trim()) === Number(c.dataset.answer));
-		if (!reussi) journaliserPosee(it, cells);
-		grade(reussi, String(it.item.answer));
+		const juste = (c: HTMLInputElement) => Number(c.value.trim()) === Number(c.dataset.answer);
+		const reussi = cells.every(juste);
+		if (reussi) return grade(true, String(it.item.answer));
+		const analyse = resultatPosee(it, cells);
+		journaliserPosee(it, analyse);
+		// Chaque case de la grille figée est marquée juste ou fausse (#503), comme dans la fiche
+		// (`.posee-input.correct` / `.wrong`) : l'enfant voit OÙ il s'est trompé — une retenue
+		// oubliée se lit dans le chiffre faux qu'elle a produit. Même comparaison que la
+		// validation : une case marquée fausse est bien celle qui a fait rater la question.
+		for (const c of cells) c.classList.add(juste(c) ? 'correct' : 'wrong');
+		gradeErreur({
+			correct: String(it.item.answer),
+			// Rappel (#503) seulement quand c'est le RÉSULTAT qui est faux. Une multiplication à
+			// deux chiffres peut être ratée sur un produit partiel avec un résultat juste : « Tu
+			// as répondu 1234 » à côté de « La bonne réponse : 1234 » ne dirait rien de l'erreur ;
+			// c'est alors la case du produit partiel, marquée fausse, qui la montre.
+			donnee: analyse?.journaliser ? saisieDonnee(analyse.donnee) : undefined,
+		});
 	});
 	// Passé (#467) : la grille n'ayant pas d'énoncé, le journal reçoit l'opération
 	// reconstruite — la même que pour une erreur, mais sans analyse des cellules (une
@@ -770,7 +809,8 @@ function renderPosed(it: Extract<RevItem, { kind: 'num' }>) {
 				attendue: String(it.item.answer),
 				lessonId: it.lessonId,
 			});
-		passerItem({ cible: 'stage', correct: String(it.item.answer) });
+		neutraliserWidget(stage); // l'opération reste lisible à côté de sa réponse (#503)
+		passerItem({ cible: 'after', correct: String(it.item.answer) });
 	});
 }
 
@@ -780,9 +820,15 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 	// (clavier complet). `inputmode="numeric"` n'expose que les chiffres sur mobile,
 	// d'où l'impossibilité de saisir un signe ou un mot en révision (#186).
 	const texte = it.item.kind === 'text' || it.item.kind === 'heure';
+	// Nom accessible dérivé de l'énoncé (#503), comme le champ de la fiche (#577) : sans lui,
+	// un lecteur d'écran annonce « zone de saisie » sans dire ce qu'on y attend. Il nomme
+	// aussi le FORMAT attendu (chiffres romains ; signe de comparaison, qu'une leçon mixte
+	// peut servir ici quand le tirage d'aiguillage était un nombre), par la même règle que la
+	// fiche. Il reste porté par le champ figé après le verdict, qui garde la saisie.
+	const nom = ariaChamp(it.item, formatChampReponse(it.item));
 	const champ = texte
-		? html`<input id="revInput" class="rev-input rev-input-text" ${TEXT_ANSWER_INPUT_ATTRS}>`
-		: html`<input id="revInput" class="rev-input" inputmode="numeric" autocomplete="off">`;
+		? html`<input id="revInput" class="rev-input rev-input-text"${nom} ${TEXT_ANSWER_INPUT_ATTRS}>`
+		: html`<input id="revInput" class="rev-input" inputmode="numeric" autocomplete="off"${nom}>`;
 	const q = poserAuTrou(enonceTexte(it.item.text), '@', champ);
 	// Consigne d'action (#265) : si le type en fournit une, elle s'affiche au-dessus de
 	// l'énoncé et porte la lecture vocale ; l'énoncé garde la sienne sinon. Aujourd'hui les
@@ -791,22 +837,29 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 	const enonceTts = it.consigneAction ? '' : ttsAttr(it.item.parle ?? it.item.text);
 	stage.innerHTML =
 		html`${consigneHTML(it)}${actionHTML}${figureBlock(it.item.figure)}<div class="rev-q"${enonceTts}>${q}</div>
-    ${decideHTML()}`.balisage;
+    ${apresHTML(decideHTML())}`.balisage;
 	document.getElementById('revValidate')!.addEventListener('click', () => {
 		const inp = document.getElementById('revInput') as HTMLInputElement;
 		if (inp.value.trim() === '') return focaliserChamp(inp);
 		const reussi = checkItemAnswer(it.item, inp.value);
-		if (!reussi)
-			capterRev({
-				text: it.item.text,
-				figure: it.item.figure,
-				donnee: inp.value,
-				// Intercalation : la BANDE acceptée, pas l'exemple isolé (#446, cf. attendueItem).
-				attendue: attendueItem(it.item),
-				lessonId: it.lessonId,
-			});
 		// Item corrigé par intervalle (intercaler) → verdict au singulier INDÉFINI (#446).
-		grade(reussi, String(it.item.answer), !!it.item.intervalle);
+		const parIntervalle = !!it.item.intervalle;
+		if (reussi) return grade(true, String(it.item.answer), parIntervalle);
+		capterRev({
+			text: it.item.text,
+			figure: it.item.figure,
+			donnee: inp.value,
+			// Intercalation : la BANDE acceptée, pas l'exemple isolé (#446, cf. attendueItem).
+			attendue: attendueItem(it.item),
+			lessonId: it.lessonId,
+		});
+		// La saisie telle quelle (#503), sans la remise en forme d'un nombre : c'est elle qui
+		// laisse voir une faute de frappe (chiffre doublé, frappe perdue).
+		gradeErreur({
+			correct: String(it.item.answer),
+			parIntervalle,
+			donnee: saisieDonnee(inp.value),
+		});
 	});
 	// Passé (#467) : même énoncé et même attendu (bande d'intercalation comprise) que
 	// pour une erreur ; seule la réponse donnée manque, puisqu'il n'y a pas eu d'essai.
@@ -817,8 +870,9 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 			attendue: attendueItem(it.item),
 			lessonId: it.lessonId,
 		});
+		neutraliserWidget(stage); // l'énoncé reste lisible à côté de sa réponse (#503)
 		passerItem({
-			cible: 'stage',
+			cible: 'after',
 			correct: String(it.item.answer),
 			parIntervalle: !!it.item.intervalle,
 		});
@@ -845,43 +899,57 @@ function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 	// alors la lecture vocale globale (consigne + phrase) et l'énoncé n'a plus son propre
 	// bouton « Écouter » (markup partagé via consigneRenforceeHTML).
 	const consigneRenfHTML = consigneRenforceeHTML(it.consigneRenforcee, it.picto, ttsText);
+	// Un choix se résout en un seul endroit, sous ses deux formes :
+	// - `label` : son libellé LU (aria-label du bouton, annonce, journal) — mot de ponctuation
+	//   (#204 : un « . » nu ne se prononce pas), sinon libellé de la vue riche (#200 : « trois
+	//   quarts », pas « 3/4 »), sinon le choix lui-même ;
+	// - `vue` : son contenu AFFICHÉ — la vue riche (fraction empilée) rendue telle quelle,
+	//   sinon le libellé ; la ponctuation s'affiche donc par son MOT, jamais par les
+	//   boutons-symboles de la leçon. Le rappel d'une erreur (#503) la reprend : l'enfant doit y
+	//   reconnaître le bouton qu'il a touché.
+	const label = (v: string) =>
+		ponct ? (PONCT_MOTS[v] ?? v) : libelleChoix(it.choices, it.choicesView, v);
+	const vue = (i: number): SafeHtml => {
+		const riche = ponct ? undefined : it.choicesView?.[i];
+		return riche ? riche.html : html`${label(it.choices[i])}`;
+	};
+	const reponse = String(it.item.answer);
 	stage.innerHTML =
 		html`${consigneHTML(it)}${consigneRenfHTML}${figureBlock(it.item.figure)}<div class="rev-q rev-q-qcm"${it.consigneRenforcee ? '' : ttsAttr(ttsText)}>${q}</div>
     <div class="rev-choices">${joindre(
 			it.choices.map((c, i) => {
-				// Ponctuation (#204) : libellé MOT lisible (un « . » nu serait invisible) — on
-				// n'utilise PAS les boutons-symboles de la leçon. Sinon, vue riche optionnelle
-				// (#200/#264 : fractions empilées) rendue telle quelle, son libellé parlé en
-				// aria-label ; à défaut, le texte du choix échappé.
-				const view = ponct ? undefined : it.choicesView?.[i];
-				const label = ponct ? (PONCT_MOTS[c] ?? c) : c;
-				const inner = view ? view.html : html`${label}`;
-				const aria = view
-					? attribut('aria-label', view.label)
-					: ponct
-						? attribut('aria-label', label)
-						: '';
-				return html`<button class="rev-choice" data-i="${i}"${aria}>${inner}</button>`;
+				// aria-label seulement quand ce qui se LIT diffère du choix brut (vue riche,
+				// ponctuation) : sinon le contenu du bouton le nomme déjà.
+				const aria = label(c) === c ? '' : attribut('aria-label', label(c));
+				return html`<button class="rev-choice" data-i="${i}"${aria}>${vue(i)}</button>`;
 			}),
 		)}</div>
-    ${giveUpHTML()}`.balisage;
-	// Libellé LISIBLE d'un choix, comme à l'écran : mot de ponctuation (un « . » nu
-	// serait illisible dans le journal), sinon vue riche #200 (fraction empilée).
-	const label = (v: string) =>
-		ponct ? (PONCT_MOTS[v] ?? v) : libelleChoix(it.choices, it.choicesView, v);
+    ${apresHTML(giveUpHTML())}`.balisage;
+	// Bonne réponse telle que le verdict l'AFFICHE : le mot d'un signe de ponctuation, comme
+	// sur les boutons et dans le rappel (un « . » nu au bout de « La bonne réponse : » ne se
+	// voit pas) ; sinon la valeur, que le verdict empile s'il s'agit d'une fraction.
+	const reponseAffichee = ponct ? label(reponse) : reponse;
 	stage.querySelectorAll<HTMLButtonElement>('.rev-choice').forEach((btn) => {
 		btn.addEventListener('click', () => {
-			const choisi = it.choices[Number(btn.dataset.i)];
+			const i = Number(btn.dataset.i);
+			const choisi = it.choices[i];
 			const reussi = checkItemAnswer(it.item, choisi);
-			if (!reussi)
-				capterRev({
-					text: it.item.text,
-					figure: it.item.figure,
-					donnee: label(choisi),
-					attendue: label(String(it.item.answer)),
-					lessonId: it.lessonId,
-				});
-			grade(reussi, String(it.item.answer));
+			if (reussi) return grade(true, reponse);
+			capterRev({
+				text: it.item.text,
+				figure: it.item.figure,
+				donnee: label(choisi),
+				attendue: label(reponse),
+				lessonId: it.lessonId,
+			});
+			// Rappel (#503) : le choix tel que sur son bouton à l'écran, et par son LIBELLÉ dans
+			// l'annonce — comme la bonne réponse, sinon le lecteur d'écran dirait « 2 barre 4 »
+			// ou un « . » muet.
+			gradeErreur({
+				correct: reponseAffichee,
+				donnee: { vue: vue(i), lue: label(choisi) },
+				bonneLue: label(reponse),
+			});
 		});
 	});
 	// Passé (#467) : le QCM en fait partie — un « je ne sais pas » honnête est un meilleur
@@ -891,10 +959,13 @@ function renderQcm(it: Extract<RevItem, { kind: 'qcm' }>) {
 		capterPasse({
 			text: it.item.text,
 			figure: it.item.figure,
-			attendue: label(String(it.item.answer)),
+			attendue: label(reponse),
 			lessonId: it.lessonId,
 		});
-		passerItem({ cible: 'stage', correct: String(it.item.answer) });
+		neutraliserWidget(stage); // la question reste lisible à côté de sa réponse (#503)
+		// Même affichage et même annonce qu'après une erreur : mot de ponctuation, fraction dite
+		// en toutes lettres.
+		passerItem({ cible: 'after', correct: reponseAffichee, correctLu: label(reponse) });
 	});
 }
 
@@ -1039,7 +1110,7 @@ function renderWordCorrection(it: Extract<RevItem, { kind: 'word' }>, saisie: st
 	// bien à l'écran (en grand, lettres ratées soulignées) : l'annoncer ne dévoile rien de plus.
 	annoncerVerdict(false, it.mot, false);
 	if (!m) {
-		stage.innerHTML = verdictHTML('ko', it.mot).balisage;
+		stage.innerHTML = verdictHTML({ etat: 'ko', correct: it.mot }).balisage;
 		wireRevNext();
 		return;
 	}
@@ -1306,11 +1377,10 @@ function renderProbleme(it: Extract<RevItem, { kind: 'probleme' }>) {
 			}),
 		);
 		recordGrade(toutJuste);
-		document.getElementById('revAfter')!.innerHTML = verdictHTML(
-			toutJuste ? 'ok' : 'ko',
-			undefined,
-			explicationHTML(it.explication),
-		).balisage;
+		document.getElementById('revAfter')!.innerHTML = verdictHTML({
+			etat: toutJuste ? 'ok' : 'ko',
+			extra: explicationHTML(it.explication),
+		}).balisage;
 		wireRevNext();
 	});
 	// Passé (#467) : UNE entrée par SOUS-QUESTION, comme pour une erreur — chacune a son
@@ -1388,11 +1458,10 @@ function renderClicMot(it: Extract<RevItem, { kind: 'clicMot' }>) {
 			});
 		}
 		recordGrade(reussi);
-		document.getElementById('revAfter')!.innerHTML = verdictHTML(
-			reussi ? 'ok' : 'ko',
-			undefined,
-			explicationHTML(it.explication),
-		).balisage;
+		document.getElementById('revAfter')!.innerHTML = verdictHTML({
+			etat: reussi ? 'ok' : 'ko',
+			extra: explicationHTML(it.explication),
+		}).balisage;
 		wireRevNext();
 	});
 	// Passé (#467) : le(s) mot(s) attendu(s) sont révélés en TEXTE et la phrase est désarmée.
@@ -1503,26 +1572,37 @@ function capterRev(o: {
    grille changeait. Comme la fiche, une erreur portant UNIQUEMENT sur une retenue ou un
    produit partiel n'est pas journalisée (rien de lisible à montrer au parent) : le résultat
    final est alors juste. */
-function journaliserPosee(it: Extract<RevItem, { kind: 'num' }>, cells: HTMLInputElement[]): void {
+function journaliserPosee(
+	it: Extract<RevItem, { kind: 'num' }>,
+	analyse: ResultatPosee | null,
+): void {
 	const p = it.item.posed;
-	if (!p) return;
+	if (!p || !analyse?.journaliser) return;
+	capterRev({
+		text: enoncePosee(p),
+		donnee: analyse.donnee,
+		attendue: String(it.item.answer),
+		lessonId: it.lessonId,
+	});
+}
+
+/* Résultat saisi dans une grille posée, analysé une seule fois pour le journal ET pour le
+   rappel de la réponse donnée (#503) : les deux doivent montrer le même nombre. `null` si
+   les dernières cellules ne recomposent pas la réponse attendue (cf. ci-dessus). */
+function resultatPosee(
+	it: Extract<RevItem, { kind: 'num' }>,
+	cells: HTMLInputElement[],
+): ResultatPosee | null {
 	const attendue = String(it.item.answer);
 	const res = cells.slice(-attendue.length);
-	if (res.map((c) => c.dataset.answer ?? '').join('') !== attendue) return;
-	const analyse = analyserResultatPosee(
+	if (res.map((c) => c.dataset.answer ?? '').join('') !== attendue) return null;
+	return analyserResultatPosee(
 		res.map((c, pos) => ({
 			pos,
 			saisie: c.value.trim(),
 			correct: Number(c.value.trim()) === Number(c.dataset.answer),
 		})),
 	);
-	if (!analyse.journaliser) return;
-	capterRev({
-		text: enoncePosee(p),
-		donnee: analyse.donnee,
-		attendue,
-		lessonId: it.lessonId,
-	});
 }
 
 /* Énoncé lisible d'une opération posée (la grille n'a pas d'énoncé textuel) : partagé par
@@ -1542,15 +1622,25 @@ function labelReponse(parIntervalle: boolean): string {
 	return parIntervalle ? 'Une réponse possible' : 'La bonne réponse';
 }
 
-/* Annonce non visuelle d'un verdict ORDINAIRE (juste / faux). Les formats dont le verdict
-   remplace toute la carte — saisie, QCM, mot d'orthographe, opération posée — ne l'annonçaient
-   NULLE PART : leur widget n'a pas de région live, le texte du verdict remplace la question
-   sans être lu, et le focus part sur « Continuer ▶ », qui ne dit que « Continuer ». Un enfant
+/* Annonce non visuelle d'un verdict ORDINAIRE (juste / faux). Les formats sans widget — saisie,
+   QCM, mot d'orthographe, opération posée — ne l'annonçaient NULLE PART : ils n'ont pas de
+   région live, le texte du verdict s'affiche sans être lu, et le focus part sur
+   « Continuer ▶ », qui ne dit que « Continuer ». Un enfant
    qui n'y voit pas ne savait donc pas s'il avait eu juste ou faux. On passe par la MÊME région
    et le MÊME repli que la révélation (`annoncerStatut`) : une seule règle pour les deux issues.
    Le message dit le verdict, puis la bonne réponse quand elle est révélée à l'écran — jamais
-   plus que ce que l'enfant voyant lit au même moment. */
-function annoncerVerdict(reussi: boolean, correct: string, parIntervalle: boolean): void {
+   plus que ce que l'enfant voyant lit au même moment.
+   `lu` (#503) : ce qui se DIT, quand l'écran montre autre chose qu'un texte lisible tel quel
+   (QCM : fraction en toutes lettres, signe de ponctuation nommé). `donnee` ajoute le rappel
+   de la réponse donnée AVANT la bonne réponse, dans l'ordre où l'écran les montre. */
+function annoncerVerdict(
+	reussi: boolean,
+	correct: string,
+	parIntervalle: boolean,
+	lu: { donnee?: string; bonne?: string } = {},
+): void {
+	const rappel = lu.donnee ? ` ${rappelDonnee(lu.donnee)}` : '';
+	const bonne = lu.bonne ?? formatReponseRevelee(correct);
 	annoncerStatut({
 		scope: document.querySelector('.revision'),
 		repli: '#revStatus',
@@ -1560,19 +1650,52 @@ function annoncerVerdict(reussi: boolean, correct: string, parIntervalle: boolea
 		seulementRepli: true,
 		message: reussi
 			? "Bravo, c'est juste."
-			: `Ce n'est pas ça. ${labelReponse(parIntervalle)} : ${formatReponseRevelee(correct)}.`,
+			: `Ce n'est pas ça.${rappel} ${labelReponse(parIntervalle)} : ${bonne}.`,
 	});
+}
+
+/* Réponse DONNÉE par l'enfant, rappelée après une erreur (#503) : `vue` est ce qui
+   s'affiche (la saisie telle quelle, le choix tel que sur son bouton — fraction empilée,
+   mot de ponctuation), `lue` ce que dit l'annonce (le même choix par son libellé). */
+type ReponseDonnee = { vue: SafeHtml; lue: string };
+
+/* Phrase du rappel, à l'oreille. La MÊME qu'au sprint (`sprintShowCorrection`) : l'enfant
+   retrouve « Tu as répondu … » d'un écran à l'autre, et la spec e2e les tient ensemble. */
+function rappelDonnee(lue: string): string {
+	return `Tu as répondu ${lue}.`;
+}
+
+/* Saisie libre (champ ou grille posée) : affichée TELLE QUELLE — aucune remise en forme
+   d'un nombre, qui masquerait justement la faute de frappe à voir. Seul un signe de
+   comparaison est nommé, comme au sprint (`reponseLisible`) : un glyphe isolé au milieu
+   d'une phrase ne se lit ni à l'œil ni au lecteur d'écran. Passe par le gabarit `html` :
+   une saisie « <b>x</b> » reste du texte. */
+function saisieDonnee(valeur: string): ReponseDonnee {
+	const lue = reponseLisible(valeur.trim());
+	return { vue: html`${lue}`, lue };
 }
 
 /* Verdict + bouton « Continuer / Terminer ». `mathInline` (= échappe + empile les
    fractions « n/d ») : la bonne réponse révélée s'affiche en barre horizontale comme
-   les choix, pas en oblique (#264). Sans effet sur les réponses non fractionnaires. */
-function verdictHTML(
-	etat: EtatVerdict,
-	correct?: string,
-	extra: SafeHtml = VIDE,
+   les choix, pas en oblique (#264). Sans effet sur les réponses non fractionnaires.
+   Options NOMMÉES (#503) : cinq paramètres positionnels dont deux optionnels de même type
+   se confondaient à l'appel (`verdictHTML('ko', undefined, x)` ne disait pas ce qu'était x).
+   `donnee` (#503, erreur seulement) : la réponse de l'enfant, rappelée sur sa propre ligne
+   AVANT le verdict, hors de `.rev-feedback` — sa valeur n'y concurrence donc pas la bonne
+   réponse, seul `<strong>` du verdict. */
+function verdictHTML({
+	etat,
+	correct,
+	extra = VIDE,
 	parIntervalle = false,
-): SafeHtml {
+	donnee,
+}: {
+	etat: EtatVerdict;
+	correct?: string;
+	extra?: SafeHtml;
+	parIntervalle?: boolean;
+	donnee?: SafeHtml;
+}): SafeHtml {
 	// `correct` absent (moteurs qui révèlent EUX-MÊMES la bonne réponse en place —
 	// problème marqué étape par étape, clic-mot surligné) → verdict sans ligne
 	// « La bonne réponse : … » redondante. `extra` insère un complément
@@ -1599,16 +1722,29 @@ function verdictHTML(
         <span class="rev-reveal-lab">${REVEAL_LAB}</span>
         <span class="rev-reveal-rep">${rep}</span>
       </div>`;
-	} else
+	} else {
+		// Le rouge ne marque que l'erreur (#503) : le ✗, dans son propre élément, et la réponse
+		// donnée du rappel. Le texte du message reste à l'encre, la bonne réponse en vert.
+		// Le ✗ est masqué au lecteur d'écran : décoratif ici, l'annonce dit déjà « Ce n'est pas
+		// ça », et un glyphe lu (« croix », « multiplication ») ne ferait que l'embrouiller.
+		const marque = html`<span class="rev-marque-ko" aria-hidden="true">✗</span>`;
 		verdict = affichee
-			? html`<div class="rev-feedback ko">✗ ${label} : <strong>${mathInline(affichee)}</strong></div>`
-			: html`<div class="rev-feedback ko">✗ Regarde la correction, puis continue.</div>`;
+			? html`<div class="rev-feedback ko">${marque} ${label} : <strong>${mathInline(affichee)}</strong></div>`
+			: html`<div class="rev-feedback ko">${marque} Regarde la correction, puis continue.</div>`;
+	}
+	// Rappel de la réponse donnée (#503) : « Tu as répondu » l'introduit — jamais deux valeurs
+	// côte à côte que seule la couleur distinguerait. Testé sur le BALISAGE : un fragment vide
+	// est un objet, donc vrai, et donnerait la ligne « Tu as répondu . ».
+	const rappel =
+		etat === 'ko' && donnee?.balisage
+			? html`<div class="rev-donnee">Tu as répondu <strong>${donnee}</strong>.</div>`
+			: VIDE;
 	// Étayage de la notion (#490) : proposé sur une erreur ou une révélation, jamais sur une
 	// réussite. Placé APRÈS la bonne réponse et AVANT « Continuer ▶ » : l'enfant lit d'abord
 	// ce qu'il cherchait, puis choisit d'approfondir. Placé avant la réponse, ou aussi lourd
 	// que « Continuer », il serait cliqué par réflexe sans être lu.
 	const etay = etat !== 'ok' && etayageDemande() ? lienEtayageHTML('etay-lien', 'revEtayage') : '';
-	return html`${verdict}${extra}${etay}
+	return html`${rappel}${verdict}${extra}${etay}
     <div class="rev-actions"><button class="rev-btn" id="revNext">${idx + 1 < items.length ? 'Continuer ▶' : 'Terminer'}</button></div>`;
 }
 
@@ -1641,19 +1777,50 @@ function wireRevNext() {
 	document.getElementById('revNext')!.focus();
 }
 
-/* Saisie / QCM / mot / posée : pas de widget à conserver → le verdict remplace le stage.
+/* RÉUSSITE d'une saisie, d'un QCM, d'une opération posée ou d'un mot : le verdict remplace
+   le stage. Une ERREUR sur les trois premiers passe par `gradeErreur`, qui garde la question
+   (#503) ; le mot d'orthographe, lui, ouvre l'atelier de correction.
    `parIntervalle` (#446) : voir verdictHTML (réponse non unique → singulier indéfini). */
 function grade(reussi: boolean, correct: string, parIntervalle = false) {
 	recordGrade(reussi);
-	document.getElementById('revStage')!.innerHTML = verdictHTML(
-		reussi ? 'ok' : 'ko',
+	document.getElementById('revStage')!.innerHTML = verdictHTML({
+		etat: reussi ? 'ok' : 'ko',
 		correct,
-		VIDE,
 		parIntervalle,
-	).balisage;
+	}).balisage;
 	// Annonce APRÈS le remplacement du stage : la région visée est bien celle qui survit à la
 	// question (`#revStatus`, posée hors de #revStage), et non un reste de la question effacée.
 	annoncerVerdict(reussi, correct, parIntervalle);
+	wireRevNext();
+}
+
+/* ERREUR sur une saisie, un QCM ou une opération posée (#503). Le verdict remplaçait toute
+   la carte : l'enfant lisait « La bonne réponse : 9 » sans la question, ni sa propre réponse
+   — impossible d'y voir une faute de frappe ou un mauvais clic (un enfant qui croyait avoir
+   touché le bon choix n'a compris la correction qu'avec un adulte). La question reste donc
+   sur la carte, FIGÉE comme un widget après une révélation (champ et choix lisibles, plus
+   actionnables), et le verdict s'écrit dessous (#revAfter), précédé du rappel de la réponse
+   donnée. Le focus part sur « Continuer ▶ » ; Entrée y mène aussi depuis la carte, « Valider »
+   ayant disparu avec le bloc de décision.
+   - `donnee` absente : pas de rappel (grille posée dont seul un produit partiel est faux) ;
+   - `bonneLue` : la bonne réponse telle que l'annonce la DIT, quand l'écran la montre sous
+     une forme qui ne se lit pas telle quelle (QCM : fraction, signe de ponctuation). */
+function gradeErreur(o: {
+	correct: string;
+	parIntervalle?: boolean;
+	donnee?: ReponseDonnee;
+	bonneLue?: string;
+}): void {
+	const parIntervalle = o.parIntervalle ?? false;
+	recordGrade(false);
+	neutraliserWidget(document.getElementById('revStage')!);
+	document.getElementById('revAfter')!.innerHTML = verdictHTML({
+		etat: 'ko',
+		correct: o.correct,
+		parIntervalle,
+		donnee: o.donnee?.vue,
+	}).balisage;
+	annoncerVerdict(false, o.correct, parIntervalle, { donnee: o.donnee?.lue, bonne: o.bonneLue });
 	wireRevNext();
 }
 
@@ -1663,12 +1830,11 @@ function grade(reussi: boolean, correct: string, parIntervalle = false) {
    `parIntervalle` (#446) : voir verdictHTML (réponse non unique → singulier indéfini). */
 function gradeTuile(reussi: boolean, correct: string, parIntervalle = false) {
 	recordGrade(reussi);
-	document.getElementById('revAfter')!.innerHTML = verdictHTML(
-		reussi ? 'ok' : 'ko',
+	document.getElementById('revAfter')!.innerHTML = verdictHTML({
+		etat: reussi ? 'ok' : 'ko',
 		correct,
-		VIDE,
 		parIntervalle,
-	).balisage;
+	}).balisage;
 	// Même annonce que `grade` : la comparaison en tuiles et le rangement d'une suite
 	// n'ont pas de région live à eux (seuls tri, appariement, clic-mot et problème en
 	// montent une), donc leur verdict ne se lisait QUE dans les marques ✓/✗ du widget.

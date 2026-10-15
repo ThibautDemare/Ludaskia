@@ -340,11 +340,19 @@ const PAIRES_TEXTE: Paire[] = [
 	{
 		avant: '--ok',
 		arriere: '--ok-soft',
-		ou: 'lecon-mode.scss .mode-btn-badge, .sprint-choice.correct',
+		ou: 'lecon-mode.scss .mode-btn-badge, .sprint-choice.correct ; lessons.scss .posee-input.correct (fiche, et révision depuis #503)',
 	},
 	{ avant: '--ok', arriere: '--paper', ou: 'encadrant.scss (mise en avant positive)' },
-	{ avant: '--ko', arriere: '--ko-soft', ou: 'lecon-mode.scss .sprint-choice.wrong' },
-	{ avant: '--ko', arriere: '--paper', ou: 'encadrant.scss (alerte de suppression)' },
+	{
+		avant: '--ko',
+		arriere: '--ko-soft',
+		ou: 'lecon-mode.scss .sprint-choice.wrong ; lessons.scss .posee-input.wrong (fiche, et révision depuis #503)',
+	},
+	{
+		avant: '--ko',
+		arriere: '--paper',
+		ou: 'encadrant.scss (alerte de suppression) ; réponse donnée rappelée après une erreur (#503) : revision.scss .rev-donnee strong et marque .rev-marque-ko, sprint.scss .sprint-correction .sprint-donnee strong',
+	},
 	{ avant: '--ink', arriere: '--track', ou: 'surface neutre pleine : jauge, bouton « fantôme »' },
 	{ avant: '--grey', arriere: '--track', ou: 'idem, texte secondaire' },
 	// Espace encadrant : surface ADULTE, absente de la rampe #576 (qui ne connaît que

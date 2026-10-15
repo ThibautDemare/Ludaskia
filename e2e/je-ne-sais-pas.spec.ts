@@ -92,7 +92,7 @@ test('Révision (saisie libre) : « Je ne sais pas » révèle en verdict neutre
 	await expect(page.locator('.rev-feedback.reveal')).toBeVisible();
 	await expect(page.locator('.rev-feedback.ok')).toHaveCount(0);
 	await expect(page.locator('.rev-feedback.ko')).toHaveCount(0);
-	// Toute la carte (dont le bloc de décision) a été remplacée par le verdict.
+	// Le bloc de décision a cédé la place au verdict ; la question, elle, reste lisible (#503).
 	await expect(page.locator('.rev-decide')).toHaveCount(0);
 	// Annoncée pour un lecteur d'écran, même quand le widget n'a rien à dire lui-même.
 	await expect(page.locator('#revStatus')).toContainText('Pas grave, on la reverra bientôt.');

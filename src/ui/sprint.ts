@@ -28,8 +28,7 @@ import {
 import type { BilanConfig, LessonDef } from '../core/catalog';
 import { niveauLecon, niveauActifMatiere } from '../core/niveau-actif';
 import { labelLecon } from '../core/levels';
-import { estSigneComparaison, signeView } from '../core/signes';
-import type { SigneComparaison } from '../core/signes';
+import { reponseLisible } from '../core/signes';
 import type { ChoiceView } from '../core/exercise';
 import { genSprintQuestion } from '../core/sprint-item';
 import { creerDecompte, type Decompte } from '../core/sprint-decompte';
@@ -623,16 +622,6 @@ function sprintSyncPause(): void {
 	if (badge) badge.hidden = !enPause;
 }
 
-/* Une réponse telle qu'elle se LIT dans une phrase de correction : un signe de
-   comparaison est NOMMÉ (« plus petit que (<) ») au lieu d'être laissé en glyphe nu,
-   comme la ponctuation du runner QCM (#204). Un symbole isolé au milieu d'une phrase
-   ne se lit ni à l'œil ni au lecteur d'écran. Dans l'ÉNONCÉ reconstitué, en revanche,
-   le glyphe reste nu : « 12 < 15 » se lit très bien, « 12 plus petit que (<) 15 » non. */
-function reponseLisible(valeur: string): string {
-	const s = valeur.trim();
-	return estSigneComparaison(s) ? `${signeView(s as SigneComparaison).label} (${s})` : valeur;
-}
-
 function sprintNext() {
 	// Une lecture d'énoncé ne déborde JAMAIS sur la question suivante (#630) : sans
 	// cette coupure, un enfant pourrait lancer l'audio d'un énoncé long, répondre
@@ -883,8 +872,14 @@ const RAPPEL_SANS_REPONSE = 'Pas de réponse cette fois.';
 // Sans elle, l'énoncé re-rendu avec la solution dans le trou se lit comme SA réponse, et
 // l'écran affirme alors « ta réponse est fausse, la bonne réponse était [le même nombre] » :
 // une erreur de frappe (chiffre doublé, frappe perdue) devient indétectable, pour l'enfant
-// comme pour l'encadrant. Même parti pris que le journal d'erreurs (#391) : la réponse
-// donnée reste NEUTRE (jamais barrée, jamais en rouge), la bonne réponse est mise en avant.
+// comme pour l'encadrant. Le ROUGE est réservé à cette réponse donnée (#503) : c'est elle
+// qui est fausse, comme dans la fiche (`.ans.wrong`) et les leçons (`.sprint-choice.wrong`),
+// où l'élément faux est rouge. Il colorait l'énoncé reconstitué — qui contient pourtant la
+// BONNE réponse, en vert — et laissait la réponse donnée neutre : le rouge disait « la
+// question est fausse ». Jamais barrée en revanche (un trait gêne la lecture de ce qu'il
+// faut justement relire), et ce sont les mots « Tu as répondu » qui portent le sens, jamais
+// la couleur seule. La bonne réponse reste mise en avant, en vert gras. Le journal côté
+// encadrant, lui, garde la réponse donnée neutre : autre public, le parent.
 // `parIntervalle` (#446) : l'item est corrigé par appartenance à un intervalle (intercaler)
 // → la valeur révélée n'est qu'UN exemple. On passe alors au singulier INDÉFINI (« une
 // réponse possible ») : affirmer « la bonne réponse » là où la consigne annonçait plusieurs
@@ -919,7 +914,7 @@ function sprintShowCorrection(
 		: html`Tu as répondu <strong>${donneeLue}</strong>.`;
 	stage.innerHTML = html`
     ${sprintThemeHTML(sprintCurrentDef, sprintCurrent)}
-    <div class="sprint-q wrong">${poserAuTrou(html`${sprintCurrent!.text}`, '@', solBrute)}</div>
+    <div class="sprint-q">${poserAuTrou(html`${sprintCurrent!.text}`, '@', solBrute)}</div>
     <div class="sprint-correction">
       <span class="sprint-donnee">${rappelHTML}</span>
       <span>${amorce} <strong>${solLue}</strong>. Prends le temps de la lire.</span>

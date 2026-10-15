@@ -717,3 +717,30 @@ prolongement » se lisait comme un motif de programme ; la raison retenue est le
 report. Même vigilance pour une entrée A trop large, qui fermerait à tort une notion voisine
 couvrable (« mesurer à la règle graduée, dont le périmètre » fermait le calcul du périmètre
 sur des longueurs données).
+
+## Révéler la réponse attendue : le texte varie selon la forme de l'écran, c'est voulu (#503)
+
+Après une erreur, chaque écran enfant donne la réponse attendue dans la forme qui convient
+à sa mise en page, et ces formes ne sont **pas harmonisées** :
+
+- panneau (leçons, sprint) : phrase verbale à l'imparfait, « La bonne réponse était Y. » ;
+- carte (révision) : « libellé : valeur », « La bonne réponse : Y » ;
+- grille (fiche) : marqueur, « ✗ → Y » ;
+- placement (droite graduée) : action, « Il fallait placer Y » ;
+- plusieurs réponses acceptées : singulier indéfini, « Une réponse possible » (#446).
+
+**Constant** : la réponse attendue est toujours donnée, en gras et en vert ; le ton n'est
+jamais punitif. **Ponctuation** : une phrase porte un point final (« Tu as répondu X. »,
+« La bonne réponse était Y. »), un libellé « : valeur » n'en porte pas (« ✗ La bonne réponse :
+Y ») ; les deux lignes successives de la carte de révision suivent chacune leur logique, ce
+n'est pas une incohérence.
+
+**Écarté dans #503** : unifier ces formulations. Harmoniser alourdirait les formats compacts
+(carte, grille) ou appauvrirait les panneaux, pour un gain nul. Avis concordant de
+`pedagogue-primaire`, `redacteur-contenu-francais`, `specialiste-troubles-apprentissage` et
+`designer-ux-enfant`. Ne pas le re-remonter comme un oubli.
+
+**Portée** : écrans enfant. L'espace encadrant garde « Réponse attendue » (#446).
+
+**Laissé ouvert** : la flèche de la fiche (« ✗ → Y ») est gardée en attendant un essai avec
+l'enfant.

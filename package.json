@@ -36,7 +36,7 @@
 		"fast-check": "^4.10.2",
 		"french-verbs": "^5.4.0",
 		"french-verbs-lefff": "^3.4.0",
-		"happy-dom": "^20.14.5",
+		"happy-dom": "^21.0.1",
 		"husky": "^9.1.7",
 		"prettier": "^3.9.9",
 		"sass": "^1.105.1",

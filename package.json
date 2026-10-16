@@ -30,7 +30,7 @@
 		"@axe-core/playwright": "^4.13.0",
 		"@eslint/js": "^10.0.1",
 		"@phosphor-icons/core": "^2.1.1",
-		"@playwright/test": "^1.63.0",
+		"@playwright/test": "^1.64.0",
 		"eslint": "^10.12.0",
 		"eslint-config-prettier": "^10.1.8",
 		"fast-check": "^4.10.2",
@@ -38,13 +38,13 @@
 		"french-verbs-lefff": "^3.4.0",
 		"happy-dom": "^20.14.5",
 		"husky": "^9.1.7",
-		"prettier": "^3.9.9",
+		"prettier": "^3.9.10",
 		"sass": "^1.105.1",
 		"typescript": "^6.0.3",
-		"typescript-eslint": "^8.71.1",
-		"vite": "^8.3.3",
+		"typescript-eslint": "^8.71.2",
+		"vite": "^8.3.4",
 		"vite-plugin-pwa": "^2.0.0",
-		"vitest": "^5.0.3",
+		"vitest": "^5.0.4",
 		"workbox-window": "^7.4.1"
 	}
 }

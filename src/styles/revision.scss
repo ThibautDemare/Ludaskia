@@ -121,22 +121,20 @@
 	border-color: var(--accent);
 	background: var(--accent-soft);
 }
-/* Contrôles FIGÉS après un verdict (#503) : la question reste à l'écran, désactivée, avec la
-   saisie ou les choix de l'enfant — c'est ce qu'il doit relire. Les navigateurs grisent un
-   contrôle désactivé (WebKit par une opacité, d'autres par la couleur de texte, que
-   `-webkit-text-fill-color` peut encore imposer) : on rétablit la pleine lisibilité. Les cases
-   d'une posée marquées juste/fausse (`.correct` / `.wrong`, lessons.scss) gardent leur
-   couleur : elles sont exclues de l'encre, et le remplissage suit `currentColor`. Les
-   retenues (`.posee-carry`) gardent leur gris d'aide, à pleine opacité. */
-.rev-input:disabled,
+/* Contrôles FIGÉS après un verdict (#503) : la question reste à l'écran avec la saisie ou les
+   choix de l'enfant, c'est ce qu'il doit relire. Le figeage commun (`figerScene`, #543) met
+   les champs en LECTURE SEULE et désactive les choix. Un champ en lecture seule n'est pas
+   grisé, mais sans couleur propre il prendrait celle du navigateur : on le passe à l'encre.
+   Un choix désactivé est grisé par le navigateur (WebKit par une opacité, d'autres par la
+   couleur de texte, que `-webkit-text-fill-color` peut encore imposer) : on rétablit la pleine
+   lisibilité. Les cases d'une posée marquées juste/fausse (`.correct` / `.wrong`,
+   lessons.scss) gardent leur couleur, et les retenues (`.posee-carry`) leur gris d'aide. */
+.rev-input[readonly],
 .rev-choice:disabled,
-.rev-posee .posee-input:disabled:not(.correct):not(.wrong) {
+.rev-posee .posee-input[readonly]:not(.correct):not(.wrong) {
 	color: var(--ink);
 }
-.rev-input:disabled,
-.rev-choice:disabled,
-.rev-posee .posee-input:disabled,
-.rev-posee .posee-carry:disabled {
+.rev-choice:disabled {
 	-webkit-text-fill-color: currentColor;
 	opacity: 1;
 }

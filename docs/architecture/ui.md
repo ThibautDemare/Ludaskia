@@ -1184,7 +1184,8 @@ pas en fiche.
   focus part sur « Continuer ▶ », donc un enfant qui n'y voit pas ne savait pas s'il avait
   eu juste ou faux. Trou antérieur à #467, corrigé avec lui puisque l'infrastructure était là.
   **La question reste sur la carte après une erreur** (#503) : en saisie, QCM et opération
-  posée, `gradeErreur` fige la carte (`neutraliserWidget`) et écrit le verdict dessous
+  posée, `gradeErreur` fige la carte (`figerCarte`, champs en lecture seule et choix
+  désactivés, cf. `figeage.ts`) et écrit le verdict dessous
   (`#revAfter`), précédé de « Tu as répondu X. » (`.rev-donnee`, phrase identique au sprint ;
   `rappelDonnee`). Un « Je ne sais pas » garde de même la carte. Seule une **réussite**
   (`grade`) remplace le stage ; le mot d'orthographe ouvre son atelier. La réponse donnée est

@@ -20,7 +20,7 @@
    La couleur est comparée au TOKEN résolu dans la page (six thèmes), jamais à
    un RGB écrit en dur.
    ============================================================ */
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { watchErrors, gotoHash, seedAideVueScript } from './helpers';
 
 const UUID = 'e2e-revelation';
@@ -424,6 +424,13 @@ test('Révision QCM de ponctuation : signes dits en mots, à l’annonce et à l
 	expect(errors).toEqual([]);
 });
 
+/* Champ figé après réponse (#543) : lecture seule + hors Tab (jamais `disabled`, pour garder
+   la réponse tapée à plein contraste). On juge l'intention : non modifiable, non tabulable. */
+async function expectChampFige(input: Locator): Promise<void> {
+	await expect(input).not.toBeEditable();
+	expect(await input.evaluate((el) => (el as HTMLElement).tabIndex)).toBeLessThan(0);
+}
+
 /* Critère 15 — le champ de saisie a un nom accessible dérivé de l'énoncé (comme dans la fiche,
    #577), avant ET après validation. Ni absent, ni le repli générique « réponse ». */
 test('Révision : #revInput est nommé d’après l’énoncé, avant et après une erreur (critère 15)', async ({
@@ -445,7 +452,7 @@ test('Révision : #revInput est nommé d’après l’énoncé, avant et après 
 	await input.fill('999999');
 	await input.press('Enter');
 	await expect(page.locator('.rev-feedback.ko')).toBeVisible();
-	await expect(input).toBeDisabled();
+	await expectChampFige(input);
 	await expect(input).toHaveAccessibleName(/\S/);
 	await expect(input).not.toHaveAccessibleName(/^\s*réponse\s*$/i);
 	await expect(input).toHaveAccessibleName(unMotDeLEnonce);
@@ -525,7 +532,7 @@ test('Révision : le champ figé après erreur reste lisible, en --ink et pleine
 	const errors = watchErrors(page);
 	await ratageSaisie(page);
 	const input = page.locator('#revInput');
-	await expect(input).toBeDisabled();
+	await expectChampFige(input);
 	const ink = await couleurToken(page, '--ink');
 	expect(await couleurDe(page, '#revInput')).toBe(ink);
 	const opacite = await input.evaluate((el) => getComputedStyle(el).opacity);

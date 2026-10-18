@@ -333,6 +333,36 @@ export const COUVERTURE_FIGEAGE: Record<string, EntreeFigeage[]> = {
 			valider: '#revValidate',
 		},
 		{
+			// Format figé par #503 (la question reste à l'écran) : champ TEXTE → lecture seule
+			// et hors Tab, jamais `disabled` (critère 10 : la réponse tapée reste à plein contraste).
+			titre: 'révision : saisie (champ texte)',
+			ecran: 'revision',
+			source: { lecon: 'num-valeur-position' },
+			geste: 'taper une réponse dans le champ',
+			amorce: amorceRevision('num-valeur-position'),
+			ouvrir: ouvrirRevision('#revInput'),
+			completer: async (page) => {
+				await page.locator('#revInput').fill('999999');
+				await page.locator('#revValidate:not([disabled])').waitFor();
+			},
+			valider: '#revValidate',
+		},
+		{
+			titre: 'révision : opération posée',
+			ecran: 'revision',
+			source: { lecon: 'calc-addition-posee' },
+			geste: 'écrire 1 dans chaque case-réponse de la grille',
+			amorce: amorceRevision('calc-addition-posee'),
+			ouvrir: ouvrirRevision('.posee-input'),
+			completer: async (page) => {
+				const cases = page.locator('.posee-input');
+				const n = await cases.count();
+				for (let i = 0; i < n; i++) await cases.nth(i).fill('1');
+				await page.locator('#revValidate:not([disabled])').waitFor();
+			},
+			valider: '#revValidate',
+		},
+		{
 			titre: 'révision : QCM (le mot juste)',
 			ecran: 'revision',
 			source: { lecon: 'fr-vocab-champs-mots', mode: 'qcm' },

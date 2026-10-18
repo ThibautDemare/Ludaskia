@@ -81,6 +81,11 @@ async function photoDuWidget(page: Page, scene: string, exclu: string): Promise<
 			const racine = document.querySelector(scene);
 			if (!racine) return '(scène introuvable)';
 			const copie = racine.cloneNode(true) as HTMLElement;
+			// La valeur d'un champ est une propriété, absente d'`innerHTML` : on la recopie en attribut.
+			const champs = racine.querySelectorAll('input');
+			copie
+				.querySelectorAll('input')
+				.forEach((c, i) => c.setAttribute('data-valeur', champs[i].value));
 			// `.tc-jauge` : jauge décorative (`aria-hidden`) du tableau de conversion, dont le
 			// curseur change de `left` dès que le tableau défile. Le `scrollIntoView` de
 			// `tenterDeManipuler` suffit à la faire bouger, widget figé ou non : ce n'est pas
@@ -159,6 +164,8 @@ async function tenterDeManipuler(page: Page, entree: EntreeFigeage): Promise<voi
 				.catch(() => {});
 		}
 	}
+	// Saisie au clavier (un champ resté éditable et focalisé par le clic la prendrait).
+	await page.keyboard.type('7');
 	for (const touche of ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp']) {
 		await page.keyboard.press(touche);
 	}

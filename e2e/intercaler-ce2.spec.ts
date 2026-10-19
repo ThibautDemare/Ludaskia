@@ -13,10 +13,15 @@
      la bande admet plusieurs réponses ;
    - la leçon renommée « Je compare, j'encadre, j'intercale jusqu'à 10 000 »,
      qui tire maintenant aussi des intercalations, reste jouable sans erreur ;
-   - le 7ᵉ chemin de correction (révision en mode tuiles) : la forme locale de
+   - le 7ᵉ chemin de correction (révision, servie en SAISIE) : la forme locale de
      la révision oubliait l'intervalle, d'où un verdict « LA bonne réponse : 4002 »
      et un journal à nombre isolé, en contradiction avec la même leçon jouée hors
      révision. Non testable en Vitest (fonctions non exportées, dépendantes du DOM).
+     La forme (saisie / tuiles) se décide dans `src/core/revision-question.ts` : depuis
+     #770 (critère 2), toute question numérique, intercalation comprise, reste en
+     SAISIE ; seule une comparaison passe en tuiles. Une intercalation en tuiles en
+     révision n'existe donc plus (hors périmètre de #770) : ce chemin n'est volontairement
+     pas rejoué, ne pas le réclamer.
    Pattern maison : gotoHash, watchErrors + expect(errors).toEqual([]),
    sélecteurs stables. La leçon mélange comparer/encadrer/intercaler au
    hasard : comme clic-verbe.spec.ts (trouverCibleDouble), on relance
@@ -209,7 +214,7 @@ test('leçon renommée « Je compare, j’encadre, j’intercale jusqu’à 10 0
 	expect(errors).toEqual([]);
 });
 
-/* ---------- 7ᵉ chemin de correction : la révision en mode tuiles ---------- */
+/* ---------- 7ᵉ chemin de correction : la révision, intercalation servie en saisie ---------- */
 
 /* Profil e2e dédié + UNE leçon « due » dès maintenant (même pattern que
    revision.spec.ts/seedDueLesson). La clé de révision est préfixée par le
@@ -230,46 +235,44 @@ function seedDueLesson(lessonId: string): string {
   `;
 }
 
-/* Atteindre une intercalation rejouée EN TUILES en révision demande DEUX tirages
-   indépendants dans `num-situer-10000` (#446, ui/revision.ts) : le 1ᵉʳ tirage (mode
-   saisie par défaut) doit être une COMPARAISON (réponse non numérique → seul cas qui
-   bascule la révision en tuiles, cf. `!answerEstNumerique`) — 1/3 des tirages — puis
-   le 2ᵉ tirage (regénéré en mode tuiles) doit être une INTERCALATION — 1/3 des tirages
-   à nouveau. Combiné : ~1/9 (~11 %) par relance, conforme au diagnostic du 7ᵉ chemin.
-   Une seule leçon est due → CHAQUE relance ne tire qu'UN item, jamais répondu (donc
-   toujours « due » à la relance suivante) : on recharge jusqu'à tomber sur le bon cas,
-   comme ailleurs dans ce fichier, mais ICI le hash ne change JAMAIS entre relances →
-   `page.goto` vers un hash identique ne rejoue rien (cf. trouverChampIntercalation) :
-   le `.reload()` explicite est indispensable. Une révision EN COURS bloque la
-   navigation (#63, `quittingLosesProgress`) : un `.reload()` mi-exercice déclenche la
-   boîte de dialogue NATIVE `beforeunload` (pas la modale in-app, réservée aux
-   changements de hash) — un handler `page.on('dialog')` l'accepte pour abandonner
-   l'item non répondu et relancer. Le nombre de tentatives (80) vise le même ordre de
-   grandeur de risque résiduel que `trouverCibleDouble` (clic-verbe.spec.ts) : 0,889⁸⁰ ≈
-   0,008 %, négligeable. */
-async function trouverRevisionTuileIntercalation(page: Page, tentativesMax = 80): Promise<boolean> {
+/* Cherche une INTERCALATION servie en saisie (`#revInput`) en révision de `num-situer-10000`.
+   La forme se décide dans `src/core/revision-question.ts` : toute question numérique reste
+   en saisie, seule une comparaison passe en tuiles (#770, critère 2 ; l'intercalation en
+   tuiles en révision n'est pas proposée, hors périmètre acté). Une intercalation se
+   reconnaît à son énoncé de saisie, « Place un nombre entre X et Y » éventuellement suivi
+   de « (plusieurs réponses possibles) » (`consigneIntercaleSaisie`, data/maths/numeration.ts:427).
+   La leçon tire comparer / encadrer / intercaler à parts égales (`situerFactPetit`) :
+   ~1/3 des tirages. Une seule leçon est due → CHAQUE relance ne tire qu'UN item, jamais
+   répondu (donc toujours « due » à la relance suivante) ; le hash ne change JAMAIS entre
+   relances → `page.goto` vers un hash identique ne rejoue rien (cf. trouverChampIntercalation) :
+   le `.reload()` explicite est indispensable. Une révision EN COURS bloque la navigation
+   (#63, `quittingLosesProgress`) : un `.reload()` mi-exercice déclenche la boîte de dialogue
+   NATIVE `beforeunload` (pas la modale in-app, réservée aux changements de hash) — un handler
+   `page.on('dialog')` l'accepte pour abandonner l'item non répondu et relancer. Le nombre de
+   tentatives (30) vise le même ordre de grandeur de risque résiduel que `trouverCibleDouble`
+   (clic-verbe.spec.ts) : (2/3)^30 ≈ 0,0005 %, négligeable. */
+async function trouverRevisionSaisieIntercalation(
+	page: Page,
+	tentativesMax = 30,
+): Promise<boolean> {
 	for (let tentative = 0; tentative < tentativesMax; tentative++) {
 		await gotoHash(page, 'revision-espacee');
 		await page.reload({ waitUntil: 'networkidle' });
-		// Attendre que la carte de révision soit RENDUE avant de trancher le mode : le
-		// `count()` ci-dessous est une lecture one-shot et `networkidle` peut précéder le
-		// rendu du SPA, si bien qu'une tentative sur deux se conclurait par « pas de tuiles »
-		// alors que la page n'avait simplement rien dessiné — les 80 relances y passeraient
-		// sans jamais voir le tirage cherché. On attend `#revValidate`, présent dans la carte
-		// QUEL QUE SOIT le mode (revision.ts) : attendre `#ltuiSlot`, lui, exclurait d'emblée
-		// le cas saisie qu'on veut justement pouvoir rejeter.
+		// Attendre que la carte de révision soit RENDUE avant de trancher : `networkidle` peut
+		// précéder le rendu du SPA, et un `count()` one-shot conclurait « pas la bonne forme »
+		// sur une page simplement encore vide. `#revValidate` est présent QUEL QUE SOIT le mode.
 		await expect(page.locator('#revValidate')).toBeVisible();
-		if (!(await page.locator('#ltuiSlot').count())) continue; // item 'num' (saisie) : relance
-		const enonce = await page.locator('.ltui-enonce').innerText();
-		if (/Place un nombre entre \d+ et \d+/.test(enonce)) return true; // comparer/encadrer en tuiles : relance
+		if (!(await page.locator('#revInput').count())) continue; // comparaison en tuiles : relance
+		const enonce = await page.locator('.rev-q').innerText();
+		if (/Place un nombre entre \d+ et \d+/.test(enonce)) return true; // sinon encadrement : relance
 	}
 	return false;
 }
 
-test('révision (tuiles) : une intercalation ratée parle au singulier indéfini et journalise la bande', async ({
+test('révision (saisie) : une intercalation ratée parle au singulier indéfini et journalise la bande', async ({
 	page,
 }) => {
-	test.setTimeout(120_000); // ~80 relances à ~1 s (reload + dialogue beforeunload), cf. helper
+	test.setTimeout(60_000); // ~30 relances à ~1 s (reload + dialogue beforeunload), cf. helper
 	const errors = watchErrors(page);
 	// Relances mi-exercice (révision non répondue) : boîte de dialogue NATIVE `beforeunload`
 	// (#63) à chaque tentative manquée — on l'accepte pour abandonner l'item et relancer.
@@ -277,32 +280,16 @@ test('révision (tuiles) : une intercalation ratée parle au singulier indéfini
 	await page.addInitScript(`localStorage.removeItem('ludaskia_encadrant_lock');`);
 	await page.addInitScript(seedDueLesson('num-situer-10000'));
 
-	const trouve = await trouverRevisionTuileIntercalation(page);
-	expect(trouve, 'aucune intercalation en tuiles tirée en 80 tentatives (~11 % par tirage)').toBe(
+	const trouve = await trouverRevisionSaisieIntercalation(page);
+	expect(trouve, 'aucune intercalation en saisie tirée en 30 tentatives (~33 % par tirage)').toBe(
 		true,
 	);
 
-	const enonce = await page.locator('.ltui-enonce').innerText();
-	const m = enonce.match(/Place un nombre entre (\d+) et (\d+)/)!;
-	const min = Number(m[1]);
-	const max = Number(m[2]);
+	// #770, critère 2 : l'intercalation reste en saisie, jamais en tuiles.
+	await expect(page.locator('#ltuiSlot')).toHaveCount(0);
 
-	// Pose une tuile HORS bande (bornes recopiées ou distracteur) → réponse fausse garantie.
-	const tuiles = page.locator('.ltui-tuile');
-	const n = await tuiles.count();
-	let posee = false;
-	for (let t = 0; t < n; t++) {
-		const val = Number((await tuiles.nth(t).innerText()).replace(/\D/g, ''));
-		if (val <= min || val >= max) {
-			await tuiles.nth(t).click();
-			posee = true;
-			break;
-		}
-	}
-	expect(
-		posee,
-		'aucune tuile hors bande trouvée (toutes les distractrices sont dans la bande ?)',
-	).toBe(true);
+	// Réponse fausse garantie : les bornes CE2 de cette leçon sont à 3-4 chiffres (≥ 100).
+	await page.locator('#revInput').fill('1');
 	await page.locator('#revValidate').click();
 
 	// Verdict au singulier INDÉFINI (#446) : « Une réponse possible », jamais « La bonne réponse »

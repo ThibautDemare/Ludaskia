@@ -80,7 +80,10 @@ test("Catégorie : le sélecteur de classe s'ouvre sur la classe du profil et pa
 	const choix = page.locator('.classe-choix');
 	await expect(choix).toBeVisible();
 	await expect(choix).toContainText(/Leçons de\s*:/); // libellé de l'issue, intentionnel
-	await expect(choix.locator('[role="radiogroup"][aria-label="Classe des leçons"]')).toBeVisible();
+	// Nom accessible pinné À DESSEIN (SC 2.5.3) : il doit contenir le libellé visible « Leçons de : ».
+	await expect(
+		choix.locator('[role="radiogroup"][aria-label="Leçons de la classe"]'),
+	).toBeVisible();
 	await expect(radio(page, 'cm1')).toHaveAttribute('aria-checked', 'true');
 	await expect(radio(page, 'ce2')).toHaveAttribute('aria-checked', 'false');
 	await expect(page.locator('#categorieTitle')).not.toContainText('·');
@@ -122,12 +125,33 @@ test('Sélecteur : une seule option tabulable, flèches gauche/droite, cibles de
 	}
 
 	// Flèches : la sélection suit le clavier (CE2 est juste avant CM1 dans l'ordre scolaire).
+	const largeurs = async () =>
+		Promise.all([0, 1].map(async (i) => (await options.nth(i).boundingBox())?.width ?? 0));
+	const avant = await largeurs();
 	await radio(page, 'cm1').focus();
 	await page.keyboard.press('ArrowLeft');
 	await expect(radio(page, 'ce2')).toHaveAttribute('aria-checked', 'true');
 	await expect(radio(page, 'cm1')).toHaveAttribute('aria-checked', 'false');
+	// Coche : sa place est réservée sur toutes les options, cocher ne déplace pas les boutons.
+	expect(await largeurs()).toEqual(avant);
 	await page.keyboard.press('ArrowRight');
 	await expect(radio(page, 'cm1')).toHaveAttribute('aria-checked', 'true');
+	expect(await largeurs()).toEqual(avant);
+
+	// Anneau de focus : l'option cochée porte le focus clavier ; aucun conteneur du groupe ne
+	// doit rogner (`overflow: hidden|clip`) l'anneau dessiné hors du bouton (relecture a11y).
+	await expect(radio(page, 'cm1')).toBeFocused();
+	const rognage = await page.evaluate(() => {
+		const groupe = document.querySelector('.classe-choix [role="radiogroup"]') as HTMLElement;
+		const racine = groupe.closest('.classe-choix') as HTMLElement;
+		const rogne: string[] = [];
+		for (let e: HTMLElement | null = groupe; e && e !== racine.parentElement; e = e.parentElement) {
+			const s = getComputedStyle(e);
+			if (/hidden|clip/.test(s.overflowX + s.overflowY)) rogne.push(e.className || e.tagName);
+		}
+		return rogne;
+	});
+	expect(rognage).toEqual([]);
 
 	expect(errors).toEqual([]);
 });

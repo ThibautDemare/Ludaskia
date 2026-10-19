@@ -209,8 +209,13 @@
 	font-weight: 700;
 	color: var(--ink);
 }
+/* `overflow: visible` : le segment partagé rogne ses bords arrondis par `overflow: hidden`,
+   ce qui rognait AUSSI l'anneau de focus, dessiné hors du bouton — invisible justement sur
+   l'option cochée, qui est celle qui reçoit le focus (relecture a11y de #772). L'arrondi
+   passe donc sur les boutons des extrémités. */
 .classe-choix .enc-act-modes {
 	margin: 0;
+	overflow: visible;
 }
 .classe-choix .enc-act-mode {
 	font-family: var(--ui);
@@ -219,14 +224,28 @@
 	min-width: 64px;
 	padding: 0.4rem 1.1rem;
 }
+.classe-choix .enc-act-mode:first-child {
+	border-radius: 9px 0 0 9px;
+}
+.classe-choix .enc-act-mode:last-child {
+	border-radius: 0 9px 9px 0;
+}
 .classe-choix .enc-act-mode.on {
 	background: var(--accent);
 	color: var(--on-accent);
 }
 /* Coche : texte de remplacement vide, le nom accessible reste « CE2 » (l'état « coché »
-   est déjà dit par `aria-checked`). */
-.classe-choix .enc-act-mode.on::before {
+   est déjà dit par `aria-checked`). Première déclaration = repli pour un moteur qui ne
+   comprendrait pas la syntaxe `/ ''` (il ignorerait alors la seconde, et la coche avec elle :
+   l'état ne tiendrait plus qu'à la couleur). Posée sur TOUTES les options, masquée hors de
+   l'option cochée : sa place est réservée, les boutons ne bougent pas sous le doigt. */
+.classe-choix .enc-act-mode::before {
+	content: '✓\00a0';
 	content: '✓\00a0' / '';
+	visibility: hidden;
+}
+.classe-choix .enc-act-mode.on::before {
+	visibility: visible;
 }
 .classe-choix .enc-act-mode:focus-visible {
 	outline: 3px solid var(--accent-dark);

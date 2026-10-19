@@ -146,7 +146,7 @@ function classeEnteteHTML(
 	const segment = segmentHTML({
 		act: 'choisir-classe',
 		valAttr: 'classe',
-		label: 'Classe des leçons',
+		label: 'Leçons de la classe',
 		active: niveau,
 		options: options.map((lv) => ({ val: lv, label: LEVEL_LABEL[lv] })),
 		wrap: options.length > 3,

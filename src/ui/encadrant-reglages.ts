@@ -259,7 +259,7 @@ function classeHTML(consulte: Profile): SafeHtml {
       <p class="enc-hint">« Comme la classe » suit la classe choisie ; ajustez une matière au besoin.</p>
       <label class="enc-toggle">
         <input type="checkbox" data-act="set-autres-classes"${consulte.prefs?.sansAutresClasses ? '' : drapeau('checked')} />
-        <span>Autoriser les autres classes <small class="enc-hint">(l'enfant peut ouvrir les leçons d'une autre classe depuis une catégorie ou la recherche, par exemple une leçon de l'an dernier que son enseignant fait revoir ; ce travail apparaît dans « Travaillé récemment » avec la classe d'origine)</small></span>
+        <span>Autoriser les autres classes <small class="enc-hint">(l'enfant peut ouvrir des leçons d'une autre classe, depuis une catégorie ou la recherche. Ce travail apparaît dans « Travaillé récemment », avec la classe d'origine.)</small></span>
       </label>
     </div>`;
 }

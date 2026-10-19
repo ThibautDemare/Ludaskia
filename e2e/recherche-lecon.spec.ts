@@ -25,7 +25,7 @@
    spec — voir la note sur le test des critères 7/17 plus bas : le
    catalogue réel ne la permet pas sans violer le critère 7 lui-même.
    ============================================================ */
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
 
 /* Profil CM1 dédié (comme `e2e/selecteur-lecon.spec.ts` lignes 32-36) : seul moyen
@@ -194,35 +194,76 @@ test('critère 6 — une dictée du parent trouvée par son nom, un tap la lance
    donc le critère 7 lui-même et le critère 17 (aucune leçon hors niveau). Le test ci-dessous
    tient la version SYMÉTRIQUE et cohérente avec ces deux critères : CM1 trouve sa propre leçon,
    pas celle du CE2. */
-test('critère 7 — profil CE2 : « multiples » trouve la leçon CE2, pas celle réservée au CM1', async ({
+/* #772 (critère 10) LÈVE la frontière de #718 : les leçons des AUTRES classes sortent aussi,
+   APRÈS celles de la classe du profil, avec une pastille `.rech-classe` et `data-classe`. Ce
+   que ces deux tests gardent désormais : (a) la leçon de la classe du profil sort en tête,
+   sans marque ; (b) celle de l'autre classe sort avec sa marque ; (c) l'ancienne frontière
+   reste vraie quand l'adulte a retiré l'accès (`prefs.sansAutresClasses`, critère 22). */
+const seedProfilPrefs = (niveau: 'ce2' | 'cm1', sansAutresClasses: boolean) =>
+	`localStorage.setItem('ludaskia_profiles', JSON.stringify({ list: [{ uuid: 'e2e-rl-prefs', name: 'Test', emoji: '🦉', updatedAt: 1, niveauReference: '${niveau}', prefs: { sansAutresClasses: ${sansAutresClasses} } }], active: 'e2e-rl-prefs' }));`;
+
+async function chercherMultiples(page: Page) {
+	await gotoHash(page, 'matieres');
+	await page.locator('#rechercheLecon').fill('multiples');
+	await expect(page.locator('#rechercheResume')).toHaveText(/\d/);
+}
+
+async function ordreLecons(page: Page) {
+	return page
+		.locator('.rech-lecon')
+		.evaluateAll((els) => els.map((e) => e.getAttribute('data-id')));
+}
+
+test('critère 7 — profil CE2 : « multiples » sort la leçon CE2 en tête sans marque, la CM1 après avec sa pastille ; accès retiré, plus de CM1 (#772 crit. 10, 22)', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
-	await gotoHash(page, 'matieres'); // profil par défaut = CE2 (ENSURE_NIVEAU)
-	const champ = page.locator('#rechercheLecon');
-	const resume = page.locator('#rechercheResume');
-	await champ.fill('multiples');
-	await expect(resume).toHaveText(/\d/);
+	await chercherMultiples(page); // profil par défaut = CE2 (ENSURE_NIVEAU)
 
+	const propre = page.locator('.rech-lecon[data-id="math-multiples-25"]');
+	const autre = page.locator('.rech-lecon[data-id="math-multiples-50"]');
+	await expect(propre).toBeVisible();
+	await expect(propre).not.toHaveAttribute('data-classe', /.+/);
+	await expect(propre.locator('.rech-classe')).toHaveCount(0);
+	await expect(autre).toBeVisible();
+	await expect(autre).toHaveAttribute('data-classe', 'cm1');
+	await expect(autre.locator('.rech-classe')).toContainText('CM1');
+	const ids = await ordreLecons(page);
+	expect(ids.indexOf('math-multiples-25')).toBeLessThan(ids.indexOf('math-multiples-50'));
+
+	// Accès retiré par l'adulte : l'ancienne frontière tient.
+	await page.addInitScript(seedProfilPrefs('ce2', true));
+	await chercherMultiples(page);
 	await expect(page.locator('.rech-lecon[data-id="math-multiples-25"]')).toBeVisible();
 	await expect(page.locator('.rech-lecon[data-id="math-multiples-50"]')).toHaveCount(0);
+	await expect(page.locator('.rech-classe')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 });
 
-test('critère 17 — profil CM1 : « multiples » trouve la leçon CM1, aucune fuite de la leçon CE2', async ({
+test('critère 17 — profil CM1 : « multiples » sort la leçon CM1 en tête sans marque, la CE2 après avec sa pastille ; accès retiré, plus de CE2 (#772 crit. 10, 22)', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(SEED_CM1);
-	await gotoHash(page, 'matieres');
-	const champ = page.locator('#rechercheLecon');
-	const resume = page.locator('#rechercheResume');
-	await champ.fill('multiples');
-	await expect(resume).toHaveText(/\d/);
+	await chercherMultiples(page);
 
+	const propre = page.locator('.rech-lecon[data-id="math-multiples-50"]');
+	const autre = page.locator('.rech-lecon[data-id="math-multiples-25"]');
+	await expect(propre).toBeVisible();
+	await expect(propre).not.toHaveAttribute('data-classe', /.+/);
+	await expect(propre.locator('.rech-classe')).toHaveCount(0);
+	await expect(autre).toBeVisible();
+	await expect(autre).toHaveAttribute('data-classe', 'ce2');
+	await expect(autre.locator('.rech-classe')).toContainText('CE2');
+	const ids = await ordreLecons(page);
+	expect(ids.indexOf('math-multiples-50')).toBeLessThan(ids.indexOf('math-multiples-25'));
+
+	await page.addInitScript(seedProfilPrefs('cm1', true));
+	await chercherMultiples(page);
 	await expect(page.locator('.rech-lecon[data-id="math-multiples-50"]')).toBeVisible();
 	await expect(page.locator('.rech-lecon[data-id="math-multiples-25"]')).toHaveCount(0);
+	await expect(page.locator('.rech-classe')).toHaveCount(0);
 
 	expect(errors).toEqual([]);
 });

@@ -932,6 +932,33 @@ sont annoncées sur l'écran de fin (critères 11-12), et une tâche ratée en r
 puis se retrouve nommée « mot difficile » (#618) même si son format n'a jamais été joué en
 séance d'orthographe (critères 14-15).
 
+### Révision espacée : la forme de la question servie (#770)
+
+`tests/revision-question.test.ts` (Vitest) garde l'exigence « la forme de la question
+affichée va avec sa réponse » de `questionDeRevision` (`src/core/revision-question.ts`,
+cf. [Logique pure](core.md)) : un signe `<`/`=`/`>` se sert en tuiles (non saisissable au
+clavier numérique sur mobile), un nombre en saisie. Chaque tirage est rejoué sous graine
+fixe (`withSeed`, `GRAINE + i`) : un échec cite les graines fautives, rejouables à
+l'identique. **300 tirages par couple (leçon, niveau)**.
+
+- **Leçon mixte `num-situer-10000`**, ce2 et cm1 : un signe n'est jamais servi en saisie, un
+  nombre jamais en tuiles ; les deux sortes restent servies (négatif : le correctif ne
+  doit pas tout basculer d'un côté).
+- **Gate catalogue** : les couples sont dérivés de `getAllLessons()` + `hasMode(type,
+  'tuiles')`, donc une leçon ajoutée plus tard entre sans toucher au test ; garde-fou de
+  non-vacuité (liste non vide, contient la leçon mixte).
+- **Négatifs, aussi dérivés du catalogue** : une leçon sans mode tuiles n'est jamais servie
+  en tuiles. Parmi les leçons à mode tuiles, chaque couple est **classé d'après son
+  générateur** (`type.generate({ level })`, mêmes graines, prédicat de signe propre au
+  test) : tout en `text` sans signe → toujours servi en saisie ; tout en signes → toujours
+  en tuiles ; mixte ou autre forme → hors de ce gate. Garde-fous : chaque branche contient
+  sa leçon témoin (`num-encadrer-intercaler`, `num-comparer`), et la leçon mixte n'entre
+  dans aucune des deux.
+
+**Limite connue** : le gate suit `hasMode`, pas `modesPourNiveau` ; il suppose donc qu'aucun
+mode tuiles n'est restreint par niveau (vrai aujourd'hui). Le jour où l'un l'est, le gate
+éprouvera des couples (leçon, niveau) où les tuiles ne sont pas servies.
+
 ### Escaliers troués hérités, et parité des deux hôtes (suite de #640)
 
 Trois suites, écrites depuis le commentaire daté du 2026-09-07 sur #640 (qui fait foi comme

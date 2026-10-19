@@ -17,7 +17,10 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
   `encadrant-stats.ts`, #351), **`labelLecon(lesson, niveau?)`** (#436, ci-dessous) et
   **`niveauInferieurImmediat(reference)`** (#232 — niveau juste en dessous sur l'échelle,
   `undefined` pour le plus bas ou hors échelle : périmètre de l'entretien du niveau
-  inférieur en révision espacée, cf. [Logique pure](core.md)).
+  inférieur en révision espacée, cf. [Logique pure](core.md)), **`classesPourvues(lessons,
+  categoryId, autres?)`** et **`classeLaPlusProche(levels, niveau)`** (#772, ci-dessous :
+  classes proposées par le sélecteur d'une catégorie ; classe où ranger un résultat de
+  recherche — distinct de `closestSupported`, qui préfère toujours le dessous).
 - **`level-combinators.ts`** (pur) — `calibrated(table, build)` : **un seul `id`**
   recalibré par une table de paramètres par niveau (génératif : numération…), expose
   ses `levels`; `bankByLevel(items)` : banque QCM tagguée par item, dérive l'union des
@@ -66,6 +69,11 @@ contenu**, par matière — distinct du niveau d'**XP** (récompense). Vocabulai
   levé à chaque `route()`, reposé par les seuls écrans de leçon dont le hash le porte ; un
   niveau que la leçon ne porte pas est ignoré (jeu au niveau ordinaire). Le suffixe n'est posé
   que s'il diffère du niveau ordinaire. Détail : [Modes & navigation](modes-et-navigation.md).
+  **Classe CHOISIE sur une catégorie (#772)** : `choisirClasse(categoryId, niveau)` /
+  `leverClasseChoisie()` / `classeChoisie()` / `classeDeCategorie(categoryId)` — troisième
+  couche de `niveauLecon`, dans l'ordre : niveau imposé (#573), puis classe choisie pour les
+  leçons de SA catégorie, puis classe de la matière. Cf. « Leçons d'une autre classe »
+  ci-dessous.
 - **`consolidation-bas-niveau.ts`** (pur, #723) — ce qui reste, par matière, de la
   classe **juste en dessous** de la classe suivie, quand la matière est passée à la suivante :
   leçons propres à cette classe précédente (une leçon aussi présente à la classe
@@ -210,11 +218,15 @@ concret qui le justifie.
 **Records de bilans/sprint SCOPÉS par niveau** (`progress.ts`, #233) — clé
 `ludaskia_runs_<mode>@<niveau>` (le niveau d'un record = **niveau actif**, un
 sprint/bilan balayant le catalogue du niveau et non une matière). `loadRuns(mode)`
-renvoie le **classement du niveau actif** (podiums/records affichés) ; `loadRunsAll(mode)`
+renvoie le **classement du niveau actif** (podiums/records affichés) — ou, depuis #772, celui
+de la **classe choisie** sur la catégorie (`niveauClassement`, `progress.ts`), qui reçoit
+aussi les records qu'on y pose ; `loadRunsAll(mode)`
 agrège **tous niveaux** pour les compteurs d'EFFORT globaux (trophées, `countSince`).
 Migration `migrateRunsNamespacing` (legacy `ludaskia_runs_<mode>` globale → `@ce2`,
 silencieuse) intégrée à `migrateNiveauNamespacing`. Le défi quotidien « bats ton
-record de sprint » reste, lui, scopé au niveau actif (pas un trophée).
+record de sprint » reste, lui, scopé au niveau actif (pas un trophée) ; sous une classe
+choisie (#772) il n'est pas crédité (`rewards.ts`) : un record posé dans une autre classe ne
+vaut pas défi gagné.
 
 ## UI
 
@@ -255,8 +267,79 @@ enfant sont livrés par #724** : insertion dans le fil de la leçon du jour et a
 du sprint (ci-dessus), renvoi dans le panneau d'étayage, et signal dans l'historique
 des erreurs (cf. [Logique pure](core.md) et [Espace encadrant](espace-encadrant.md)).
 
-**La recherche de leçon côté ENFANT (#718, `core/recherche-lecon.ts`) n'entre pas dans
-cette exception** : le niveau y reste une FRONTIÈRE, exactement comme le catalogue
-parcouru à la main — une leçon hors du niveau actif de SA matière reste introuvable,
-même par son libellé exact ou un de ses mots-clés (cf. [Modes &
-navigation](modes-et-navigation.md)).
+**Côté ENFANT, le niveau reste la frontière par défaut** : catalogue, recherche
+(#718, `core/recherche-lecon.ts`), sprint, révision et leçon du jour se lisent dans la
+classe suivie par la matière. La seule ouverture est le **choix explicite** de l'enfant,
+décrit ci-dessous (#772) ; l'adulte peut la retirer.
+
+## Leçons d'une autre classe, choix explicite de l'enfant (#772)
+
+Un CM1 retrouve une leçon de CE2 que son enseignant ressort ; un CE2 essaie une leçon de
+CM1. **Le profil ne bouge pas** : la classe suivie, la complétude, le tour complet, la
+leçon du jour et la révision continuent de se lire par `niveauActifMatiere`.
+
+**État** (`core/niveau-actif.ts`) : `choisie`, un état de **module**, jamais persisté (un
+rechargement ramène à la classe du profil). `choisirClasse` choisissant la classe déjà
+suivie revient à ne rien choisir (levé). C'est le routeur qui le **lève**
+(`gardeClasseChoisie`, `ui/navigation.ts`, appelée par `route()`) : il survit à la catégorie
+et à ce qui s'y lance (une leçon, son choix de mode, le sprint, « Je choisis mes leçons »,
+la révision de fin de série, une dictée pour l'orthographe), il tombe partout ailleurs.
+
+**Écran de catégorie** (`ui/catalog-nav.ts`) : un sélecteur en segments « Leçons de : »
+(composant `segment.ts`, désormais aussi côté enfant) propose les classes pourvues de la
+catégorie (`classesPourvues`) **plus la classe suivie, toujours présente** : une catégorie
+sans contenu à ce niveau (ex. « Calcul » n'a que du CE2, un CM1 y arrive sur « Bientôt
+disponible ») doit permettre d'en repartir. Pas de sélecteur s'il n'y a rien ailleurs, ni si
+l'adulte a retiré l'accès. **Toute la page** passe dans la classe choisie : liste, étoiles
+(lues en vue de stockage, `loadStarsStockage`/`loadLessonStatsStockage`), bilans, sprint,
+« Je choisis mes leçons », impression. Le titre est suffixé (« Calcul mental · CE2 »). Un
+bandeau « pour essayer » n'apparaît qu'en classe **supérieure** ; vers le bas, le sélecteur
+et le titre suffisent (c'est l'enfant qui a choisi). L'orthographe compte ses dictées
+prédéfinies dans les classes pourvues.
+
+**Ce qui se joue se range dans la classe choisie** : `niveauLecon` la lit, donc énoncés,
+libellé, stats, étoiles et journal d'erreurs suivent. Records de bilan et de sprint vont au
+classement de cette classe (cf. « Records » plus haut) ; le défi « bats ton record » n'est
+pas crédité. **Pas d'appoint #724** dans un sprint de catégorie passée dans une autre classe
+(`appointDuFiltre`, `ui/sprint.ts`), pas de reprise d'un bilan lancé dans une autre classe
+(`startBilan`, l'instantané serait repris dans la classe du profil). Reprises et favoris se
+rejouent **dans la classe du profil** : la classe choisie est levée (`lancerFavori`,
+`ui/resume.ts`).
+
+**Recherche** (`core/recherche-lecon.ts`, `ui/recherche-lecon.ts`) : avec l'accès autorisé,
+elle cherche dans **toutes les classes**, la classe du profil d'abord. Règle d'unicité
+(`autresVersions`) : une leçon de la classe du profil n'apporte une autre version que si son
+**libellé** y diffère ; une leçon absente de la classe du profil sort **une fois**, dans la
+classe la plus proche (`classeLaPlusProche`). Un résultat hors classe porte la pastille
+`.rech-classe`, se lance directement dans sa classe, et la fin de série ramène sur la
+catégorie dans cette classe.
+
+**Étayage** : `leconAvantJouee` (`core/etayage.ts`). Une leçon jouée **au-dessus** de la
+classe suivie nomme les prérequis de la classe juste en dessous d'ELLE (sa référence est la
+plus haute des deux), sinon la table des prérequis serait lue un cran trop bas.
+
+**Côté adulte** : réglage « Autoriser les autres classes » (`ProfilePrefs.sansAutresClasses`,
+stocké en **retrait** : absent = accès ouvert, profils existants compris ; lu par
+`autresClassesAutorisees()`, `core/profiles.ts`), bloc « Classe de … » des réglages. Le
+journal d'activité porte la classe jouée (`ActivityEntry.n`) et « Travaillé récemment » fait
+**une ligne par classe jouée**, avec le badge « classe d'origine » hors de la classe suivie
+et sans mention de cap pour une classe supérieure (cf. [Espace encadrant](espace-encadrant.md)).
+
+**Exception à la règle #232, et pourquoi.** La règle « aucune marque de classe côté enfant,
+un seul niveau d'écart » vise le contenu **POUSSÉ** (révision, épingle, leçon du jour, sprint
+de l'accueil) : l'appli décide à la place de l'enfant, elle doit rester discrète et bornée.
+Un choix **explicite** de l'enfant n'est pas du contenu poussé : pas de borne d'écart. Une
+leçon de la classe juste en dessous, ouverte ainsi et non franchie, entre donc dans l'appoint
+de #724 — c'est voulu.
+
+### Rejets écrits (#585, à ne pas re-remonter)
+
+- **Pas de région live qui annonce le changement de classe** : l'option cochée s'annonce déjà
+  (« CE2, coché ») et le titre de la page change.
+- **Bandeau en phrase nominale** (« Leçons de la classe supérieure, pour essayer. ») : formulation
+  recommandée par le pédagogue, gardée telle quelle.
+- **L'aide de la case « Autoriser les autres classes » reste dans le `<label>`**, comme les
+  autres cases du bloc, par cohérence. Un traitement d'ensemble de ces aides relèverait d'une
+  autre issue.
+- **La règle « un seul niveau d'écart » reste celle du contenu poussé** : ne pas la plaquer
+  sur le choix explicite (cf. ci-dessus).

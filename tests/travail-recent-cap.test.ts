@@ -42,9 +42,9 @@
    ils ne s'indexent pas pareil. Celui des LISTES est indexé par l'id NU de la liste (ce que
    `listesOrthoProfil` lui passe pour la frise) ; celui des LEÇONS par la clé de STOCKAGE
    namespacée par la classe (`recordMonteesPalier` écrit `math-doubles@ce2`, et
-   `progressionProfil` le relit sous cette forme). Or une ligne de « Travaillé récemment » ne
-   porte que l'id NU de sa leçon, puisqu'elle est dédoublonnée par leçon : l'adresser avec cet
-   id nu ne trouve rien sur des données réelles, et la mention ne sortirait pour AUCUNE leçon.
+   `progressionProfil` le relit sous cette forme). Or une ligne de « Travaillé récemment » porte
+   l'id NU de sa leçon (sa classe à part, dans `niveau`, depuis #772) : l'adresser avec cet id
+   nu ne trouve rien sur des données réelles, et la mention ne sortirait pour AUCUNE leçon.
 
    PLAFONNEMENT PAR L'ÉTAT COURANT (`capAnnoncable`). Les journaux de paliers sont MONOTONES :
    ils ne datent que les montées, jamais les redescentes. Un cap peut donc être DÉMENTI par
@@ -616,7 +616,7 @@ describe('travailRecent — chaque famille lit SON journal de paliers', () => {
 	   la même clé. Celui des LISTES est indexé par l'id nu de la liste ; celui des LEÇONS par la
 	   clé de STOCKAGE namespacée (`recordMonteesPalier` écrit `math-doubles@ce2`, et c'est ainsi
 	   que `progressionProfil` le relit pour la frise). Une ligne de « Travaillé récemment »,
-	   elle, ne porte que l'id NU (elle est dédoublonnée par leçon). Chercher le journal avec cet
+	   elle, porte l'id NU (sa classe à part, dans `niveau`, depuis #772). Chercher le journal avec cet
 	   id nu ne trouve donc RIEN sur des données réelles, et la mention ne sortirait jamais pour
 	   aucune leçon — panne invisible, puisque « pas de cap franchi » est le cas ordinaire. */
 	it('le journal des leçons est adressé par la CLÉ DE STOCKAGE, pas par l’id nu de la ligne', () => {
@@ -631,11 +631,11 @@ describe('travailRecent — chaque famille lit SON journal de paliers', () => {
 		expect(cible(res, 'math', 'math-doubles')!.capFranchi).toBe('acquis');
 	});
 
-	it('leçon travaillée sous DEUX classes : le cap franchi sous l’une ou l’autre est annoncé', () => {
-		// Aucun filtre de niveau dans ce bloc, et une seule ligne par leçon : le cap franchi sous
-		// la classe CE2 est un franchissement de CETTE notion, même si la dernière session date
-		// du CM1. Prendre la clé d'une seule des deux (celle de la session la plus récente, par
-		// exemple) rendrait la mention dépendante d'un détail que le lecteur ne voit pas.
+	it('leçon travaillée sous DEUX classes : deux lignes, chacune avec le cap de SA clé (#772)', () => {
+		// Depuis #772, une ligne par classe travaillée. Chaque ligne annonce ce qui a été franchi
+		// dans SA classe et rien d'autre : emprunter le cap de l'autre clé dirait « acquis » sur la
+		// ligne CM1 d'une notion qui n'a été acquise qu'en CE2. (Aucune `classeSuivie` ici : le
+		// silence des classes supérieures est éprouvé dans travail-recent-classes.test.ts.)
 		const deuxNiveaux = leconTelleQue(
 			(l) => l.levels.includes('ce2') && l.levels.includes('cm1'),
 			'portant CE2 et CM1',
@@ -644,10 +644,15 @@ describe('travailRecent — chaque famille lit SON journal de paliers', () => {
 			{ [deuxNiveaux.id + '@ce2']: stat(HIER(17, 0)), [deuxNiveaux.id + '@cm1']: stat(AUJ(9, 0)) },
 			[],
 			null,
-			// Cap et étoile sur la MÊME clé (@ce2) : l'état qui plafonne un cap doit se lire là où
-			// le cap est écrit. Rien sous @cm1, où la leçon reste « en cours ».
+			// Cap et étoile sur la MÊME clé : l'état qui plafonne un cap se lit là où le cap est
+			// écrit. Sous @ce2, étoile et « acquis » ; sous @cm1, pas d'étoile (état « en cours »,
+			// 70 %) et un « en cours » daté. Deux caps DIFFÉRENTS : un emprunt entre les deux lignes
+			// se voit, dans un sens comme dans l'autre.
 			sources(
-				{ [deuxNiveaux.id + '@ce2']: { acquis: HIER(16, 0) } },
+				{
+					[deuxNiveaux.id + '@ce2']: { acquis: HIER(16, 0) },
+					[deuxNiveaux.id + '@cm1']: { enCours: AUJ(8, 0) },
+				},
 				{},
 				{
 					[deuxNiveaux.id + '@ce2']: 1,
@@ -657,8 +662,10 @@ describe('travailRecent — chaque famille lit SON journal de paliers', () => {
 			NOW,
 		);
 		const lignes = groupe(res, deuxNiveaux.subject)!.cibles.filter((c) => c.id === deuxNiveaux.id);
-		expect(lignes).toHaveLength(1); // prémisse : une seule ligne pour les deux clés
-		expect(lignes[0].capFranchi).toBe('acquis');
+		expect(lignes.map((c) => [c.niveau, c.capFranchi])).toEqual([
+			['cm1', 'en-cours'], // la plus récente en tête
+			['ce2', 'acquis'],
+		]);
 	});
 
 	it('clé de stats HÉRITÉE sans niveau : son journal se lit sous la même clé nue', () => {
@@ -759,12 +766,21 @@ describe('travailRecent — critères 6, 7, 8 : ce qui ne doit PAS sortir de ces
 		}
 	});
 
-	it('critères 7 et 8 : une ligne n’a QUE ces sept champs — ni frise, ni pourcentage', () => {
+	it('critères 7 et 8 : une ligne n’a QUE ses champs connus — ni frise, ni pourcentage', () => {
 		// Gate volontairement exhaustive : c'est par un champ ajouté « pour l'affichage » que la
 		// frise ou un % reviendraient sur ces lignes. Un ajout légitime doit passer par ici.
-		const attendu = ['capFranchi', 'contexte', 'derniereFois', 'id', 'kind', 'label', 'seances'];
-		for (const c of toutesLesLignes({ acquis: HIER(9, 0) })) {
-			expect(Object.keys(c).sort()).toEqual(attendu);
+		// Ajout légitime de #772 (critère 15) : la classe de la ligne, `niveau`, sur les lignes de
+		// LEÇON seulement. Une dictée n'a pas de clé de stats, donc pas de classe à dire.
+		const communs = ['capFranchi', 'contexte', 'derniereFois', 'id', 'kind', 'label', 'seances'];
+		const attendu = {
+			lecon: [...communs, 'niveau'].sort(),
+			dictee: communs,
+		};
+		const lignes = toutesLesLignes({ acquis: HIER(9, 0) });
+		// Prémisse : les deux natures sont là, sinon la règle par nature tiendrait par du vide.
+		expect(new Set(lignes.map((c) => c.kind))).toEqual(new Set(['lecon', 'dictee']));
+		for (const c of lignes) {
+			expect(Object.keys(c).sort(), `${c.kind} ${c.id}`).toEqual(attendu[c.kind]);
 			expect(Object.keys(c).some((k) => /frise|semaine|pct|pourcent|note|score/i.test(k))).toBe(
 				false,
 			);

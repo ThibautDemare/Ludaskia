@@ -11,8 +11,8 @@
      `null` (compte inconnu) n'est jamais 0 (« pas travaillée ») ;
    - AUCUN filtre de niveau : ce qui a été travaillé doit être nommé, y compris une
      leçon CE2 rejouée par un profil CM1 (rangée `@ce2`, cf. `niveauStockage`) ou une
-     dictée d'un autre niveau. Une leçon présente sous deux clés `@niveau` ne fait
-     donc qu'UNE ligne, datée de la plus récente ;
+     dictée d'un autre niveau. Une leçon présente sous deux clés `@niveau` fait DEUX
+     lignes (#772, critère 15), chacune avec sa classe (`niveau`), sa date et son compte ;
    - les dictées n'existent que dans le journal et sont rattachées au français ; leur
      NATURE est portée par `kind` (donnée, pas libellé : l'UI compte les dictées à part)
      et leur `contexte` est vide, une liste n'ayant pas de catégorie du catalogue ;
@@ -323,7 +323,7 @@ describe('travailRecent — appartenance (lastAt) vs compte de séances (journal
 	});
 });
 
-describe('travailRecent — aucun filtre de niveau, une ligne par leçon', () => {
+describe('travailRecent — aucun filtre de niveau, une ligne par leçon et par classe', () => {
 	it('des leçons rangées sous des niveaux différents apparaissent toutes', () => {
 		const mathCm1 = leconTelleQue(
 			(l) => l.subject === 'math' && l.levels.includes('cm1') && l.id !== 'math-doubles',
@@ -339,7 +339,9 @@ describe('travailRecent — aucun filtre de niveau, une ligne par leçon', () =>
 		expect(ids(res, 'math')).toEqual(['math-doubles', mathCm1.id]);
 	});
 
-	it('même leçon sous DEUX clés @niveau → une seule ligne, datée de la plus récente', () => {
+	it('même leçon sous DEUX clés @niveau → deux lignes, chacune datée de SA clé (#772, critère 15)', () => {
+		// Avant #772, les deux clés fusionnaient en une ligne datée de la plus récente : le
+		// travail fait dans l'autre classe disparaissait de la vue de l'adulte.
 		const deuxNiveaux = leconTelleQue(
 			(l) => l.levels.includes('ce2') && l.levels.includes('cm1'),
 			'portant CE2 et CM1',
@@ -355,11 +357,14 @@ describe('travailRecent — aucun filtre de niveau, une ligne par leçon', () =>
 			NOW,
 		);
 		const cibles = groupe(res, deuxNiveaux.subject)!.cibles.filter((c) => c.id === deuxNiveaux.id);
-		expect(cibles).toHaveLength(1); // pas deux lignes pour la même leçon
-		expect(cibles[0].derniereFois).toBe(AUJ(9, 30)); // ni la 1re clé lue, ni la plus ancienne
+		// La plus récente en tête ; aucune date empruntée à l'autre clé.
+		expect(cibles.map((c) => [c.niveau, c.derniereFois])).toEqual([
+			['cm1', AUJ(9, 30)],
+			['ce2', HIER(17, 0)],
+		]);
 	});
 
-	it('l’ordre des deux clés ne change rien à la date retenue', () => {
+	it('l’ordre des deux clés ne change rien : mêmes deux lignes, mêmes dates', () => {
 		const deuxNiveaux = leconTelleQue(
 			(l) => l.levels.includes('ce2') && l.levels.includes('cm1'),
 			'portant CE2 et CM1',
@@ -375,8 +380,10 @@ describe('travailRecent — aucun filtre de niveau, une ligne par leçon', () =>
 			NOW,
 		);
 		const cibles = groupe(res, deuxNiveaux.subject)!.cibles.filter((c) => c.id === deuxNiveaux.id);
-		expect(cibles).toHaveLength(1);
-		expect(cibles[0].derniereFois).toBe(AUJ(9, 30));
+		expect(cibles.map((c) => [c.niveau, c.derniereFois])).toEqual([
+			['cm1', AUJ(9, 30)],
+			['ce2', HIER(17, 0)],
+		]);
 	});
 
 	it('une clé hors fenêtre ne rajeunit ni ne vieillit la ligne de l’autre', () => {
@@ -415,24 +422,51 @@ describe('travailRecent — aucun filtre de niveau, une ligne par leçon', () =>
 		expect(cible(res, 'math', 'math-doubles')!.derniereFois).toBe(AUJ(9, 0));
 	});
 
-	it('les séances comptées couvrent la leçon, quel que soit le niveau où elle a été jouée', () => {
-		// La `ref` du journal n'est pas namespacée : les deux séances portent le même id, et
-		// la ligne unique doit les compter toutes les deux.
+	it('les séances comptées suivent la classe où la leçon a été jouée (#772, règle 3)', () => {
+		// La `ref` du journal n'est pas namespacée : c'est la classe jouée `n` (écrite depuis #772)
+		// qui range une séance sur sa ligne. Une séance n'est perdue dans aucune classe, et elle
+		// ne compte jamais deux fois.
 		const deuxNiveaux = leconTelleQue(
 			(l) => l.levels.includes('ce2') && l.levels.includes('cm1'),
 			'portant CE2 et CM1',
 		);
-		const res = travailSansPaliers(
-			{
-				[deuxNiveaux.id + '@ce2']: stat(HIER(17, 0)),
-				[deuxNiveaux.id + '@cm1']: stat(AUJ(9, 30)),
-			},
+		const stats = {
+			[deuxNiveaux.id + '@ce2']: stat(HIER(17, 0)),
+			[deuxNiveaux.id + '@cm1']: stat(AUJ(9, 30)),
+		};
+		const lignes = (res: GroupeTravail[]) =>
+			groupe(res, deuxNiveaux.subject)!
+				.cibles.filter((c) => c.id === deuxNiveaux.id)
+				.map((c) => [c.niveau, c.seances]);
+
+		const avecClasse = travailSansPaliers(
+			stats,
+			[
+				{ ...seanceLecon(HIER(17, 0), deuxNiveaux.id), n: 'ce2' },
+				{ ...seanceLecon(AUJ(9, 30), deuxNiveaux.id), n: 'cm1' },
+			],
+			null,
+			2,
+			NOW,
+		);
+		expect(lignes(avecClasse)).toEqual([
+			['cm1', 1],
+			['ce2', 1],
+		]);
+
+		// Entrées ANCIENNES (sans `n`) sur une leçon à deux lignes : impossible de savoir à
+		// laquelle elles reviennent, donc compte inconnu des deux côtés plutôt qu'un compte faux.
+		const sansClasse = travailSansPaliers(
+			stats,
 			[seanceLecon(HIER(17, 0), deuxNiveaux.id), seanceLecon(AUJ(9, 30), deuxNiveaux.id)],
 			null,
 			2,
 			NOW,
 		);
-		expect(cible(res, deuxNiveaux.subject, deuxNiveaux.id)!.seances).toBe(2);
+		expect(lignes(sansClasse)).toEqual([
+			['cm1', null],
+			['ce2', null],
+		]);
 	});
 });
 

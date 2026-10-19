@@ -18,12 +18,11 @@ import { renderAtelier } from './ortho-atelier';
 import { enonceJournalOrtho } from '../core/orthographe/exercise';
 import { consigneRenforceeHTML } from './consigne-renforcee';
 import { icon } from './icon';
-import { getLessonById, genLessonItem, answerEstNumerique } from '../core/catalog';
+import { getLessonById } from '../core/catalog';
 import { niveauLecon } from '../core/niveau-actif';
 import { labelLecon, effectiveLevel } from '../core/levels';
 import type { SchoolLevel } from '../core/catalog';
-import { hasMode, depuisTuilesNombre, consignePourNiveau } from '../core/exercise';
-import type { ChoiceView, QcmVariante, TuilesSpec } from '../core/exercise';
+import { questionDeRevision, type QuestionRevision } from '../core/revision-question';
 import { PONCT_MOTS } from './ponctuation-view';
 import { mathInline } from '../core/fraction-text';
 import type { Item } from '../core/items';
@@ -125,12 +124,6 @@ import {
 } from '../core/erreur-representation';
 import { reponseLisible } from '../core/signes';
 import { joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot';
-import type {
-	ProblemeEtape,
-	ProbLexique,
-	NatureOrdre,
-	ColonneDroiteAppariement,
-} from '../core/exercise';
 import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
 import { formatReponseRevelee } from '../core/nombres';
 import { attenduEtapeTexte } from '../core/probleme-etapes';
@@ -138,9 +131,6 @@ import { attenduEtapeTexte } from '../core/probleme-etapes';
 // `consigne` (#186) : libellé de la leçon, affiché au-dessus de l'exercice pour
 // dire ce qu'on attend (le HUD ne montre que la catégorie). Absent pour les mots
 // d'orthographe, qui portent déjà leur propre consigne.
-// `consigneAction` (#265, cas `num`/posé) : consigne d'ACTION du type d'exercice
-// (ExerciseType.consigne, ex. « Pose l'addition et calcule. »), propagée du repli
-// fiche jusqu'en révision — indispensable à la posée, qui n'a pas d'énoncé textuel.
 // `niveau` (#232) : niveau de STOCKAGE de l'état SR, présent seulement pour un élément
 // d'entretien du niveau inférieur (un CE2 encore en consolidation chez un CM1). Il
 // commande la GÉNÉRATION (l'exercice doit sortir au niveau où la notion est entretenue,
@@ -149,92 +139,7 @@ import { attenduEtapeTexte } from '../core/probleme-etapes';
 // Volontairement porté par le tronc commun du RevItem, pas par chaque variante : tous les
 // formats sont concernés, et l'oublier dans une seule aurait suffi à casser l'invariant.
 type RevItem = { groupLabel: string; consigne?: string; niveau?: SchoolLevel } & (
-	| { kind: 'num'; lessonId: string; item: Item; consigneAction?: string }
-	| {
-			kind: 'qcm';
-			lessonId: string;
-			item: Item;
-			choices: string[];
-			// Affichage RICHE optionnel des choix (#200), aligné par index sur `choices` :
-			// fractions empilées (« 2/4 » → barre horizontale), etc. — comme la leçon (#264).
-			choicesView?: ChoiceView[];
-			variante?: QcmVariante;
-			// Consigne renforcée + picto de la leçon (#203), propagés jusqu'en révision (#265).
-			// `consigne` (commun au RevItem) porte le LIBELLÉ de leçon ; ces deux champs portent
-			// l'ACTION (« Quel mot veut dire le contraire ? » + « ↔ »), affichée au-dessus de
-			// l'énoncé comme dans le runner leçon (lecon-qcm.ts).
-			consigneRenforcee?: string;
-			picto?: string;
-	  }
-	| { kind: 'word'; wordId: string; mot: string }
-	// Interactions « tuiles » rejouées telles quelles en révision (#186), sans clavier. Les
-	// champs venant de l'exercice sont pris en bloc via `TuilesSpec` (énoncé, bonne tuile,
-	// tuiles, texte lu, et l'`intervalle` d'une intercalation) : les énumérer ici avait
-	// justement fait oublier l'intervalle (#446), donc un verdict « LA bonne réponse : 4 002 »
-	// et un journal à nombre isolé là où une BANDE était acceptée.
-	| ({ kind: 'tuile'; lessonId: string } & TuilesSpec)
-	| {
-			kind: 'ordre';
-			lessonId: string;
-			question: string;
-			ordre: string[];
-			tuiles: string[];
-			nature?: NatureOrdre; // mots (défaut) ou nombres (#448) — formulation du widget
-	  }
-	| {
-			kind: 'tri';
-			lessonId: string;
-			question: string;
-			categories: [string, string];
-			mots: { mot: string; cat: 0 | 1 }[];
-	  }
-	// Moteurs « riches » rejoués tels quels en révision (#466), au lieu du repli champ
-	// texte dégradé : le vrai widget interactif est monté, comme les tuiles/ordre/tri.
-	| {
-			kind: 'appariement';
-			lessonId: string;
-			question: string;
-			paires: { gauche: string; droite: string }[];
-			intrus: string[];
-			// Mots ou ÉTIQUETTES à droite (#731) : seule l'aide contextuelle en dépend, mais
-			// elle en dépend ici comme en leçon — la révision monte le même widget.
-			colonneDroite?: ColonneDroiteAppariement;
-	  }
-	// Problème : board complet (énoncé + TOUTES les sous-questions + brouillon), corrigé
-	// étape par étape — perdre les étapes intermédiaires ou le brouillon dénaturait la
-	// tâche « résoudre à étapes » (#466). `lex` porte le lexique d'affichage de la leçon.
-	| {
-			kind: 'probleme';
-			lessonId: string;
-			enonce: string;
-			etapes: ProblemeEtape[];
-			parle: string;
-			figure?: SafeHtml;
-			explication?: string;
-			lex?: ProbLexique;
-	  }
-	// « Clique sur le mot » : le vrai widget de sélection dans la phrase, monté via le
-	// widget mutualisé — supprime le bruit orthographique de la recopie et gère les
-	// consignes multi-mots sans ambiguïté (#466).
-	| {
-			kind: 'clicMot';
-			lessonId: string;
-			// Consigne d'ACTION propre à l'exercice (« Clique sur le verbe conjugué »),
-			// distincte du libellé de leçon porté par `consigne` (commun au RevItem).
-			actionConsigne: string;
-			tokens: string[];
-			cibleIndices: number[];
-			explication: string;
-			parle: string;
-			cibleLabel?: string;
-			// L'explication nomme déjà la cible (#436) → pas de double annonce en live region.
-			explicationNommeCible?: boolean;
-			// La cible est un SEGMENT à délimiter (#716) : la révision monte alors le widget
-			// à deux bornes, comme la leçon. Sans ce report, l'enfant réviserait la notion
-			// avec un GESTE qu'il n'a jamais joué — et pourrait y cocher des mots épars, ce
-			// que la leçon lui interdit précisément.
-			segment?: boolean;
-	  }
+	QuestionRevision | { kind: 'word'; wordId: string; mot: string }
 );
 
 let items: RevItem[] = [];
@@ -322,143 +227,15 @@ export function runRevisionEspacee(): void {
 			}
 			const lesson = getLessonById(it.id);
 			if (!lesson) continue;
-			const type = lesson.exerciseType;
 			// Calibrage au niveau effectif (#225). Un élément d'entretien sort au niveau où la
 			// notion est entretenue (#232), pas au niveau actif : le rejouer plus dur n'entretient
 			// pas le niveau inférieur, et son état SR avancerait sur une échelle qui n'est pas la
 			// sienne. `effectiveLevel` garde le clamp habituel (leçon dont les niveaux ont changé).
 			const level = it.niveau ? effectiveLevel(lesson, it.niveau) : niveauLecon(lesson);
+			// Forme de la question (QCM, tuiles, widget riche, saisie) : core/revision-question.ts.
+			const q = questionDeRevision(lesson, level);
 			// Consigne affichée = libellé de la leçon (#186), résolu au niveau joué (#436).
-			const consigne = labelLecon(lesson, level);
-			// QCM (conjugaison, homophones, géométrie…) : inchangé.
-			if (hasMode(type, 'qcm')) {
-				const ex = type.generate({ mode: 'qcm', level });
-				if (ex.type === 'qcm')
-					pousser({
-						groupLabel: g.label,
-						consigne,
-						kind: 'qcm',
-						lessonId: it.id,
-						item: {
-							text: ex.question,
-							answer: ex.answer,
-							kind: 'text',
-							figure: ex.figure,
-							parle: ex.parle,
-						},
-						choices: ex.choices,
-						choicesView: ex.choicesView,
-						variante: ex.variante,
-						consigneRenforcee: ex.consigne,
-						picto: ex.picto,
-					});
-				continue;
-			}
-			// Interactions « tuiles » natives, rejouées telles quelles en révision (#186) :
-			// ranger une suite (ordre alpha) et ranger par thème (champs lexicaux).
-			const ex = type.generate({ level });
-			if (ex.type === 'tuilesOrdre') {
-				pousser({
-					groupLabel: g.label,
-					consigne,
-					kind: 'ordre',
-					lessonId: it.id,
-					question: ex.question,
-					ordre: ex.ordre,
-					tuiles: ex.tuiles,
-					nature: ex.nature,
-				});
-				continue;
-			}
-			if (ex.type === 'tuilesTri') {
-				pousser({
-					groupLabel: g.label,
-					consigne,
-					kind: 'tri',
-					lessonId: it.id,
-					question: ex.question,
-					categories: ex.categories,
-					mots: ex.mots,
-				});
-				continue;
-			}
-			// Moteurs « riches » : rejoués tels quels (widget interactif) plutôt que dégradés
-			// en champ texte via genLessonItem (#466).
-			if (ex.type === 'appariement') {
-				pousser({
-					groupLabel: g.label,
-					consigne,
-					kind: 'appariement',
-					lessonId: it.id,
-					question: ex.question,
-					paires: ex.paires,
-					intrus: ex.intrus ?? [],
-					colonneDroite: ex.colonneDroite,
-				});
-				continue;
-			}
-			if (ex.type === 'probleme') {
-				pousser({
-					groupLabel: g.label,
-					consigne,
-					kind: 'probleme',
-					lessonId: it.id,
-					enonce: ex.enonce,
-					etapes: ex.etapes,
-					parle: ex.parle,
-					figure: ex.figure,
-					explication: ex.explication,
-					lex: type.probLexique,
-				});
-				continue;
-			}
-			if (ex.type === 'clicMot') {
-				pousser({
-					groupLabel: g.label,
-					consigne,
-					kind: 'clicMot',
-					lessonId: it.id,
-					actionConsigne: ex.consigne,
-					tokens: ex.tokens,
-					cibleIndices: ex.cibleIndices,
-					explication: ex.explication,
-					parle: ex.parle,
-					cibleLabel: ex.cibleLabel,
-					explicationNommeCible: ex.explicationNommeCible,
-					segment: ex.segment,
-				});
-				continue;
-			}
-			// Réponse non numérique (signe <, =, >) + mode tuiles disponible → on rejoue en
-			// tuiles plutôt qu'en saisie : un signe n'est pas saisissable au clavier numérique
-			// sur mobile (#186).
-			if (ex.type === 'text' && !answerEstNumerique(String(ex.answer)) && hasMode(type, 'tuiles')) {
-				const tex = type.generate({ mode: 'tuiles', level });
-				if (tex.type === 'tuilesNombre') {
-					pousser({
-						groupLabel: g.label,
-						consigne,
-						kind: 'tuile',
-						lessonId: it.id,
-						// Conversion partagée (#446) : tout ce que porte l'exercice arrive ici, y
-						// compris la bande d'une intercalation (verdict + journal). Pas de recopie.
-						...depuisTuilesNombre(tex),
-					});
-					continue;
-				}
-			}
-			// Repli saisie (num / texte / heure / posé) : genLessonItem gère figure, heure et
-			// l'opération posée.
-			pousser({
-				groupLabel: g.label,
-				consigne,
-				kind: 'num',
-				lessonId: it.id,
-				item: genLessonItem(lesson, level),
-				// Action « quoi faire » (#265) ; surtout pour la posée. Résolue au niveau joué
-				// (#436) : une leçon multi-niveaux ne formule pas forcément la tâche pareil.
-				consigneAction: consignePourNiveau(type, level),
-			});
+			if (q) pousser({ groupLabel: g.label, consigne: labelLecon(lesson, level), ...q });
 		}
 	}
 	idx = 0;

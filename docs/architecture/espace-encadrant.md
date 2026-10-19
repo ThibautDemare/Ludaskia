@@ -323,9 +323,16 @@ part (« N leçons et M dictées travaillées ») sans avoir à reconnaître un 
 **Aucun filtre de niveau** — à la différence des notions par catégorie (et de leur frise)
 juste à côté, scopées au niveau actif : ce qui a été travaillé l'a forcément été à la portée de l'enfant, et l'écarter au prétexte du niveau
 suivi rouvrirait le trou que ce bloc ferme (une leçon CE2 rejouée par un profil CM1,
-favori/révision/épingle, reste rangée `@ce2` par `niveauStockage`). Une leçon travaillée
-sous deux niveaux porte donc deux clés de stats : elle est **dédoublonnée par id**, avec la
-date la plus récente des deux.
+favori/révision/épingle, ou choisie par l'enfant dans une autre classe depuis #772, reste
+rangée `@ce2` par `niveauStockage`). **Une ligne par classe jouée** (#772) : une leçon
+travaillée sous deux niveaux porte deux clés de stats et fait deux lignes, avec le **badge
+« classe d'origine »** (`badgeClasseOrigine`, `ui/encadrant-commun.ts`) hors de la classe
+suivie de la matière (`niveauProfilMatiere`) — c'est lui qui les distingue quand le libellé
+est le même. Les séances se ventilent par classe via `ActivityEntry.n` (classe jouée, écrite
+par le journal d'activité) ; une entrée d'avant #772, sans `n`, ne s'attribue que s'il n'y a
+qu'une ligne possible. Une ligne jouée **au-dessus** de la classe suivie n'a **jamais** de
+mention de cap (régime factuel de #556, pas d'état d'acquisition). À horodatage et libellé
+identiques, la classe la plus basse passe en premier.
 
 Rendu : groupé par MATIÈRE, chaque ligne portant sa catégorie (leçon) ou l'étiquette
 « Dictée » (`kind`), son compte (« N fois », omis quand `null` — jamais « travaillée N
@@ -1265,6 +1272,17 @@ raté de chaque mot, que le rappel soit affiché ou non côté enfant. Le **« M
 animations, confort de lecture) reste côté enfant (auto-régulation immédiate, coût
 d'erreur nul) ; un aménagement actif est rappelé en lecture seule sur « Mon espace »
 (« réglé par un adulte »). L'écoute TTS **à la demande** reste toujours dispo côté enfant.
+
+**Accès aux autres classes (#772)** : dans le bloc « Classe de … » (`classeHTML`,
+`ui/encadrant-reglages.ts`), la case **« Autoriser les autres classes »**, **cochée par
+défaut**. Elle affiche l'accès, mais le réglage stocké est le **retrait**
+(`ProfilePrefs.sansAutresClasses`, `setPrefFor`) : absent = accès ouvert, donc les profils
+existants sont couverts sans migration. Décochée, l'enfant n'a plus le sélecteur « Leçons
+de : » sur les catégories ni de résultat hors classe dans la recherche (lu par
+`autresClassesAutorisees()`, `core/profiles.ts`) ; une classe déjà choisie retombe sur celle du
+profil. Pas de `renderEspace()` au changement : rien d'autre à l'écran n'en dépend, et un
+re-rendu ferait perdre le focus de la case. Le travail fait dans une autre classe se lit dans
+« Travaillé récemment » (ci-dessus). Cf. [Niveaux scolaires](niveaux-scolaires.md).
 
 **Séance de révision** (#439) : bloc distinct des « Aménagements » (charge de la séance,
 pas un aménagement dys/attention). Menu déroulant à **paliers fixes**

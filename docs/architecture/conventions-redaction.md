@@ -600,6 +600,16 @@ pronom peut reprendre l'antécédent, écrire deux phrases courtes : « Leçons 
 commencées sans les réussir jusqu'au bout. La classe de CM1 ne les reprend pas : elles restent
 ici. »
 
+## Aide d'un réglage de l'espace encadrant : deux phrases courtes, pas une longue parenthèse (#772)
+
+L'aide d'une case à cocher se lit mal quand elle tient dans une seule phrase longue, où
+s'empilent ce que fait le réglage, un exemple et sa conséquence, séparés par des
+points-virgules. Écrire deux phrases courtes, et laisser l'exemple de côté s'il ne couvre
+qu'une partie des cas. Modèle : la case « Autoriser les autres classes », dont l'aide dit en
+deux phrases ce que l'enfant peut faire, puis où l'adulte le voit. L'aide reste entre
+parenthèses dans le `<small>` du libellé, comme les autres cases du bloc (cf. le rejet écrit
+de [Niveaux scolaires](niveaux-scolaires.md)).
+
 ## « Franchie » est un terme interne, pas un mot de l'écran (#723)
 
 « Franchie » (étoilée, ou réussie au seuil sur une leçon complète, `core/report-lecon.ts`)

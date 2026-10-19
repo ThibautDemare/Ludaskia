@@ -1029,12 +1029,22 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   tapé et le débounce d'annonce vivent côté UI (`ui/recherche-lecon.ts`, cf. [Rendu &
   interactions](ui.md)).
 
+  **Depuis #772**, `SourceRecherche.autresClasses` (absent/`false` = la recherche d'avant, à
+  l'identique : adulte ayant retiré l'accès) étend la recherche aux **autres classes** :
+  `ResultatLecon.niveau` / `DicteeRecherche.niveau` ne sont posés que HORS de la classe
+  suivie. Règle d'unicité (`autresVersions`) : une leçon de la classe suivie n'apporte une
+  autre version que si son libellé y diffère ; une leçon absente sort une fois, dans la
+  classe la plus proche (`classeLaPlusProche`, `levels.ts`). Ordre : classe suivie d'abord,
+  puis de la plus proche à la plus lointaine, chaque classe dans l'ordre de SON écran. Détail
+  dans [Niveaux scolaires](niveaux-scolaires.md).
+
   **Depuis #722, le sélecteur adulte (`catalogue-arbre.ts`, ci-dessous) reprend ces
   mêmes règles de recherche** (même normalisation, mêmes mots-clés, même libellé
   affiché) — avant #722 il cherchait selon des règles propres, désormais unifiées.
   **Deux différences SEULEMENT subsistent** (documentées dans l'en-tête de
   `catalogue-arbre.ts`, pas ici pour éviter que les deux s'éloignent encore) : le
-  niveau reste une FRONTIÈRE côté enfant contre un FILTRE côté adulte ; et une
+  classe suivie passe EN TÊTE côté enfant (les autres classes suivent, marquées, si
+  l'accès est autorisé, #772) contre un FILTRE par jeton côté adulte ; et une
   catégorie qui correspond est ici un RÉSULTAT à part entière qui ouvre son écran SANS
   entraîner ses leçons (« conjug » ne doit pas aligner 55 boutons, critère 5), quand le
   sélecteur adulte, lui, les entraîne toutes (l'arbre EST le résultat, il n'a rien
@@ -1569,6 +1579,10 @@ niveau, sans DOM ni stockage :
   des erreurs, cf. [Espace encadrant](espace-encadrant.md)) où il se PROPOSE, sans jamais
   avoir été inséré d'office dans le fil de la leçon du jour. Le libellé nommé est celui de
   SA classe (`niveau` renvoyé avec la leçon), sans jamais dire laquelle à l'enfant.
+  **`leconAvantJouee(lesson, niveauJoue, niveauSuivi, cartes)`** (#772) en est la version
+  pour une leçon jouée dans une classe qui peut ne pas être la classe suivie : jouée
+  AU-DESSUS, la référence est la classe jouée (prérequis de la classe juste en dessous d'ELLE) ;
+  sinon `leconAvant` à l'identique.
   `leconPrerequise` reste le repli quand aucun prérequis n'est ouvert. Enfin,
   **`episodeEtayable(etat, now)`** identifie l'ÉPISODE de blocage dont l'enfant
   REVIENT (signature stable : l'horodatage `reporteLe` du report qui l'a ouvert, `0` =
@@ -2361,9 +2375,13 @@ jouable. La couche UI (`ui/etayage-panneau.ts` et les visuels par moteur de
   une DONNÉE plutôt qu'un libellé dérivé). **Aucun filtre de niveau** — à la différence des
   notions par catégorie (et de leur frise) ci-dessus, scopées au niveau actif de la matière :
   ce qui a été travaillé doit être nommé quel que soit le
-  niveau où c'est rangé (`@niveau`) ; une leçon travaillée sous deux niveaux porte deux clés
-  de stats mais n'est dédoublonnée qu'en une ligne, datée de la plus récente des deux. Détail
-  du rendu dans [Espace encadrant](espace-encadrant.md).
+  niveau où c'est rangé (`@niveau`) ; **depuis #772, une leçon travaillée sous deux classes
+  fait DEUX lignes**, une par classe jouée (`CibleTravaillee.niveau`, lue de la clé de stats,
+  absente pour une dictée). Les séances se ventilent par classe grâce à `ActivityEntry.n`
+  (`progress.ts`, classe jouée, absente des entrées d'avant #772 et de tout `ref` qui n'est
+  pas une leçon). Le 7ᵉ paramètre optionnel `classeSuivie(subject)` sert à juger une ligne
+  « au-dessus » de la classe suivie : elle ne porte alors **jamais de cap** (régime factuel
+  de #556). Détail du rendu dans [Espace encadrant](espace-encadrant.md).
   **Récap du mode Révision espacée** (#423) : `revisionProfil(profile, now)` → `RecapRevision`
   projette la file de répétition espacée (`revision.ts`, #45) du profil consulté — palier
   courant + échéance relative par entrée (`libellePalier`/`libelleEcheanceRevision`), groupée

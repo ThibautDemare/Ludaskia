@@ -415,7 +415,7 @@ ci-dessous.
   voulue par l'encadrant, en faire le tour doit tout montrer.
 
 **Composant segment partagé** — `segment.ts` (hors des sections ci-dessus, consommé par
-cinq d'entre elles) : `segmentHTML(config)` rend un groupe de boutons **choix exclusif**
+cinq d'entre elles, plus l'écran de catégorie côté enfant depuis #772) : `segmentHTML(config)` rend un groupe de boutons **choix exclusif**
 conforme au patron APG **« Radio Group »** (`role="radiogroup"` + `role="radio"`/
 `aria-checked`, **tabindex mobile** — seule l'option cochée est dans l'ordre de
 tabulation), en remplacement de l'ancien rendu à la main en `role="group"` +
@@ -426,7 +426,9 @@ clique l'option visée, gère l'état et le re-rendu). Consommé par `activite-m
 `dictees-vue` (`encadrant-progression.ts`, ce dernier depuis #496), `revision-mode`
 (`encadrant-revision.ts`), `seance-rec-type` (`encadrant-seance.ts`), `erreurs-periode`
 (`encadrant-erreurs.ts`), `travail-periode` (`encadrant-travail.ts`, #520) et `sel-niveau`
-(#556, ci-dessous, composé DANS les deux sections qui montent le sélecteur de leçon) — les
+(#556, ci-dessous, composé DANS les deux sections qui montent le sélecteur de leçon) —
+**et, côté enfant depuis #772, `choisir-classe`** (sélecteur « Leçons de : » de l'écran de
+catégorie, `catalog-nav.ts`, `wrap` au-delà de 3 options) — les
 `data-act`/`data-mode`/`data-type`/`data-periode`/`data-vue`/`data-jours`/`data-niveau` de
 chaque site restent inchangés (sélecteurs e2e stables).
 
@@ -929,6 +931,15 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   par `motsApercu` (`core/orthographe/lessons.ts`, #441) — **même règle** que celle
   consultée dans l'espace encadrant (cf. [Espace encadrant](espace-encadrant.md), bloc
   « Listes de dictée »), pour que les deux aperçus ne divergent jamais.
+  **Sélecteur de classe (#772)** : en tête de l'écran, `classeEnteteHTML` rend un segment
+  « Leçons de : » (libellé visible en `aria-hidden`, nom accessible du groupe « Leçons de la
+  classe », `brancherClasse` rend le focus à l'option cochée après re-rendu) et, en classe
+  SUPÉRIEURE seulement, le bandeau `.classe-bandeau`. Classes proposées par
+  `classesProposees` : celles que la catégorie pourvoit + la classe suivie, rien si aucune
+  autre ou si l'adulte a retiré l'accès (`autresClassesAutorisees`). Toute la page est rendue
+  dans `classeDeCategorie` ; la logique (état, levée, règles de jeu) est dans
+  [Niveaux scolaires](niveaux-scolaires.md). La recherche (ci-dessous) y mène aussi : un
+  résultat hors classe pose la classe choisie avant de lancer la leçon.
 - **`recherche-lecon.ts`** (#718) — **recherche de leçon côté enfant**, greffée sur
   `renderSubjects` (`catalog-nav.ts` ci-dessus) : `rechercheHTML()` rend le champ (au-dessus
   des cartes de matière) + une région live (`#rechercheResume`, `role="status"`,
@@ -945,7 +956,11 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   #556) pour ne pas interrompre une synthèse vocale à chaque lettre. Sous `RECHERCHE_MIN`
   caractères l'écran ne bouge pas ; sans résultat, un message reste affiché et les cartes
   de matière restent le chemin de repli ; avec des résultats, les cartes passent en
-  `hidden`. Styles : `styles/recherche-lecon.scss`.
+  `hidden`. Styles : `styles/recherche-lecon.scss`. Depuis #772, un résultat d'une autre
+  classe porte la pastille `.rech-classe` (texte « CE2 » précédé d'un `sr-only` « Classe : »,
+  style neutre) et son bouton un `data-classe` : le clic pose `choisirClasse` puis lance la
+  leçon dans cette classe (`startLecon(id, 'catalogue', classe)`), une dictée ouvre
+  l'orthographe dans la sienne.
 
   **Rejets écrits (relecture a11y, à ne pas re-remonter)** : le fond de carte des
   boutons de résultat (`--paper` sur `--page-bg`, ≈1,12:1) n'est pas un manquement SC
@@ -2225,6 +2240,17 @@ et de `.ans-corrige`. Ce n'est **pas** un blocage WCAG (U+202F est une espace «
 moteurs de rendu n'y coupent pas de ligne, et aucun nombre ne débordait au viewport Pixel 5,
 constat de l'auteur des tests e2e) — une cohérence de style (`tabular-nums`, taille) restée à
 faire.
+
+### Checklist a11y issue de #772 (jugement, pas de gate)
+
+- **Un libellé visible en `aria-hidden` voisin d'un groupe** : le nom accessible du groupe
+  **commence par ce libellé** (SC 2.5.3, Label in Name). Cas : « Leçons de : » + groupe
+  « Leçons de la classe » (`classeEnteteHTML`, `catalog-nav.ts`).
+- **Une coche en `::before` avec texte de remplacement `/ ''`** : poser aussi une
+  déclaration de repli **sans** la barre (un navigateur qui ne connaît pas `/ ''` ignore
+  la déclaration entière, et la coche disparaît), et **vérifier sur la tablette** (Firefox/GeckoView).
+- **Un `outline` posé sur un enfant d'un conteneur en `overflow: hidden` est rogné.** Le segment
+  partagé l'est, et le sélecteur de classe le surcharge ; tenu par une garde e2e.
 
 ### Un geste à bornes discrètes n'appelle pas le motif `listbox` (#716)
 

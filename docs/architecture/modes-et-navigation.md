@@ -10,7 +10,9 @@ fallback SPA) : `#accueil` · `#matieres` · `#matiere-<id>` · `#categorie-<id>
 `#lecon-<id>` · `#mode-<id>` (choix de mode d'une leçon, #69 ; l'id peut porter un
 **niveau imposé**, `#lecon-<id>@ce2` / `#mode-<id>@ce2`, #573 : posé par le routeur à
 l'entrée de ces deux écrans, levé à chaque changement d'écran, cf. [Niveaux
-scolaires](niveaux-scolaires.md)) · `#sprint-config` ·
+scolaires](niveaux-scolaires.md)) · la **classe choisie** sur une catégorie (#772) ne
+passe pas par le hash : état de module que `route()` lève via `gardeClasseChoisie`, sauf sur
+la catégorie et ce qui s'y lance · `#sprint-config` ·
 `#sprint` · `#bilan-custom` · `#bilan-cat-<id>` · `#ortho-mode-<id>` (choix de mode
 d'une liste d'ortho) · `#ortho-new` · `#ortho-edit-<id>` · `#ortho-revoir-<id>`
 (création / édition / relecture des listes d'ortho) · `#ortho-revoir` (#618 : relecture
@@ -76,7 +78,9 @@ mots par le libellé que l'enfant voit **ou** par un mot-clé de son vocabulaire
 (« fois », « a ou à » — champ `motsCles` de `LessonDef`/`Category`, cf. [Contenu &
 leçons](contenu-et-lecons.md)). Une catégorie trouvée est un résultat qui ouvre son
 écran sans entraîner ses leçons ; sans correspondance, un message reste affiché sans
-faire disparaître les deux cartes. Logique pure dans `core/recherche-lecon.ts`, rendu
+faire disparaître les deux cartes. Depuis #772, elle cherche aussi dans les **autres
+classes** (pastille de classe sur le résultat, lancement direct dans cette classe) sauf si
+l'adulte a retiré l'accès — cf. [Niveaux scolaires](niveaux-scolaires.md). Logique pure dans `core/recherche-lecon.ts`, rendu
 dans `ui/recherche-lecon.ts` (cf. [Logique pure](core.md) et [Rendu &
 interactions](ui.md)).
 

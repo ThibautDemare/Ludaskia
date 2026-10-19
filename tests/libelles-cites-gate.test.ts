@@ -60,6 +60,8 @@ const LIBELLES: Record<string, string> = {
 	'Espace encadrants': "entrée du menu de profil, et bouton en bas de l'écran « Mon espace »",
 	'Mon espace': 'écran de profil (barre d’outils, en haut à droite)',
 	"Code d'accès": 'bloc des Réglages de l’espace encadrants',
+	'Autoriser les autres classes':
+		'case du bloc « Classe de … » des Réglages de l’espace encadrants (#772)',
 	"J'ai oublié mon code": 'lien de récupération, sur la demande de code',
 	'À revoir ensemble': 'bloc de suggestions de l’espace encadrants',
 	'À revoir': 'carte sur l’accueil de l’enfant, pour une leçon épinglée',

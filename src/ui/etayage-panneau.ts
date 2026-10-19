@@ -28,7 +28,7 @@ import {
 	doitEtayerAvantSerie,
 	episodeEtayable,
 	etayagePour,
-	leconAvant,
+	leconAvantJouee,
 	type EtayageContenu,
 	type EtayageExemple,
 } from '../core/etayage';
@@ -480,7 +480,9 @@ function etapesFixesHTML(contenu: EtayageContenu): SafeHtml {
    catégorie : c'est lui qui manque, et il se nomme par son libellé de SA classe, sans
    jamais dire laquelle. */
 function prerequisHTML(d: EtayageDemande): SafeHtml {
-	const trouve = leconAvant(
+	// Leçon jouée dans la classe que l'enfant a choisie (#772) : une leçon prise au-dessus de
+	// sa classe nomme les prérequis de la classe juste en dessous d'elle.
+	const trouve = leconAvantJouee(
 		d.lesson,
 		d.niveau,
 		niveauActifMatiere(d.lesson.subject),

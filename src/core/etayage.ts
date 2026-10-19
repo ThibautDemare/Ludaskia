@@ -36,6 +36,7 @@ import type { DroiteSpec } from './etayage-droite';
 import type { PositionSpec } from './etayage-position';
 import type { ProblemeSpec } from './etayage-probleme';
 import type { PosedSpec } from './items';
+import { LEVEL_ORDER } from './levels';
 import { prerequisOuverts } from './prerequis';
 import { BLOCAGES_SIGNAL_ADULTE, type EtatReport } from './report-lecon';
 
@@ -135,6 +136,22 @@ export function leconAvant(
 	if (ouvert) return { lesson: ouvert.lesson, niveau: ouvert.niveau };
 	const avant = leconPrerequise(lesson, niveau);
 	return avant ? { lesson: avant, niveau } : undefined;
+}
+
+/** `leconAvant` pour une leçon JOUÉE dans une classe qui peut ne pas être la classe suivie
+    (#772). Une leçon prise AU-DESSUS (un CE2 qui essaie une leçon de CM1) nomme les
+    prérequis de la classe juste en dessous d'ELLE : sa classe de référence est la plus
+    haute des deux, sinon la table des prérequis serait lue un cran trop bas et ne
+    trouverait rien. Prise en dessous ou dans la classe suivie : `leconAvant` à l'identique. */
+export function leconAvantJouee(
+	lesson: LessonDef,
+	niveauJoue: SchoolLevel,
+	niveauSuivi: SchoolLevel,
+	cartes: CartesBrutes,
+): { lesson: LessonDef; niveau: SchoolLevel } | undefined {
+	const reference =
+		LEVEL_ORDER.indexOf(niveauJoue) > LEVEL_ORDER.indexOf(niveauSuivi) ? niveauJoue : niveauSuivi;
+	return leconAvant(lesson, niveauJoue, reference, cartes);
 }
 
 /** Épisode de blocage dont l'enfant REVIENT, identifié par l'horodatage du report qui

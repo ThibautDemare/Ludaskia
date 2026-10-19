@@ -428,12 +428,19 @@ export interface CibleTravaillee {
 	    donc un badge afficherait un niveau bas sur ce qu'il y a de plus récent) mais autorisé
 	    explicitement la mention d'un progrès. */
 	capFranchi: CapFranchi | null;
+	/** Classe dans laquelle la leçon a été jouée : celle de sa clé de stats (#772). Une leçon
+	    travaillée dans deux classes fait DEUX lignes, une par classe. Absente pour une dictée,
+	    qui n'a pas de classe. */
+	niveau?: SchoolLevel;
 }
 export interface GroupeTravail {
 	subject: SubjectId;
 	label: string; // libellé de matière (« Mathématiques »)
 	cibles: CibleTravaillee[]; // la plus récemment travaillée en tête
 }
+/* `classeSuivie` (#772) : classe suivie par le profil dans chaque matière. Une ligne jouée
+   AU-DESSUS d'elle (un essai en classe supérieure) ne porte jamais d'état d'acquisition, donc
+   pas de cap : c'est le régime factuel de #556. Absente, aucune ligne n'est jugée au-dessus. */
 export function travailRecent(
 	statsRaw: Record<string, LessonStat>,
 	activityRaw: unknown,
@@ -441,6 +448,7 @@ export function travailRecent(
 	sources: SourcesCapFranchi,
 	jours: number,
 	now: number,
+	classeSuivie?: (subject: SubjectId) => SchoolLevel,
 ): GroupeTravail[] {
 	const seuil = debutJourLocal(now, jours - 1);
 	const activite = normalizeActivity(activityRaw).filter((e) => e.t >= seuil);
@@ -448,17 +456,37 @@ export function travailRecent(
 	// type pour distinguer une liste d'orthographe d'une leçon du catalogue (espaces d'ids
 	// disjoints, mais on ne veut pas en dépendre) : il suffit qu'UNE entrée de la cible soit
 	// une dictée, sinon l'ordre des entrées déciderait de l'affichage de la ligne.
-	const parRef = new Map<string, { seances: number; derniereFois: number; dictee: boolean }>();
+	// `parClasse`/`sansClasse` (#772) : la même chose, ventilée par classe JOUÉE (`n`) pour les
+	// leçons ; les entrées d'avant #772 n'en ont pas et restent à part.
+	const parRef = new Map<
+		string,
+		{
+			seances: number;
+			derniereFois: number;
+			dictee: boolean;
+			parClasse: Map<SchoolLevel, number>;
+			sansClasse: number;
+		}
+	>();
 	for (const e of activite) {
 		if (!e.ref) continue;
-		const acc = parRef.get(e.ref);
+		let acc = parRef.get(e.ref);
 		if (acc) {
 			acc.seances++;
 			acc.derniereFois = Math.max(acc.derniereFois, e.t);
 			acc.dictee = acc.dictee || e.k === 'dictee';
 		} else {
-			parRef.set(e.ref, { seances: 1, derniereFois: e.t, dictee: e.k === 'dictee' });
+			acc = {
+				seances: 1,
+				derniereFois: e.t,
+				dictee: e.k === 'dictee',
+				parClasse: new Map(),
+				sansClasse: 0,
+			};
+			parRef.set(e.ref, acc);
 		}
+		if (e.n) acc.parClasse.set(e.n, (acc.parClasse.get(e.n) ?? 0) + 1);
+		else acc.sansClasse++;
 	}
 
 	const parMatiere = new Map<SubjectId, CibleTravaillee[]>();
@@ -468,14 +496,23 @@ export function travailRecent(
 		else parMatiere.set(subject, [cible]);
 	};
 
-	// Leçons du catalogue, dédoublonnées par id : deux clés `@niveau` de la même leçon ne
-	// font qu'une ligne, datée de la plus récente des deux.
-	const derniereFoisLecon = new Map<string, number>();
+	// Leçons du catalogue : une ligne par CLASSE jouée (#772). Avant, deux clés `@niveau` de la
+	// même leçon ne faisaient qu'une ligne, et l'adulte ne voyait pas que l'enfant avait
+	// travaillé la version CE2 d'une leçon qu'il suit en CM1. Une clé héritée (sans `@`) est
+	// du CE2 et rejoint la ligne `@ce2`.
+	const derniereFoisLecon = new Map<string, number>(); // clé de ligne `id@classe`
 	const capLecon = new Map<string, CapFranchi | null>();
+	const lignesParLecon = new Map<string, number>();
 	for (const key in statsRaw) {
 		const lastAt = statsRaw[key].lastAt;
 		if (typeof lastAt !== 'number' || lastAt < seuil) continue;
-		const id = lessonOfKey(key);
+		const niveauCle = niveauOfKey(key) as SchoolLevel;
+		if (!LEVEL_ORDER.includes(niveauCle)) continue; // clé illisible : rien à nommer
+		const id = `${lessonOfKey(key)}@${niveauCle}`;
+		if (!derniereFoisLecon.has(id)) {
+			const nu = lessonOfKey(key);
+			lignesParLecon.set(nu, (lignesParLecon.get(nu) ?? 0) + 1);
+		}
 		derniereFoisLecon.set(id, Math.max(derniereFoisLecon.get(id) ?? lastAt, lastAt));
 		// Le journal des paliers des leçons est indexé par la CLÉ DE STATS, namespacée `@niveau`
 		// (`recordMonteesPalier` l'écrit ainsi, et la frise le relit ainsi) — PAS par l'id nu.
@@ -493,17 +530,28 @@ export function travailRecent(
 			capPlusHaut(capLecon.get(id) ?? null, capAnnoncable(sources.paliersLecons[key], seuil, etat)),
 		);
 	}
-	for (const [id, derniereFois] of derniereFoisLecon) {
+	for (const [cle, derniereFois] of derniereFoisLecon) {
+		const id = lessonOfKey(cle);
+		const niveau = niveauOfKey(cle) as SchoolLevel;
 		const lesson = getLessonById(id);
 		if (!lesson) continue; // leçon retirée du catalogue depuis : plus rien à nommer
+		// Séances de CETTE classe ; une entrée sans classe ne s'attribue que s'il n'y a qu'une
+		// ligne possible, sinon elle irait au hasard de l'ordre des clés.
+		const acc = parRef.get(id);
+		const seances =
+			(acc?.parClasse.get(niveau) ?? 0) +
+			(lignesParLecon.get(id) === 1 ? (acc?.sansClasse ?? 0) : 0);
+		const suivie = classeSuivie?.(lesson.subject);
+		const auDessus = !!suivie && LEVEL_ORDER.indexOf(niveau) > LEVEL_ORDER.indexOf(suivie);
 		pousser(lesson.subject, {
 			id,
-			label: lesson.label,
+			label: labelLecon(lesson, niveau),
 			kind: 'lecon',
 			contexte: CATEGORIES.find((c) => c.id === lesson.category)?.label ?? '',
-			seances: parRef.get(id)?.seances ?? null,
+			seances: seances > 0 ? seances : null,
 			derniereFois,
-			capFranchi: capLecon.get(id) ?? null,
+			capFranchi: auDessus ? null : (capLecon.get(cle) ?? null),
+			niveau,
 		});
 	}
 
@@ -534,7 +582,9 @@ export function travailRecent(
 	// La plus récente en tête ; à horodatage IDENTIQUE (cas courant : un bilan écrit le même
 	// `lastAt` à toutes ses leçons), la plus travaillée, un compte inconnu passant derrière
 	// un compte connu ; puis l'ordre alphabétique, sans quoi l'ordre d'itération des clés de
-	// stats déciderait et deux rendus successifs pourraient différer.
+	// stats déciderait et deux rendus successifs pourraient différer ; enfin, pour les deux
+	// lignes d'une même leçon au même libellé (#772), la classe la plus basse d'abord.
+	const rangClasse = (c: CibleTravaillee) => (c.niveau ? LEVEL_ORDER.indexOf(c.niveau) : -1);
 	return SUBJECTS.filter((s) => parMatiere.has(s.id)).map((s) => ({
 		subject: s.id,
 		label: s.label,
@@ -544,7 +594,8 @@ export function travailRecent(
 				(a, b) =>
 					b.derniereFois - a.derniereFois ||
 					(b.seances ?? 0) - (a.seances ?? 0) ||
-					a.label.localeCompare(b.label, 'fr'),
+					a.label.localeCompare(b.label, 'fr') ||
+					rangClasse(a) - rangClasse(b),
 			),
 	}));
 }
@@ -583,6 +634,7 @@ export function travailRecentProfil(
 		},
 		jours,
 		now,
+		(subject) => niveauProfilMatiere(profile, subject),
 	);
 }
 

@@ -257,6 +257,10 @@ function classeHTML(consulte: Profile): SafeHtml {
         ${matieres}
       </div>
       <p class="enc-hint">« Comme la classe » suit la classe choisie ; ajustez une matière au besoin.</p>
+      <label class="enc-toggle">
+        <input type="checkbox" data-act="set-autres-classes"${consulte.prefs?.sansAutresClasses ? '' : drapeau('checked')} />
+        <span>Autoriser les autres classes <small class="enc-hint">(l'enfant peut ouvrir les leçons d'une autre classe depuis une catégorie ou la recherche, par exemple une leçon de l'an dernier que son enseignant fait revoir ; ce travail apparaît dans « Travaillé récemment » avec la classe d'origine)</small></span>
+      </label>
     </div>`;
 }
 
@@ -275,6 +279,13 @@ export function reglagesChange(act: string, t: HTMLInputElement | HTMLSelectElem
 			(t.value || undefined) as SchoolLevel | undefined,
 		);
 		renderEspace();
+		return true;
+	}
+	// Accès aux autres classes (#772). Le réglage stocké est le RETRAIT (`sansAutresClasses`),
+	// la case affiche l'accès : cochée = autorisé, l'état par défaut. Pas de renderEspace() :
+	// rien d'autre à l'écran n'en dépend, et un re-rendu ferait perdre le focus de la case.
+	if (act === 'set-autres-classes' && uuid) {
+		setPrefFor(uuid, 'sansAutresClasses', !(t as HTMLInputElement).checked);
 		return true;
 	}
 	if (act === 'set-revision-plafond' && uuid) {

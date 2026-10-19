@@ -7,7 +7,7 @@
    déjà progress.ts).
    ============================================================ */
 import { lsGet, PROFILES_KEY } from './storage';
-import { getAllLessons, getLessonById } from './catalog';
+import { CATEGORIES, getAllLessons, getLessonById } from './catalog';
 import type { LessonDef, SchoolLevel, SubjectId } from './catalog';
 import { availableLevels, effectiveLevel, niveauDefautCatalogue } from './levels';
 
@@ -73,14 +73,60 @@ export function niveauImpose(lessonId: string): SchoolLevel | null {
 	return lesson ? effectiveLevel(lesson, impose.niveau) : impose.niveau;
 }
 
+/* ---------- Classe CHOISIE sur l'écran d'une catégorie (#772) ----------
+   L'enfant fait passer toute la page d'une catégorie dans une autre classe que celle de sa
+   matière : liste, étoiles, bilans, sprint, impression. Ce n'est PAS un réglage du profil :
+   la classe suivie ne bouge pas, et tout ce qui la mesure (complétude, tour complet,
+   leçon du jour, révision) continue de la lire par `niveauActifMatiere`.
+
+   Ce qui se JOUE depuis la page, en revanche, se joue dans la classe choisie : `niveauLecon`
+   la lit pour les leçons de SA catégorie, et le stockage suit (stats, étoiles, erreurs).
+   Les records de bilan et de sprint vont dans le classement de cette classe (progress.ts).
+
+   État de module, jamais persisté : un rechargement ramène à la classe du profil. C'est le
+   routeur (ui/navigation.ts) qui le lève en quittant la catégorie et ce qui s'y lance. */
+export interface ClasseChoisie {
+	categoryId: string;
+	niveau: SchoolLevel;
+}
+let choisie: ClasseChoisie | null = null;
+
+function matiereDeCategorie(categoryId: string): SubjectId | undefined {
+	return CATEGORIES.find((c) => c.id === categoryId)?.subject;
+}
+
+/** Pose la classe de l'écran d'une catégorie. Choisir la classe que la matière suit déjà
+    revient à ne rien choisir : le choix est levé. */
+export function choisirClasse(categoryId: string, niveau: SchoolLevel): void {
+	const subject = matiereDeCategorie(categoryId);
+	choisie = subject && niveau !== niveauActifMatiere(subject) ? { categoryId, niveau } : null;
+}
+export function leverClasseChoisie(): void {
+	choisie = null;
+}
+export function classeChoisie(): ClasseChoisie | null {
+	return choisie;
+}
+/** Classe dans laquelle s'affiche une catégorie : la classe choisie si elle vise CETTE
+    catégorie, sinon la classe suivie par sa matière. */
+export function classeDeCategorie(categoryId: string): SchoolLevel {
+	if (choisie?.categoryId === categoryId) return choisie.niveau;
+	return niveauActifMatiere(matiereDeCategorie(categoryId) ?? '');
+}
+
 /* Niveau effectif POUR UNE LEÇON : le niveau actif de SA MATIÈRE résolu sur les
    niveaux que la leçon supporte (repli/clamp via effectiveLevel). C'est ce qu'on
    passe à `generate`/`genLessonItem` au seam UI — une référence hors-filtre
    (favori, révision) est ainsi calibrée sans jamais être cassée. Un niveau IMPOSÉ à
-   cette leçon (#573) passe devant celui de la matière. */
+   cette leçon (#573) passe devant tout ; la classe choisie sur l'écran de SA catégorie
+   (#772) passe devant celle de la matière. */
 export function niveauLecon(lesson: LessonDef): SchoolLevel {
 	const demande =
-		impose?.lessonId === lesson.id ? impose.niveau : niveauActifMatiere(lesson.subject);
+		impose?.lessonId === lesson.id
+			? impose.niveau
+			: choisie?.categoryId === lesson.category
+				? choisie.niveau
+				: niveauActifMatiere(lesson.subject);
 	return effectiveLevel(lesson, demande);
 }
 

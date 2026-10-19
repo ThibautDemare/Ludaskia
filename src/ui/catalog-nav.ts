@@ -9,14 +9,24 @@ import {
 	SUBJECTS,
 	CATEGORIES,
 	ORTHO_CATEGORY_ID,
+	getAllLessons,
 	getLessonsBySubject,
 	getLessonsByCategory,
 } from '../core/catalog';
-import type { BilanConfig, LessonDef } from '../core/catalog';
-import { niveauActifMatiere } from '../core/niveau-actif';
-import { LEVEL_ORDER, LEVEL_LABEL, labelLecon } from '../core/levels';
+import type { BilanConfig, LessonDef, SchoolLevel } from '../core/catalog';
+import { choisirClasse, classeDeCategorie, niveauActifMatiere } from '../core/niveau-actif';
+import { LEVEL_ORDER, LEVEL_LABEL, classesPourvues, labelLecon } from '../core/levels';
 import { LESSONS_CALCUL_MENTAL } from '../core/lessons';
-import { loadStars, loadLessonStats, etoileAuxNiveaux } from '../core/progress';
+import {
+	loadStars,
+	loadStarsStockage,
+	loadLessonStats,
+	loadLessonStatsStockage,
+	etoileAuxNiveaux,
+} from '../core/progress';
+import { autresClassesAutorisees } from '../core/profiles';
+import { ORTHO_PREDEF } from '../data/francais/orthographe';
+import { segmentHTML, segmentKeydown } from './segment';
 import { loadOrtho } from '../core/orthographe/store';
 import { listOrthoLecons, motsApercu, type LeconOrthoRef } from '../core/orthographe/lessons';
 import { escapeHTML } from '../core/utils';
@@ -40,7 +50,7 @@ import {
 	goOrthoNew,
 	goOrthoEdit,
 } from './navigation';
-import { html, VIDE, joindre } from '../core/html';
+import { html, VIDE, joindre, type SafeHtml } from '../core/html';
 
 /* Dernier tirage d'express par catégorie (rotation : on évite de
    refaire tomber le même échantillon de leçons d'un express à l'autre). */
@@ -104,34 +114,106 @@ export function renderCategories(el: HTMLElement, subjectId: string, titleEl: HT
 	});
 }
 
+/* ---------- Classe de l'écran de catégorie (#772) ----------
+   L'enfant fait passer toute la page dans une autre classe que celle de sa matière : un
+   CM1 retrouve une leçon de CE2 que son enseignant ressort, un CE2 essaie une leçon de CM1.
+   Le profil ne bouge pas (core/niveau-actif.ts, « classe choisie »).
+
+   Classes proposées : celles qui ont quelque chose dans CETTE catégorie, plus la classe
+   suivie, qui garde toujours son option — « Calcul » n'a que du CE2, un CM1 y arrive sur
+   « Bientôt disponible » et doit pouvoir en repartir (précision du 20/10 sur #772). Pas de
+   sélecteur quand il n'y a rien ailleurs, ni quand l'adulte a retiré cet accès. */
+function classesProposees(
+	categoryId: string,
+	profil: SchoolLevel,
+	autres: readonly SchoolLevel[] = [],
+): SchoolLevel[] {
+	if (!autresClassesAutorisees()) return [];
+	const pourvues = classesPourvues(getAllLessons(), categoryId, autres);
+	if (!pourvues.some((lv) => lv !== profil)) return [];
+	return LEVEL_ORDER.filter((lv) => lv === profil || pourvues.includes(lv));
+}
+
+/* En-tête de classe de la page : le sélecteur, puis, en classe SUPÉRIEURE seulement, un
+   bandeau qui dit que c'est pour essayer. Vers le bas, rien d'autre que le sélecteur et le
+   titre : c'est l'enfant qui a choisi, il sait où il est (décision du 19/10 sur #772). */
+function classeEnteteHTML(
+	options: readonly SchoolLevel[],
+	niveau: SchoolLevel,
+	profil: SchoolLevel,
+): SafeHtml {
+	if (!options.length) return VIDE;
+	const segment = segmentHTML({
+		act: 'choisir-classe',
+		valAttr: 'classe',
+		label: 'Classe des leçons',
+		active: niveau,
+		options: options.map((lv) => ({ val: lv, label: LEVEL_LABEL[lv] })),
+		wrap: options.length > 3,
+	});
+	const bandeau =
+		LEVEL_ORDER.indexOf(niveau) > LEVEL_ORDER.indexOf(profil)
+			? html`<p class="classe-bandeau">${icon('lightbulb')} Leçons de la classe supérieure, pour essayer.</p>`
+			: VIDE;
+	return html`<div class="classe-choix"><span class="classe-choix-lib" aria-hidden="true">Leçons de :</span>${segment}</div>${bandeau}`;
+}
+
+/* Branche le sélecteur rendu dans `el` : choisir une classe re-rend la page, puis rend le
+   focus à l'option cochée (contrat du segment, cf. ui/segment.ts). */
+function brancherClasse(el: HTMLElement, categoryId: string, rerendre: () => void): void {
+	const groupe = el.querySelector<HTMLElement>('.classe-choix');
+	if (!groupe) return;
+	groupe.addEventListener('keydown', (e) => segmentKeydown(e));
+	groupe.querySelectorAll<HTMLButtonElement>('[data-act="choisir-classe"]').forEach((btn) => {
+		btn.addEventListener('click', () => {
+			if (btn.getAttribute('aria-checked') === 'true') return;
+			choisirClasse(categoryId, btn.dataset.classe as SchoolLevel);
+			rerendre();
+			el.querySelector<HTMLElement>('.classe-choix [aria-checked="true"]')?.focus();
+		});
+	});
+}
+
 /* ---------- Écran : leçons d'une catégorie + accès bilan/sprint ---------- */
 export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HTMLElement): void {
 	const category = CATEGORIES.find((c) => c.id === categoryId);
-	if (titleEl && category) titleEl.textContent = category.label;
+	const profil = niveauActifMatiere(category?.subject ?? '');
+	// Réglage retiré entre-temps par l'adulte : la page revient à la classe du profil.
+	const niveau = autresClassesAutorisees() ? classeDeCategorie(categoryId) : profil;
+	if (titleEl && category) {
+		titleEl.textContent =
+			niveau === profil ? category.label : `${category.label} · ${LEVEL_LABEL[niveau]}`;
+	}
+	const rerendre = () => renderCategorie(el, categoryId, titleEl);
 
 	if (categoryId === ORTHO_CATEGORY_ID) {
-		renderOrthoCategorie(el);
+		renderOrthoCategorie(el, niveau, profil, rerendre);
 		return;
 	}
 
-	const niveau = niveauActifMatiere(category?.subject ?? '');
+	const entete = classeEnteteHTML(classesProposees(categoryId, profil), niveau, profil);
 	const lessonDefs = getLessonsByCategory(categoryId, niveau);
 
 	// Catégorie encore sans leçon (nouvelles catégories maths en attente de
 	// contenu, #92) : on évite d'afficher des bilans/sprints qui ne tireraient
-	// rien. Un message rassurant tient lieu d'écran.
+	// rien. Un message rassurant tient lieu d'écran — sous le sélecteur de classe s'il y en
+	// a un, puisqu'une autre classe peut avoir des leçons ici (#772).
 	if (!lessonDefs.length) {
-		el.innerHTML = html`<div class="cat-empty">
+		el.innerHTML = html`${entete}<div class="cat-empty">
       <div class="cat-empty-ico" aria-hidden="true">🌱</div>
       <p class="cat-empty-title">Bientôt disponible&nbsp;!</p>
       <p class="cat-empty-sub">Les leçons de cette catégorie arrivent prochainement.</p>
     </div>`.balisage;
+		brancherClasse(el, categoryId, rerendre);
 		return;
 	}
 
 	const lessonIds = lessonDefs.map((l) => l.id);
-	const stars = loadStars();
-	const lstats = loadLessonStats();
+	// Étoiles et scores de la classe AFFICHÉE : dans une autre classe que celle du profil,
+	// chaque leçon se lit à son niveau joué (la classe choisie), pas à la classe suivie.
+	const autreClasse = niveau !== profil;
+	const stars = autreClasse ? loadStarsStockage() : loadStars();
+	const lstats = autreClasse ? loadLessonStatsStockage() : loadLessonStats();
 
 	// On réutilise les cartes riches (numéro, titre, étoile, %) à partir des
 	// entrées LESSONS correspondantes ; fallback minimal si absente.
@@ -166,7 +248,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 		}),
 	);
 
-	el.innerHTML = html`
+	el.innerHTML = html`${entete}
     <div id="catReprises" class="reprises reprises-cat"></div>
     <div class="cat-actions">
       <button class="cat-action" data-act="express"><span class="cat-action-line">${icon('timer')} Bilan express</span><small>rapide · ~20 questions</small></button>
@@ -195,18 +277,24 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 			return;
 		}
 		const btn = target.closest('.lesson-item') as HTMLElement | null;
-		if (btn && btn.dataset.id) startLecon(btn.dataset.id);
+		// Dans une autre classe (#772), la leçon se joue dans CETTE classe : le niveau voyage
+		// dans le hash, comme pour une épingle (#573), quand il change quelque chose.
+		if (btn && btn.dataset.id)
+			startLecon(btn.dataset.id, 'catalogue', autreClasse ? niveau : undefined);
 	});
+	brancherClasse(el, categoryId, rerendre);
 
 	// Bilans et sprint de la catégorie
 	el.querySelector('[data-act="express"]')!.addEventListener('click', () => {
-		// Express borné + échantillonné (cf. #35), avec rotation par catégorie.
+		// Express borné + échantillonné (cf. #35), avec rotation par catégorie ET par classe :
+		// le tirage CE2 d'une catégorie n'a rien à voir avec son tirage CM1.
+		const rotation = `${categoryId}@${niveau}`;
 		const config = buildExpressConfig(
 			`Bilan express — ${category?.label ?? ''}`,
 			lessonIds,
-			lastExpressByCat[categoryId],
+			lastExpressByCat[rotation],
 		);
-		lastExpressByCat[categoryId] = config.lessonIds;
+		lastExpressByCat[rotation] = config.lessonIds;
 		startBilan(config, categoryBilanCtx('express', categoryId, config));
 	});
 	el.querySelector('[data-act="complet"]')!.addEventListener('click', () => {
@@ -237,17 +325,34 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 
 /* ---------- Écran : catégorie Orthographe ----------
    Leçons prédéfinies (invariables/irréguliers) + listes du profil, plus une
-   carte « + Ajouter une liste ». Pas de bilan/sprint (modes propres au runner). */
-function renderOrthoCategorie(el: HTMLElement): void {
-	// Niveau actif de la matière français : filtre CUMULATIF des dictées prédéfinies
-	// (#243) — un profil CM1 voit les listes CE2 ET CM1, un CE2 reste aux listes CE2.
-	const niveau = niveauActifMatiere('francais');
+   carte « + Ajouter une liste ». Pas de bilan/sprint (modes propres au runner).
+   `niveau` = classe affichée (celle du profil, ou une autre choisie par l'enfant, #772). */
+function renderOrthoCategorie(
+	el: HTMLElement,
+	niveau: SchoolLevel,
+	profil: SchoolLevel,
+	rerendre: () => void,
+): void {
+	// Filtre CUMULATIF des dictées prédéfinies (#243) — un profil CM1 voit les listes CE2 ET
+	// CM1, un CE2 reste aux listes CE2. Dans une autre classe, celles de cette classe.
 	const lecons = listOrthoLecons(loadOrtho(), niveau);
 	// Leçons « moteur » de la catégorie Orthographe (accords #109, homophones #110) :
 	// exercices LessonDef (transformation / QCM), distincts des dictées de mots.
 	// Regroupées par rubrique, lancées par le parcours standard (saisie/QCM).
 	const moteurLecons = getLessonsByCategory(ORTHO_CATEGORY_ID, niveau);
-	const stars = loadStars();
+	const autreClasse = niveau !== profil;
+	const stars = autreClasse ? loadStarsStockage() : loadStars();
+	// Les dictées prédéfinies comptent dans les classes pourvues : ce ne sont pas des leçons
+	// du catalogue, mais elles remplissent la page autant qu'elles.
+	const entete = classeEnteteHTML(
+		classesProposees(
+			ORTHO_CATEGORY_ID,
+			profil,
+			ORTHO_PREDEF.map((l) => l.niveau),
+		),
+		niveau,
+		profil,
+	);
 	const predef = lecons.filter((l) => l.source === 'predefini');
 	// Listes du parent triées par date de contrôle décroissante (sans date en dernier).
 	const listes = lecons
@@ -332,7 +437,7 @@ function renderOrthoCategorie(el: HTMLElement): void {
 		),
 	);
 
-	el.innerHTML = html`${moteurSections}
+	el.innerHTML = html`${entete}${moteurSections}
     <section class="ortho-rubrique">
       <h3 class="cat-rubrique">Les dictées de mots</h3>
       <div class="ortho-cols">
@@ -354,8 +459,11 @@ function renderOrthoCategorie(el: HTMLElement): void {
       </div>
     </section>`.balisage;
 	el.querySelectorAll<HTMLButtonElement>('[data-lecon]').forEach((btn) => {
-		btn.addEventListener('click', () => startLecon(btn.dataset.lecon!));
+		btn.addEventListener('click', () =>
+			startLecon(btn.dataset.lecon!, 'catalogue', autreClasse ? niveau : undefined),
+		);
 	});
+	brancherClasse(el, ORTHO_CATEGORY_ID, rerendre);
 	el.querySelectorAll<HTMLButtonElement>('[data-ortho]').forEach((btn) => {
 		btn.addEventListener('click', () => startOrthoLecon(btn.dataset.ortho!));
 	});

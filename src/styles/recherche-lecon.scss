@@ -180,3 +180,19 @@
 	margin: 4px 0 0;
 	padding: 14px 12px;
 }
+/* Pastille de classe d'un résultat pris dans une AUTRE classe (#772, critère 11) : texte
+   neutre, distinct du vert « déjà maîtrisée » et de l'ambre « plus dur ». Couple `--ink` sur
+   `--track` (surface neutre pleine), tenu par la table de contraste. */
+.rech-classe {
+	display: inline-block;
+	margin-left: 8px;
+	padding: 1px 10px;
+	border-radius: 999px;
+	background: var(--track);
+	color: var(--ink);
+	font-family: var(--ui);
+	font-size: 13px;
+	font-weight: 700;
+	white-space: nowrap;
+	vertical-align: 1px;
+}

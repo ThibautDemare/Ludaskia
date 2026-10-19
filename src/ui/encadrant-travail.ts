@@ -22,7 +22,9 @@ import {
 	type CibleTravaillee,
 	type GroupeTravail,
 } from '../core/encadrant-stats';
-import { container, renderEspace } from './encadrant-commun';
+import { badgeClasseOrigine, container, renderEspace } from './encadrant-commun';
+import { niveauProfilMatiere } from '../core/niveau-profil';
+import type { SchoolLevel } from '../core/catalog';
 import { dicteeDisponible } from './tts';
 import { segmentHTML } from './segment';
 import { html, type SafeHtml, VIDE, joindre } from '../core/html';
@@ -75,7 +77,11 @@ export function travailHTML(consulte: Profile): SafeHtml {
 	const corps =
 		total === 0
 			? html`<p class="enc-hint">${resume}.</p>`
-			: html`${joindre(groupes.map((g) => groupeTravailHTML(g, now)))}
+			: html`${joindre(
+					// Classe suivie par matière : une ligne jouée dans une autre classe porte le
+					// badge de sa classe d'origine (#772).
+					groupes.map((g) => groupeTravailHTML(g, now, niveauProfilMatiere(consulte, g.subject))),
+				)}
       <p class="enc-hint">${resume}.</p>`;
 	return html`<div class="enc-block">
       <h3 class="enc-h3">${icon('check-square')} Travaillé récemment</h3>
@@ -107,7 +113,7 @@ function resumeTravail(groupes: GroupeTravail[], phrase: string): string {
 /* Une matière : son libellé, ses lignes, et le reste DÉPLIABLE au-delà de
    MAX_TRAVAIL_PAR_MATIERE (jamais un simple compteur : annoncer des lignes sans permettre
    de les lire crée un écart inexplicable, cf. les erreurs plus anciennes). */
-function groupeTravailHTML(g: GroupeTravail, now: number): SafeHtml {
+function groupeTravailHTML(g: GroupeTravail, now: number, suivie: SchoolLevel): SafeHtml {
 	const visibles = g.cibles.slice(0, MAX_TRAVAIL_PAR_MATIERE);
 	const reste = g.cibles.slice(MAX_TRAVAIL_PAR_MATIERE);
 	const texte = `${reste.length} autre${reste.length > 1 ? 's' : ''}`;
@@ -116,11 +122,11 @@ function groupeTravailHTML(g: GroupeTravail, now: number): SafeHtml {
 	const repli = reste.length
 		? html`<details class="enc-trav-plus">
         <summary class="enc-trav-plus-sum" aria-label="${`${texte} en ${g.label.toLowerCase()}`}">${texte}</summary>
-        <ul class="enc-trav-list">${joindre(reste.map((c) => ligneTravailHTML(c, now)))}</ul>
+        <ul class="enc-trav-list">${joindre(reste.map((c) => ligneTravailHTML(c, now, suivie)))}</ul>
       </details>`
 		: VIDE;
 	return html`<h4 class="enc-sub-lab">${g.label}</h4>
-      <ul class="enc-trav-list">${joindre(visibles.map((c) => ligneTravailHTML(c, now)))}</ul>
+      <ul class="enc-trav-list">${joindre(visibles.map((c) => ligneTravailHTML(c, now, suivie)))}</ul>
       ${repli}`;
 }
 
@@ -162,7 +168,7 @@ const MOT_CAP: Record<CapFranchi, string> = {
    l'ellipse réserve la formule longue au compte cumulé.
    Pas d'action sur la ligne : épingler et imprimer restent groupés dans l'accordéon, ce bloc
    est une lecture. */
-function ligneTravailHTML(c: CibleTravaillee, now: number): SafeHtml {
+function ligneTravailHTML(c: CibleTravaillee, now: number, suivie: SchoolLevel): SafeHtml {
 	const meta = [
 		c.kind === 'dictee' ? 'Dictée' : c.contexte,
 		c.seances === null ? '' : `${c.seances} fois`,
@@ -179,8 +185,12 @@ function ligneTravailHTML(c: CibleTravaillee, now: number): SafeHtml {
 	const complete = c.capFranchi
 		? html`<span class="enc-trav-cap">${MOT_CAP[c.capFranchi]}</span> · ${meta}`
 		: html`${meta}`;
+	// Classe d'origine (#772) : seulement hors de la classe suivie. Une leçon travaillée dans
+	// deux classes fait deux lignes ; c'est le badge qui les distingue quand le libellé est le
+	// même. Même composant que les épingles (#556) et l'historique des erreurs (#573).
+	const origine = c.niveau && c.niveau !== suivie ? html` ${badgeClasseOrigine(c.niveau)}` : VIDE;
 	return html`<li class="enc-trav-item">
-      <span class="enc-trav-lab">${c.label}</span>
+      <span class="enc-trav-lab">${c.label}${origine}</span>
       <span class="enc-trav-meta">${complete}</span>
     </li>`;
 }

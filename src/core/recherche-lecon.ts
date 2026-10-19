@@ -7,10 +7,11 @@
    Depuis #722, le sélecteur adulte (`catalogue-arbre.ts`, #556) cherche avec les mêmes
    mots et les mêmes noms : libellé affiché (`libelleAffiche`), mots-clés, dictées. Deux
    différences subsistent, VOULUES (ne pas « aligner » l'un sur l'autre) :
-   - ici le niveau est une FRONTIÈRE, pas un filtre : chaque leçon est retenue si elle est
-     disponible au niveau actif de SA matière (`source.niveau(subject)`), exactement comme
-     le catalogue parcouru à la main (critères 7 et 17) ; l'adulte, lui, choisit sa classe
-     par jeton ;
+   - ici la classe suivie passe EN TÊTE, elle ne filtre pas : chaque leçon disponible au
+     niveau actif de SA matière (`source.niveau(subject)`) sort comme sur le catalogue
+     parcouru à la main (critères 7 et 17) ; depuis #772, les versions des AUTRES classes
+     suivent, marquées de leur classe (`ResultatLecon.niveau`), sauf si l'adulte a retiré
+     cet accès (`autresClasses`) ; l'adulte, lui, choisit sa classe par jeton ;
    - une catégorie qui correspond (nom ou mot-clé) est un RÉSULTAT à part entière, qui
      ouvre son écran ; elle n'entraîne PAS ses leçons (« conjug » ne doit pas aligner 55
      boutons — la catégorie est la bonne réponse, critère 5) ; chez l'adulte, l'arbre EST le
@@ -33,6 +34,7 @@ import {
 	type SchoolLevel,
 	type SubjectId,
 } from './catalog';
+import { classeLaPlusProche, LEVEL_ORDER } from './levels';
 import { libelleAffiche } from './libelle-affiche';
 import { trierParOrdre } from './ordre';
 import { ordreEcran } from './rubriques';
@@ -44,6 +46,9 @@ export const RECHERCHE_MIN = 2;
 export interface DicteeRecherche {
 	id: string;
 	label: string;
+	/** Classe de la dictée quand elle n'est pas visible dans la classe suivie (#772) : posée
+	    par l'appelant, recopiée telle quelle dans le résultat. */
+	niveau?: SchoolLevel;
 }
 
 export interface SourceRecherche {
@@ -53,6 +58,9 @@ export interface SourceRecherche {
 	niveau: (subject: SubjectId) => SchoolLevel;
 	/** Dictées de mots déjà visibles au niveau actif (prédéfinies + listes du parent). */
 	dictees: readonly DicteeRecherche[];
+	/** Chercher aussi dans les AUTRES classes (#772). Absent ou `false` : la recherche
+	    d'avant, à l'identique — c'est le cas d'un profil dont l'adulte a retiré l'accès. */
+	autresClasses?: boolean;
 }
 
 export interface ResultatCategorie {
@@ -64,7 +72,10 @@ export interface ResultatCategorie {
 
 export interface ResultatLecon {
 	id: string;
-	label: string; // libellé AFFICHÉ à l'enfant, résolu au niveau actif
+	label: string; // libellé AFFICHÉ à l'enfant, résolu dans la classe du résultat
+	/** Classe du résultat, PRÉSENTE seulement hors de la classe suivie de sa matière (#772) :
+	    c'est ce qui porte la pastille, et la classe dans laquelle la leçon se lance. */
+	niveau?: SchoolLevel;
 }
 
 export interface GroupeLecons {
@@ -97,6 +108,75 @@ function libelleMatiere(subject: SubjectId): string {
 	return SUBJECTS.find((s) => s.id === subject)?.label ?? subject;
 }
 
+/* Écart d'une classe à la classe suivie, pour trier les autres classes : la plus proche
+   d'abord, celle du dessous avant celle du dessus à égalité. */
+function rangProximite(lv: SchoolLevel, profil: SchoolLevel): number {
+	const d = LEVEL_ORDER.indexOf(lv) - LEVEL_ORDER.indexOf(profil);
+	return Math.abs(d) * 2 + (d > 0 ? 1 : 0);
+}
+
+/* Versions des leçons d'une catégorie à chercher HORS de la classe suivie (#772, critère 10) :
+   - une leçon de la classe suivie n'apporte une autre version que si son libellé y DIFFÈRE
+     (une même notion sous un autre nom, ex. « Clique sur le nom » / « … le nom noyau ») ;
+     deux autres classes au même libellé n'en font qu'une, la plus proche ;
+   - une leçon absente de la classe suivie sort une fois, dans la classe la plus proche.
+   Sans cette règle, « Comparer des nombres » sortirait une fois par classe sous le même nom. */
+function autresVersions(
+	lessons: readonly LessonDef[],
+	profil: SchoolLevel,
+): { lesson: LessonDef; niveau: SchoolLevel; label: string }[] {
+	const out: { lesson: LessonDef; niveau: SchoolLevel; label: string }[] = [];
+	for (const l of lessons) {
+		if (!l.levels.includes(profil)) {
+			const niveau = classeLaPlusProche(l.levels, profil);
+			out.push({ lesson: l, niveau, label: libelleAffiche(l, niveau) });
+			continue;
+		}
+		const base = libelleAffiche(l, profil);
+		const vus = new Set<string>([base]);
+		const autres = l.levels
+			.filter((lv) => lv !== profil)
+			.sort((a, b) => rangProximite(a, profil) - rangProximite(b, profil));
+		for (const niveau of autres) {
+			const label = libelleAffiche(l, niveau);
+			if (vus.has(label)) continue;
+			vus.add(label);
+			out.push({ lesson: l, niveau, label });
+		}
+	}
+	return out;
+}
+
+/* Résultats d'une catégorie HORS de la classe suivie (#772), APRÈS ceux de la classe suivie :
+   de la classe la plus proche à la plus lointaine, et dans une même classe, dans l'ordre de
+   SON écran — tri et rubriques calculés sur toute la catégorie à ce niveau AVANT de filtrer,
+   comme pour la classe suivie (sinon une rubrique se déplace selon ce qui correspond). */
+function autresTrouvees(
+	deLaCategorie: readonly LessonDef[],
+	profil: SchoolLevel,
+	contient: (texte: string) => boolean,
+	parMotCle: (mots: readonly string[] | undefined) => boolean,
+): ResultatLecon[] {
+	const versions = autresVersions(deLaCategorie, profil).filter(
+		(v) => contient(v.label) || parMotCle(v.lesson.motsCles),
+	);
+	const classes = [...new Set(versions.map((v) => v.niveau))].sort(
+		(a, b) => rangProximite(a, profil) - rangProximite(b, profil),
+	);
+	return classes.flatMap((niveau) => {
+		const ecran = ordreEcran(
+			trierParOrdre(
+				deLaCategorie.filter((l) => l.levels.includes(niveau)),
+				niveau,
+			),
+		).map((l) => l.id);
+		return versions
+			.filter((v) => v.niveau === niveau)
+			.sort((a, b) => ecran.indexOf(a.lesson.id) - ecran.indexOf(b.lesson.id))
+			.map((v) => ({ id: v.lesson.id, label: v.label, niveau }));
+	});
+}
+
 export function rechercherLecons(requete: string, source: SourceRecherche): ResultatsRecherche {
 	const q = cleRecherche(requete);
 	if (q.length < RECHERCHE_MIN) return INACTIF;
@@ -107,13 +187,14 @@ export function rechercherLecons(requete: string, source: SourceRecherche): Resu
 	const groupes: GroupeLecons[] = [];
 	for (const cat of CATEGORIES) {
 		const niveau = source.niveau(cat.subject);
-		const auNiveau = source.lessons.filter(
-			(l) => l.category === cat.id && l.levels.includes(niveau),
-		);
-		// Une catégorie sans rien à montrer au niveau actif n'est jamais proposée : l'enfant
-		// arriverait sur « Bientôt disponible ». L'orthographe compte ses dictées.
+		const deLaCategorie = source.lessons.filter((l) => l.category === cat.id);
+		const auNiveau = deLaCategorie.filter((l) => l.levels.includes(niveau));
+		// Une catégorie sans rien à montrer n'est jamais proposée : l'enfant arriverait sur
+		// « Bientôt disponible ». L'orthographe compte ses dictées. Avec les autres classes
+		// (#772), ce qu'elle a ailleurs compte aussi : son écran y mène par le sélecteur.
 		const aDuContenu =
-			auNiveau.length > 0 || (cat.id === ORTHO_CATEGORY_ID && source.dictees.length > 0);
+			(source.autresClasses ? deLaCategorie.length > 0 : auNiveau.length > 0) ||
+			(cat.id === ORTHO_CATEGORY_ID && source.dictees.length > 0);
 		if (aDuContenu && (contient(cat.label) || parMotCle(cat.motsCles))) {
 			categories.push({
 				categoryId: cat.id,
@@ -128,13 +209,19 @@ export function rechercherLecons(requete: string, source: SourceRecherche): Resu
 		const trouvees = ordreEcran(trierParOrdre(auNiveau, niveau)).filter(
 			(l) => contient(libelleAffiche(l, niveau)) || parMotCle(l.motsCles),
 		);
-		if (trouvees.length) {
+		const lecons: ResultatLecon[] = trouvees.map((l) => ({
+			id: l.id,
+			label: libelleAffiche(l, niveau),
+		}));
+		if (source.autresClasses)
+			lecons.push(...autresTrouvees(deLaCategorie, niveau, contient, parMotCle));
+		if (lecons.length) {
 			groupes.push({
 				categoryId: cat.id,
 				label: cat.label,
 				subject: cat.subject,
 				subjectLabel: libelleMatiere(cat.subject),
-				lecons: trouvees.map((l) => ({ id: l.id, label: libelleAffiche(l, niveau) })),
+				lecons,
 			});
 		}
 	}

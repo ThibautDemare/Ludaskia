@@ -83,8 +83,9 @@ type Indirection = {
 const INDIRECTIONS: Indirection[] = [
 	{
 		fichier: 'src/core/progress.ts',
-		expression: 'runsKey(mode, niveauActif())',
-		raison: 'clé construite : le classement des essais est rangé par mode ET par niveau scolaire.',
+		expression: 'runsKey(mode, niveauClassement())',
+		raison:
+			'clé construite : le classement des essais est rangé par mode ET par niveau scolaire (classe de référence, ou classe choisie sur une catégorie depuis #772).',
 		preuve: /const RUNS_KEY = \(m: string\) => `ludaskia_runs_\$\{m\}`/,
 	},
 	{

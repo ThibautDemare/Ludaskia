@@ -64,6 +64,12 @@ export interface ProfilePrefs {
 	 *  RIEN d'autre : le journal de l'espace encadrant continue de tout capturer.
 	 *  Défaut (absent) = rappel affiché. */
 	sansMotsDifficiles?: boolean;
+	/** Retire à l'enfant l'accès aux leçons des AUTRES classes (#772) : plus de sélecteur de
+	 *  classe sur l'écran d'une catégorie, plus de résultat hors classe dans la recherche.
+	 *  Réglage de l'adulte, pour un enfant qui s'y disperse. Défaut (absent) = accès ouvert,
+	 *  profils existants compris : le besoin naît sans prévenir (l'enseignant ressort une
+	 *  leçon), et l'enfant ne saurait pas qu'il faut demander. */
+	sansAutresClasses?: boolean;
 }
 export interface Profile {
 	uuid: string;
@@ -323,6 +329,11 @@ export function apparitionsSurprises(): boolean {
 // surprises : un réglage qui coupe une aide ne doit pas être ce qui l'allume.
 export function motsDifficilesRappeles(): boolean {
 	return getPrefs().sansMotsDifficiles !== true;
+}
+// L'enfant a-t-il accès aux leçons des autres classes (#772) ? Vrai par défaut : le réglage
+// ne fait que le RETIRER, même patron que les deux aménagements ci-dessus.
+export function autresClassesAutorisees(): boolean {
+	return getPrefs().sansAutresClasses !== true;
 }
 // Nombre d'éléments d'une session de Révision pour le profil actif (#439). Le fallback
 // et le bornage se font ICI, à la lecture : un profil sans réglage explicite (ou une

@@ -11,7 +11,13 @@ import {
 	SUBJECTS,
 	CATEGORIES,
 } from './catalog';
-import { lessonsNiveauActif, niveauActif, niveauActifMatiere, niveauLecon } from './niveau-actif';
+import {
+	classeChoisie,
+	lessonsNiveauActif,
+	niveauActif,
+	niveauActifMatiere,
+	niveauLecon,
+} from './niveau-actif';
 import { labelLecon } from './levels';
 import {
 	loadRuns,
@@ -161,6 +167,9 @@ export interface GoalEvent {
 export function updateGoal(ev: GoalEvent) {
 	const goal = getGoal();
 	if (goal.done) return { goal, justDone: false };
+	// Un record établi dans une AUTRE classe (#772, écran de catégorie) l'est dans le
+	// classement de cette classe : « bats ton record » parle de celui de la classe suivie.
+	const recordDeLaClasse = !!ev.isRecord && !classeChoisie();
 	let inc = 0;
 	switch (goal.type) {
 		case 'star':
@@ -170,14 +179,14 @@ export function updateGoal(ev: GoalEvent) {
 			if (ev.mode === 'lecon' && ev.perfect) inc = 1;
 			break;
 		case 'beatSprint':
-			if (ev.mode === 'sprint' && ev.isRecord) inc = 1;
+			if (ev.mode === 'sprint' && recordDeLaClasse) inc = 1;
 			break;
 		case 'remediation':
 			if (ev.mode === 'lecon' && ev.lessonId === goal.lesson && (ev.lessonPct ?? 0) >= 80) inc = 1;
 			break;
 		// types hérités d'anciennes versions (défi déjà stocké pour aujourd'hui)
 		case 'record':
-			if (ev.isRecord) inc = 1;
+			if (recordDeLaClasse) inc = 1;
 			break;
 		case 'express':
 			if (ev.mode === 'express') inc = 1;

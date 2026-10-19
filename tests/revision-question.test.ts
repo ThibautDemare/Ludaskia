@@ -16,6 +16,7 @@ import { describe, it, expect } from 'vitest';
 import { getAllLessons, getLessonById } from '../src/core/catalog';
 import type { LessonDef, SchoolLevel } from '../src/core/catalog';
 import { hasMode } from '../src/core/exercise';
+import type { Exercise } from '../src/core/exercise';
 import { questionDeRevision } from '../src/core/revision-question';
 import type { QuestionRevision } from '../src/core/revision-question';
 import { withSeed } from '../src/core/utils';
@@ -139,7 +140,7 @@ describe('#770 — critère 3 : gate catalogue, aucun signe servi en saisie', ()
 	});
 });
 
-describe('#770 — critère 5 : pas de tuiles là où elles ne vont pas', () => {
+describe('#770 — critère 5 : pas de tuiles sans mode tuiles', () => {
 	it('garde-fou : des leçons sans mode tuiles existent au catalogue', () => {
 		expect(SANS_TUILES.length).toBeGreaterThan(0);
 	});
@@ -151,32 +152,65 @@ describe('#770 — critère 5 : pas de tuiles là où elles ne vont pas', () => 
 			expect(fautifs.slice(0, 5).map(decrire)).toEqual([]);
 		},
 	);
+});
 
-	/* Leçons à mode tuiles dont AUCUNE réponse n'est un signe (encadrer / intercaler) :
-	   la révision les sert en saisie, comme avant le correctif. */
-	const SANS_SIGNE = ['num-encadrer-intercaler', 'num-dec-encadrer'];
+/* Profil des réponses d'un couple (leçon à mode tuiles, niveau), tiré du GÉNÉRATEUR et non
+   de la révision : 'sansSigne' si tous les tirages sont des `text` dont aucun n'est un
+   signe, 'queDesSignes' si ce sont tous des `text` à signe, `null` sinon — leçon mixte
+   (couverte par les critères 1 à 4) ou forme non `text` (vocabulaire en `tuilesOrdre`). */
+type ExerciceTexte = Extract<Exercise, { type: 'text' }>;
+function profilReponses(
+	lesson: LessonDef,
+	level: SchoolLevel,
+): 'sansSigne' | 'queDesSignes' | null {
+	const tirages = Array.from({ length: TIRAGES }, (_, i) =>
+		withSeed(GRAINE + i, () => lesson.exerciseType.generate({ level })),
+	);
+	const textes = tirages.filter((ex): ex is ExerciceTexte => ex.type === 'text');
+	if (textes.length !== tirages.length) return null;
+	const signes = textes.filter((ex) => estSigne(ex.answer)).length;
+	if (signes === 0) return 'sansSigne';
+	if (signes === textes.length) return 'queDesSignes';
+	return null;
+}
 
-	for (const id of SANS_SIGNE) {
-		const lesson = getLessonById(id);
-		for (const level of lesson?.levels ?? []) {
-			it(`${id} (${level}) : aucune réponse n'est un signe → toujours en saisie`, () => {
-				expect(lesson, `leçon ${id} introuvable`).toBeDefined();
-				if (!lesson) return;
-				expect(hasMode(lesson.exerciseType, 'tuiles')).toBe(true);
-				// Précondition tirée du GÉNÉRATEUR, pas de la révision : si la leçon se met à
-				// poser des comparaisons, elle ne qualifie plus pour ce test — on le dit.
-				const signesGeneres = Array.from({ length: TIRAGES }, (_, i) =>
-					withSeed(GRAINE + i, () => lesson.exerciseType.generate({ level })),
-				).filter((ex) => 'answer' in ex && estSigne(ex.answer)).length;
-				expect(signesGeneres, `${id} pose désormais des comparaisons`).toBe(0);
+const PROFILS = AVEC_TUILES.map((c) => ({ couple: c, profil: profilReponses(c[2], c[1]) }));
+const SANS_SIGNE = PROFILS.filter((p) => p.profil === 'sansSigne').map((p) => p.couple);
+const QUE_DES_SIGNES = PROFILS.filter((p) => p.profil === 'queDesSignes').map((p) => p.couple);
+const ids = (cs: [string, SchoolLevel, LessonDef][]): string[] => cs.map(([id]) => id);
 
-				const pasEnSaisie = echantillon(lesson, level).filter((t) => t.q?.kind !== 'num');
-				expect(pasEnSaisie.slice(0, 5).map(decrire)).toEqual([]);
-			});
-		}
-	}
-
-	it('garde-fou : les leçons sans signe sont bien au catalogue', () => {
-		expect(SANS_SIGNE.filter((id) => !getLessonById(id))).toEqual([]);
+describe('#770 — critère 5 : une leçon homogène garde la forme de ses réponses (gate catalogue)', () => {
+	it('garde-fou : la branche « aucun signe » a des leçons, dont num-encadrer-intercaler', () => {
+		expect(ids(SANS_SIGNE)).toContain('num-encadrer-intercaler');
 	});
+
+	it('garde-fou : la branche « que des signes » a des leçons, dont num-comparer', () => {
+		expect(ids(QUE_DES_SIGNES)).toContain('num-comparer');
+	});
+
+	it("garde-fou : la leçon mixte n'entre dans aucune des deux branches", () => {
+		expect([...ids(SANS_SIGNE), ...ids(QUE_DES_SIGNES)]).not.toContain(LECON_MIXTE);
+	});
+
+	it.each(SANS_SIGNE)(
+		"%s (%s) : aucune réponse n'est un signe → toujours en saisie",
+		(_id, level, lesson) => {
+			const horsSaisie = echantillon(lesson, level).filter((t) => t.q?.kind !== 'num');
+			expect(
+				horsSaisie.slice(0, 5).map(decrire),
+				`${horsSaisie.length}/${TIRAGES} non servis en saisie`,
+			).toEqual([]);
+		},
+	);
+
+	it.each(QUE_DES_SIGNES)(
+		'%s (%s) : toutes les réponses sont des signes → toujours en tuiles',
+		(_id, level, lesson) => {
+			const horsTuiles = echantillon(lesson, level).filter((t) => t.q?.kind !== 'tuile');
+			expect(
+				horsTuiles.slice(0, 5).map(decrire),
+				`${horsTuiles.length}/${TIRAGES} non servis en tuiles`,
+			).toEqual([]);
+		},
+	);
 });

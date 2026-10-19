@@ -814,7 +814,8 @@ tuile est valide → pas de suffixe avant de répondre, mais la correction **ajo
 nombres auraient aussi convenu. » (même seuil de pluriel) : l'enfant qui ne joue qu'en tuiles
 ne rencontrerait sinon la pluralité des réponses dans aucun mode. `answer` reste un
 **exemple** valide (révélation, mode tuiles) : les **six** chemins de correction le disent de
-la même façon — sprint, révision (saisie **et** tuiles), leçon en tuiles annoncent « **une**
+la même façon — sprint, révision (servie en saisie depuis #770 ; son rendu tuiles garde le
+même verdict), leçon en tuiles annoncent « **une**
 réponse possible », la fiche révèle la **bande** au lieu de l'exemple (`data-attendue`), le
 corrigé **imprimé** ajoute la règle à l'exemple (« 457 ou tout nombre entre 450 et 465 ») et le
 journal encadrant enregistre la bande (`attendueItem`/`attendueIntervalle`/

@@ -5,10 +5,12 @@
    widget riche ou en saisie. Le rendu, lui, reste dans `ui/revision.ts`, qui
    n'ajoute que ce qui dépend de la séance (catégorie, libellé, niveau stocké).
    ============================================================ */
-import { genLessonItem, answerEstNumerique } from './catalog';
+import { genLessonItem, itemDepuisExercice, isLegacyMathLesson } from './catalog';
 import type { LessonDef, SchoolLevel } from './catalog';
 import { hasMode, depuisTuilesNombre, consignePourNiveau } from './exercise';
 import type {
+	ExerciseType,
+	ExerciseTuiles,
 	ChoiceView,
 	QcmVariante,
 	TuilesSpec,
@@ -19,6 +21,7 @@ import type {
 } from './exercise';
 import type { Item } from './items';
 import type { SafeHtml } from './html';
+import { estSigneComparaison } from './signes';
 
 // `consigneAction` (#265, cas `num`/posé) : consigne d'ACTION du type d'exercice
 // (ExerciseType.consigne, ex. « Pose l'addition et calcule. »), propagée du repli
@@ -105,6 +108,23 @@ export type QuestionRevision = { lessonId: string } & (
 	  }
 );
 
+/* Une comparaison tirée en TUILES (#770). Le mode tuiles tire sa propre question, qui
+   peut être numérique sur une leçon mixte : on retire jusqu'à obtenir un signe. La borne
+   n'est qu'un garde-fou (une comparaison sort environ un tirage sur deux) ; l'épuiser
+   sert le dernier tirage en tuiles, car un nombre en tuiles se joue, un signe en saisie
+   non. `null` : le mode tuiles de ce type ne rend pas de tuiles de nombre. */
+const ESSAIS_COMPARAISON = 50;
+function comparaisonEnTuiles(type: ExerciseType, level: SchoolLevel): ExerciseTuiles | null {
+	let dernier: ExerciseTuiles | null = null;
+	for (let i = 0; i < ESSAIS_COMPARAISON; i++) {
+		const tex = type.generate({ mode: 'tuiles', level });
+		if (tex.type !== 'tuilesNombre') return dernier;
+		if (estSigneComparaison(tex.answer)) return tex;
+		dernier = tex;
+	}
+	return dernier;
+}
+
 /* Tire UNE question de révision pour `lesson`, au niveau `level` (déjà résolu par
    l'appelant : niveau effectif, ou niveau d'entretien #232). `null` : rien à servir
    (type QCM dont le tirage ne rend pas de QCM — l'élément n'est alors pas empilé). */
@@ -188,12 +208,12 @@ export function questionDeRevision(lesson: LessonDef, level: SchoolLevel): Quest
 			explicationNommeCible: ex.explicationNommeCible,
 			segment: ex.segment,
 		};
-	// Réponse non numérique (signe <, =, >) + mode tuiles disponible → on rejoue en
+	// Comparaison (réponse = signe <, =, >) + mode tuiles disponible → on rejoue en
 	// tuiles plutôt qu'en saisie : un signe n'est pas saisissable au clavier numérique
 	// sur mobile (#186).
-	if (ex.type === 'text' && !answerEstNumerique(String(ex.answer)) && hasMode(type, 'tuiles')) {
-		const tex = type.generate({ mode: 'tuiles', level });
-		if (tex.type === 'tuilesNombre')
+	if (ex.type === 'text' && estSigneComparaison(ex.answer) && hasMode(type, 'tuiles')) {
+		const tex = comparaisonEnTuiles(type, level);
+		if (tex)
 			return {
 				kind: 'tuile',
 				lessonId,
@@ -202,12 +222,16 @@ export function questionDeRevision(lesson: LessonDef, level: SchoolLevel): Quest
 				...depuisTuilesNombre(tex),
 			};
 	}
-	// Repli saisie (num / texte / heure / posé) : genLessonItem gère figure, heure et
-	// l'opération posée.
+	// Repli saisie (num / texte / heure / posé), servi depuis CE tirage : celui qui vient
+	// de décider de la forme (#770). Un second tirage indépendant pouvait, sur une leçon
+	// qui mêle nombres et comparaisons, servir un signe en saisie. Le moteur hérité
+	// (calcul mental) garde son générateur : son `ExerciseType` n'en rend qu'un repli texte.
 	return {
 		kind: 'num',
 		lessonId,
-		item: genLessonItem(lesson, level),
+		item: isLegacyMathLesson(lesson)
+			? genLessonItem(lesson, level)
+			: itemDepuisExercice(lesson, ex),
 		// Action « quoi faire » (#265) ; surtout pour la posée. Résolue au niveau joué
 		// (#436) : une leçon multi-niveaux ne formule pas forcément la tâche pareil.
 		consigneAction: consignePourNiveau(type, level),

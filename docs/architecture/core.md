@@ -450,7 +450,8 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `tuilesNombre` vers l'état local d'un runner : `TuilesSpec = Omit<ExerciseTuiles, 'type'>`
   (dérivé du type, jamais re-déclaré) et un mappeur qui renvoie tout sauf `type`, **sans
   énumérer les champs**. Les deux runners qui gardent un état local — `ui/lecon-tuiles.ts`
-  (série de questions) et `ui/revision.ts` (RevItem `'tuile'`) — l'**étalent** (`...`) au lieu
+  (série de questions) et `revision-question.ts` (`QuestionRevision` `'tuile'`, rendu par
+  `ui/revision.ts:renderTuile`) — l'**étalent** (`...`) au lieu
   de recopier champ par champ. Motif : cette recopie dispersée est ce qui avait fait tomber
   l'`intervalle` en révision (verdict « LA bonne réponse » et journal à nombre isolé, en
   contradiction avec la même leçon hors révision) ; désormais un champ ajouté à `tuilesNombre`
@@ -1230,6 +1231,22 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   dès 150 jours après l'échéance de contrôle (365 jours), donc bien avant qu'un contrôle
   raté soit jamais rendu redescendant, ce qui annulerait le mécanisme et laisserait un
   acquis raté rester acquis pour toujours.
+- **`revision-question.ts`** (#770, pur) — **`questionDeRevision(lesson, level):
+  QuestionRevision | null`** : décide la **FORME** de la question servie en révision
+  espacée pour une leçon due (QCM, tuiles de nombre, rangement `ordre`/`tri`, widgets
+  riches `appariement`/`probleme`/`clicMot`, ou saisie `num`). `QuestionRevision` (les
+  variantes de leçon, avec `lessonId`) vit ici ; `ui/revision.ts` n'y ajoute que
+  `groupLabel`, `consigne` et `niveau` dans son `RevItem`. **Invariant** : la question
+  servie vient du tirage qui a décidé de sa forme (en saisie, le premier tirage est
+  réutilisé via `itemDepuisExercice`, sauf moteur hérité `isLegacyMathLesson` →
+  `genLessonItem`). Une **comparaison** (réponse `<`/`=`/`>`, `estSigneComparaison`) sur
+  une leçon à mode tuiles est retirée **en tuiles** jusqu'à obtenir un signe
+  (`comparaisonEnTuiles`, borne 50 ; épuisée → dernier tirage en tuiles : un nombre en
+  tuiles se joue, un signe en saisie non). Gate catalogue dans
+  `tests/revision-question.test.ts` : toute leçon à mode tuiles, tout niveau, ne sert
+  jamais un signe en saisie. Il tient aussi le seul trou restant : un type qui déclare le
+  mode tuiles et pose des signes **doit** rendre `tuilesNombre` dans ce mode, sinon
+  `comparaisonEnTuiles` rend `null` et le signe retombe en saisie.
 - **`revision-select.ts`** — sélection des éléments **dus** (mots + leçons),
   **regroupés par catégorie** et plafonnés (`selectDueGroups`, `countDue`) ;
   `prochaineEcheance`/`aDesRevisions` alimentent l'état « rien à réviser » de

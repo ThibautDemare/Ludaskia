@@ -15,7 +15,7 @@ import {
 import { getAllLessons, getLessonById } from './catalog';
 import type { SchoolLevel } from './catalog';
 import { LEVEL_ORDER, niveauInferieurImmediat } from './levels';
-import { niveauActif, niveauActifMatiere, niveauLecon } from './niveau-actif';
+import { classeChoisie, niveauActif, niveauActifMatiere, niveauLecon } from './niveau-actif';
 import {
 	JOUR,
 	etatNeuf,
@@ -114,7 +114,10 @@ export function scopeStockage<V>(raw: Record<string, V>): Record<string, V> {
    du niveau, il n'est pas attaché à une matière). En LECTURE, `loadRuns` renvoie le
    classement du niveau ACTIF (affichage des podiums/records) ; `loadRunsAll` agrège
    TOUS les niveaux pour les compteurs d'EFFORT (trophées, régularité), qui restent
-   GLOBAUX — un trophée acquis ne se reverrouille jamais au changement de classe. */
+   GLOBAUX — un trophée acquis ne se reverrouille jamais au changement de classe.
+   Un bilan ou un sprint lancé depuis une catégorie passée dans une AUTRE classe (#772) se
+   classe dans le classement de CETTE classe : un sprint CE2 n'a pas à battre un record CM1,
+   ni à en établir un. */
 export interface Run {
 	ts: number;
 	ok: number;
@@ -126,9 +129,14 @@ function runsKey(mode: string, niveau: SchoolLevel): string {
 	return `${RUNS_KEY(mode)}@${niveau}`;
 }
 const MAX_RUNS = 50; // on ne garde que les 50 derniers essais par mode ET par niveau
+/* Niveau du classement : la classe choisie sur l'écran d'une catégorie (#772), sinon la
+   classe de référence. */
+function niveauClassement(): SchoolLevel {
+	return classeChoisie()?.niveau ?? niveauActif();
+}
 /* Classement du niveau ACTIF (affichage des podiums/records). */
 export function loadRuns(mode: string): Run[] {
-	return lsGet(runsKey(mode, niveauActif()), []);
+	return lsGet(runsKey(mode, niveauClassement()), []);
 }
 /* Essais TOUS niveaux confondus : base des compteurs d'effort GLOBAUX (trophées,
    régularité), qui ne dépendent pas de la classe active. */
@@ -136,7 +144,7 @@ export function loadRunsAll(mode: string): Run[] {
 	return LEVEL_ORDER.flatMap((niveau) => lsGet(runsKey(mode, niveau), []) as Run[]);
 }
 function saveRuns(mode: string, runs: Run[]) {
-	lsSet(runsKey(mode, niveauActif()), runs);
+	lsSet(runsKey(mode, niveauClassement()), runs);
 }
 
 /* Bornes de période calendaire (pour les objectifs de régularité, et la frise #397).
@@ -449,6 +457,11 @@ export interface ActivityEntry {
 	   déjà en stockage (critère 18), et ce qui garde le journal court dans le cas courant.
 	   Ne concerne aujourd'hui que les sessions de dictée (cf. `etapeSatisfaite`). */
 	progressive?: boolean;
+	/* Classe dans laquelle la leçon `ref` a été JOUÉE (#772). Sans elle, une leçon travaillée
+	   dans deux classes sur la même semaine ne sait pas à quelle classe rendre ses séances
+	   (« Travaillé récemment » fait une ligne par classe). Absente des entrées plus
+	   anciennes, et de toute entrée dont la `ref` n'est pas une leçon du catalogue. */
+	n?: SchoolLevel;
 }
 
 /** Une session a-t-elle pu faire progresser ce qu'elle travaillait (#641) ? Lecture unique
@@ -479,6 +492,10 @@ export function normalizeActivity(raw: unknown): ActivityEntry[] {
 			// valeur d'un import bancal — retombe sur « la séance comptait », donc sur le
 			// comportement d'avant, jamais sur un crédit retiré à l'enfant.
 			if ((e as ActivityEntry).progressive === false) entry.progressive = false;
+			// Une classe illisible est lue comme une absence (#772) : l'entrée redevient une
+			// entrée ancienne, attribuée seulement quand elle n'a qu'une classe possible.
+			const n = (e as ActivityEntry).n;
+			if ((LEVEL_ORDER as unknown[]).includes(n)) entry.n = n;
 			out.push(entry);
 		}
 	}
@@ -501,6 +518,9 @@ function ajouterActivite(now: number, kind: ActivityKind, ref?: string, progress
 	const a = loadActivity(); // normalisé : réécrit aussi l'éventuel héritage au format objet
 	const entry: ActivityEntry = ref ? { t: now, k: kind, ref } : { t: now, k: kind };
 	if (!progressive) entry.progressive = false; // absent = « oui » (#641)
+	// Classe jouée (#772), pour une leçon du catalogue seulement : une liste d'orthographe ou un
+	// favori n'a pas de classe.
+	if (ref && getLessonById(ref)) entry.n = niveauStockage(ref);
 	a.push(entry);
 	if (a.length > ACTIVITY_MAX) a.splice(0, a.length - ACTIVITY_MAX);
 	lsSet(ACTIVITY_KEY, a);

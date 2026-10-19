@@ -26,7 +26,12 @@ import {
 	CATEGORIES,
 } from '../core/catalog';
 import type { BilanConfig, LessonDef } from '../core/catalog';
-import { niveauLecon, niveauActifMatiere } from '../core/niveau-actif';
+import {
+	classeChoisie,
+	classeDeCategorie,
+	niveauLecon,
+	niveauActifMatiere,
+} from '../core/niveau-actif';
 import { labelLecon } from '../core/levels';
 import { reponseLisible } from '../core/signes';
 import type { ChoiceView } from '../core/exercise';
@@ -133,11 +138,14 @@ function lessonsForFilter(f: SprintFilter): LessonDef[] {
 					: getAllLessons();
 	// Filtre par niveau actif de la matière (#225) — SAUF un favori explicite
 	// (`lessons`), qui résout hors-filtre pour ne pas être cassé par un changement de
-	// classe (la génération reste calibrée par niveauLecon).
+	// classe (la génération reste calibrée par niveauLecon). Le sprint d'une catégorie se
+	// joue dans la classe où l'enfant a passé son écran (#772).
 	const auNiveau =
 		f.type === 'lessons'
 			? base
-			: base.filter((d) => d.levels.includes(niveauActifMatiere(d.subject)));
+			: f.type === 'category'
+				? base.filter((d) => d.levels.includes(classeDeCategorie(f.id)))
+				: base.filter((d) => d.levels.includes(niveauActifMatiere(d.subject)));
 	// Les formats à écran dédié (posée #97, rangement #108, tri #114, appariement
 	// #392…) ne se jouent pas « une réponse à la fois » : `estEligibleSprintHorsNiveau` les
 	// écarte, avec les leçons explicitement exclues. Le prédicat vit dans le
@@ -466,7 +474,9 @@ function subjectTag(subject: string): SafeHtml {
    favori, sélection explicite qu'on ne modifie pas. Le périmètre « déjà vues » ne les
    filtre pas : elles sont travaillées par construction. */
 function appointDuFiltre(f: SprintFilter): LessonDef[] {
-	if (f.type === 'lessons') return [];
+	// Ni favori, ni sprint d'une catégorie passée dans une autre classe (#772) : l'appoint
+	// complète la classe SUIVIE avec la précédente, il n'a pas de sens hors d'elle.
+	if (f.type === 'lessons' || classeChoisie()) return [];
 	const filtre =
 		f.type === 'subject' ? { subject: f.id } : f.type === 'category' ? { category: f.id } : {};
 	return fragilesSprint(filtre, loadCartesBrutes());

@@ -189,3 +189,69 @@
 	background: var(--cat-bleu);
 	color: #fff;
 }
+
+/* ---- Classe de l'écran de catégorie (#772) ----
+   Segment partagé (ui/segment.ts, `.enc-act-mode`), relevé au gabarit enfant : 48 px de haut
+   et 16 px de texte au doigt, sur tablette (avis designer). L'option cochée est dite par la
+   COULEUR (accent plein) ET par une coche, pour ne pas reposer sur la couleur seule
+   (critère 9). Couple `--on-accent` sur `--accent` : déjà tenu par la table de contraste. */
+.classe-choix {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 8px 12px;
+	margin: 4px 0 14px;
+}
+.classe-choix-lib {
+	font-family: var(--ui);
+	font-size: 16px;
+	font-weight: 700;
+	color: var(--ink);
+}
+.classe-choix .enc-act-modes {
+	margin: 0;
+}
+.classe-choix .enc-act-mode {
+	font-family: var(--ui);
+	font-size: 16px;
+	min-height: 48px;
+	min-width: 64px;
+	padding: 0.4rem 1.1rem;
+}
+.classe-choix .enc-act-mode.on {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+/* Coche : texte de remplacement vide, le nom accessible reste « CE2 » (l'état « coché »
+   est déjà dit par `aria-checked`). */
+.classe-choix .enc-act-mode.on::before {
+	content: '✓\00a0' / '';
+}
+.classe-choix .enc-act-mode:focus-visible {
+	outline: 3px solid var(--accent-dark);
+	outline-offset: 2px;
+}
+/* Classe SUPÉRIEURE seulement : une phrase, en surface neutre — ni l'ambre « plus dur », ni
+   une alerte. Couple `--ink` sur `--accent-soft` : rampe de gris, tenue par #576. */
+.classe-bandeau {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	max-width: 36rem;
+	margin: 0 auto 16px;
+	padding: 10px 16px;
+	border-radius: 10px;
+	background: var(--accent-soft);
+	color: var(--ink);
+	font-family: var(--ui);
+	font-size: 16px;
+	font-weight: 700;
+	text-align: center;
+}
+.classe-bandeau .ph-icon {
+	width: 22px;
+	height: 22px;
+	flex: none;
+}

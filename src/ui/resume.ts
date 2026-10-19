@@ -44,6 +44,7 @@ import {
 } from './navigation';
 import { snapshotRunner, restaurerRunner } from './runner-reprise';
 import { setOrigineActivite } from './retour-activite';
+import { leverClasseChoisie } from '../core/niveau-actif';
 import { html, type SafeHtml, joindre, brut } from '../core/html';
 
 const now = () => Date.now();
@@ -122,6 +123,10 @@ export function finishResume(): void {
 /* ---------- Restauration ---------- */
 export function restoreResume(snap: ResumeSnapshot): void {
 	hideMenus();
+	// Une reprise se joue dans la classe du profil, même depuis une catégorie passée dans une
+	// autre classe (#772) : l'instantané a été pris là, et le reprendre ailleurs rangerait ses
+	// réponses dans la mauvaise classe.
+	leverClasseChoisie();
 	// Une reprise se lance depuis une carte « À continuer » (accueil / catégorie) : c'est
 	// un lancement CATALOGUE, même si l'exercice venait à l'origine du programme (#461).
 	setOrigineActivite('catalogue');

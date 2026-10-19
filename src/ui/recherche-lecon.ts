@@ -19,17 +19,26 @@
      un constat sobre, et les cartes de matière restent là (critère 11) ; avec des
      résultats, les cartes s'effacent pour ne pas mêler deux navigations sur un écran.
    ============================================================ */
-import { CATEGORIES, ORTHO_CATEGORY_ID, SUBJECTS, getAllLessons } from '../core/catalog';
-import { html, joindre, VIDE, type SafeHtml } from '../core/html';
-import { niveauActifMatiere } from '../core/niveau-actif';
+import {
+	CATEGORIES,
+	ORTHO_CATEGORY_ID,
+	SUBJECTS,
+	getAllLessons,
+	getLessonById,
+	type SchoolLevel,
+} from '../core/catalog';
+import { attribut, html, joindre, VIDE, type SafeHtml } from '../core/html';
+import { LEVEL_LABEL } from '../core/levels';
+import { choisirClasse, niveauActifMatiere } from '../core/niveau-actif';
 import { listOrthoLecons } from '../core/orthographe/lessons';
 import { loadOrtho } from '../core/orthographe/store';
-import { activeProfile } from '../core/profiles';
+import { activeProfile, autresClassesAutorisees } from '../core/profiles';
 import {
 	rechercherLecons,
 	type DicteeRecherche,
 	type GroupeLecons,
 	type ResultatCategorie,
+	type ResultatLecon,
 	type ResultatsRecherche,
 	type SourceRecherche,
 } from '../core/recherche-lecon';
@@ -63,15 +72,24 @@ function surveillerProfil(): void {
 }
 
 function sourceCourante(): SourceRecherche {
+	const autresClasses = autresClassesAutorisees();
+	const profilFr = niveauActifMatiere('francais');
+	// Dictées visibles au niveau actif du français (filtrage CUMULATIF, #243), comme
+	// l'écran Orthographe.
+	const visibles = listOrthoLecons(loadOrtho(), profilFr);
+	const vues = new Set(visibles.map((l) => l.id));
+	// Avec les autres classes (#772), les dictées prédéfinies des classes AU-DESSUS (celles
+	// d'en dessous sont déjà visibles, le filtre étant cumulatif), marquées de leur classe.
+	const autres: DicteeRecherche[] = autresClasses
+		? listOrthoLecons(loadOrtho()).flatMap((l) =>
+				!vues.has(l.id) && l.niveau ? [{ id: l.id, label: l.label, niveau: l.niveau }] : [],
+			)
+		: [];
 	return {
 		lessons: getAllLessons(),
 		niveau: niveauActifMatiere,
-		// Dictées visibles au niveau actif du français (filtrage CUMULATIF, #243), comme
-		// l'écran Orthographe.
-		dictees: listOrthoLecons(loadOrtho(), niveauActifMatiere('francais')).map((l) => ({
-			id: l.id,
-			label: l.label,
-		})),
+		dictees: [...visibles.map((l) => ({ id: l.id, label: l.label })), ...autres],
+		autresClasses,
 	};
 }
 
@@ -94,8 +112,18 @@ function categorieHTML(c: ResultatCategorie): SafeHtml {
     </button>`;
 }
 
-function leconHTML(l: { id: string; label: string }): SafeHtml {
-	return html`<button type="button" class="rech-lecon" data-id="${l.id}">${icon('book-open')}<span>${l.label}</span></button>`;
+/* Pastille de classe d'un résultat pris dans une AUTRE classe (#772, critère 11) : un texte
+   (« CE2 »), dans un style neutre — ni le vert de « déjà maîtrisée » ni l'ambre de « plus
+   dur ». Ici l'étiquette est nécessaire : une liste qui mêle les classes n'a pas, comme
+   l'écran de catégorie, de titre qui dise où l'on est. */
+function pastilleClasse(niveau: SchoolLevel | undefined): SafeHtml {
+	if (!niveau) return VIDE;
+	return html` <span class="rech-classe"><span class="sr-only">Classe : </span>${LEVEL_LABEL[niveau]}</span>`;
+}
+
+function leconHTML(l: ResultatLecon): SafeHtml {
+	const classe = l.niveau ? attribut('data-classe', l.niveau) : VIDE;
+	return html`<button type="button" class="rech-lecon" data-id="${l.id}"${classe}>${icon('book-open')}<span>${l.label}${pastilleClasse(l.niveau)}</span></button>`;
 }
 
 function groupeHTML(g: GroupeLecons): SafeHtml {
@@ -116,7 +144,7 @@ function dicteesHTML(dictees: readonly DicteeRecherche[]): SafeHtml {
         ${joindre(
 					dictees.map(
 						(d) =>
-							html`<button type="button" class="rech-dictee" data-ortho="${d.id}">${icon('cards')}<span>${d.label}</span></button>`,
+							html`<button type="button" class="rech-dictee" data-ortho="${d.id}"${d.niveau ? attribut('data-classe', d.niveau) : VIDE}>${icon('cards')}<span>${d.label}${pastilleClasse(d.niveau)}</span></button>`,
 					),
 				)}
       </div>
@@ -199,7 +227,12 @@ export function brancherRecherche(root: HTMLElement): void {
 		const cible = e.target as HTMLElement;
 		const lecon = cible.closest<HTMLElement>('.rech-lecon');
 		if (lecon?.dataset.id) {
-			startLecon(lecon.dataset.id);
+			// Résultat d'une autre classe (#772) : la leçon se joue dans cette classe, et la
+			// catégorie où la fin de série ramène s'ouvre dans cette classe aussi.
+			const classe = lecon.dataset.classe as SchoolLevel | undefined;
+			const def = classe ? getLessonById(lecon.dataset.id) : undefined;
+			if (classe && def) choisirClasse(def.category, classe);
+			startLecon(lecon.dataset.id, 'catalogue', classe);
 			return;
 		}
 		const categorie = cible.closest<HTMLElement>('.rech-categorie');
@@ -208,6 +241,12 @@ export function brancherRecherche(root: HTMLElement): void {
 			return;
 		}
 		const dictee = cible.closest<HTMLElement>('.rech-dictee');
-		if (dictee?.dataset.ortho) startOrthoLecon(dictee.dataset.ortho);
+		if (dictee?.dataset.ortho) {
+			// Dictée d'une autre classe : l'écran Orthographe, au retour, s'ouvre dans sa classe.
+			if (dictee.dataset.classe) {
+				choisirClasse(ORTHO_CATEGORY_ID, dictee.dataset.classe as SchoolLevel);
+			}
+			startOrthoLecon(dictee.dataset.ortho);
+		}
 	});
 }

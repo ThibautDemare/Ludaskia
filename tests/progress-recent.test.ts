@@ -140,7 +140,8 @@ describe('référence de la session journalisée (#498)', () => {
 	it('recordLessonStats : la cible fournie est journalisée telle quelle', () => {
 		const avant = Date.now();
 		recordLessonStats({ 'math-doubles': { ok: 5, total: 10 } }, 'lecon', 'math-doubles');
-		expect(Object.keys(derniere()).sort()).toEqual(['k', 'ref', 't']);
+		// `n` (#772) : classe dans laquelle la leçon cible a été jouée.
+		expect(Object.keys(derniere()).sort()).toEqual(['k', 'n', 'ref', 't']);
 		expect(derniere()).toMatchObject({ k: 'lecon', ref: 'math-doubles' });
 		expect(derniere().t).toBeGreaterThanOrEqual(avant);
 	});

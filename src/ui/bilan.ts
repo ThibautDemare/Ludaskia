@@ -13,7 +13,7 @@ import {
 } from '../core/catalog';
 import type { BilanConfig, LessonDef, Category } from '../core/catalog';
 import { labelLecon } from '../core/levels';
-import { niveauActifMatiere } from '../core/niveau-actif';
+import { classeChoisie, classeDeCategorie, leverClasseChoisie } from '../core/niveau-actif';
 import { subjectIcon, subjectTint, catTint } from './cat-visuals';
 import { loadBilans, saveBilan } from '../core/bilans';
 import { startCustomSprint } from './sprint';
@@ -80,15 +80,24 @@ export function runBilanConfig(config: BilanConfig, ctx?: ResumeCtx | null): voi
 	// seul chemin par lequel passe un bilan — reprise comprise, puisqu'elle relance la même
 	// config, ce qui crédite l'étape d'un favori commencé hier et fini aujourd'hui.
 	setCurrentFavoriId(config.id || null);
-	// Contexte de reprise (#63) : ce bilan devient « l'exercice en cours ».
-	if (ctx) setResumeCtx(ctx);
+	// Contexte de reprise (#63) : ce bilan devient « l'exercice en cours ». Sauf dans une
+	// classe choisie sur l'écran de la catégorie (#772) : l'instantané, rangé sous la
+	// catégorie, serait repris plus tard dans la classe du profil (même règle que le niveau
+	// imposé de #573).
+	if (ctx && !classeChoisie()) setResumeCtx(ctx);
 	else clearResumeCtx();
 	afterStart();
 }
 
 /* Lance un bilan en gérant la reprise : si le même bilan était commencé, on
-   propose « Continuer / Recommencer » ; sinon on le lance neuf (#63). */
+   propose « Continuer / Recommencer » ; sinon on le lance neuf (#63). Dans une classe
+   choisie (#772), pas de reprise : l'instantané en attente est celui de la classe du
+   profil, on lance neuf. */
 export function startBilan(config: BilanConfig, ctx: ResumeCtx): void {
+	if (classeChoisie()) {
+		runBilanConfig(config, null);
+		return;
+	}
 	maybeRelaunch(ctx.key, ctx.label, () => runBilanConfig(config, ctx));
 }
 
@@ -97,6 +106,9 @@ export function startBilan(config: BilanConfig, ctx: ResumeCtx): void {
     programme du jour lancent un favori de la même façon, donc tous journalisent son id et
     tous créditent l'étape qui le vise (critère 10 : « quel que soit le point d'entrée »). */
 export function lancerFavori(config: BilanConfig): void {
+	// Un favori se joue dans la classe du profil, même lancé depuis une catégorie passée dans
+	// une autre classe (#772) : c'est une sélection enregistrée, pas le contenu de la page.
+	leverClasseChoisie();
 	if (bilanMode(config) === 'sprint') startCustomSprint(config, config.id);
 	else startBilan(config, favoriBilanCtx(config));
 }
@@ -172,15 +184,16 @@ function genId(): string {
 
 /* Liste de cases à cocher (toute la tuile est cliquable) pour un ensemble de leçons.
    Le composeur liste TOUTES les leçons (tous niveaux confondus, volontairement) ; le
-   libellé, lui, est celui du niveau actif de la matière (#436) — c'est la classe dans
-   laquelle la leçon sera imprimée/jouée. */
+   libellé, lui, est celui de la classe dans laquelle la leçon sera imprimée/jouée (#436) :
+   celle de sa catégorie, donc la classe choisie sur l'écran de la catégorie s'il y en a
+   une (#772), sinon la classe suivie par la matière. */
 function lessonChecks(lessons: LessonDef[]): SafeHtml {
 	return joindre(
 		lessons.map(
 			(l) =>
 				html`<label class="bc-item">
           <input type="checkbox" class="bc-lesson-check" value="${l.id}" checked>
-          <span>${labelLecon(l, niveauActifMatiere(l.subject))}</span>
+          <span>${labelLecon(l, classeDeCategorie(l.category))}</span>
         </label>`,
 		),
 	);
@@ -263,8 +276,14 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 	if (scoped) {
 		// Écran scopé : une seule catégorie, déjà nommée par `.bc-scope`. On
 		// regroupe simplement ses leçons par rubrique (#109) ; le « Tout choisir »
-		// global du haut couvre le niveau catégorie.
-		lessonsMarkup = html`<div class="bc-scoped-lessons">${categoryBody(getLessonsByCategory(category!.id))}</div>`;
+		// global du haut couvre le niveau catégorie. Ouvert depuis une catégorie passée dans
+		// une autre classe (#772), il ne propose que les leçons de CETTE classe.
+		const choix = classeChoisie();
+		const lecons =
+			choix?.categoryId === category!.id
+				? getLessonsByCategory(category!.id, choix.niveau)
+				: getLessonsByCategory(category!.id);
+		lessonsMarkup = html`<div class="bc-scoped-lessons">${categoryBody(lecons)}</div>`;
 	} else {
 		// Écran global : Matière (volet repliable) → Catégorie → Rubrique. Volets
 		// repliés par défaut (109 leçons) — les compteurs « x/y » par matière disent

@@ -87,6 +87,40 @@ export function availableLevels(
 	return LEVEL_ORDER.filter((lv) => set.has(lv));
 }
 
+/* Classes pourvues dans UNE catégorie (#772) : celles où au moins une de ses leçons existe,
+   plus `autres` (les dictées prédéfinies de l'orthographe, qui ne sont pas des leçons du
+   catalogue). Ordre scolaire, sans doublon. Alimente le sélecteur de classe de l'écran de
+   catégorie : on ne propose une classe que si elle a quelque chose à montrer. */
+export function classesPourvues(
+	lessons: readonly { category: string; levels: readonly SchoolLevel[] }[],
+	categoryId: string,
+	autres: readonly SchoolLevel[] = [],
+): SchoolLevel[] {
+	const set = new Set<SchoolLevel>(autres);
+	for (const l of lessons) if (l.category === categoryId) for (const lv of l.levels) set.add(lv);
+	return LEVEL_ORDER.filter((lv) => set.has(lv));
+}
+
+/* Classe la plus PROCHE d'un niveau parmi un ensemble (#772, recherche toutes classes) :
+   le niveau lui-même s'il y est, sinon le plus petit écart sur l'échelle, celle du DESSOUS
+   à égalité. Distinct de `closestSupported`, qui préfère toujours le dessous même plus
+   lointain : c'est la bonne règle pour JOUER une référence hors filtre (on ne sert pas plus
+   dur que demandé), pas pour dire à l'enfant dans quelle classe une leçon se trouve. */
+export function classeLaPlusProche(
+	levels: readonly SchoolLevel[],
+	niveau: SchoolLevel,
+): SchoolLevel {
+	if (levels.length === 0 || levels.includes(niveau)) return niveau;
+	const ref = LEVEL_ORDER.indexOf(niveau);
+	let best = levels[0];
+	for (const lv of levels) {
+		const d = Math.abs(LEVEL_ORDER.indexOf(lv) - ref);
+		const db = Math.abs(LEVEL_ORDER.indexOf(best) - ref);
+		if (d < db || (d === db && LEVEL_ORDER.indexOf(lv) < LEVEL_ORDER.indexOf(best))) best = lv;
+	}
+	return best;
+}
+
 /* Niveau par défaut d'un catalogue : le plus bas niveau ayant du contenu. Repli
    quand aucune classe n'est choisie. Source unique (#351) — les appelants passent
    getAllLessons() (niveau-actif.ts, encadrant-stats.ts). Reste pur/paramétré comme

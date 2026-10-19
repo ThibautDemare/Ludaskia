@@ -33,6 +33,8 @@ import {
 	imposerNiveauLecon,
 	leverNiveauImpose,
 	niveauImpose,
+	classeChoisie,
+	leverClasseChoisie,
 } from '../core/niveau-actif';
 import { lireRevoirLecon } from '../core/revoir-cible';
 import { renderItem, createRenderContext } from '../core/items';
@@ -366,6 +368,25 @@ export function startRevision() {
 	else location.hash = 'revision';
 }
 
+/* Écrans où la classe choisie sur une catégorie (#772) reste en vigueur : la catégorie
+   elle-même, et ce qu'on y lance — une leçon (et son choix de mode), le sprint, « Je choisis
+   mes leçons », la révision de fin de série, une dictée pour l'orthographe. Les bilans ne
+   changent pas de hash. Partout ailleurs (accueil, matières, une autre catégorie, espace
+   encadrant…) l'enfant a quitté la page, et elle se rouvrira dans la classe de son profil. */
+function gardeClasseChoisie(h: string): boolean {
+	const choix = classeChoisie();
+	if (!choix) return true;
+	return (
+		h === 'categorie-' + choix.categoryId ||
+		h === 'bilan-cat-' + choix.categoryId ||
+		h.startsWith('lecon-') ||
+		h.startsWith('mode-') ||
+		h === 'sprint' ||
+		h === 'revision' ||
+		(choix.categoryId === ORTHO_CATEGORY_ID && h.startsWith('ortho-'))
+	);
+}
+
 export function route() {
 	stopTts(); // coupe une lecture de consigne en cours quand on change d'écran (#42)
 	// Applique le thème + le réglage d'animations du profil actif (couvre le
@@ -375,6 +396,9 @@ export function route() {
 	// Niveau imposé (#573) : levé à chaque changement d'écran, reposé par les seuls écrans
 	// d'une leçon dont le hash le porte (cf. `lireCibleHash`).
 	leverNiveauImpose();
+	// Classe choisie sur l'écran d'une catégorie (#772) : elle survit à ce qui se lance depuis
+	// cette catégorie et au retour vers elle, et tombe partout ailleurs.
+	if (!gardeClasseChoisie(h)) leverClasseChoisie();
 	// Séance partagée (#734) : `#envoi/<code>` (l'enfant joue), `#resultat/<code>` (l'adulte
 	// lit). Le code ne se lit qu'ici, jamais ailleurs.
 	const lien = lireFragment(location.hash);

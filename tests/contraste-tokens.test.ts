@@ -309,7 +309,11 @@ const PAIRES_TEXTE: Paire[] = [
 		arriere: '--warn-bg',
 		ou: 'encadrant.scss .enc-warn (alerte de carte), .enc-envoi-aide-refus ; sheets.scss .rb-warn (alerte du bilan de fiche) ; partage.scss .partage-encart-alerte (dictée sans voix)',
 	},
-	{ avant: '--on-accent', arriere: '--accent', ou: 'bilan.scss .bilan-cta, aide-exercice.scss' },
+	{
+		avant: '--on-accent',
+		arriere: '--accent',
+		ou: 'bilan.scss .bilan-cta, aide-exercice.scss ; catalog.scss .classe-choix .enc-act-mode.on (classe cochée, #772)',
+	},
 	{ avant: '--on-accent', arriere: '--accent-dark', ou: 'survol des mêmes boutons (bilan.scss)' },
 	{
 		avant: '--on-accent',
@@ -353,7 +357,11 @@ const PAIRES_TEXTE: Paire[] = [
 		arriere: '--paper',
 		ou: 'encadrant.scss (alerte de suppression) ; réponse donnée rappelée après une erreur (#503) : revision.scss .rev-donnee strong et marque .rev-marque-ko, sprint.scss .sprint-correction .sprint-donnee strong',
 	},
-	{ avant: '--ink', arriere: '--track', ou: 'surface neutre pleine : jauge, bouton « fantôme »' },
+	{
+		avant: '--ink',
+		arriere: '--track',
+		ou: 'surface neutre pleine : jauge, bouton « fantôme » ; recherche-lecon.scss .rech-classe (pastille de classe, #772)',
+	},
 	{ avant: '--grey', arriere: '--track', ou: 'idem, texte secondaire' },
 	// Espace encadrant : surface ADULTE, absente de la rampe #576 (qui ne connaît que
 	// --paper et --page-bg) alors que c'est un fond de page à part entière.

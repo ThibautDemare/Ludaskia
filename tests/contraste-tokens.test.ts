@@ -1200,6 +1200,45 @@ describe('Les recopies de --accent suivent leur source (#600)', () => {
 });
 
 /* ============================================================
+   Le fond vert des sections de la vitrine, écrit en dur
+   ============================================================ */
+
+describe('Texte sur les sections vertes de la vitrine (index.html)', () => {
+	/* `.v-section--soft` pose un littéral (#c7e2ce), pas un token : les tables de paires
+	   ne le voient pas, et un `--grey` ou un `--ink` retouché demain pourrait passer sous AA
+	   sur ces bandes sans qu'aucun gate ne bouge — le scénario de `--muted` (#576). Relevé
+	   par la relecture a11y de la section « partage par lien » (2026-10-20).
+	   Palette « defaut » seule : la vitrine n'importe pas themes.scss (src/vitrine.ts),
+	   aucun thème ne s'y applique. Couples montrés du doigt dans vitrine.scss : `--ink`
+	   (`.v-section h2`, `.v-partage-note strong`) et `--grey` (`.v-gamif-text p`,
+	   `.v-partage-lead`, `.v-partage-note`). ÉCARTÉ : la flèche `--accent-dark` entre deux
+	   étapes du partage, décorative (l'ordre est porté par la liste et les numéros), donc
+	   exemptée par WCAG 1.4.11. */
+	const VITRINE = readFileSync('src/styles/vitrine.scss', 'utf8');
+	const fond = VITRINE.match(/\.v-section--soft \{[^}]*?background: (#[0-9a-fA-F]{6})/)?.[1];
+
+	it('le fond est bien lu (garde contre un test à vide)', () => {
+		expect(
+			fond,
+			'Fond de `.v-section--soft` introuvable dans src/styles/vitrine.scss : la règle a ' +
+				'changé de forme (token, dégradé…), ce test ne garde plus rien. Corriger le motif.',
+		).toBeTruthy();
+	});
+
+	it.each(['--ink', '--grey'])('%s reste AA sur le fond vert', (texte) => {
+		const couleur = PALETTES.defaut[texte];
+		const r = contraste(couleur, fond!);
+		expect(
+			r,
+			`${texte} (${couleur}) sur le fond des sections vertes de la vitrine (${fond}) : ` +
+				`${r.toFixed(2)}:1, sous les ${SEUIL_TEXTE_AA}:1 du texte courant (WCAG 1.4.3).\n` +
+				`Éclaircir le fond dans vitrine.scss plutôt que de surcharger la couleur du texte ` +
+				`section par section.`,
+		).toBeGreaterThanOrEqual(SEUIL_TEXTE_AA);
+	});
+});
+
+/* ============================================================
    Le module partagé lui-même (#582)
    ============================================================ */
 

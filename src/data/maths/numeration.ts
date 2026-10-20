@@ -407,8 +407,12 @@ function intercaleFactGrand(): Fact {
 	// On reste sur le rang « intermédiaire » de la taille pour que les bornes soient
 	// des multiples ronds et que l'exemple à saisir tienne en ≤ 6 chiffres.
 	const rang = chiffres === 5 ? 1000 : chiffres === 6 ? 10000 : 100000;
+	// La borne basse a bien la taille tirée : k ≥ 10 donne a ≥ 10^(chiffres-1). Avec
+	// k ≥ 1, une taille 5 sortait des bornes à 4 chiffres (1 000 à 9 000), sous le gabarit
+	// « grand » du CM1 (#240).
+	const minK = 10 ** (chiffres - 1) / rang;
 	const maxK = Math.floor((10 ** chiffres - 1) / rang) - 1;
-	const k = rnd(1, Math.max(1, maxK));
+	const k = rnd(minK, Math.max(minK, maxK));
 	const a = k * rang; // borne basse (multiple rond)
 	const b = a + rang; // borne haute (multiple rond consécutif)
 	// Exemple de réponse : un nombre rond au milieu de l'intervalle (≤ 6 chiffres

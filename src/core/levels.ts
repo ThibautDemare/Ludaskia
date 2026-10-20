@@ -10,6 +10,13 @@ import type { LessonDef, SchoolLevel } from './catalog';
    (repli « vers le bas », plus tard mélange biaisé en V2). */
 export const LEVEL_ORDER: SchoolLevel[] = ['cp', 'ce1', 'ce2', 'cm1', 'cm2', '6e'];
 
+/* Garde de type : une valeur lue hors du code (stockage, attribut `data-*`, clé `@niveau`)
+   est-elle une classe de l'échelle ? Une seule lecture, plutôt qu'un `as SchoolLevel` qui
+   laisserait passer « zz » ou « CE2 » partout où la valeur circule ensuite. */
+export function estNiveau(x: unknown): x is SchoolLevel {
+	return (LEVEL_ORDER as unknown[]).includes(x);
+}
+
 /* Libellé enfant d'un niveau (jamais « plus facile » / « niveau bas » : c'est un
    réglage de contenu, pas un score — cf. #225, sécurité émotionnelle). */
 export const LEVEL_LABEL: Record<SchoolLevel, string> = {

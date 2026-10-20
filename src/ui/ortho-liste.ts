@@ -298,7 +298,9 @@ export function renderOrthoListeForm(el: HTMLElement, listeId: string | null): v
 			refreshResume();
 			if (formesPresent) refreshApercu();
 			else void detect();
-			ensureTrailingBlank();
+			// Pas d'ensureTrailingBlank ici : basculer en verbe ne change pas le mot, et à
+			// l'édition d'une liste la ligne n'est pas encore attachée à #orthoRows, et l'appel
+			// insérait alors une ligne vide AVANT chaque verbe, recréée à chaque ouverture.
 			// Le bouton de suggestion qui avait le focus vient d'être masqué : on déplace
 			// le focus dans le panneau (sinon il retombe sur <body>). Jamais à l'init
 			// (édition d'une liste : expand=false), pour ne pas voler le focus au chargement.

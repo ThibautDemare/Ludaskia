@@ -202,6 +202,94 @@ describe('Intercalation : CM1 par intervalle, CE2 réponse unique (#240)', () =>
 	});
 });
 
+/* ---------- Plancher CM1 : jamais de nombre à 4 chiffres (#240) ----------
+   Le gabarit CM1 « grand » de « J'encadre et j'intercale » travaille les GRANDS nombres :
+   un nombre à 4 chiffres (≤ 9 999) relève de la plage CE2, et formatNombre ne le groupe
+   même pas. Constat de la CI de main (e2e/reponse-revelee.spec.ts:253) : en sprint CM1,
+   réponse révélée « 2500 » puis « 8500 ».
+   Le défaut est RARE (~1 % des items CM1 de la leçon), d'où les tailles d'échantillon,
+   calculées pour qu'un défaut présent soit vu avec P(raté) < 1e-6 :
+   - critère 1, global : 3 000 items ; défaut supposé à 1 % des items →
+     P(raté) = 0,99^3000 ≈ 8e-14 ;
+   - critère 2, ciblé : 1 500 intercalations PAR MODE ; défaut supposé à 1 % des
+     intercalations seulement (mesuré : ~3 %) → P(raté) = 0,99^1500 ≈ 3e-7 par mode
+     (≈ 8e-21 au taux mesuré).
+   L'intercalation est reconnue sur l'ÉNONCÉ (« entre A et B »), pas sur la présence de
+   `intervalle` : un correctif qui perdrait ce champ ne viderait pas le test en silence. */
+const PLANCHER_CM1 = 10_000; // plus petit nombre à 5 chiffres
+
+/* Bornes A et B lues dans l'énoncé « … entre A et B … » (séparateurs de milliers
+   neutralisés), ou null si l'énoncé n'est pas une intercalation. `\s` couvre U+202F/U+00A0. */
+function bornesEnonce(question: string): [number, number] | null {
+	const m = question.match(/entre\s+(\d[\d\s]*?)\s+et\s+(\d[\d\s]*)/);
+	if (!m) return null;
+	return [Number(nettoyerSaisieNombre(m[1])), Number(nettoyerSaisieNombre(m[2]))];
+}
+
+describe('Plancher CM1 de « J’encadre et j’intercale » : 5 chiffres au moins (#240)', () => {
+	const lesson = getLessonById('num-encadrer-intercaler')!;
+
+	it('critère 1 : en CM1, tout nombre de l’énoncé, de la réponse et de l’intervalle est ≥ 10 000 (encadrement ET intercalation)', () => {
+		// Parcours du sprint (genLessonItem), celui où la CI a vu le défaut.
+		const vus = { encadrement: 0, intercalation: 0 };
+		const fautifs: Record<'encadrement' | 'intercalation', string[]> = {
+			encadrement: [],
+			intercalation: [],
+		};
+		for (let i = 0; i < 3000; i++) {
+			const it = genLessonItem(lesson, 'cm1');
+			const genre = bornesEnonce(it.text) ? 'intercalation' : 'encadrement';
+			vus[genre]++;
+			const nombres = [...nombresDe(it), ...(it.intervalle ?? [])];
+			if (nombres.some((n) => n < PLANCHER_CM1)) fautifs[genre].push(`${it.text} → ${it.answer}`);
+		}
+		// Les deux formes sont tirées : sinon le test n'en garderait qu'une.
+		expect(vus.encadrement).toBeGreaterThan(0);
+		expect(vus.intercalation).toBeGreaterThan(0);
+		expect(
+			fautifs.encadrement.length,
+			`encadrement : ${fautifs.encadrement.slice(0, 5).join(' | ')}`,
+		).toBe(0);
+		expect(
+			fautifs.intercalation.length,
+			`intercalation : ${fautifs.intercalation.slice(0, 5).join(' | ')}`,
+		).toBe(0);
+	});
+
+	it('critère 2 (négatif) : aucune intercalation CM1 n’a de borne ni d’exemple à 4 chiffres ou moins, dans chaque mode', () => {
+		const exType = lesson.exerciseType;
+		const modes = (exType.modes ?? []).map((m) => m.id);
+		expect(modes.length).toBeGreaterThan(0);
+		const CIBLE = 1500; // intercalations par mode (dimensionnement : voir l'en-tête)
+		for (const mode of modes) {
+			let vus = 0;
+			const fautifs: string[] = [];
+			for (let i = 0; i < 20_000 && vus < CIBLE; i++) {
+				const ex = exType.generate({ level: 'cm1', mode });
+				if (ex.type !== 'text' && ex.type !== 'tuilesNombre') continue;
+				const bornes = bornesEnonce(ex.question);
+				if (!bornes) continue; // encadrement : couvert par le critère 1
+				vus++;
+				const exemple = Number(nettoyerSaisieNombre(String(ex.answer)));
+				// Bornes A/B de l'énoncé, exemple `answer`, bornes de `intervalle` s'il existe.
+				const nombres = [...bornes, exemple, ...(ex.intervalle ?? [])];
+				// « 4 chiffres ou moins » lu sur l'écriture du nombre (un NaN de lecture échoue aussi).
+				if (nombres.some((n) => !Number.isInteger(n) || String(n).length <= 4)) {
+					fautifs.push(`${ex.question} → ${ex.answer}`);
+				}
+			}
+			// `soft` : un mode en échec n'empêche pas de voir le verdict des autres.
+			expect.soft(vus, `mode ${mode} : intercalations tirées`).toBe(CIBLE);
+			expect
+				.soft(
+					fautifs.length,
+					`mode ${mode} : ${fautifs.length} intercalation(s) à 4 chiffres, ex. ${fautifs.slice(0, 5).join(' | ')}`,
+				)
+				.toBe(0);
+		}
+	});
+});
+
 describe('Décomposition multiplicative — nouvelle leçon CM1 (#240)', () => {
 	const lesson = getLessonById('num-decompose-multiplicative')!;
 

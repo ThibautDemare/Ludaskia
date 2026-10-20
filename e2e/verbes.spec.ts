@@ -187,3 +187,73 @@ test('critère 2 (#702) : la carte d’une cible verbe montre la phrase complèt
 
 	expect(errors).toEqual([]);
 });
+
+/* ============================================================
+   Non-régression : rouvrir l'édition d'une liste qui contient des verbes ne
+   doit PAS semer de lignes vides au milieu. Exigence : N mots + M verbes →
+   exactement N + M lignes remplies, puis UNE seule ligne vide, en dernier.
+   ============================================================ */
+const motBanque = (id: string, mot: string) => ({
+	id,
+	mot,
+	entourage: [],
+	atelierFait: true,
+	validation: { motCache: false, tuiles: false, dictee: false },
+	revision: { palier: 0, prochaineRevision: null, reussites: 0, dernierTest: null },
+	origine: 'liste',
+});
+const verbeCfg = (infinitif: string) => ({
+	kind: 'verbe',
+	infinitif,
+	pronoms: [0],
+	temps: ['present'],
+	complement: '',
+});
+const SEED_EDITION_VERBES = {
+	banque: { w1: motBanque('w1', 'chat'), w2: motBanque('w2', 'maison') },
+	listes: [
+		{
+			id: 'l-e2e-edit-mixte',
+			label: 'Mixte',
+			motIds: ['w1', 'w2'],
+			verbes: [verbeCfg('manger'), verbeCfg('chanter')],
+			createdAt: 1,
+			updatedAt: 1,
+		},
+		{
+			id: 'l-e2e-edit-verbe-seul',
+			label: 'Verbe seul',
+			motIds: [],
+			verbes: [verbeCfg('manger')],
+			createdAt: 2,
+			updatedAt: 2,
+		},
+	],
+	motIdParForme: { chat: 'w1', maison: 'w2' },
+};
+
+async function valeursMots(page: import('@playwright/test').Page): Promise<string[]> {
+	return page
+		.locator('.ortho-mot')
+		.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+}
+
+for (const [id, attendu, nbVerbes] of [
+	['l-e2e-edit-mixte', ['chat', 'maison', 'manger', 'chanter', ''], 2],
+	['l-e2e-edit-verbe-seul', ['manger', ''], 1],
+] as const) {
+	test(`édition d'une liste avec verbes (${id}) : lignes remplies puis une seule ligne vide, en dernier`, async ({
+		page,
+	}) => {
+		const errors = watchErrors(page);
+		await page.addInitScript((seed) => {
+			localStorage.setItem('e2e/ludaskia_ortho', JSON.stringify(seed));
+		}, SEED_EDITION_VERBES);
+		await gotoHash(page, 'ortho-edit-' + id);
+		await page.locator('.ortho-mot').first().waitFor();
+
+		await expect(page.locator('.ortho-row-wrap.is-verbe')).toHaveCount(nbVerbes);
+		expect(await valeursMots(page)).toEqual([...attendu]);
+		expect(errors).toEqual([]);
+	});
+}

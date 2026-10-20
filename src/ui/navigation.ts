@@ -33,7 +33,9 @@ import {
 	imposerNiveauLecon,
 	leverNiveauImpose,
 	niveauImpose,
+	choisirClasse,
 	classeChoisie,
+	gardeClasseChoisie,
 	leverClasseChoisie,
 } from '../core/niveau-actif';
 import { lireRevoirLecon } from '../core/revoir-cible';
@@ -241,10 +243,15 @@ function lireCibleHash(cible: string): string {
 
 /* `niveau` (#573) : niveau auquel jouer la leçon, quand l'appelant le connaît (épingle de la
    file « à revoir ») ; absent, la leçon se joue à son niveau ordinaire. */
+/* `rouvrirDansSaClasse` (#772) : la leçon vient de la recherche, prise dans une autre classe ;
+   l'écran de sa catégorie, au retour, doit s'ouvrir dans cette classe. Le choix n'est posé
+   qu'au lancement EFFECTIF : une offre de reprise annulée ne change pas d'écran, et un choix
+   posé d'avance survivrait jusqu'à la leçon suivante, qui se jouerait dans la mauvaise classe. */
 export function startLecon(
 	id: string,
 	origine: OrigineActivite = 'catalogue',
 	niveau?: SchoolLevel,
+	{ rouvrirDansSaClasse = false }: { rouvrirDansSaClasse?: boolean } = {},
 ) {
 	const lesson = getLessonById(id);
 	if (!lesson) return;
@@ -255,6 +262,7 @@ export function startLecon(
 	// filtrage par niveau (#711) : un mode réservé au CM1 ne doit pas ouvrir un écran de
 	// choix à un CE2 qui n'y verrait qu'un seul bouton.
 	const lancer = () => {
+		if (rouvrirDansSaClasse && niveau) choisirClasse(lesson.category, niveau);
 		location.hash =
 			(modesPourNiveau(lesson.exerciseType, joue).length > 1 ? 'mode-' : 'lecon-') + cible;
 	};
@@ -368,25 +376,6 @@ export function startRevision() {
 	else location.hash = 'revision';
 }
 
-/* Écrans où la classe choisie sur une catégorie (#772) reste en vigueur : la catégorie
-   elle-même, et ce qu'on y lance — une leçon (et son choix de mode), le sprint, « Je choisis
-   mes leçons », la révision de fin de série, une dictée pour l'orthographe. Les bilans ne
-   changent pas de hash. Partout ailleurs (accueil, matières, une autre catégorie, espace
-   encadrant…) l'enfant a quitté la page, et elle se rouvrira dans la classe de son profil. */
-function gardeClasseChoisie(h: string): boolean {
-	const choix = classeChoisie();
-	if (!choix) return true;
-	return (
-		h === 'categorie-' + choix.categoryId ||
-		h === 'bilan-cat-' + choix.categoryId ||
-		h.startsWith('lecon-') ||
-		h.startsWith('mode-') ||
-		h === 'sprint' ||
-		h === 'revision' ||
-		(choix.categoryId === ORTHO_CATEGORY_ID && h.startsWith('ortho-'))
-	);
-}
-
 export function route() {
 	stopTts(); // coupe une lecture de consigne en cours quand on change d'écran (#42)
 	// Applique le thème + le réglage d'animations du profil actif (couvre le
@@ -398,7 +387,9 @@ export function route() {
 	leverNiveauImpose();
 	// Classe choisie sur l'écran d'une catégorie (#772) : elle survit à ce qui se lance depuis
 	// cette catégorie et au retour vers elle, et tombe partout ailleurs.
-	if (!gardeClasseChoisie(h)) leverClasseChoisie();
+	// Un choix devenu invalide (posé par un autre profil) est purgé au passage.
+	const choix = classeChoisie();
+	if (!choix || !gardeClasseChoisie(h, choix)) leverClasseChoisie();
 	// Séance partagée (#734) : `#envoi/<code>` (l'enfant joue), `#resultat/<code>` (l'adulte
 	// lit). Le code ne se lit qu'ici, jamais ailleurs.
 	const lien = lireFragment(location.hash);

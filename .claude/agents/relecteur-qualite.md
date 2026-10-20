@@ -148,6 +148,11 @@ faut.**
   épingle, #573) est posé ET levé par `route()`, jamais par l'écran lui-même ; et toute
   écriture différée (microtâche, `setTimeout`) qui lit cet état résout ses clés AU MOMENT
   de l'appel, pas à son exécution (cf. `monteesPalierCles`, `progress.ts`).
+  Second piège de cette variante : tout ne passe pas par `route()`. Un changement de profil
+  sur la même page, une offre de reprise annulée ou une modale fermée laissent le hash en
+  place. Un état posé par un écran (classe choisie #772, niveau imposé #573) doit donc AUSSI
+  être validé à la lecture (profil qui l'a posé, réglage qui l'autorise), ou n'être posé
+  qu'au lancement effectif. Exiger le test qui change de profil sans changer d'écran.
 - **Une règle de correction n'a qu'une source.** Un écran qui doit juger SANS marquer
   (séance partagée, aperçu) appelle la règle que `verify()` utilise lui-même
   (`juste()` d'un widget, `jugerTableau`, `etapeJuste`), jamais une copie. Deux

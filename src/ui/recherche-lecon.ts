@@ -24,16 +24,16 @@ import {
 	ORTHO_CATEGORY_ID,
 	SUBJECTS,
 	getAllLessons,
-	getLessonById,
 	type SchoolLevel,
 } from '../core/catalog';
 import { attribut, html, joindre, VIDE, type SafeHtml } from '../core/html';
-import { LEVEL_LABEL } from '../core/levels';
+import { LEVEL_LABEL, estNiveau } from '../core/levels';
 import { choisirClasse, niveauActifMatiere } from '../core/niveau-actif';
 import { listOrthoLecons } from '../core/orthographe/lessons';
 import { loadOrtho } from '../core/orthographe/store';
 import { activeProfile, autresClassesAutorisees } from '../core/profiles';
 import {
+	dicteesDesAutresClasses,
 	rechercherLecons,
 	type DicteeRecherche,
 	type GroupeLecons,
@@ -73,22 +73,16 @@ function surveillerProfil(): void {
 
 function sourceCourante(): SourceRecherche {
 	const autresClasses = autresClassesAutorisees();
+	const ortho = loadOrtho();
 	const profilFr = niveauActifMatiere('francais');
 	// Dictées visibles au niveau actif du français (filtrage CUMULATIF, #243), comme
-	// l'écran Orthographe.
-	const visibles = listOrthoLecons(loadOrtho(), profilFr);
-	const vues = new Set(visibles.map((l) => l.id));
-	// Avec les autres classes (#772), les dictées prédéfinies des classes AU-DESSUS (celles
-	// d'en dessous sont déjà visibles, le filtre étant cumulatif), marquées de leur classe.
-	const autres: DicteeRecherche[] = autresClasses
-		? listOrthoLecons(loadOrtho()).flatMap((l) =>
-				!vues.has(l.id) && l.niveau ? [{ id: l.id, label: l.label, niveau: l.niveau }] : [],
-			)
-		: [];
+	// l'écran Orthographe ; avec les autres classes (#772), celles des classes au-dessus,
+	// marquées de leur classe.
+	const visibles = listOrthoLecons(ortho, profilFr).map((l) => ({ id: l.id, label: l.label }));
 	return {
 		lessons: getAllLessons(),
 		niveau: niveauActifMatiere,
-		dictees: [...visibles.map((l) => ({ id: l.id, label: l.label })), ...autres],
+		dictees: autresClasses ? [...visibles, ...dicteesDesAutresClasses(ortho, profilFr)] : visibles,
 		autresClasses,
 	};
 }
@@ -229,10 +223,8 @@ export function brancherRecherche(root: HTMLElement): void {
 		if (lecon?.dataset.id) {
 			// Résultat d'une autre classe (#772) : la leçon se joue dans cette classe, et la
 			// catégorie où la fin de série ramène s'ouvre dans cette classe aussi.
-			const classe = lecon.dataset.classe as SchoolLevel | undefined;
-			const def = classe ? getLessonById(lecon.dataset.id) : undefined;
-			if (classe && def) choisirClasse(def.category, classe);
-			startLecon(lecon.dataset.id, 'catalogue', classe);
+			const classe = estNiveau(lecon.dataset.classe) ? lecon.dataset.classe : undefined;
+			startLecon(lecon.dataset.id, 'catalogue', classe, { rouvrirDansSaClasse: !!classe });
 			return;
 		}
 		const categorie = cible.closest<HTMLElement>('.rech-categorie');
@@ -243,9 +235,7 @@ export function brancherRecherche(root: HTMLElement): void {
 		const dictee = cible.closest<HTMLElement>('.rech-dictee');
 		if (dictee?.dataset.ortho) {
 			// Dictée d'une autre classe : l'écran Orthographe, au retour, s'ouvre dans sa classe.
-			if (dictee.dataset.classe) {
-				choisirClasse(ORTHO_CATEGORY_ID, dictee.dataset.classe as SchoolLevel);
-			}
+			if (estNiveau(dictee.dataset.classe)) choisirClasse(ORTHO_CATEGORY_ID, dictee.dataset.classe);
 			startOrthoLecon(dictee.dataset.ortho);
 		}
 	});

@@ -15,7 +15,7 @@ import {
 } from '../core/catalog';
 import type { BilanConfig, LessonDef, SchoolLevel } from '../core/catalog';
 import { choisirClasse, classeDeCategorie, niveauActifMatiere } from '../core/niveau-actif';
-import { LEVEL_ORDER, LEVEL_LABEL, classesPourvues, labelLecon } from '../core/levels';
+import { LEVEL_ORDER, LEVEL_LABEL, classesPourvues, estNiveau, labelLecon } from '../core/levels';
 import { LESSONS_CALCUL_MENTAL } from '../core/lessons';
 import {
 	loadStars,
@@ -166,20 +166,38 @@ function brancherClasse(el: HTMLElement, categoryId: string, rerendre: () => voi
 	groupe.addEventListener('keydown', (e) => segmentKeydown(e));
 	groupe.querySelectorAll<HTMLButtonElement>('[data-act="choisir-classe"]').forEach((btn) => {
 		btn.addEventListener('click', () => {
-			if (btn.getAttribute('aria-checked') === 'true') return;
-			choisirClasse(categoryId, btn.dataset.classe as SchoolLevel);
+			const classe = btn.dataset.classe;
+			if (btn.getAttribute('aria-checked') === 'true' || !estNiveau(classe)) return;
+			choisirClasse(categoryId, classe);
 			rerendre();
 			el.querySelector<HTMLElement>('.classe-choix [aria-checked="true"]')?.focus();
 		});
 	});
 }
 
+/* Étoiles et scores de la classe AFFICHÉE : dans une autre classe que celle du profil,
+   chaque leçon se lit à son niveau joué (la classe choisie), pas à la classe suivie. */
+function progressionDeLaClasse(niveau: SchoolLevel, profil: SchoolLevel) {
+	const autre = niveau !== profil;
+	return {
+		stars: autre ? loadStarsStockage() : loadStars(),
+		lstats: autre ? loadLessonStatsStockage() : loadLessonStats(),
+	};
+}
+
+/* Lance une leçon de la page. Dans une autre classe, elle se joue dans CETTE classe : le
+   niveau voyage dans le hash, comme pour une épingle (#573), quand il change quelque chose. */
+function lancerDansLaClasse(id: string, niveau: SchoolLevel, profil: SchoolLevel): void {
+	startLecon(id, 'catalogue', niveau !== profil ? niveau : undefined);
+}
+
 /* ---------- Écran : leçons d'une catégorie + accès bilan/sprint ---------- */
 export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HTMLElement): void {
 	const category = CATEGORIES.find((c) => c.id === categoryId);
 	const profil = niveauActifMatiere(category?.subject ?? '');
-	// Réglage retiré entre-temps par l'adulte : la page revient à la classe du profil.
-	const niveau = autresClassesAutorisees() ? classeDeCategorie(categoryId) : profil;
+	// Classe affichée : la classe choisie, ou celle du profil. Un choix posé par un autre
+	// profil, ou dont l'adulte a retiré l'accès, ne vaut plus (core/niveau-actif.ts).
+	const niveau = classeDeCategorie(categoryId);
 	if (titleEl && category) {
 		titleEl.textContent =
 			niveau === profil ? category.label : `${category.label} · ${LEVEL_LABEL[niveau]}`;
@@ -211,9 +229,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 	const lessonIds = lessonDefs.map((l) => l.id);
 	// Étoiles et scores de la classe AFFICHÉE : dans une autre classe que celle du profil,
 	// chaque leçon se lit à son niveau joué (la classe choisie), pas à la classe suivie.
-	const autreClasse = niveau !== profil;
-	const stars = autreClasse ? loadStarsStockage() : loadStars();
-	const lstats = autreClasse ? loadLessonStatsStockage() : loadLessonStats();
+	const { stars, lstats } = progressionDeLaClasse(niveau, profil);
 
 	// On réutilise les cartes riches (numéro, titre, étoile, %) à partir des
 	// entrées LESSONS correspondantes ; fallback minimal si absente.
@@ -277,10 +293,7 @@ export function renderCategorie(el: HTMLElement, categoryId: string, titleEl: HT
 			return;
 		}
 		const btn = target.closest('.lesson-item') as HTMLElement | null;
-		// Dans une autre classe (#772), la leçon se joue dans CETTE classe : le niveau voyage
-		// dans le hash, comme pour une épingle (#573), quand il change quelque chose.
-		if (btn && btn.dataset.id)
-			startLecon(btn.dataset.id, 'catalogue', autreClasse ? niveau : undefined);
+		if (btn && btn.dataset.id) lancerDansLaClasse(btn.dataset.id, niveau, profil);
 	});
 	brancherClasse(el, categoryId, rerendre);
 
@@ -340,8 +353,7 @@ function renderOrthoCategorie(
 	// exercices LessonDef (transformation / QCM), distincts des dictées de mots.
 	// Regroupées par rubrique, lancées par le parcours standard (saisie/QCM).
 	const moteurLecons = getLessonsByCategory(ORTHO_CATEGORY_ID, niveau);
-	const autreClasse = niveau !== profil;
-	const stars = autreClasse ? loadStarsStockage() : loadStars();
+	const { stars } = progressionDeLaClasse(niveau, profil);
 	// Les dictées prédéfinies comptent dans les classes pourvues : ce ne sont pas des leçons
 	// du catalogue, mais elles remplissent la page autant qu'elles.
 	const entete = classeEnteteHTML(
@@ -459,9 +471,7 @@ function renderOrthoCategorie(
       </div>
     </section>`.balisage;
 	el.querySelectorAll<HTMLButtonElement>('[data-lecon]').forEach((btn) => {
-		btn.addEventListener('click', () =>
-			startLecon(btn.dataset.lecon!, 'catalogue', autreClasse ? niveau : undefined),
-		);
+		btn.addEventListener('click', () => lancerDansLaClasse(btn.dataset.lecon!, niveau, profil));
 	});
 	brancherClasse(el, ORTHO_CATEGORY_ID, rerendre);
 	el.querySelectorAll<HTMLButtonElement>('[data-ortho]').forEach((btn) => {

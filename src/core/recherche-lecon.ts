@@ -36,6 +36,8 @@ import {
 } from './catalog';
 import { classeLaPlusProche, LEVEL_ORDER } from './levels';
 import { libelleAffiche } from './libelle-affiche';
+import { listOrthoLecons } from './orthographe/lessons';
+import type { OrthoState } from './orthographe/types';
 import { trierParOrdre } from './ordre';
 import { ordreEcran } from './rubriques';
 import { cleRecherche } from './utils';
@@ -106,6 +108,19 @@ const INACTIF: ResultatsRecherche = Object.freeze({
 
 function libelleMatiere(subject: SubjectId): string {
 	return SUBJECTS.find((s) => s.id === subject)?.label ?? subject;
+}
+
+/** Dictées PRÉDÉFINIES des autres classes (#772), chacune marquée de sa classe : celles que
+    le filtre CUMULATIF de `listOrthoLecons` (#243) ne montre pas à `niveau`, donc celles des
+    classes au-dessus (celles d'en dessous y sont déjà). Une liste du parent n'a pas de classe
+    et reste toujours visible : elle n'y figure jamais. */
+export function dicteesDesAutresClasses(ortho: OrthoState, niveau: SchoolLevel): DicteeRecherche[] {
+	const visibles = new Set(listOrthoLecons(ortho, niveau).map((l) => l.id));
+	return listOrthoLecons(ortho).flatMap((l) =>
+		l.source === 'predefini' && l.niveau && !visibles.has(l.id)
+			? [{ id: l.id, label: l.label, niveau: l.niveau }]
+			: [],
+	);
 }
 
 /* Écart d'une classe à la classe suivie, pour trier les autres classes : la plus proche

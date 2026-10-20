@@ -55,7 +55,7 @@ import {
 	type SchoolLevel,
 	type SubjectId,
 } from './catalog';
-import { LEVEL_ORDER, labelLecon, niveauInferieurImmediat } from './levels';
+import { LEVEL_ORDER, estNiveau, labelLecon, niveauInferieurImmediat } from './levels';
 import { BLOCAGES_SIGNAL_ADULTE, type EtatReport } from './report-lecon';
 import { consolidationBasNiveau } from './consolidation-bas-niveau';
 import { touchProfile, type Profile } from './profiles';
@@ -438,6 +438,19 @@ export interface GroupeTravail {
 	label: string; // libellé de matière (« Mathématiques »)
 	cibles: CibleTravaillee[]; // la plus récemment travaillée en tête
 }
+/* Séances d'UNE ligne de « Travaillé récemment » (#772), une leçon dans une classe : celles
+   journalisées avec cette classe (`n`), plus les entrées d'avant #772, qui n'en ont pas — mais
+   seulement si la leçon n'a qu'une ligne dans la fenêtre. Sinon une entrée sans classe ne
+   s'attribue à aucune : la donner à l'une irait au hasard de l'ordre des clés de stats. */
+function seancesDeLaClasse(
+	acc: { parClasse: Map<SchoolLevel, number>; sansClasse: number } | undefined,
+	niveau: SchoolLevel,
+	nbLignes: number,
+): number {
+	if (!acc) return 0;
+	return (acc.parClasse.get(niveau) ?? 0) + (nbLignes === 1 ? acc.sansClasse : 0);
+}
+
 /* `classeSuivie` (#772) : classe suivie par le profil dans chaque matière. Une ligne jouée
    AU-DESSUS d'elle (un essai en classe supérieure) ne porte jamais d'état d'acquisition, donc
    pas de cap : c'est le régime factuel de #556. Absente, aucune ligne n'est jugée au-dessus. */
@@ -506,8 +519,8 @@ export function travailRecent(
 	for (const key in statsRaw) {
 		const lastAt = statsRaw[key].lastAt;
 		if (typeof lastAt !== 'number' || lastAt < seuil) continue;
-		const niveauCle = niveauOfKey(key) as SchoolLevel;
-		if (!LEVEL_ORDER.includes(niveauCle)) continue; // clé illisible : rien à nommer
+		const niveauCle = niveauOfKey(key);
+		if (!estNiveau(niveauCle)) continue; // clé illisible : rien à nommer
 		const id = `${lessonOfKey(key)}@${niveauCle}`;
 		if (!derniereFoisLecon.has(id)) {
 			const nu = lessonOfKey(key);
@@ -532,15 +545,12 @@ export function travailRecent(
 	}
 	for (const [cle, derniereFois] of derniereFoisLecon) {
 		const id = lessonOfKey(cle);
-		const niveau = niveauOfKey(cle) as SchoolLevel;
+		const niveau = niveauOfKey(cle);
 		const lesson = getLessonById(id);
-		if (!lesson) continue; // leçon retirée du catalogue depuis : plus rien à nommer
-		// Séances de CETTE classe ; une entrée sans classe ne s'attribue que s'il n'y a qu'une
-		// ligne possible, sinon elle irait au hasard de l'ordre des clés.
-		const acc = parRef.get(id);
-		const seances =
-			(acc?.parClasse.get(niveau) ?? 0) +
-			(lignesParLecon.get(id) === 1 ? (acc?.sansClasse ?? 0) : 0);
+		// Leçon retirée du catalogue depuis : plus rien à nommer. (`niveau` est toujours valide
+		// ici, la clé de ligne ayant été construite sur une classe vérifiée.)
+		if (!lesson || !estNiveau(niveau)) continue;
+		const seances = seancesDeLaClasse(parRef.get(id), niveau, lignesParLecon.get(id) ?? 0);
 		const suivie = classeSuivie?.(lesson.subject);
 		const auDessus = !!suivie && LEVEL_ORDER.indexOf(niveau) > LEVEL_ORDER.indexOf(suivie);
 		pousser(lesson.subject, {

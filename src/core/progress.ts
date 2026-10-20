@@ -14,7 +14,7 @@ import {
 } from './storage';
 import { getAllLessons, getLessonById } from './catalog';
 import type { SchoolLevel } from './catalog';
-import { LEVEL_ORDER, niveauInferieurImmediat } from './levels';
+import { LEVEL_ORDER, estNiveau, niveauInferieurImmediat } from './levels';
 import { classeChoisie, niveauActif, niveauActifMatiere, niveauLecon } from './niveau-actif';
 import {
 	JOUR,
@@ -495,7 +495,7 @@ export function normalizeActivity(raw: unknown): ActivityEntry[] {
 			// Une classe illisible est lue comme une absence (#772) : l'entrée redevient une
 			// entrée ancienne, attribuée seulement quand elle n'a qu'une classe possible.
 			const n = (e as ActivityEntry).n;
-			if ((LEVEL_ORDER as unknown[]).includes(n)) entry.n = n;
+			if (estNiveau(n)) entry.n = n;
 			out.push(entry);
 		}
 	}

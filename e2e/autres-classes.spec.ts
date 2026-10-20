@@ -379,3 +379,349 @@ test('Négatif : après un passage en vue CE2, « Ta prochaine leçon » ne port
 
 	expect(errors).toEqual([]);
 });
+
+/* ============================================================
+   Chemins ajoutés après la relecture qualité (#772) : sprint, « Je choisis mes
+   leçons », bilans sans reprise, reprises et favoris, offre de reprise annulée,
+   changement de profil. Attentes tirées des critères 4 et des précisions 2 et 3 du
+   20/10, jamais du code.
+   ============================================================ */
+
+const CAT_NUM = 'categorie-math-numeration';
+
+/* Libellés et ids des leçons listées par la page de catégorie, dans la classe affichée. */
+async function leconsAffichees(page: Page): Promise<{ id: string; titre: string }[]> {
+	await expect(page.locator('.lesson-item').first()).toBeVisible();
+	return page.locator('.lesson-item').evaluateAll((els) =>
+		els.map((e) => ({
+			id: (e as HTMLElement).dataset.id ?? '',
+			titre: (e.querySelector('.lz-title')?.textContent ?? '').trim(),
+		})),
+	);
+}
+
+/* Les leçons de `math-numeration` vues en CE2 puis en CM1 (la page repasse en CE2 ensuite),
+   et celles qui n'existent QU'en CM1 : le jeu d'exclusion des tests de classe. */
+async function inventaireNumeration(page: Page) {
+	await radio(page, 'ce2').click();
+	await expect(radio(page, 'ce2')).toHaveAttribute('aria-checked', 'true');
+	const ce2 = await leconsAffichees(page);
+	await radio(page, 'cm1').click();
+	await expect(radio(page, 'cm1')).toHaveAttribute('aria-checked', 'true');
+	const cm1 = await leconsAffichees(page);
+	const idsCe2 = new Set(ce2.map((l) => l.id));
+	const cm1Seules = cm1.filter((l) => !idsCe2.has(l.id));
+	await radio(page, 'ce2').click();
+	await expect(radio(page, 'ce2')).toHaveAttribute('aria-checked', 'true');
+	return { ce2, cm1Seules };
+}
+
+/* Instantané de reprise « grille » minimal (un champ rempli sur deux), pris par un profil
+   CM1 : `savedAt` posé à l'exécution, sinon l'instantané expire. */
+function seedReprise(key: string, categoryId: string, label: string, lessonId?: string): string {
+	const relaunch = lessonId
+		? { type: 'lecon', lessonId }
+		: {
+				type: 'bilan',
+				config: { id: '', label, lessonIds: ['num-comparer'], questionsPerLesson: 3 },
+			};
+	return `(() => {
+	  const snap = ${JSON.stringify({
+			kind: 'grille',
+			key,
+			version: 1,
+			mode: lessonId ? 'lecon' : 'express',
+			label,
+			icon: 'timer',
+			categoryId,
+			relaunch,
+			sheetsHTML: '<input class="ans" id="a0" value=""><input class="ans" id="a1" value="">',
+			items: {},
+			answers: { a0: '1' },
+			activeId: null,
+			elapsedMs: 0,
+			total: 2,
+			answered: 1,
+		})};
+	  snap.savedAt = Date.now();
+	  localStorage.setItem('e2e/ludaskia_resume', JSON.stringify([snap]));
+	})();`;
+}
+
+/* Rejoue le routeur sur le hash courant : ce que fait un retour vers la page de catégorie
+   (la reprise et le favori ne changent pas de hash, donc ne le font pas eux-mêmes). */
+const rejouerRoute = (page: Page) =>
+	page.evaluate(() => window.dispatchEvent(new HashChangeEvent('hashchange')));
+
+const DIALOGUE = '[role="alertdialog"]'; // l'offre « Tu avais commencé ! » (les autres dialogues sont masqués)
+
+test('Sprint de catégorie : en vue CE2, il ne tire que des leçons CE2 de la catégorie (#772 crit. 4)', async ({
+	page,
+}) => {
+	test.setTimeout(60_000);
+	const errors = watchErrors(page);
+	await page.addInitScript(seedProfil('cm1'));
+	await seedAideVue(page);
+	await gotoHash(page, CAT_NUM);
+	const { ce2, cm1Seules } = await inventaireNumeration(page);
+	// Sans leçon CM1 seule, la suite ne prouverait rien.
+	expect(cm1Seules.length).toBeGreaterThan(0);
+	const titresCe2 = new Set(ce2.map((l) => l.titre));
+	const titresCm1Seules = new Set(cm1Seules.map((l) => l.titre));
+
+	await page.clock.install(); // avant le clic : le décompte du sprint
+	await page.locator('[data-act="sprint"]').click();
+	await expect(page.locator('#sprintTime')).toBeVisible();
+
+	for (let i = 0; i < 14; i++) {
+		const lecon = page.locator('.sprint-lesson');
+		await expect(lecon).toBeVisible();
+		const titre = ((await lecon.textContent()) ?? '').trim();
+		expect(titresCe2.has(titre), `« ${titre} » n'est pas une leçon CE2 de la catégorie`).toBe(true);
+		expect(titresCm1Seules.has(titre)).toBe(false);
+		const saisie = page.locator('#sprintInput');
+		if (await saisie.isVisible().catch(() => false)) {
+			await saisie.fill('');
+			await page.locator('#sprintValidate').click();
+		} else {
+			await page.locator('.sprint-choice').first().click();
+		}
+		// Correction (« Continuer ») ou auto-avance chronométrée d'une bonne réponse.
+		const suite = page.locator('#sprintContinue');
+		if (await suite.isVisible().catch(() => false)) await suite.click();
+		else await page.clock.fastForward(700);
+	}
+
+	expect(errors).toEqual([]);
+});
+
+test('« Je choisis mes leçons » : en vue CE2, seules les leçons CE2 de la catégorie, sous leur libellé CE2 (#772 crit. 4)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedProfil('cm1'));
+	await seedAideVue(page);
+	await gotoHash(page, CAT_NUM);
+	const { ce2, cm1Seules } = await inventaireNumeration(page);
+	expect(cm1Seules.length).toBeGreaterThan(0);
+
+	await page.locator('[data-act="custom"]').click();
+	await expect(page).toHaveURL(/#bilan-cat-math-numeration$/);
+	const cases = page.locator('.bc-lesson-check');
+	await expect(cases.first()).toBeVisible();
+	const ids = await cases.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+	const libelles = await page
+		.locator('.bc-item span')
+		.evaluateAll((els) => els.map((e) => (e.textContent ?? '').trim()));
+
+	expect([...ids].sort()).toEqual(ce2.map((l) => l.id).sort());
+	for (const l of cm1Seules) expect(ids).not.toContain(l.id);
+	expect([...libelles].sort()).toEqual(ce2.map((l) => l.titre).sort());
+
+	expect(errors).toEqual([]);
+});
+
+/* Joue un bilan express de la page courante, y remplit un champ, puis quitte vers l'accueil. */
+async function jouerExpressEtQuitter(page: Page): Promise<void> {
+	await page.locator('[data-act="express"]').click();
+	const champ = page.locator('#sheets input.ans').first();
+	await expect(champ).toBeVisible();
+	await champ.fill('1');
+	await gotoHash(page, 'accueil'); // quitter l'exercice (hashchange : capture de reprise)
+	await expect(page.locator('#leconDuJour')).toBeVisible();
+}
+
+test('Bilan en vue CE2 : quitté, il ne laisse aucune carte « À continuer » (#772 crit. 4, précision 3)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedProfil('cm1'));
+	await seedAideVue(page);
+	await gotoHash(page, CAT_NUM);
+
+	// Contrôle : dans la classe du profil, ce même geste laisse une carte (sinon l'absence
+	// en CE2 ne prouverait rien).
+	await jouerExpressEtQuitter(page);
+	await expect(page.locator('.reprise-card')).toHaveCount(1);
+	await page.evaluate(() => localStorage.setItem('e2e/ludaskia_resume', '[]'));
+
+	await gotoHash(page, CAT_NUM);
+	await radio(page, 'ce2').click();
+	await expect(radio(page, 'ce2')).toHaveAttribute('aria-checked', 'true');
+	await jouerExpressEtQuitter(page);
+	await expect(page.locator('.reprise-card')).toHaveCount(0);
+	expect(
+		await page.evaluate(() => JSON.parse(localStorage.getItem('e2e/ludaskia_resume') || '[]')),
+	).toEqual([]);
+
+	// Page de catégorie : toujours rien à continuer.
+	await gotoHash(page, CAT_NUM);
+	await expect(page.locator('.lesson-item').first()).toBeVisible();
+	await expect(page.locator('.reprise-card')).toHaveCount(0);
+
+	expect(errors).toEqual([]);
+});
+
+test("Bilan en vue CE2 : un instantané CM1 en attente n'ouvre pas « Continuer / Recommencer » (#772 crit. 4, précision 3)", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedProfil('cm1'));
+	await page.addInitScript(
+		seedReprise('bilan-express-math-numeration', 'math-numeration', 'Bilan express — Numération'),
+	);
+	await seedAideVue(page);
+	await gotoHash(page, CAT_NUM);
+
+	// Contrôle : dans la classe du profil, l'offre existe bien (sinon l'absence ne prouve rien).
+	await page.locator('[data-act="express"]').click();
+	await expect(page.locator(DIALOGUE)).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(page.locator(DIALOGUE)).toHaveCount(0);
+
+	// Page de catégorie neuve : le rechargement ré-amorce l'instantané (Échap peut l'avoir repris).
+	await gotoHash(page, CAT_NUM);
+	await expect(page.locator('.lesson-item').first()).toBeVisible();
+	await radio(page, 'ce2').click();
+	await expect(radio(page, 'ce2')).toHaveAttribute('aria-checked', 'true');
+	await page.locator('[data-act="express"]').click();
+	// Le bilan part neuf : ses champs sont là, vides, sans dialogue.
+	await expect(page.locator('#sheets input.ans').first()).toBeVisible();
+	await expect(page.locator(DIALOGUE)).toHaveCount(0);
+	await expect(page.locator('#sheets input.ans').first()).toHaveValue('');
+
+	expect(errors).toEqual([]);
+});
+
+test('Reprise lancée depuis une page en vue CE2 : elle se joue dans la classe du profil, la catégorie rouvre en CM1 (#772 précision 2)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedProfil('cm1'));
+	await page.addInitScript(
+		seedReprise('bilan-express-math-numeration', 'math-numeration', 'Bilan express — Numération'),
+	);
+	await seedAideVue(page);
+	await gotoHash(page, CAT_NUM);
+	await radio(page, 'ce2').click();
+	await expect(radio(page, 'ce2')).toHaveAttribute('aria-checked', 'true');
+
+	// La carte est offerte quelle que soit la classe affichée (l'instantané a été pris en CM1).
+	await page.locator('.reprise-continue').click();
+	await expect(page.locator('#sheets input.ans').first()).toHaveValue('1');
+
+	// Retour sur la catégorie : la classe CE2 a été levée au lancement.
+	await rejouerRoute(page);
+	await expect(radio(page, 'cm1')).toHaveAttribute('aria-checked', 'true');
+	await expect(page.locator('#categorieTitle')).not.toContainText('·');
+
+	expect(errors).toEqual([]);
+});
+
+test('Favori lancé depuis une page en vue CE2 : il se joue dans la classe du profil, la catégorie rouvre en CM1 (#772 précision 2)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedProfil('cm1'));
+	await page.addInitScript(
+		`localStorage.setItem('e2e/ludaskia_bilans', ${JSON.stringify(
+			JSON.stringify([
+				{
+					id: 'fav1',
+					label: 'Mon favori',
+					lessonIds: ['num-comparer'],
+					questionsPerLesson: 3,
+					mode: 'bilan',
+				},
+			]),
+		)});`,
+	);
+	await seedAideVue(page);
+	await gotoHash(page, CAT_NUM);
+	await radio(page, 'ce2').click();
+	await expect(radio(page, 'ce2')).toHaveAttribute('aria-checked', 'true');
+
+	await page.locator('#catFavoris [data-run]').first().click();
+	await expect(page.locator('#sheets input.ans').first()).toBeVisible();
+
+	await rejouerRoute(page);
+	await expect(radio(page, 'cm1')).toHaveAttribute('aria-checked', 'true');
+	await expect(page.locator('#categorieTitle')).not.toContainText('·');
+
+	expect(errors).toEqual([]);
+});
+
+test("Recherche : l'offre « Continuer / Recommencer » d'une leçon CE2 fermée par Échap ne laisse pas la classe CE2 posée (#772 crit. 12)", async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(seedProfil('cm1'));
+	await page.addInitScript(
+		seedReprise('lecon-num-decompose-100', 'math-numeration', 'Décomposer', 'num-decompose-100'),
+	);
+	await seedAideVue(page);
+
+	// Leçon CE2 seule de la catégorie : on lit son libellé sur la page CE2, puis on la cherche.
+	await gotoHash(page, CAT_NUM);
+	await radio(page, 'ce2').click();
+	const titre = (
+		(await page.locator('.lesson-item[data-id="num-decompose-100"] .lz-title').textContent()) ?? ''
+	).trim();
+	await gotoHash(page, 'matieres');
+	await page.locator('#rechercheLecon').fill(titre);
+	const resultat = page.locator('.rech-lecon[data-id="num-decompose-100"]');
+	await expect(resultat).toHaveAttribute('data-classe', 'ce2');
+	await resultat.click();
+
+	// L'offre s'ouvre. Elle n'a pas de sortie « annuler » : Échap vaut « Continuer où j'en étais »
+	// (ui/resume.ts, openChoiceModal). Le test fixe l'état FINAL (aucune classe CE2 résiduelle),
+	// quelle que soit la sortie de la modale.
+	await expect(page.locator(DIALOGUE)).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(page.locator(DIALOGUE)).toHaveCount(0);
+	await expect(page).toHaveURL(/#matieres$/); // rien n'a été lancé
+
+	await gotoHash(page, CAT_NUM);
+	await expect(radio(page, 'cm1')).toHaveAttribute('aria-checked', 'true');
+	await expect(page.locator('#categorieTitle')).not.toContainText('·');
+	await expect(page.locator('.lesson-item[data-id="num-decompose-multiplicative"]')).toBeVisible();
+
+	expect(errors).toEqual([]);
+});
+
+test('Changement de profil sur la même page : la classe choisie par le premier ne passe pas au second (#772 crit. 5)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	// Deux profils CM1. Le second est amorcé comme `gotoHash` amorce le premier (pas de tour,
+	// pas d'aide) : sinon un overlay d'accueil s'ouvrirait à la bascule.
+	await page.addInitScript(
+		`localStorage.setItem('ludaskia_profiles', JSON.stringify({ list: [
+			{ uuid: 'e2e', name: 'Alice', emoji: '\\uD83E\\uDD8A', updatedAt: 1, niveauReference: 'cm1' },
+			{ uuid: 'autre', name: 'Bruno', emoji: '\\uD83D\\uDC3B', updatedAt: 1, niveauReference: 'cm1' },
+		], active: 'e2e' }));
+		localStorage.setItem('autre/ludaskia_tour_seen', 'true');
+		localStorage.setItem('autre/ludaskia_parents_seen', 'true');`,
+	);
+	await seedAideVue(page);
+	await page.addInitScript(
+		`localStorage.setItem('autre/ludaskia_aide_vue', localStorage.getItem('e2e/ludaskia_aide_vue'));`,
+	);
+	await gotoHash(page, CAT_NUM);
+
+	await radio(page, 'ce2').click();
+	await expect(radio(page, 'ce2')).toHaveAttribute('aria-checked', 'true');
+	await expect(page.locator('#categorieTitle')).toContainText(/·\s*CE2/);
+
+	// Bascule par le menu de profils : le hash ne change pas, la page se re-rend.
+	const burger = page.locator('#toolbarBurger');
+	if (await burger.isVisible()) await burger.click(); // mobile : la barre vit dans le tiroir
+	await page.locator('#toolbarProfile').click();
+	await page.locator('#profileMenu button[data-uuid="autre"]').click();
+	await expect(page).toHaveURL(/#categorie-math-numeration$/);
+	await expect(radio(page, 'cm1')).toHaveAttribute('aria-checked', 'true');
+	await expect(page.locator('#categorieTitle')).not.toContainText('·');
+	await expect(page.locator('.lesson-item[data-id="num-decompose-multiplicative"]')).toBeVisible();
+
+	expect(errors).toEqual([]);
+});

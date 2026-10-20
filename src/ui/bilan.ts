@@ -80,19 +80,18 @@ export function runBilanConfig(config: BilanConfig, ctx?: ResumeCtx | null): voi
 	// seul chemin par lequel passe un bilan — reprise comprise, puisqu'elle relance la même
 	// config, ce qui crédite l'étape d'un favori commencé hier et fini aujourd'hui.
 	setCurrentFavoriId(config.id || null);
-	// Contexte de reprise (#63) : ce bilan devient « l'exercice en cours ». Sauf dans une
-	// classe choisie sur l'écran de la catégorie (#772) : l'instantané, rangé sous la
-	// catégorie, serait repris plus tard dans la classe du profil (même règle que le niveau
-	// imposé de #573).
-	if (ctx && !classeChoisie()) setResumeCtx(ctx);
+	// Contexte de reprise (#63) : ce bilan devient « l'exercice en cours ». Sans contexte
+	// (`null`), il ne se reprend pas : c'est le cas d'une classe choisie (#772, cf. startBilan).
+	if (ctx) setResumeCtx(ctx);
 	else clearResumeCtx();
 	afterStart();
 }
 
 /* Lance un bilan en gérant la reprise : si le même bilan était commencé, on
    propose « Continuer / Recommencer » ; sinon on le lance neuf (#63). Dans une classe
-   choisie (#772), pas de reprise : l'instantané en attente est celui de la classe du
-   profil, on lance neuf. */
+   choisie sur l'écran de la catégorie (#772), ni offre ni instantané : celui en attente est
+   celui de la classe du profil, et celui de ce bilan, rangé sous la catégorie, serait repris
+   plus tard dans la classe du profil (même règle que le niveau imposé de #573). */
 export function startBilan(config: BilanConfig, ctx: ResumeCtx): void {
 	if (classeChoisie()) {
 		runBilanConfig(config, null);

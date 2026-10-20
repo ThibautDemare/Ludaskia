@@ -343,3 +343,11 @@ de #724 — c'est voulu.
   autre issue.
 - **La règle « un seul niveau d'écart » reste celle du contenu poussé** : ne pas la plaquer
   sur le choix explicite (cf. ci-dessus).
+- **Pas de test e2e du panneau d'étayage sur une leçon de classe supérieure** : aucune leçon
+  CM1 de la table des prérequis n'a de contenu d'étayage rédigé, et provoquer le panneau
+  demande un état de blocage construit de toutes pièces pour un seul appel. Le choix du
+  prérequis nommé (`leconAvantJouee`) est tenu en Vitest (`tests/autres-classes-core.test.ts`).
+- **La garde de reprise d'un bilan vit dans `startBilan` seulement** (`ui/bilan.ts`) : une
+  seconde garde dans `runBilanConfig` était inatteignable (seul `startBilan` l'appelle) et a
+  été retirée. Les deux sorties de l'offre de reprise (Continuer, Recommencer) passent par
+  `restoreResume` ou par le lancement, il n'y a pas de sortie « annuler » à garder.

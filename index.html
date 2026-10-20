@@ -678,29 +678,121 @@
 			</section>
 
 			<!-- ===== PARTAGE PAR LIEN (#734) =====
-			   Texte seul, sur les classes d'un bloc voisin (`v-about`, qui borne la mesure des
-			   paragraphes) : aucun style neuf. Le titre évite le mot « enseignant » (e2e/vitrine.spec.ts
-			   n'admet aucun titre « pour les enseignants »). Ne rien promettre de plus que le
-			   code : pas de vue de classe consolidée (#735), ni note ni classement. -->
-			<section class="v-section v-section--soft v-about" aria-labelledby="vPartageTitle">
+			   Titre à icône, aller-retour en trois étapes, puis la garantie « sans serveur ».
+			   Les icônes et les numéros sont décoratifs (aria-hidden) : l'ordre est porté par la
+			   liste <ol>, la flèche entre deux étapes n'est qu'un repère visuel. Le titre évite le
+			   mot « enseignant » (e2e/vitrine.spec.ts n'admet aucun titre « pour les enseignants »).
+			   Ne rien promettre de plus que le code : pas de vue de classe consolidée (#735), ni
+			   note ni classement. « Chacun » est voulu dans les étapes : le même lien sert un enfant
+			   ou plusieurs élèves (relecture de langue, 2026-10-20 ; « il » ne couvrait qu'un cas). -->
+			<section class="v-section v-section--soft v-partage" aria-labelledby="vPartageTitle">
 				<div class="v-wrap">
-					<h2 id="vPartageTitle">Le même exercice pour chacun, par un simple lien</h2>
-					<p>
+					<div class="v-partage-head">
+						<span class="v-partage-ico">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 256 256"
+								fill="currentColor"
+								class="ph-icon ph-lg"
+								focusable="false"
+								aria-hidden="true"
+							>
+								<path
+									d="M117.18,188.74a12,12,0,0,1,0,17l-5.12,5.12A58.26,58.26,0,0,1,70.6,228h0A58.62,58.62,0,0,1,29.14,127.92L63.89,93.17a58.64,58.64,0,0,1,98.56,28.11,12,12,0,1,1-23.37,5.44,34.65,34.65,0,0,0-58.22-16.58L46.11,144.89A34.62,34.62,0,0,0,70.57,204h0a34.41,34.41,0,0,0,24.49-10.14l5.11-5.12A12,12,0,0,1,117.18,188.74ZM226.83,45.17a58.65,58.65,0,0,0-82.93,0l-5.11,5.11a12,12,0,0,0,17,17l5.12-5.12a34.63,34.63,0,1,1,49,49L175.1,145.86A34.39,34.39,0,0,1,150.61,156h0a34.63,34.63,0,0,1-33.69-26.72,12,12,0,0,0-23.38,5.44A58.64,58.64,0,0,0,150.56,180h.05a58.28,58.28,0,0,0,41.47-17.17l34.75-34.75a58.62,58.62,0,0,0,0-82.91Z"
+								/>
+							</svg>
+						</span>
+						<h2 id="vPartageTitle">Le même exercice pour chacun, par un simple lien</h2>
+					</div>
+					<p class="v-partage-lead">
 						Un exercice précis à faire faire à votre enfant, ou à plusieurs élèves, chacun sur son
-						appareil&nbsp;? Depuis l'espace encadrants, vous créez un lien et vous l'envoyez comme
-						n'importe quel message, ou par l'ENT de l'école. Il suffit de l'ouvrir&nbsp;: pas de
-						compte à créer, rien à installer, et la série est la même pour tous ceux qui l'ouvrent.
+						appareil&nbsp;? Vous l'envoyez comme n'importe quel message, ou par l'ENT de l'école.
 					</p>
-					<p>
-						Vous choisissez une leçon, un bilan, une dictée proposée par l'application ou la liste
-						de mots de l'enfant. À la fin, il vous renvoie un lien de résultat&nbsp;: vous lisez
-						chaque question, sa réponse et ce qui était attendu, et vous pouvez l'ajouter au suivi
-						d'un profil si vous le souhaitez.
-					</p>
-					<p>
-						Rien ne passe par un serveur&nbsp;: l'exercice voyage dans le lien, et le résultat dans
-						le lien en retour. Ni note, ni classement&nbsp;: un résultat se lit comme le suivi, pour
-						voir sur quoi revenir.
+					<!-- role="list" : sans puces, WebKit/VoiceOver retire la sémantique de liste. -->
+					<ol class="v-steps" role="list">
+						<li class="v-step">
+							<span class="v-step-ico" aria-hidden="true">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+								>
+									<path
+										d="M230.14,25.86a20,20,0,0,0-19.57-5.11l-.22.07L18.44,79a20,20,0,0,0-3.06,37.25L99,157l40.71,83.65a19.81,19.81,0,0,0,18,11.38c.57,0,1.15,0,1.73-.07A19.82,19.82,0,0,0,177,237.56L235.18,45.65a1.42,1.42,0,0,0,.07-.22A20,20,0,0,0,230.14,25.86ZM156.91,221.07l-34.37-70.64,46-45.95a12,12,0,0,0-17-17l-46,46L34.93,99.09,210,46Z"
+									/>
+								</svg>
+								<span class="v-step-num">1</span>
+							</span>
+							<h3>Vous créez le lien</h3>
+							<p>
+								Depuis l'espace encadrants&nbsp;: une leçon, un bilan, une dictée proposée par
+								l'application ou la liste de mots de l'enfant.
+							</p>
+						</li>
+						<li class="v-step">
+							<span class="v-step-ico" aria-hidden="true">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+								>
+									<path
+										d="M176,12H80A28,28,0,0,0,52,40V216a28,28,0,0,0,28,28h96a28,28,0,0,0,28-28V40A28,28,0,0,0,176,12ZM76,76H180V180H76Zm4-40h96a4,4,0,0,1,4,4V52H76V40A4,4,0,0,1,80,36Zm96,184H80a4,4,0,0,1-4-4V204H180v12A4,4,0,0,1,176,220Z"
+									/>
+								</svg>
+								<span class="v-step-num">2</span>
+							</span>
+							<h3>Chacun l'ouvre sur son appareil</h3>
+							<p>
+								Il suffit d'ouvrir le lien&nbsp;: pas de compte à créer, rien à installer. La série
+								est la même pour tous ceux qui l'ouvrent.
+							</p>
+						</li>
+						<li class="v-step">
+							<span class="v-step-ico" aria-hidden="true">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+								>
+									<path
+										d="M228,128a12,12,0,0,1-12,12H128a12,12,0,0,1,0-24h88A12,12,0,0,1,228,128ZM128,76h88a12,12,0,0,0,0-24H128a12,12,0,0,0,0,24Zm88,104H128a12,12,0,0,0,0,24h88a12,12,0,0,0,0-24ZM79.51,39.51,56,63l-7.51-7.52a12,12,0,0,0-17,17l16,16a12,12,0,0,0,17,0l32-32a12,12,0,0,0-17-17Zm0,64L56,127l-7.51-7.52a12,12,0,1,0-17,17l16,16a12,12,0,0,0,17,0l32-32a12,12,0,0,0-17-17Zm0,64L56,191l-7.51-7.52a12,12,0,1,0-17,17l16,16a12,12,0,0,0,17,0l32-32a12,12,0,0,0-17-17Z"
+									/>
+								</svg>
+								<span class="v-step-num">3</span>
+							</span>
+							<h3>Le résultat vous revient</h3>
+							<p>
+								À la fin, chacun vous renvoie un lien de résultat&nbsp;: vous lisez chaque question,
+								sa réponse et ce qui était attendu. Vous pouvez aussi ajouter ce résultat au suivi
+								d'un profil.
+							</p>
+						</li>
+					</ol>
+					<p class="v-partage-note">
+						<span class="v-partage-note-ico" aria-hidden="true"
+							><svg
+								xmlns="http://www.w3.org/2000/svg"
+								viewBox="0 0 256 256"
+								fill="currentColor"
+								class="ph-icon"
+								focusable="false"
+							>
+								<path
+									d="M56.88,31.93A12,12,0,1,0,39.12,48.07L71.79,84A68,68,0,0,0,72,220h88a91.26,91.26,0,0,0,30.66-5.24l8.46,9.31a12,12,0,0,0,17.76-16.14ZM160,196H72a44,44,0,0,1-1.8-87.95A91.91,91.91,0,0,0,68,128a12,12,0,0,0,24,0,68.22,68.22,0,0,1,2.66-18.84l77.88,85.67A68.67,68.67,0,0,1,160,196Zm92-68a91.32,91.32,0,0,1-17.53,54,12,12,0,1,1-19.41-14.11,68,68,0,0,0-89.57-98.53,12,12,0,0,1-12.2-20.66A92,92,0,0,1,252,128Z"
+								/></svg
+						></span>
+						<span
+							><strong>Rien ne passe par un serveur.</strong> L'exercice voyage dans le lien, et le
+							résultat dans le lien en retour. Ni note, ni classement&nbsp;: un résultat se lit
+							comme le suivi, pour voir sur quoi revenir.</span
+						>
 					</p>
 				</div>
 			</section>

@@ -69,6 +69,13 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
     un contexte, pas un nom : le rotor de TalkBack montrerait N boutons identiques.
 - **Structure & lecture** : hiérarchie de titres cohérente, libellés de champs,
   alternatives textuelles, `lang="fr"`.
+- **Liste sans puces dont l'ordre compte** : `list-style: none` fait perdre la
+  sémantique de liste à WebKit/VoiceOver (ni « 3 éléments », ni la position). Si
+  l'ordre ou le compte porte du sens (des étapes), poser `role="list"`. Cas
+  d'origine : `.v-steps` de la vitrine (2026-10-20).
+- **Cartes de texte en colonnes** : `repeat(n, minmax(0, 1fr))` et
+  `overflow-wrap: anywhere`. Avec un simple `1fr`, un mot long déborde de sa carte
+  au zoom texte 200 %. Cas d'origine : `.v-steps` de la vitrine (2026-10-20).
 - **Glyphes décoratifs muets** : un chevron, une puce ou une flèche posés en
   contenu généré (`::before { content: '▸' }`) ou en caractère dans le texte sont
   **lus** par plusieurs lecteurs d'écran (« triangle pointant vers la droite »)

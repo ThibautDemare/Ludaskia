@@ -255,3 +255,61 @@ test('vitrine : aucune section ni entrée FAQ « pour les enseignants » (#562)'
 
 	expect(errors).toEqual([]);
 });
+
+/* ================================================================
+   F. Partage par lien (#734)
+   ================================================================ */
+
+test('vitrine : section « partage par lien » avec sa liste ordonnée de 3 étapes', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.goto('./', { waitUntil: 'networkidle' });
+
+	const section = page.locator('section.v-partage');
+	await expect(section).toBeVisible();
+	await expect(page.locator('h2#vPartageTitle')).toBeVisible();
+
+	// L'ordre est porté par la liste <ol> (pas par les pastilles, décoratives).
+	// role="list" explicite : sans puces, WebKit/VoiceOver retire la sémantique de liste.
+	await expect(section.locator('ol.v-steps')).toHaveAttribute('role', 'list');
+	const steps = section.locator('ol.v-steps > li.v-step');
+	await expect(steps).toHaveCount(3);
+	for (let i = 0; i < 3; i++) {
+		await expect(steps.nth(i).locator('h3')).toHaveText(/\S/);
+	}
+
+	expect(errors).toEqual([]);
+});
+
+test('vitrine : partage par lien — icônes et pastilles décoratives (aria-hidden)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.goto('./', { waitUntil: 'networkidle' });
+
+	const section = page.locator('section.v-partage');
+	const stepIcos = section.locator('.v-step-ico');
+	await expect(stepIcos).toHaveCount(3);
+	for (let i = 0; i < 3; i++) {
+		await expect(stepIcos.nth(i)).toHaveAttribute('aria-hidden', 'true');
+	}
+	await expect(section.locator('.v-partage-note-ico')).toHaveAttribute('aria-hidden', 'true');
+
+	expect(errors).toEqual([]);
+});
+
+test('vitrine : partage par lien — doctrine, aucun serveur, ni note ni classement', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.goto('./', { waitUntil: 'networkidle' });
+
+	// Décision produit verrouillée : rien ne transite par un serveur, pas de comparaison.
+	const note = await page.locator('.v-partage-note').innerText();
+	expect(note).toMatch(/aucun serveur|rien ne passe par un serveur/i);
+	expect(note).toMatch(/ni note/i);
+	expect(note).toMatch(/ni classement/i);
+
+	expect(errors).toEqual([]);
+});

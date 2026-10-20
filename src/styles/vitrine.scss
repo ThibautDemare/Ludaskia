@@ -271,7 +271,8 @@ a.v-brand:focus-visible {
 }
 .v-section--soft {
 	/* Vert nettement plus marqué que --page-bg : l'alternance des bandes se voit
-	   (sinon « fadouille »). Reste AA pour le texte gris/ink/accent-dark (≥ 5,4:1). */
+	   (sinon « fadouille »). Reste AA pour le texte gris/ink/accent-dark (≥ 5,4:1) ;
+	   --ink et --grey y sont tenus par tests/contraste-tokens.test.ts. */
 	background: #c7e2ce;
 }
 .v-section h2 {
@@ -450,16 +451,20 @@ a.v-brand:focus-visible {
 	align-items: center;
 	margin-bottom: 28px;
 }
-.v-enc-head {
+/* Titre à icône : partagé avec la section « partage par lien ». */
+.v-enc-head,
+.v-partage-head {
 	display: flex;
 	align-items: center;
 	gap: 14px;
 	margin-bottom: 14px;
 }
-.v-enc-head h2 {
+.v-enc-head h2,
+.v-partage-head h2 {
 	margin: 0;
 }
-.v-enc-ico {
+.v-enc-ico,
+.v-partage-ico {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -470,7 +475,8 @@ a.v-brand:focus-visible {
 	background: var(--accent-soft);
 	color: var(--accent-dark);
 }
-.v-enc-ico .ph-icon {
+.v-enc-ico .ph-icon,
+.v-partage-ico .ph-icon {
 	width: 28px;
 	height: 28px;
 }
@@ -585,6 +591,114 @@ a.v-brand:focus-visible {
 }
 .v-enc-doctrine strong {
 	color: var(--ink);
+}
+
+/* ============================================================
+   Partage par lien (#734) : aller-retour en trois étapes
+   Même gabarit de carte que `.v-card`. L'ordre est porté par la liste
+   <ol> et par le numéro ; la flèche entre deux étapes n'est qu'un repère
+   visuel (pseudo-élément, donc hors de l'arbre d'accessibilité).
+   ============================================================ */
+.v-partage-lead {
+	max-width: 640px;
+	margin: 0;
+	color: var(--grey);
+}
+.v-steps {
+	list-style: none;
+	margin: 28px 0 0;
+	padding: 0;
+	display: grid;
+	gap: 32px; /* loge la flèche entre deux cartes */
+	grid-template-columns: 1fr;
+}
+.v-step {
+	position: relative;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 18px;
+	padding: 22px;
+	box-shadow: 0 2px 12px rgb(0 0 0 / 7%);
+	overflow-wrap: anywhere;
+}
+.v-step h3 {
+	margin: 14px 0 6px;
+	font-size: 1.15rem;
+	font-weight: 800;
+}
+.v-step p {
+	margin: 0;
+	color: var(--grey);
+}
+.v-step-ico {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 54px;
+	height: 54px;
+	border-radius: 14px;
+	background: var(--accent-soft);
+	color: var(--accent-dark);
+}
+.v-step-ico .ph-icon {
+	width: 30px;
+	height: 30px;
+}
+/* Pastille numérotée : même couple de couleurs que `.v-check`. */
+.v-step-num {
+	position: absolute;
+	top: -9px;
+	right: -9px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border: 2px solid var(--paper);
+	border-radius: 50%;
+	background: var(--accent);
+	color: var(--on-accent);
+	font-size: 0.85rem;
+	font-weight: 800;
+}
+/* Flèche vers l'étape suivante : vers le bas tant que les cartes s'empilent. */
+.v-step:not(:last-child)::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	bottom: -22px;
+	width: 12px;
+	height: 12px;
+	border-right: 3px solid var(--accent-dark);
+	border-bottom: 3px solid var(--accent-dark);
+	transform: translateX(-50%) rotate(45deg);
+}
+.v-partage-note {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	max-width: 760px;
+	margin: 28px 0 0;
+	color: var(--grey);
+}
+.v-partage-note strong {
+	color: var(--ink);
+}
+.v-partage-note-ico {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	flex: none;
+	border-radius: 50%;
+	background: var(--paper);
+	color: var(--accent-dark);
+}
+.v-partage-note-ico .ph-icon {
+	width: 20px;
+	height: 20px;
 }
 
 /* ============================================================
@@ -955,6 +1069,19 @@ a.v-brand:focus-visible {
 	}
 	.v-ex-grid {
 		grid-template-columns: 1fr 1fr 1fr;
+	}
+	/* Trois étapes côte à côte dès la tablette : textes courts, ça tient. `minmax(0, …)`
+	   et non `1fr` seul : au zoom texte 200 %, un mot long élargirait sa colonne et
+	   ferait déborder la rangée (le mot passe à la ligne via `overflow-wrap`). */
+	.v-steps {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+	.v-step:not(:last-child)::after {
+		left: auto;
+		right: -22px;
+		bottom: auto;
+		top: 50%;
+		transform: translateY(-50%) rotate(-45deg);
 	}
 	.v-guarantees {
 		grid-template-columns: 1fr 1fr;

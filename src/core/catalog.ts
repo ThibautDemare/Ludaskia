@@ -1677,3 +1677,13 @@ export function commonCategoryId(lessonIds: string[]): CategoryId | undefined {
 	const cats = new Set(lessonsForIds(lessonIds).map((l) => l.category));
 	return cats.size === 1 ? [...cats][0] : undefined;
 }
+
+/* Une sélection de leçons peut-elle alimenter un sprint (#778) ? Il lui faut au moins une
+   leçon CONNUE et éligible : c'est exactement le pool que tire `startCustomSprint` pour un
+   favori (`lessonsForIds` puis `estEligibleSprintHorsNiveau`, sans filtre de niveau). Sans
+   ce garde, un favori Sprint fait de problèmes partait sur un sprint vide et renvoyait à
+   l'accueil sans un mot. Le composeur s'en sert pour refuser, à la création comme à
+   l'édition. */
+export function sprintJouable(lessonIds: string[]): boolean {
+	return lessonsForIds(lessonIds).some(estEligibleSprintHorsNiveau);
+}

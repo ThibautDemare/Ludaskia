@@ -46,6 +46,13 @@ const now = (): number => Date.now();
 
 /** Un écran « menu » est-il affiché (donc pas un exercice en cours) ? */
 export function ecranCalme(): boolean {
+	// L'éditeur d'un bilan favori (#778) occupe l'écran du composeur, mais c'est une saisie
+	// d'adulte non enregistrée, que seul le crayon rouvre : un rechargement la perdrait. Il
+	// n'est donc pas plus « calme » que l'espace encadrant, absent de la liste.
+	if (document.querySelector('#bilan-custom #bilanConfigForm[data-edition]')) {
+		const ecran = document.getElementById('bilan-custom');
+		if (ecran && ecran.style.display !== 'none') return false;
+	}
 	return MENU_IDS.some((id) => {
 		const e = document.getElementById(id);
 		return !!e && e.style.display !== 'none';

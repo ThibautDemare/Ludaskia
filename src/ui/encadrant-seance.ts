@@ -36,6 +36,7 @@ import {
 	gestionFavorisHTML,
 	supprimerFavori,
 } from './encadrant-favoris';
+import { ouvrirEditionFavori } from './bilan-edition';
 import {
 	SEANCE_MODE_INFOS,
 	chargerSeancesFor,
@@ -767,6 +768,11 @@ export function seanceClick(act: string, el: HTMLElement): boolean {
 			});
 			return true;
 		}
+		case 'seance-favori-edit':
+			// Le propriétaire est capturé ICI, au clic (#778) : c'est chez lui qu'on écrira,
+			// même si l'on change de profil pendant l'édition.
+			ouvrirEditionFavori(uuid, el.dataset.id ?? '');
+			return true;
 		case 'seance-copy':
 			onCopy(consulte);
 			return true;

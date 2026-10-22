@@ -316,6 +316,12 @@
 	flex: 1 1 12rem;
 	min-width: 0;
 }
+/* « Modifier » et « Supprimer » (#778) restent ensemble quand la ligne passe à la ligne. */
+.enc-favori-gere-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+}
 .enc-favori-gere-nom {
 	font-weight: 700;
 	color: var(--ink);

@@ -53,6 +53,12 @@ import { rafraichirRappelSauvegarde } from './rappel-sauvegarde';
 import { runSprint, sprintCleanup, renderSprintConfigScreen } from './sprint';
 import { runRevisionEspacee, revisionCleanup } from './revision';
 import { renderBilanConfigScreen } from './bilan';
+import {
+	afficherEditionFavori,
+	oublierEditionFavori,
+	HASH_EDITION_FAVORI,
+	RETOUR_EDITION_FAVORI,
+} from './bilan-edition';
 import { renderSubjects, renderCategories, renderCategorie } from './catalog-nav';
 import { reinitialiserRecherche } from './recherche-lecon';
 import { SUBJECTS, CATEGORIES, ORTHO_CATEGORY_ID } from '../core/catalog';
@@ -391,6 +397,9 @@ export function route() {
 	// Un choix devenu invalide (posé par un autre profil) est purgé au passage.
 	const choix = classeChoisie();
 	if (!choix || !gardeClasseChoisie(h, choix)) leverClasseChoisie();
+	// Favori en cours d'édition (#778) : il ne survit pas à un départ de l'éditeur, pour que
+	// « Précédent » ne le rouvre pas.
+	if (h !== HASH_EDITION_FAVORI) oublierEditionFavori();
 	// Séance partagée (#734) : `#envoi/<code>` (l'enfant joue), `#resultat/<code>` (l'adulte
 	// lit). Le code ne se lit qu'ici, jamais ailleurs.
 	const lien = lireFragment(location.hash);
@@ -399,6 +408,7 @@ export function route() {
 	else if (h === 'sprint-config') showSprintConfigView();
 	else if (h === 'sprint') runSprint();
 	else if (h === 'bilan-custom') showBilanCustomView();
+	else if (h === HASH_EDITION_FAVORI) showBilanEditView();
 	else if (h.startsWith('bilan-cat-')) {
 		const id = h.slice('bilan-cat-'.length);
 		if (id !== ORTHO_CATEGORY_ID && CATEGORIES.find((c) => c.id === id)) showBilanCustomView(id);
@@ -751,7 +761,30 @@ export function showBilanCustomView(categoryId?: string) {
 	setToolbar({ verify: false, home: true, profile: true });
 	hideMenus();
 	renderBilanConfigScreen(document.getElementById('bilanCustomContent')!, categoryId);
+	document.getElementById('backHomeBilanCustom')!.hidden = false;
 	document.getElementById('bilan-custom')!.style.display = '';
+	window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+/* Éditeur d'un bilan favori (#778) : le composeur de l'enfant, ouvert par le crayon de
+   l'espace encadrant. Le favori édité est en mémoire (`ui/bilan-edition.ts`) : arrivé ici
+   sans lui (lien direct, rechargement, Précédent), on retourne à l'espace encadrant, qui
+   repasse par son verrou, en remplaçant l'entrée pour ne pas boucler sur « Précédent ». */
+function showBilanEditView() {
+	resetSessionUI();
+	setToolbar({ verify: false, home: true, profile: true });
+	hideMenus();
+	if (!afficherEditionFavori(document.getElementById('bilanCustomContent')!)) {
+		location.replace('#' + RETOUR_EDITION_FAVORI);
+		return;
+	}
+	// « Retour à l'accueil » mènerait chez l'enfant : on quitte l'éditeur par « Annuler ».
+	document.getElementById('backHomeBilanCustom')!.hidden = true;
+	document.getElementById('bilan-custom')!.style.display = '';
+	// Le crayon cliqué a disparu avec l'espace encadrant, le focus irait sur `<body>` : le
+	// titre, lui, dit au lecteur d'écran quel favori et quel enfant sont concernés.
+	document
+		.querySelector<HTMLElement>('#bilan-custom .bc-edit-title')
+		?.focus({ preventScroll: true });
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 /* Runner d'écran dédié de chaque type qui en a un (#734 : table typée sur `TypeRunner`,

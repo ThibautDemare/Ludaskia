@@ -600,6 +600,9 @@ function homophoneType(paire: PaireHomophone): ExerciseType {
 	];
 	return {
 		modes: MODE_QCM,
+		// Consigne de fiche (#777, critère 4) : nomme la tâche ET les deux graphies, vraie
+		// qu'on touche le mot à l'écran ou qu'on l'écrive sur papier.
+		consigne: `Complète la phrase avec le bon mot : « ${paire.options[0]} » ou « ${paire.options[1]} ».`,
 		generate(): Exercise {
 			const { phrase, reponse } = choice(items);
 			return {

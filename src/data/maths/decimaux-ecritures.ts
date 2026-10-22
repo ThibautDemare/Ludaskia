@@ -32,7 +32,7 @@
    10×10) → fractions décimales > 1 → décomposition (décomposer) → recomposition (composer).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
-import { checkAnswer } from '../../core/exercise';
+import { avecConsigne, checkAnswer } from '../../core/exercise';
 import type { LessonInput } from '../_shared';
 import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import { rnd, sample } from '../../core/utils';
@@ -301,7 +301,10 @@ export const DECIMAUX_ECRITURES_LESSONS: LessonInput[] = [
 		id: 'num-dec-grille',
 		label: 'Une fraction, une écriture à virgule',
 		motsCles: ['dixième', 'centième', 'virgule', 'tableau de conversion'],
-		exerciseType: qcmType(grilleFact),
+		exerciseType: avecConsigne(
+			qcmType(grilleFact),
+			"Trouve la fraction décimale, ou l'écriture à virgule, qui correspond aux cases coloriées sur la grille de 100.",
+		),
 		// Compter le TOTAL des cases avant les cases coloriées, et pas l'inverse : les
 		// distracteurs opposent 4/10 à 4/100 (et 0,4 à 0,04), donc c'est le dénominateur qui
 		// tranche — un enfant qui commence par compter le colorié a déjà choisi sa réponse.
@@ -321,7 +324,10 @@ export const DECIMAUX_ECRITURES_LESSONS: LessonInput[] = [
 		id: 'num-dec-frac-superieure',
 		label: 'Une fraction décimale plus grande que 1',
 		motsCles: ['dixième', 'centième', 'virgule', 'supérieur à 1'],
-		exerciseType: qcmType(fracSuperieureFact),
+		exerciseType: avecConsigne(
+			qcmType(fracSuperieureFact),
+			"Transforme une fraction décimale plus grande que 1 en écriture à virgule, ou l'inverse.",
+		),
 		etayage: [
 			etayageRedige(
 				'Une fraction décimale plus grande que 1',
@@ -340,7 +346,11 @@ export const DECIMAUX_ECRITURES_LESSONS: LessonInput[] = [
 		motsCles: ['décomposer', 'virgule', 'unités', 'dixièmes', 'centièmes'],
 		// Mono-mode saisie (rendu fiche/bilan/sprint via le chemin « math moderne » :
 		// item numérique). Réponse = un entier → checkNumerique.
-		exerciseType: { generate: () => decomposeDecFact(), check: checkNumerique },
+		exerciseType: {
+			consigne: 'Complète la décomposition du nombre décimal en entiers, dixièmes et centièmes.',
+			generate: () => decomposeDecFact(),
+			check: checkNumerique,
+		},
 		etayage: [
 			etayageRedige(
 				'Décomposer un nombre décimal',
@@ -357,7 +367,10 @@ export const DECIMAUX_ECRITURES_LESSONS: LessonInput[] = [
 		id: 'num-dec-recomposer',
 		label: 'Je recompose un nombre décimal',
 		motsCles: ['recomposer', 'virgule', 'unités', 'dixièmes', 'centièmes'],
-		exerciseType: qcmType(recomposeDecFact),
+		exerciseType: avecConsigne(
+			qcmType(recomposeDecFact),
+			"Trouve l'écriture à virgule égale à cette somme de fractions décimales.",
+		),
 		// Le zéro des dixièmes est le point dur (seul écart entre 33,08 et 33,8, et les
 		// distracteurs du QCM proposent précisément les deux) : il est donc DÉMONTRÉ au
 		// dernier pas, pas seulement annoncé par la règle — sinon l'enfant bloqué là-dessus

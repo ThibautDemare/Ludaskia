@@ -130,7 +130,7 @@ const CONSIGNE_CM1 =
    est recopiée, pas touchée. Même micro-indice « deux mots » au CM1. */
 const CONSIGNE_ECRITE_CE2 = 'Recopie le verbe conjugué de chaque phrase.';
 const CONSIGNE_ECRITE_CM1 =
-	'Recopie le verbe conjugué de chaque phrase. Au passé composé, il est en deux mots (exemple : a mangé) : recopie les deux.';
+	"Recopie le verbe conjugué de chaque phrase. Au passé composé, le verbe s'écrit en deux mots (exemple : a mangé). Recopie les deux.";
 
 /* Fabrique de la leçon « verbe ». `generate` se branche sur `opts.level` (banque CE2
    ou CM1) et STOCKE l'ensemble cible ; `check` renvoie toujours false (le runner

@@ -180,6 +180,7 @@ function genExercise(mode?: ExerciseMode): Exercise {
 export function heureType(): ExerciseType {
 	return {
 		modes: MODES,
+		consigne: "Lis l'heure sur l'horloge, en heures et minutes.", // #777, critère 4
 		generate: (opts) => genExercise(opts?.mode),
 		check: (exercise, input) => checkAnswer(exercise, input),
 	};

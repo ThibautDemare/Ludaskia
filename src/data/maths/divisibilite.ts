@@ -169,6 +169,8 @@ function divisibiliteType(): ExerciseType {
 	return {
 		levels: BANQUE_DIVISIBILITE.levels,
 		modes: MODES,
+		// #777, critère 4.
+		consigne: 'Indique par oui ou par non si le nombre est divisible par 2, par 5 ou par 10.',
 		generate(opts?: GenerateOpts): Exercise {
 			return exerciceDivisibilite(pickFromBank(BANQUE_DIVISIBILITE, opts?.level));
 		},

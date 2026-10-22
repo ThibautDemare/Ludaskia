@@ -128,6 +128,7 @@ function vocabulaireFait(): Fait {
 function cercleType(config: CercleConfig): ExerciseType {
 	return {
 		modes: MODES,
+		consigne: 'Observe le cercle et réponds à la question.', // #777, critère 4
 		generate(opts?: GenerateOpts): Exercise {
 			const mode = opts?.mode;
 			const r = rnd(1, 100);

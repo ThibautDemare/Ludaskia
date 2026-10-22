@@ -214,6 +214,9 @@ export const SCHEMAS_EXERCICE: SchemasExercice = {
 			cibleLabel: facultatif(texte(100)),
 			explicationNommeCible: facultatif(booleen),
 			segment: facultatif(booleen),
+			// Repère de la cible (#777, critère 27) : le repli écrit de la séance partagée le
+			// cite, comme la fiche ordinaire.
+			ancre: facultatif(nonVide(60)),
 		},
 		(e, chemin) => {
 			if (e.cibleIndices.some((i) => i >= e.tokens.length))

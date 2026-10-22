@@ -302,6 +302,14 @@ export type Exercise =
 			    l'exercice et non par la leçon, parce que c'est lui que le runner et la
 			    révision reçoivent. Absent ⇒ sélection libre, comportement historique. */
 			segment?: boolean;
+			/** Mot de la cible qui la DÉSIGNE quand la phrase en porte plusieurs possibles
+			    (deux groupes nominaux : « Le chien regarde les oiseaux. »), cité par la
+			    consigne d'écran (« …qui contient le mot « oiseaux » », #716). Le repli écrit le
+			    cite aussi (#777, critère 27) : sans lui, « Recopie le groupe nominal » y
+			    laisserait deux réponses défendables, dont une comptée fausse. Porté par
+			    l'exercice, comme la consigne, et pas reconstruit en relisant son texte.
+			    Absent ⇒ la phrase n'a qu'une cible possible. */
+			ancre?: string;
 	  }
 	// Droite graduée (#256) — l'enfant PLACE un repère sur la graduation qui correspond
 	// à la valeur cible (numération grands nombres, nombres décimaux). Interaction : une
@@ -460,6 +468,15 @@ export function consignePourNiveau(
 	return typeof type.consigne === 'function' ? type.consigne(level) : type.consigne;
 }
 
+/** Pose la consigne de fiche (#777, critère 4) sur un type bâti par une fabrique PARTAGÉE
+ *  entre plusieurs leçons, qui ne peut donc pas la porter elle-même : la consigne s'écrit
+ *  alors à côté de la leçon qu'elle décrit. Copie de surface, la mécanique (`generate`,
+ *  `check`, modes…) est reprise telle quelle — même régime que l'étalement de `calibrated`,
+ *  sûr tant qu'aucun type ne s'appuie sur `this`. */
+export function avecConsigne(type: ExerciseType, consigne: ConsigneFiche): ExerciseType {
+	return { ...type, consigne };
+}
+
 export interface ExerciseType {
 	/** Modes proposés, dans l'ordre d'affichage (optionnel ; un type mono-mode l'ignore). */
 	modes?: ModeOption[];
@@ -479,6 +496,14 @@ export interface ExerciseType {
 	 *  quoi : toute leçon « relier » à mots doit la déclarer. Sans objet pour un « relier » à
 	 *  ÉTIQUETTES, dont les étiquettes proposées nomment la tâche. */
 	questionRelier?: (mot: string) => string;
+	/** Étiquettes que propose le REPLI d'un « relier » À ÉTIQUETTES hors de son widget
+	 *  (#777, critère 2), TOUTES et dans cet ORDRE, quelle que soit la manche : une manche
+	 *  sans adjectif n'en porte que deux, et ne proposer que celles-là soufflerait la
+	 *  réponse par élimination. Ordre fixe, celui de la leçon (« déterminant, nom,
+	 *  adjectif ») : l'enfant retrouve les étiquettes à la même place d'une question à
+	 *  l'autre. Absente ⇒ les étiquettes de la manche, en ordre alphabétique. Sans objet
+	 *  pour un « relier » à mots. */
+	etiquettesRelier?: readonly string[];
 	/** Niveaux scolaires couverts (#225), renseigné par les combinateurs multi-niveaux
 	 *  (`calibrated`, `bankByLevel`) : le catalogue en dérive `LessonDef.levels`. */
 	levels?: SchoolLevel[];

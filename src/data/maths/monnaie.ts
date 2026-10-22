@@ -111,6 +111,7 @@ function rendreMonnaie(config: RenduConfig): Exercise {
 /* Fabrique un ExerciseType mono-mode qui tire au hasard parmi ses situations. */
 function monnaieType(situations: Array<() => Exercise>): ExerciseType {
 	return {
+		consigne: 'Calcule le total ou ce qui reste, en euros ou en centimes.', // #777, critère 4
 		generate: () => choice(situations)(),
 		check: checkNumerique,
 	};
@@ -120,6 +121,7 @@ function monnaieType(situations: Array<() => Exercise>): ExerciseType {
    (un niveau). Utilisée comme `build` du combinateur `calibrated`. */
 function renduType(config: RenduConfig): ExerciseType {
 	return {
+		consigne: 'Calcule la monnaie rendue, en euros.', // #777, critère 4
 		generate: (_opts?: GenerateOpts) => rendreMonnaie(config),
 		check: checkNumerique,
 	};

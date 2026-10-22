@@ -43,10 +43,16 @@
      l'intercalation passe à un CHECK PAR INTERVALLE (toute valeur dans
      l'intervalle, le nombre rond du milieu reste ≤ 6 chiffres en saisie).
    ============================================================ */
-import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
+import type {
+	ConsigneFiche,
+	Exercise,
+	ExerciseType,
+	ModeOption,
+	GenerateOpts,
+} from '../../core/exercise';
 import { etayageRedige, type LessonInput } from '../_shared';
 import type { SchoolLevel } from '../../core/catalog';
-import { calibrated } from '../../core/level-combinators';
+import { calibrated, consigneParNiveau } from '../../core/level-combinators';
 import { rnd, choice, sample } from '../../core/utils';
 import { formatNombre, nettoyerSaisieNombre } from '../../core/nombres';
 import { intervalleAPlusieursReponses } from '../../core/items';
@@ -460,10 +466,12 @@ export function answerEstNumerique(answer: string): boolean {
      groupé affiché ;
    - accepte TOUTE valeur strictement dans l'intervalle quand l'exercice en porte
      un (intercaler : #240 au CM1, #446 au CE2) ; sinon compare à `answer` (réponse
-     unique : comparer, encadrer, valeur de position…). */
-function numerationType(genFact: () => Fact): ExerciseType {
+     unique : comparer, encadrer, valeur de position…).
+   `consigne` : consigne de fiche de la leçon (#777, critère 4). */
+function numerationType(genFact: () => Fact, consigne: ConsigneFiche): ExerciseType {
 	return {
 		modes: MODES,
+		consigne,
 		generate(opts?: GenerateOpts): Exercise {
 			const mode = opts?.mode;
 			const f = genFact();
@@ -537,7 +545,10 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 		// CM1 jusqu'au million (#240). Même leçon, même id, génération recalibrée.
 		levels: ['ce2', 'cm1'],
 		exerciseType: calibrated<'petit' | 'grand'>({ ce2: 'petit', cm1: 'grand' }, (taille) =>
-			numerationType(() => (taille === 'grand' ? compareFactGrand() : compareFactPetit(999))),
+			numerationType(
+				() => (taille === 'grand' ? compareFactGrand() : compareFactPetit(999)),
+				'Compare deux nombres avec le signe <, > ou =.',
+			),
 		),
 		// Une seule entrée pour les deux niveaux : du CE2 au million, la méthode ne change
 		// pas d'un pouce (longueur, puis rang par rang depuis la gauche) — seule la plage
@@ -564,14 +575,16 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 		// intercalation entre deux multiples ronds consécutifs.
 		levels: ['ce2', 'cm1'],
 		exerciseType: calibrated<'petit' | 'grand'>({ ce2: 'petit', cm1: 'grand' }, (taille) =>
-			numerationType(() =>
-				taille === 'grand'
-					? rnd(1, 10) <= 6
-						? encadreFactGrand()
-						: intercaleFactGrand()
-					: rnd(1, 10) <= 6
-						? encadreFact(999, [10, 100])
-						: intercaleFact(999),
+			numerationType(
+				() =>
+					taille === 'grand'
+						? rnd(1, 10) <= 6
+							? encadreFactGrand()
+							: intercaleFactGrand()
+						: rnd(1, 10) <= 6
+							? encadreFact(999, [10, 100])
+							: intercaleFact(999),
+				'Encadre ou intercale : trouve le nombre rond juste avant ou après le nombre, ou un nombre entre deux autres.',
 			),
 		),
 		// Deux gestes dans une seule leçon (encadrer, intercaler) et trois pas seulement :
@@ -597,7 +610,10 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 		// inventerait un 4ᵉ terme et ferait lire une compétence nouvelle, là où cette leçon
 		// est la SUITE des deux précédentes (mêmes gestes, nombres plus grands). 1ʳᵉ personne
 		// comme ses voisines : une série homogène se survole plus vite.
-		label: "Je compare, j'encadre, j'intercale jusqu'à 10 000",
+		// Libellé de base NEUTRE (contrat de `LessonDef.labelNiveau`), pour les écrans sans
+		// niveau : celui du CM1, juste aussi au CE2, où il tait l'intercalation (perte de
+		// précision, pas contresens). « j'intercale » serait faux au CM1, « jusqu'à 10 000 » aussi.
+		label: "Je compare et j'encadre les grands nombres",
 		// Au CM1, la même leçon tire de GRANDS nombres (comparer et encadrer, autour du million) :
 		// « jusqu'à 10 000 » y coiffait « 917 554 » (#777, critère 3). Le libellé CM1 dit ce
 		// qui est servi — deux gestes, l'intercalation n'étant tirée qu'au CE2 —, sans borne
@@ -613,12 +629,17 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 		// CM1 (#240) : grandes plages (comparer/encadrer jusqu'au million).
 		levels: ['ce2', 'cm1'],
 		exerciseType: calibrated<'petit' | 'grand'>({ ce2: 'petit', cm1: 'grand' }, (taille) =>
-			numerationType(() =>
-				taille === 'grand'
-					? rnd(0, 1) === 0
-						? compareFactGrand()
-						: encadreFactGrand()
-					: situerFactPetit(),
+			numerationType(
+				() =>
+					taille === 'grand'
+						? rnd(0, 1) === 0
+							? compareFactGrand()
+							: encadreFactGrand()
+						: situerFactPetit(),
+				consigneParNiveau({
+					ce2: 'Compare, encadre ou intercale les nombres.',
+					cm1: 'Compare avec <, > ou =, ou trouve le nombre rond juste avant ou juste après un grand nombre.',
+				}),
 			),
 		),
 		// Leçon-somme des deux précédentes : la sienne redit les trois gestes en un pas

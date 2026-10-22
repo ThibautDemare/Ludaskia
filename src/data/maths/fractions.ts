@@ -55,7 +55,7 @@
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
 import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
-import { checkAnswer } from '../../core/exercise';
+import { avecConsigne, checkAnswer } from '../../core/exercise';
 import { checkNumerique } from '../../core/check-helpers';
 import { calibrated } from '../../core/level-combinators';
 import { rnd, choice, sample } from '../../core/utils';
@@ -616,7 +616,10 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 		id: 'num-frac-sens',
 		label: 'Lire une fraction',
 		motsCles: ['numérateur', 'dénominateur', 'demi', 'tiers', 'quart'],
-		exerciseType: qcmType(genSens),
+		exerciseType: avecConsigne(
+			qcmType(genSens),
+			'Trouve la fraction qui correspond à la partie coloriée.',
+		),
 		etayage: [
 			etayageRedige(
 				'Lire une fraction',
@@ -633,9 +636,11 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 		id: 'num-frac-collection',
 		label: "Fraction d'une collection",
 		motsCles: ["partie d'un groupe", 'objets'],
-		exerciseType: calibrated<CollectionConfig>(
-			{ ce2: COLLECTION_CE2, cm1: COLLECTION_CM1 },
-			(config) => saisieNumType(() => genCollection(config)),
+		exerciseType: avecConsigne(
+			calibrated<CollectionConfig>({ ce2: COLLECTION_CE2, cm1: COLLECTION_CM1 }, (config) =>
+				saisieNumType(() => genCollection(config)),
+			),
+			"Calcule la fraction d'une quantité d'objets.",
 		),
 		// L'ordre des deux opérations est la difficulté entière : diviser PUIS multiplier.
 		// L'inverse (2 × 30 = 60, puis 60 ÷ 5) donne le bon résultat mais ne se raconte plus
@@ -656,8 +661,11 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 		id: 'num-frac-bande',
 		label: 'Fraction sur une bande',
 		motsCles: ['bande unité', 'segment', 'partager une bande'],
-		exerciseType: calibrated<number[]>({ ce2: DENS_BANDE_CE2, cm1: DENS_BANDE_CM1 }, (dens) =>
-			qcmType(() => genBande(dens)),
+		exerciseType: avecConsigne(
+			calibrated<number[]>({ ce2: DENS_BANDE_CE2, cm1: DENS_BANDE_CM1 }, (dens) =>
+				qcmType(() => genBande(dens)),
+			),
+			'Trouve la fraction qui correspond au repère marqué sur la bande.',
 		),
 		// « On compte les morceaux, pas les traits » : sur une bande graduée, l'enfant compte
 		// les graduations (il en trouve une de trop ou une de moins) au lieu des intervalles.
@@ -678,7 +686,10 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 		id: 'num-frac-egalites',
 		label: 'Fractions égales',
 		motsCles: ['fractions équivalentes', 'même valeur'],
-		exerciseType: qcmType(genEgalites),
+		exerciseType: avecConsigne(
+			qcmType(genEgalites),
+			'Indique par oui ou par non si les deux barres coloriées représentent la même fraction.',
+		),
 		etayage: [
 			etayageRedige(
 				'Deux fractions qui valent pareil',
@@ -695,7 +706,10 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 		id: 'num-frac-comparaison',
 		label: 'Comparer des fractions',
 		motsCles: ['plus grande', 'plus petite fraction'],
-		exerciseType: qcmType(genComparaison),
+		exerciseType: avecConsigne(
+			qcmType(genComparaison),
+			'Trouve la plus grande des fractions proposées.',
+		),
 		etayage: [
 			etayageRedige(
 				'Comparer deux fractions',
@@ -712,8 +726,11 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 		id: 'num-frac-addition',
 		label: 'Additionner des fractions',
 		motsCles: ['plus', 'somme', 'même dénominateur'],
-		exerciseType: calibrated<number[]>({ ce2: DENS_SOMME_CE2, cm1: DENS_SOMME_CM1 }, (dens) =>
-			qcmType(() => genSomme(dens)),
+		exerciseType: avecConsigne(
+			calibrated<number[]>({ ce2: DENS_SOMME_CE2, cm1: DENS_SOMME_CM1 }, (dens) =>
+				qcmType(() => genSomme(dens)),
+			),
+			'Additionne deux fractions de même dénominateur.',
 		),
 		// Le distracteur du QCM est toujours la somme des DEUX lignes (2/8 + 5/8 = 7/16) :
 		// le 3ᵉ pas dit donc explicitement que le nombre du bas ne bouge pas, au lieu de se
@@ -735,7 +752,10 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 		id: 'num-frac-superieure',
 		label: 'Une fraction plus grande que 1',
 		motsCles: ['numérateur plus grand', 'partie entière'],
-		exerciseType: cm1Only(qcmType(genSuperieure)),
+		exerciseType: avecConsigne(
+			cm1Only(qcmType(genSuperieure)),
+			'Trouve la fraction plus grande que 1 qui correspond à toutes les unités coloriées.',
+		),
 		etayage: [
 			etayageRedige(
 				'Une fraction plus grande que 1',
@@ -752,7 +772,10 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 		id: 'num-frac-decomposer',
 		label: 'Je décompose une fraction',
 		motsCles: ['décomposer', 'partie entière', 'addition de fractions'],
-		exerciseType: cm1Only(saisieNumType(genDecomposer)),
+		exerciseType: avecConsigne(
+			cm1Only(saisieNumType(genDecomposer)),
+			'Complète la décomposition de la fraction en un entier plus une fraction plus petite que 1.',
+		),
 		etayage: [
 			etayageRedige(
 				'Décomposer une fraction',
@@ -769,7 +792,10 @@ export const FRACTIONS_LESSONS: LessonInput[] = [
 		id: 'num-frac-encadrer',
 		label: 'Encadrer une fraction',
 		motsCles: ['entre deux entiers', 'partie entière'],
-		exerciseType: cm1Only(qcmType(genEncadrer)),
+		exerciseType: avecConsigne(
+			cm1Only(qcmType(genEncadrer)),
+			'Trouve les deux entiers consécutifs qui encadrent la fraction.',
+		),
 		etayage: [
 			etayageRedige(
 				'Encadrer une fraction entre deux entiers',

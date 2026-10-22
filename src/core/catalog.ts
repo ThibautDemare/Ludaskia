@@ -105,6 +105,10 @@ export interface LessonDef {
 	// `labelLecon(lesson, niveau)` (core/levels.ts) ; un site qui n'a pas de niveau sous
 	// la main affiche `label`, qui doit donc rester juste à tous les niveaux (formulation
 	// la plus neutre) — la dégradation est une perte de précision, jamais un contresens.
+	// CONTRAT, donc : dès qu'une leçon déclare `labelNiveau`, son `label` de base est vrai à
+	// CHACUN de ses `levels`. Ce qui ne vaut qu'à un niveau — une borne de plage (« jusqu'à
+	// 10 000 », fausse au CM1), un terme du programme d'une seule classe (« noyau ») — va dans
+	// `labelNiveau`, jamais dans `label` (#777, critère 3).
 	labelNiveau?: Partial<Record<SchoolLevel, string>>;
 	// Libellé IMPRIMÉ (#777, critère 19) — surcroît optionnel, sur le modèle de `label` /
 	// `labelNiveau`. À ne remplir que quand le libellé d'écran décrit un GESTE d'écran
@@ -246,9 +250,14 @@ function checkMath(_exercise: Exercise, input: string): boolean {
 	return Number(norm(input)) === Number(norm(_exercise.answer));
 }
 
-/* Fabrique un ExerciseType pour une leçon math (wrapping de bilanQ). */
-function mathType(num: number): ExerciseType {
+/* Fabrique un ExerciseType pour une leçon math (wrapping de bilanQ).
+   `consigne` (#777, critère 4) : consigne d'action de la leçon, lue par le bilan, la
+   révision et la séance partagée (`consignePourNiveau`). La fiche historique de ces leçons
+   (`LESSONS_CALCUL_MENTAL`, core/lessons.ts) garde la sienne : rendue à part, elle ne lit
+   pas ce champ. */
+function mathType(num: number, consigne: string): ExerciseType {
 	return {
+		consigne,
 		generate(): Exercise {
 			const item = bilanQ(num)!;
 			return { type: 'text', question: item.text, answer: String(item.answer) };
@@ -451,7 +460,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(1),
+		exerciseType: mathType(1, 'Calcule de tête la somme.'),
 	},
 	{
 		id: 'math-complements',
@@ -460,7 +469,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(2),
+		exerciseType: mathType(2, 'Trouve le nombre qui complète à 10, à 100 ou à 1 000.'),
 	},
 	{
 		id: 'math-doubles',
@@ -469,7 +478,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(3),
+		exerciseType: mathType(3, 'Calcule de tête le double du nombre.'),
 	},
 	{
 		id: 'math-moities',
@@ -478,7 +487,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(4),
+		exerciseType: mathType(4, 'Calcule de tête la moitié du nombre.'),
 	},
 	{
 		id: 'math-ajouter-9-19-29',
@@ -487,7 +496,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(5),
+		exerciseType: mathType(5, 'Calcule de tête la somme.'),
 	},
 	{
 		id: 'math-soustraire-9-19-29',
@@ -496,7 +505,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(6),
+		exerciseType: mathType(6, 'Calcule de tête le résultat.'),
 	},
 	{
 		id: 'math-tables-multiplication',
@@ -505,7 +514,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(7),
+		exerciseType: mathType(7, 'Calcule de tête le produit.'),
 	},
 	{
 		id: 'math-moitie-pair',
@@ -514,7 +523,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(8),
+		exerciseType: mathType(8, 'Calcule de tête la moitié du nombre pair.'),
 	},
 	{
 		id: 'math-multiples-25',
@@ -523,7 +532,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(9),
+		exerciseType: mathType(9, 'Calcule de tête le produit par 25.'),
 	},
 	{
 		id: 'math-decompo-60',
@@ -532,7 +541,10 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(10),
+		exerciseType: mathType(
+			10,
+			'Trouve le nombre qui manque dans la multiplication pour obtenir 60.',
+		),
 	},
 	{
 		id: 'math-dizaines-centaines',
@@ -541,7 +553,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(11),
+		exerciseType: mathType(11, 'Calcule de tête chaque opération.'),
 	},
 	{
 		id: 'math-multiplier-10-100',
@@ -550,7 +562,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(12),
+		exerciseType: mathType(12, 'Calcule de tête le produit par 10 ou par 100.'),
 	},
 	{
 		id: 'math-multiplier-4-8',
@@ -559,7 +571,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(13),
+		exerciseType: mathType(13, 'Calcule de tête le produit par 4 ou par 8.'),
 	},
 	{
 		id: 'math-multiplier-20-30-40',
@@ -568,7 +580,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(14),
+		exerciseType: mathType(14, 'Calcule de tête le produit par 20, par 30 ou par 40.'),
 	},
 	{
 		id: 'math-decomposer-multiplication',
@@ -577,7 +589,7 @@ const MATH_LESSONS: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['ce2'],
-		exerciseType: mathType(15),
+		exerciseType: mathType(15, 'Calcule le produit en le décomposant.'),
 	},
 ]);
 
@@ -594,7 +606,7 @@ const MATH_LESSONS_CM1: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['cm1'],
-		exerciseType: mathType(16),
+		exerciseType: mathType(16, 'Calcule de tête le produit par 50.'),
 	},
 	{
 		id: 'math-diviser-10-100',
@@ -603,7 +615,7 @@ const MATH_LESSONS_CM1: LessonDef[] = avecEtayage([
 		subject: 'math',
 		category: 'math-calcul-mental',
 		levels: ['cm1'],
-		exerciseType: mathType(17),
+		exerciseType: mathType(17, 'Calcule de tête le quotient par 10 ou par 100.'),
 	},
 ]);
 
@@ -1263,41 +1275,88 @@ type MancheAppariement = Extract<Exercise, { type: 'appariement' }>;
      À étiquettes, le choix se fait parmi les mots qui ne paraissent qu'une fois dans le
      groupe : un mot répété serait désigné deux fois.
    - À ÉTIQUETTES (`colonneDroite: 'etiquettes'`) : le groupe ENTIER est cité (hors de son
-     groupe, « le » peut être un pronom), puis le mot désigné, dont on demande la nature ;
-     les choix sont les étiquettes de la manche (celles du widget).
+     groupe, « le » peut être un pronom), puis le mot désigné, dont on demande la nature
+     (« Dans « son vélo », quelle est la nature du mot « son » ? », décision du 22/10/2026).
+     Les choix sont TOUTES les étiquettes de la leçon, dans son ordre
+     (`ExerciseType.etiquettesRelier`) : une manche sans adjectif n'en porte que deux, et
+     ne proposer que celles-là laisserait répondre par élimination.
    - À MOTS : la question nomme la tâche (`ExerciseType.questionRelier`, déclarée par la
-     leçon : « va avec » seul ne dit pas selon quoi) ; les choix sont la colonne de droite
-     du widget, intrus compris (les faux-amis sont le piège voulu).
-   Choix en ordre ALPHABÉTIQUE : stable, et sans indice de position (la bonne réponse n'est
-   ni toujours en tête, ni jamais parmi les intrus placés en fin de colonne). Les mots d'une
-   manche sont deux à deux distincts (garde des fabriques) : la réponse est donc le SEUL
-   choix juste. */
+     leçon : « va avec » seul ne dit pas selon quoi) ; QUATRE choix, la réponse et trois
+     mots de la colonne de droite du widget, dont au moins un intrus (le faux-ami est le
+     piège voulu) — cf. `choixRelierAMots`. Ils sont choisis par la MÊME empreinte que la
+     paire, pour la même raison qu'elle.
+   Choix à mots en ordre ALPHABÉTIQUE : stable, et sans indice de position (la bonne réponse
+   n'est ni toujours en tête, ni jamais parmi les intrus placés en fin de colonne). Les mots
+   d'une manche sont deux à deux distincts (garde des fabriques) : la réponse est donc le
+   SEUL choix juste. */
 function repliAppariement(lesson: LessonDef, ex: MancheAppariement): Item {
-	const droites = [...new Set([...ex.paires.map((q) => q.droite), ...(ex.intrus ?? [])])];
-	const choices = droites.sort((a, b) => a.localeCompare(b, 'fr'));
 	const empreinte = empreinteTexte(ex.paires.map((q) => `${q.gauche}→${q.droite}`).join('|'));
-	if (ex.colonneDroite === 'etiquettes') {
-		const cle = (mot: string) => mot.toLocaleLowerCase('fr');
-		const uniques = ex.paires.filter(
-			(q) => ex.paires.filter((r) => cle(r.gauche) === cle(q.gauche)).length === 1,
-		);
-		const candidates = uniques.length > 0 ? uniques : ex.paires;
-		if (candidates.length === 0) return repliAppariementVide(lesson, ex);
-		const p = candidates[empreinte % candidates.length];
-		const groupe = ex.paires.map((q) => q.gauche).join(' ');
-		return {
-			text: `Dans « ${groupe} », « ${p.gauche} » est… @`,
-			answer: p.droite,
-			kind: 'text',
-			choices,
-			_lesson: lesson.id,
-		};
-	}
+	if (ex.colonneDroite === 'etiquettes') return repliEtiquettes(lesson, ex, empreinte);
 	if (ex.paires.length === 0) return repliAppariementVide(lesson, ex);
 	const p = ex.paires[empreinte % ex.paires.length];
 	const question =
 		lesson.exerciseType.questionRelier?.(p.gauche) ?? `Quel mot va avec « ${p.gauche} » ?`;
-	return { text: `${question} @`, answer: p.droite, kind: 'text', choices, _lesson: lesson.id };
+	return {
+		text: `${question} @`,
+		answer: p.droite,
+		kind: 'text',
+		choices: choixRelierAMots(ex, p.droite, empreinte),
+		_lesson: lesson.id,
+	};
+}
+
+const ordreFr = (a: string, b: string): number => a.localeCompare(b, 'fr');
+
+/* Repli d'un « relier » À ÉTIQUETTES : la nature d'UN mot du groupe, cité avec le groupe. */
+function repliEtiquettes(lesson: LessonDef, ex: MancheAppariement, empreinte: number): Item {
+	const cle = (mot: string) => mot.toLocaleLowerCase('fr');
+	const uniques = ex.paires.filter(
+		(q) => ex.paires.filter((r) => cle(r.gauche) === cle(q.gauche)).length === 1,
+	);
+	const candidates = uniques.length > 0 ? uniques : ex.paires;
+	if (candidates.length === 0) return repliAppariementVide(lesson, ex);
+	const p = candidates[empreinte % candidates.length];
+	const groupe = ex.paires.map((q) => q.gauche).join(' ');
+	// Étiquettes déclarées par la leçon, dans son ordre ; celles d'une manche qui n'y
+	// figureraient pas suivent (ordre alphabétique), pour que la réponse soit toujours
+	// proposée.
+	const declarees = [...(lesson.exerciseType.etiquettesRelier ?? [])];
+	const deLaManche = [...new Set(ex.paires.map((q) => q.droite))]
+		.filter((e) => !declarees.includes(e))
+		.sort(ordreFr);
+	return {
+		text: `Dans « ${groupe} », quelle est la nature du mot « ${p.gauche} » ? @`,
+		answer: p.droite,
+		kind: 'text',
+		choices: [...declarees, ...deLaManche],
+		_lesson: lesson.id,
+	};
+}
+
+/** Nombre de distracteurs d'un « relier » à mots replié (#777, critère 20) : quatre choix
+    en tout, comme les QCM de vocabulaire. Six (toute la colonne) noyaient la réponse. */
+const NB_DISTRACTEURS_RELIER = 3;
+
+/* Choix d'un « relier » À MOTS replié : la réponse, puis un INTRUS de la manche (faux-ami,
+   le piège voulu), puis d'autres mots de la colonne de droite jusqu'à trois distracteurs.
+   Tous viennent de la manche, donc de la banque de la leçon : aucun mot inventé, et aucun
+   de la famille du mot demandé (une manche ne réunit que des familles distinctes, et un
+   faux-ami n'en est, par construction, d'aucune). Sélection par l'EMPREINTE de la manche :
+   une fonction pure, comme la paire. Manche pauvre (sans intrus, ou trop peu de mots) :
+   ce qu'il y a, jamais de plantage. */
+function choixRelierAMots(ex: MancheAppariement, reponse: string, empreinte: number): string[] {
+	const intrus = [...new Set(ex.intrus ?? [])].filter((m) => m !== reponse).sort(ordreFr);
+	const autres = [...new Set(ex.paires.map((q) => q.droite))]
+		.filter((m) => m !== reponse && !intrus.includes(m))
+		.sort(ordreFr);
+	const distracteurs = intrus.length > 0 ? [intrus[empreinte % intrus.length]] : [];
+	const reste = [...intrus, ...autres].filter((m) => !distracteurs.includes(m));
+	// Point de départ tiré d'autres bits de l'empreinte que le faux-ami : sans quoi le
+	// complément suivrait toujours le même faux-ami.
+	const debut = reste.length > 0 ? (empreinte >>> 11) % reste.length : 0;
+	const tournes = [...reste.slice(debut), ...reste.slice(0, debut)];
+	distracteurs.push(...tournes.slice(0, NB_DISTRACTEURS_RELIER - distracteurs.length));
+	return [reponse, ...distracteurs].sort(ordreFr);
 }
 
 /* Empreinte entière d'un texte (FNV-1a 32 bits) : sert à CHOISIR de façon déterministe,
@@ -1435,7 +1494,11 @@ export function itemDepuisExercice(lesson: LessonDef, ex: Exercise): Item {
 		// contiguë (sujet composé, ni…ni), sinon la réponse stockée serait « Emma Chloé »/« ni ni »
 		// et une recopie naturelle (« Emma et Chloé ») serait comptée fausse en bilan/fiche.
 		const motsCible = libelleCible(ex.tokens, ex.cibleIndices);
-		const quoi = ex.cibleLabel ?? 'le mot demandé';
+		// Phrase à plusieurs cibles possibles (deux groupes nominaux) : le repère de l'écran
+		// (`ancre`) désigne la bonne, affiché ET lu (#777, critère 27).
+		const quoi = ex.ancre
+			? `${ex.cibleLabel ?? 'le mot demandé'} qui contient le mot « ${ex.ancre} »`
+			: (ex.cibleLabel ?? 'le mot demandé');
 		const item: Item = {
 			text: `Recopie ${quoi} : « ${joindrePhrase(ex.tokens)} » @`,
 			answer: motsCible,

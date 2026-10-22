@@ -22,7 +22,7 @@
      cachées) — les propriétés sont mémorisées, pas comptées.
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
-import { checkAnswer } from '../../core/exercise';
+import { avecConsigne, checkAnswer } from '../../core/exercise';
 import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { propQType, type PropQ } from './_shared';
@@ -71,6 +71,7 @@ const MODES: ModeOption[] = [
 function reconnaitreType(): ExerciseType {
 	return {
 		modes: MODES,
+		consigne: 'Observe le solide et indique son nom.', // #777, critère 4
 		generate(opts?: GenerateOpts): Exercise {
 			const mode = opts?.mode;
 			const solid = choice(TOUS);
@@ -196,7 +197,10 @@ export const SOLIDE_LESSONS: LessonInput[] = [
 		id: 'geo-solides-proprietes',
 		label: 'Les propriétés des solides',
 		motsCles: ['faces', 'arêtes', 'sommets', 'cube', 'pavé'],
-		exerciseType: propQType(PROPRIETES),
+		exerciseType: avecConsigne(
+			propQType(PROPRIETES),
+			'Réponds à la question sur les propriétés du solide.',
+		),
 		// Les questions passent par des objets du quotidien (le dé, la boîte de conserve) :
 		// l'étayage reprend ces mêmes objets plutôt que d'en inventer d'autres.
 		etayage: [

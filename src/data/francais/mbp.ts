@@ -171,6 +171,7 @@ const MODE_QCM: ModeOption[] = [{ ...MODE_QCM_CHECK, label: 'Je choisis la bonne
 export function mbpType(): ExerciseType {
 	return {
 		modes: MODE_QCM,
+		consigne: 'Complète le mot avec la bonne lettre : « m » ou « n ».', // #777, critère 4
 		generate(): Exercise {
 			// randFloat (et non Math.random) : aléa seedable → corrigé == feuille (#41).
 			const item = tiragePondere(MBP_BANK, randFloat());

@@ -226,7 +226,12 @@ function genItem(): Exercise {
 const MODE_QCM: ModeOption[] = [{ ...MODE_QCM_POINT, label: 'Je choisis la bonne forme' }];
 
 function participeType(): ExerciseType {
-	return { modes: MODE_QCM, generate: genItem, check: (ex, input) => checkAnswer(ex, input) };
+	return {
+		modes: MODE_QCM,
+		consigne: 'Accorde le participe passé avec le nouveau sujet.', // #777, critère 4
+		generate: genItem,
+		check: (ex, input) => checkAnswer(ex, input),
+	};
 }
 
 export interface ParticipeLessonDef extends LessonInput {

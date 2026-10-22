@@ -109,7 +109,16 @@ par les combinateurs, et un niveau lirait le texte de l'autre).
   la fiche/bilan, `ui/revision.ts` pour la consigne d'action #265). C'est la forme fonction
   qui traverse sans effort la **recopie de métadonnées** de `calibrated` (et un futur
   `...base`) : une consigne fonction doit donc dériver du **niveau reçu en argument**,
-  jamais des `params` capturés à la construction.
+  jamais des `params` capturés à la construction. **`consigneParNiveau({ ce2, cm1 })`**
+  (`level-combinators.ts`) fabrique cette fonction avec le repli de `calibrated`
+  (`closestSupported`). Depuis #777 (critère 4), **toute** leçon déclare sa consigne, à
+  chaque niveau couvert (`tests/consignes-gate.test.ts`) ; une fabrique partagée par
+  plusieurs leçons la reçoit en paramètre, ou la leçon la pose avec **`avecConsigne(type,
+  consigne)`** (`exercise.ts`). Le calcul mental hérité la porte sur son `mathType`, sans
+  toucher à sa fiche historique (`LESSONS_CALCUL_MENTAL`), qui garde la sienne. Contrat du
+  libellé, même logique : dès qu'une leçon déclare `labelNiveau`, son `label` de base est
+  vrai à chacun de ses niveaux (`num-situer-10000`, `num-decompose-10000` : « …les grands
+  nombres » en base, « jusqu'à 10 000 » au CE2 seulement).
 
 ## Progression namespacée `lessonId@niveau`
 

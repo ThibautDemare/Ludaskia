@@ -344,7 +344,13 @@ export function genItem(): Exercise {
 const MODE_QCM: ModeOption[] = [{ ...MODE_QCM_POINT, label: 'Je choisis le bon groupe' }];
 
 function accordGNType(): ExerciseType {
-	return { modes: MODE_QCM, generate: genItem, check: (ex, input) => checkAnswer(ex, input) };
+	return {
+		modes: MODE_QCM,
+		// #777, critère 4 : nomme les deux sens de la transformation, et le piège (un mot oublié).
+		consigne: 'Mets le groupe de mots au pluriel ou au féminin, sans oublier aucun mot.',
+		generate: genItem,
+		check: (ex, input) => checkAnswer(ex, input),
+	};
 }
 
 export interface AccordGNLessonDef extends LessonInput {

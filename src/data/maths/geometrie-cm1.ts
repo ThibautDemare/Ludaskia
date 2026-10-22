@@ -30,7 +30,7 @@
      pavé, pyramide, prisme) — jamais « compte sur le dessin » (arêtes cachées).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
-import { checkAnswer } from '../../core/exercise';
+import { avecConsigne, checkAnswer } from '../../core/exercise';
 import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { propQExercise, propQType, type PropQ } from './_shared';
@@ -445,6 +445,8 @@ const POLYEDRE_QUESTIONS: PropQ[] = [
 function polyedreType(): ExerciseType {
 	return {
 		modes: MODE_QCM_SEUL,
+		// #777, critère 4.
+		consigne: 'Indique si le solide est un polyèdre, ou réponds à la question sur les polyèdres.',
 		// Réponses textuelles (« le cube », « oui », « planes ») : correction déléguée
 		// à `checkAnswer`, pas à `checkNumeriqueOuTexte` du helper `propQType`.
 		generate: () => propQExercise(POLYEDRE_QUESTIONS),
@@ -493,6 +495,7 @@ function choixComptage(bon: number): string[] {
 function comptageType(): ExerciseType {
 	return {
 		modes: MODE_QCM_SEUL,
+		consigne: "Indique le nombre de faces, d'arêtes ou de sommets du solide.", // #777
 		generate(): Exercise {
 			const e = choice(COMPTAGE);
 			const carac = choice<Caracteristique>(['faces', 'aretes', 'sommets']);
@@ -540,7 +543,10 @@ export const GEOMETRIE_CM1_LESSONS: LessonInput[] = [
 		id: 'geo-cm1-triangles-prop',
 		label: 'Les propriétés des triangles',
 		motsCles: ['côtés', 'angles', 'isocèle', 'équilatéral'],
-		exerciseType: propQType(TRI_PROPRIETES, MODE_QCM_SEUL),
+		exerciseType: avecConsigne(
+			propQType(TRI_PROPRIETES, MODE_QCM_SEUL),
+			'Réponds à la question sur les propriétés des triangles.',
+		),
 		etayage: [
 			etayageRedige(
 				'Les propriétés des triangles',

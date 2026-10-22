@@ -1573,10 +1573,13 @@ export const ITEMS_AFFIXES_CM1: ItemVocabQcm[] = [
 
 const MODE_QCM: ModeOption[] = [MODE_QCM_CHECK];
 
-/* Moteur QCM de reconnaissance : tire uniformément dans le POOL d'items reçu (#244). */
-export function famillesType(items: ItemVocabQcm[]): ExerciseType {
+/* Moteur QCM de reconnaissance : tire uniformément dans le POOL d'items reçu (#244).
+   `consigne` : consigne de fiche de la leçon (#777, critère 4), qui couvre toutes les
+   formes de question de son pool (famille, préfixe, suffixe). */
+export function famillesType(items: ItemVocabQcm[], consigne: string): ExerciseType {
 	return {
 		modes: MODE_QCM,
+		consigne,
 		generate(): Exercise {
 			const it = choice(items);
 			return {
@@ -1608,17 +1611,20 @@ const NB_INTRUS_APPARIEMENT = 2;
 
 const CONSIGNE_APPARIEMENT = 'Relie chaque mot à un mot de sa famille.';
 
+/* Consigne de FICHE (#777, critères 4, 5 et 19) : celle de la forme écrite. Hors du widget
+   (fiche, bilan, papier), la manche est repliée en une question à choix sur UN mot
+   (`repliAppariement`, core/catalog.ts) : « Relie » y serait faux. Même tâche que la leçon
+   sœur du CM1 en QCM, d'où la même consigne. Le widget garde `CONSIGNE_APPARIEMENT`
+   (énoncé de la manche), où le geste est vrai. */
+const CONSIGNE_FICHE_FAMILLE = 'Trouve le mot de la même famille que le mot donné.';
+
 /* Question de la forme ÉCRITE (#777, critères 2, 19 et 20). Hors du widget — fiche, bilan,
    impression —, il n'y a plus deux colonnes à relier : la manche est repliée en UNE
    question sur un mot de gauche de la manche, la réponse se choisissant parmi la colonne
    de droite (`itemDepuisExercice`), et « Relie » y serait faux. La question reprend la
    tournure de la leçon sœur en QCM (« Quel mot est de la même famille ? », #265), le mot
    de base cité : c'est elle qui dit SELON QUOI deux mots vont ensemble. Le widget, lui,
-   garde `CONSIGNE_APPARIEMENT`, où le geste est vrai.
-   ⚠ La consigne de FICHE (`consigne` ci-dessous) reste `CONSIGNE_APPARIEMENT` : sur papier
-   elle est remplacée par « Coche la bonne réponse. » (le repli est un QCM), mais à l'écran
-   (fiche d'une séance partagée) elle dit encore « Relie ». Elle est figée par
-   tests/familles-appariement.test.ts ; sa reprise relève des consignes de #777 (critère 5). */
+   garde `CONSIGNE_APPARIEMENT`, où le geste est vrai ; la fiche, `CONSIGNE_FICHE_FAMILLE`. */
 const questionRelierFamille = (mot: string): string =>
 	`Quel mot est de la même famille que « ${mot} » ?`;
 
@@ -1699,7 +1705,7 @@ export function tirerSessionAppariement(source: ItemFamille[], nbManches: number
 export function appariementType(source: ItemFamille[]): ExerciseType {
 	return {
 		modes: MODE_RELIER,
-		consigne: CONSIGNE_APPARIEMENT,
+		consigne: CONSIGNE_FICHE_FAMILLE,
 		questionRelier: questionRelierFamille,
 		exerciseKind: 'appariement',
 		generate(): Exercise {
@@ -1783,7 +1789,10 @@ export const FAMILLES_LESSONS: FamillesLessonDef[] = [
 		label: 'Familles, préfixes et suffixes',
 		motsCles: ['même famille de mots', 'mot de base', 'préfixe', 'suffixe'],
 		levels: ['ce2'],
-		exerciseType: famillesType(ITEMS_FAMILLES),
+		exerciseType: famillesType(
+			ITEMS_FAMILLES,
+			"Trouve le mot de la même famille, ou le sens d'un mot construit avec un préfixe ou un suffixe.",
+		),
 		etayage: [ETAYAGE_FAMILLES_CE2],
 	},
 	{
@@ -1805,7 +1814,7 @@ export const FAMILLES_LESSONS: FamillesLessonDef[] = [
 		label: 'Familles de mots (CM1)',
 		motsCles: ['même famille de mots', 'préfixes et suffixes', 'mot de base'],
 		levels: ['cm1'],
-		exerciseType: famillesType(ITEMS_FAMILLES_CM1),
+		exerciseType: famillesType(ITEMS_FAMILLES_CM1, CONSIGNE_FICHE_FAMILLE),
 		etayage: [ETAYAGE_FAMILLES_CM1],
 	},
 	{
@@ -1813,7 +1822,10 @@ export const FAMILLES_LESSONS: FamillesLessonDef[] = [
 		label: 'Préfixes et suffixes (CM1)',
 		motsCles: ['début du mot', 'fin du mot', 'sens du préfixe ou du suffixe'],
 		levels: ['cm1'],
-		exerciseType: famillesType(ITEMS_AFFIXES_CM1),
+		exerciseType: famillesType(
+			ITEMS_AFFIXES_CM1,
+			'Trouve ce que veut dire le mot, grâce à son préfixe ou à son suffixe.',
+		),
 		etayage: [ETAYAGE_AFFIXES_CM1],
 	},
 ];

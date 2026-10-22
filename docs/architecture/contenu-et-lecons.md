@@ -885,8 +885,10 @@ dominant + composer) et **`num-decompose-multiplicative`** (nouvelle leçon **CM
 #240). Mono-mode saisie, réponse numérique unique (pas de multi-champs : le `@` reste
 unique par item). Calibrage CE2 : « en tout » jamais sur les unités, forme additive
 écartée (ambiguïté 6 vs 60), zéro intercalaire inclus, accords singulier/pluriel soignés.
-**Multi-niveaux** : `num-valeur-position` et `num-decompose-10000` sont `calibrated`
-(rangs jusqu'au **million** en CM1). La **décomposition multiplicative** (forme
+**Multi-niveaux** : `num-valeur-position` et `num-decompose-10000` sont `calibrated`.
+Au CM1, la valeur de position va jusqu'au rang du **million** ; la décomposition « en
+rangs » s'arrête à **999 999** (six chiffres, borne du programme de CM1 ; #777, critère 26),
+sans jamais tirer le rang des millions. La **décomposition multiplicative** (forme
 « chiffre × valeur de rang » : `4 × 1000000 + 5 × 100000 + …`, sens décomposer troué
 dominant → réponse = 1 chiffre) est une leçon distincte de la décompo « en rangs » CE2 ;
 son `levels: ['cm1']` est porté par le descripteur (le catalogue prend

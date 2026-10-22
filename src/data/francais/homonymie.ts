@@ -397,6 +397,7 @@ function homonymieType(): ExerciseType {
 	return {
 		levels: BANQUE_HOMONYMES.levels,
 		modes: MODES,
+		consigne: 'Trouve quel sens du mot est employé dans la phrase.', // #777, critère 4
 		generate(opts?: GenerateOpts): Exercise {
 			const mot = pickFromBank(BANQUE_HOMONYMES, opts?.level);
 			const sens = choice(mot.sens);

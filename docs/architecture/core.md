@@ -776,9 +776,16 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   **`repliAppariement`** (#777, critères 2 et 20) replie une manche « relier » hors de son
   widget en question **à choix**, sur une paire choisie par une **empreinte** de la manche
   (fonction pure : la séance partagée doit retrouver le repli de la fiche ordinaire) : à
-  étiquettes, « Dans « son vélo », « son » est… » avec les étiquettes en choix ; à mots, la
-  question de `ExerciseType.questionRelier` (déclarée par la leçon) avec la colonne de
-  droite en choix ; choix en ordre alphabétique.
+  étiquettes, « Dans « son vélo », quelle est la nature du mot « son » ? » avec **toutes** les
+  étiquettes de la leçon en choix, dans son ordre (`ExerciseType.etiquettesRelier` :
+  « déterminant, nom, adjectif », même quand la manche n'en porte que deux) ; à mots, la
+  question de `ExerciseType.questionRelier` (déclarée par la leçon) avec **quatre** choix
+  en ordre alphabétique — la réponse, un intrus de la manche (faux-ami) et deux autres mots
+  de sa colonne de droite, choisis par la même empreinte (`choixRelierAMots`).
+  Le repli « clique sur le mot » d'une phrase à **deux cibles possibles** (deux groupes
+  nominaux) cite le repère de la consigne d'écran, porté par l'exercice (`ancre` du
+  `clicMot`, #777 critère 27) : « Recopie le groupe nominal qui contient le mot « oiseaux » :
+  … », à l'écrit comme au texte lu.
   Seule la conjugaison (`FRENCH_LESSONS`) reste hors du helper : son `exerciseType`
   est **calculé** (`conjugationType(verbId, tense)`), pas porté par l'entrée, donc son
   descripteur n'est pas un `LessonInput`. Helpers

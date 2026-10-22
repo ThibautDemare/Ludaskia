@@ -220,6 +220,8 @@ const MODE_QCM: ModeOption[] = [MODE_QCM_CHECK];
 export function classesMotsType(): ExerciseType {
 	return {
 		modes: MODE_QCM,
+		// #777, critère 4 : couvre les trois formes de question tirées (classe, article, adverbe).
+		consigne: "Indique la classe du mot, ou trouve l'article ou l'adverbe de la phrase.",
 		generate(): Exercise {
 			const it = choice(ITEMS_CLASSES);
 			return {

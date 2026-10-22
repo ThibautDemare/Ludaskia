@@ -189,6 +189,8 @@ function rangerType(): ExerciseType {
 	return {
 		// Rangement d'une suite (#108) : classé sans appeler generate() (#348), hors sprint.
 		exerciseKind: 'tuilesOrdre',
+		// #777, critère 4 : le sens du rangement est tiré, la consigne couvre les deux.
+		consigne: "Range les nombres dans l'ordre demandé : du plus petit au plus grand, ou l'inverse.",
 		modes: [
 			{
 				id: 'tuiles',

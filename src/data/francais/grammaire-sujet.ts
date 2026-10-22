@@ -73,6 +73,7 @@ const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 export function pronomSujetType(): ExerciseType {
 	return {
 		modes: MODE_QCM,
+		consigne: 'Indique quel pronom peut remplacer le groupe de mots.', // #777, critère 4
 		generate(): Exercise {
 			const s = choice(SUJETS);
 			const distracteurs = sample(
@@ -115,6 +116,7 @@ function distracteursAccord(verbId: string, correcte: string): string[] {
 export function accordSujetVerbeType(): ExerciseType {
 	return {
 		modes: MODE_QCM,
+		consigne: "Conjugue le verbe au présent pour l'accorder avec son sujet.", // #777, critère 4
 		generate(): Exercise {
 			const s = choice(SUJETS);
 			const verbId = choice(s.verbes);

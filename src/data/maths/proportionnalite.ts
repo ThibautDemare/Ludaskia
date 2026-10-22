@@ -658,6 +658,8 @@ function identifierType(): ExerciseType {
 	return {
 		levels: BANQUE_IDENTIFIER.levels,
 		modes: MODES_IDENTIFIER,
+		// #777, critère 4.
+		consigne: 'Indique par oui ou par non si les deux grandeurs sont proportionnelles.',
 		generate(opts?: GenerateOpts): Exercise {
 			return exerciceIdentifier(pickFromBank(BANQUE_IDENTIFIER, opts?.level));
 		},
@@ -1093,6 +1095,7 @@ function resoudreType(): ExerciseType {
 		// Format « problème » (#199) : classé sans appeler generate() (#348), exclu du sprint.
 		exerciseKind: 'probleme',
 		levels: BANQUE_RESOUDRE.levels,
+		consigne: 'Résous le problème de proportionnalité.', // #777, critère 4
 		generate(opts?: GenerateOpts): Exercise {
 			return exerciceResoudre(pickFromBank(BANQUE_RESOUDRE, opts?.level));
 		},

@@ -613,10 +613,17 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 		: html`<input id="revInput" class="rev-input" inputmode="numeric" autocomplete="off"${nom}>`;
 	const q = poserAuTrou(enonceTexte(it.item.text), '@', champ);
 	// Consigne d'action (#265) : si le type en fournit une, elle s'affiche au-dessus de
-	// l'énoncé et porte la lecture vocale ; l'énoncé garde la sienne sinon. Aujourd'hui les
-	// exos saisie portent l'instruction dans leur énoncé (consigneAction vide) ; cas générique.
-	const actionHTML = consigneRenforceeHTML(it.consigneAction, undefined, it.consigneAction ?? '');
-	const enonceTts = it.consigneAction ? '' : ttsAttr(it.item.parle ?? it.item.text);
+	// l'énoncé et porte la lecture vocale GLOBALE, consigne PUIS énoncé (contrat de
+	// `consigneRenforceeHTML`) ; l'énoncé garde la sienne sinon. Depuis que toute leçon déclare
+	// sa consigne (#777, critère 4), lire la consigne seule rendrait l'opération muette : « 7 + 8 »
+	// ne s'entendrait plus. Un énoncé volontairement muet (`parle: ''`) le reste.
+	const enonceParle = it.item.parle ?? it.item.text;
+	const actionHTML = consigneRenforceeHTML(
+		it.consigneAction,
+		undefined,
+		it.consigneAction ? `${it.consigneAction} ${enonceParle}` : '',
+	);
+	const enonceTts = it.consigneAction ? '' : ttsAttr(enonceParle);
 	stage.innerHTML =
 		html`${consigneHTML(it)}${actionHTML}${figureBlock(it.item.figure)}<div class="rev-q"${enonceTts}>${q}</div>
     ${apresHTML(decideHTML())}`.balisage;

@@ -22,14 +22,16 @@
      million) ; les nombres affichés sont groupés (formatNombre) ; la
      SAISIE reste 1 chiffre (« chiffre des ») ou un nombre ≤ 6 chiffres.
    - décomposition « en rangs » étendue aux grands nombres (rang troué
-     dominant ⇒ réponse = 1 chiffre, conforme à la contrainte de saisie).
+     dominant ⇒ réponse = 1 chiffre, conforme à la contrainte de saisie),
+     plafonnée à 999 999 : le programme de CM1 s'arrête aux nombres à six
+     chiffres (#777, critère 26).
    - décomposition MULTIPLICATIVE = NOUVELLE leçon CM1, distincte (forme
      « chiffre × valeur de rang », sens « décomposer » dominant).
    ============================================================ */
-import type { Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
+import type { ConsigneFiche, Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
 import type { LessonInput } from '../_shared';
 import type { SchoolLevel } from '../../core/catalog';
-import { calibrated } from '../../core/level-combinators';
+import { calibrated, consigneParNiveau } from '../../core/level-combinators';
 import { rnd } from '../../core/utils';
 import { formatNombre } from '../../core/nombres';
 import { checkNumerique } from '../../core/check-helpers';
@@ -92,7 +94,7 @@ function valeurPositionFact(maxRang: number): Exercise {
 }
 
 /* ---------- Décomposition « en rangs » ----------
-   maxIdx : indice du rang le plus haut (1 ≤ 100, 2 ≤ 1000, 3 ≤ 10000 ; CM1 : 6). */
+   maxIdx : indice du rang le plus haut (1 ≤ 100, 2 ≤ 1000, 3 ≤ 10000 ; CM1 : 5 ≤ 999 999). */
 function decomposeFact(maxIdx: number): Exercise {
 	const min = RANGS[maxIdx].place; // garantit le bon nombre de rangs
 	const n = rnd(min, min * 10 - 1);
@@ -149,9 +151,14 @@ function decomposeMultiplicativeFact(): Exercise {
 }
 
 /* ExerciseType mono-mode (rendu fiche/bilan/sprint via le chemin saisie). Le check
-   tolère les espaces de groupement de la saisie (« 1 002 050 », #240). */
-function positionType(gen: (opts?: GenerateOpts) => Exercise): ExerciseType {
+   tolère les espaces de groupement de la saisie (« 1 002 050 », #240). `consigne` : consigne
+   de fiche de la leçon (#777, critère 4). */
+function positionType(
+	gen: (opts?: GenerateOpts) => Exercise,
+	consigne: ConsigneFiche,
+): ExerciseType {
 	return {
+		consigne,
 		generate: (opts?: GenerateOpts) => gen(opts),
 		check: checkNumerique,
 	};
@@ -196,7 +203,10 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		// CE2 : rangs jusqu'aux centaines/milliers ; CM1 (#240) : jusqu'au million.
 		levels: ['ce2', 'cm1'],
 		exerciseType: calibrated<number>({ ce2: 3, cm1: 6 }, (maxRang) =>
-			positionType(() => valeurPositionFact(maxRang)),
+			positionType(
+				() => valeurPositionFact(maxRang),
+				"Trouve le chiffre d'un rang, ou le nombre total de dizaines, de centaines… dans le nombre.",
+			),
 		),
 		etayage: [
 			etayagePosition(
@@ -210,7 +220,10 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		id: 'num-decompose-100',
 		label: "Je décompose jusqu'à 100",
 		motsCles: ['décomposer', 'dizaines et unités'],
-		exerciseType: positionType(() => decomposeFact(1)),
+		exerciseType: positionType(
+			() => decomposeFact(1),
+			'Complète la décomposition du nombre en dizaines et en unités.',
+		),
 		etayage: [
 			etayagePosition('Décomposer un nombre à deux chiffres', REGLE_RANGS, {
 				genre: 'rangs',
@@ -223,7 +236,10 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		id: 'num-decompose-1000',
 		label: "Je décompose jusqu'à 1 000",
 		motsCles: ['décomposer', 'centaines', 'dizaines et unités'],
-		exerciseType: positionType(() => decomposeFact(2)),
+		exerciseType: positionType(
+			() => decomposeFact(2),
+			'Complète la décomposition du nombre en centaines, dizaines et unités.',
+		),
 		// 305 : le zéro intercalaire, point dur de la décomposition (« il n'y a rien » n'est
 		// pas « il n'y a pas de rang »).
 		etayage: [
@@ -236,21 +252,29 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 	},
 	{
 		id: 'num-decompose-10000',
-		label: "Je décompose jusqu'à 10 000",
-		// Au CM1, la décomposition porte sur des nombres à sept chiffres : « jusqu'à 10 000 »
-		// y coiffait « 7 249 723 » (#777, critère 3). Pas de borne chiffrée au CM1, qui
-		// mentirait au prochain recalibrage : la leçon décompose les grands nombres.
-		// CE2 déclaré aussi : chaque classe servie lit un libellé écrit pour elle (#436).
+		// Libellé de base NEUTRE (contrat de `LessonDef.labelNiveau`) : juste aux deux niveaux,
+		// il sert aux écrans qui n'ont pas le niveau sous la main. Chaque classe servie lit
+		// ensuite le sien (#436) : le CE2 garde sa borne exacte, « jusqu'à 10 000 » ; le CM1
+		// n'en a pas, qui mentirait au prochain recalibrage (#777, critère 3).
+		label: 'Je décompose les grands nombres',
 		labelNiveau: { ce2: "Je décompose jusqu'à 10 000", cm1: 'Je décompose les grands nombres' },
 		motsCles: ['décomposer', 'milliers', 'centaines'],
-		// CE2 : décomposition « en rangs » jusqu'à 10 000 ; CM1 (#240) : jusqu'au million.
+		// CE2 : décomposition « en rangs » jusqu'à 10 000 (4 chiffres). CM1 : six chiffres,
+		// jusqu'à 999 999, borne du programme de CM1 (docs/reference/programmes/cm1-maths.md) ;
+		// le rang des millions n'y est jamais tiré (#777, critère 26).
 		levels: ['ce2', 'cm1'],
-		exerciseType: calibrated<number>({ ce2: 3, cm1: 6 }, (maxIdx) =>
-			positionType(() => decomposeFact(maxIdx)),
+		exerciseType: calibrated<number>({ ce2: 3, cm1: 5 }, (maxIdx) =>
+			positionType(
+				() => decomposeFact(maxIdx),
+				consigneParNiveau({
+					ce2: 'Complète la décomposition du nombre en milliers, centaines, dizaines et unités.',
+					cm1: 'Complète la décomposition du grand nombre, rang par rang.',
+				}),
+			),
 		),
-		// Deux entrées : la leçon change de plage selon la classe (4 chiffres au CE2, jusqu'au
-		// million au CM1), et un exemple à 4 chiffres n'apprendrait rien à un CM1 qui bute sur
-		// les dizaines de mille. C'est exactement ce que la dimension `niveau` sert à faire.
+		// Deux entrées : la leçon change de plage selon la classe (4 chiffres au CE2, 6 au
+		// CM1), et un exemple à 4 chiffres n'apprendrait rien à un CM1 qui bute sur les
+		// dizaines de mille. C'est exactement ce que la dimension `niveau` sert à faire.
 		etayage: [
 			etayagePosition('Décomposer un nombre à quatre chiffres', REGLE_RANGS, {
 				genre: 'rangs',
@@ -259,7 +283,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 			}),
 			etayagePosition(
 				'Décomposer un grand nombre',
-				'Chaque chiffre vaut selon sa place, y compris au-delà du millier : dizaines de mille, centaines de mille, millions.',
+				'Chaque chiffre vaut selon sa place, y compris au-delà du millier : dizaines de mille, centaines de mille.',
 				{ genre: 'rangs', n: 48205, rang: 3 },
 				'cm1',
 			),
@@ -272,7 +296,10 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		label: 'Je décompose avec les multiplications',
 		motsCles: ['décomposer', 'fois', 'milliers', 'centaines'],
 		levels: ['cm1'],
-		exerciseType: positionType(decomposeMultiplicativeFact),
+		exerciseType: positionType(
+			decomposeMultiplicativeFact,
+			'Complète la décomposition du nombre avec des multiplications : chiffre × valeur du rang.',
+		),
 		etayage: [
 			etayagePosition(
 				'Décomposer avec des multiplications',

@@ -45,12 +45,14 @@ const CLEAR_PIN = `localStorage.removeItem('ludaskia_encadrant_lock');`;
    réponse — cf. e2e/README.md) puis on avance l'horloge truquée jusqu'à la fin.
    L'horloge DOIT être installée avant #bcRun (avant la création du setInterval du
    sprint). Laisse la page sur `.sprint-done`. */
-async function lancerSprintNumComparer(page: Page): Promise<void> {
+async function lancerSprintNumComparer(page: Page, installerHorloge = true): Promise<void> {
 	await gotoHash(page, 'bilan-cat-math-numeration');
 	await page.locator('#bcSelectNone').click();
 	await page.locator('.bc-lesson-check[value="num-comparer"]').check();
 	await page.locator('.bc-mode-radio[value="sprint"]').check();
-	await page.clock.install();
+	// #777 : le critère 6 enchaîne DEUX sprints dans le même realm ; `install()` ne se pose
+	// qu'une fois (cf. en-tête), la seconde fois l'horloge truquée est déjà là.
+	if (installerHorloge) await page.clock.install();
 	await page.locator('#bcRun').click();
 	await expect(page.locator('#sprintTime')).toBeVisible();
 
@@ -88,37 +90,37 @@ async function fermerModalesRecompense(page: Page): Promise<void> {
 	}
 }
 
-/* Compose puis lance un BILAN « Tranquille » (mode par défaut, pas sprint) scopé à
-   la seule leçon num-comparer, répond correctement à toutes les questions
-   (`data-answer`) et valide. Retourne le TEXTE du récap, modales de récompense
-   refermées (sans-faute systématique : sinon la 2e exécution ne peut plus cliquer
-   #bcSelectNone). Réutilisé par le test du critère 6 (deux exécutions de suite,
-   même contenu attendu). */
-async function bilanNumComparerRecap(page: Page): Promise<string> {
-	await gotoHash(page, 'bilan-cat-math-numeration');
-	await page.locator('#bcSelectNone').click();
-	await page.locator('.bc-lesson-check[value="num-comparer"]').check();
-	await expect(page.locator('.bc-mode-radio[value="bilan"]')).toBeChecked(); // pas sprint
-	await page.locator('#bcRun').click();
-
-	const fields = page.locator('.ans');
-	await fields.first().waitFor();
-	const n = await fields.count();
-	for (let i = 0; i < n; i++) {
-		const ans = await fields.nth(i).getAttribute('data-answer');
-		await fields.nth(i).fill(ans ?? '');
+/* #777 : joue un bilan lancé à l'écran (parcours guidé) jusqu'au récapitulatif en
+   « passant » chaque question (seul geste valable pour tous les formats). Contrat
+   d'écran : bilan-parcours.spec.ts. L'écran change quand le couple « partie|question »
+   change, ou qu'une fin de partie apparaît. */
+async function jouerParcoursJusquAuRecap(page: Page): Promise<void> {
+	for (let garde = 0; garde < 200; garde++) {
+		await page.locator('#bpStage, .bp-fin-partie, .bp-recap').first().waitFor({ state: 'visible' });
+		if (await page.locator('.bp-recap').isVisible()) return;
+		if (await page.locator('.bp-fin-partie').isVisible()) {
+			await page.locator('#bpPartieSuivante, #bpVoirBilan').first().click();
+			continue;
+		}
+		const avant = `${await page.locator('.bp-partie-num').innerText()}|${await page.locator('.bp-question-num').innerText()}`;
+		await page.locator('#bpPasser').click();
+		await page.waitForFunction((a) => {
+			if (!document.querySelector('#bpStage') || document.querySelector('.bp-fin-partie'))
+				return true;
+			const p = document.querySelector('.bp-partie-num')?.textContent;
+			const q = document.querySelector('.bp-question-num')?.textContent;
+			return `${p}|${q}` !== a;
+		}, avant);
 	}
-	await page.locator('#btnVerify').click();
-	const recap = page.locator('.rb-recap');
-	await expect(recap).toBeVisible();
-	const texte = await recap.innerText();
-	await fermerModalesRecompense(page);
-	return texte;
+	throw new Error('Le parcours ne se termine pas (garde 200 écrans)');
 }
 
 /* ---------- Critère 1 : bilan ---------- */
 
-test('critère 1 : bilan (express) — le bandeau de fin nomme les leçons réellement travaillées', async ({
+// #777 (catégorie B) : un bilan joué à l'écran n'est plus la page unique avec son
+// bandeau `.rb-recap` : c'est un parcours qui finit sur `.bp-recap`. L'exigence du
+// critère 1 de #537 reste : l'écran de fin NOMME les leçons réellement travaillées.
+test('critère 1 : bilan (express) — l’écran de fin nomme les leçons réellement travaillées', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
@@ -129,27 +131,22 @@ test('critère 1 : bilan (express) — le bandeau de fin nomme les leçons réel
 	// Palier par défaut d'un écran scopé = 5 (≠ « Tout ») : bilan EXPRESS, pas complet.
 	await expect(page.locator('.bc-mode-radio[value="bilan"]')).toBeChecked();
 	await page.locator('#bcRun').click();
+	await expect(page.locator('#sheets .bilan-parcours')).toBeVisible();
 
-	const fields = page.locator('.ans');
-	await fields.first().waitFor();
-	const n = await fields.count();
-	expect(n).toBeGreaterThan(0);
-	for (let i = 0; i < n; i++) {
-		const ans = await fields.nth(i).getAttribute('data-answer');
-		expect(ans).not.toBeNull();
-		await fields.nth(i).fill(ans ?? '');
-	}
-	await page.locator('#btnVerify').click();
+	await jouerParcoursJusquAuRecap(page);
 
-	// Critère 13 : le récap est déjà dans le bandeau au moment même où le verdict
-	// s'affiche, AVANT toute fermeture d'une éventuelle modale de récompense — aucun
-	// clic supplémentaire n'a eu lieu entre #btnVerify et cette assertion.
-	const recap = page.locator('.rb-recap');
+	const recap = page.locator('.bp-recap');
 	await expect(recap).toBeVisible();
 	const texte = await recap.innerText();
 	expect(texte).not.toBe('');
-	expect(texte).toContain('compare');
-	expect(texte).toContain('valeur des chiffres');
+	// Une ligne par leçon travaillée, et son titre y figure.
+	// `.bp-lecon-nom` = libellé de la leçon au niveau joué.
+	await expect(recap.locator('.bp-lecon[data-lesson="num-comparer"] .bp-lecon-nom')).toContainText(
+		'compare',
+	);
+	await expect(
+		recap.locator('.bp-lecon[data-lesson="num-valeur-position"] .bp-lecon-nom'),
+	).toContainText('valeur des chiffres');
 
 	expect(errors).toEqual([]);
 });
@@ -299,18 +296,25 @@ test('critère 3 : le récap autonome du sprint disparaît quand un programme ac
 
 /* ---------- Critère 6 : formulation variée ---------- */
 
-test('critère 6 : deux bilans consécutifs sur la même page ne répètent pas le même gabarit de phrase', async ({
+// #777 (catégorie C) : le test jouait deux BILANS en page unique (`.rb-recap`), écran qui
+// n'existe plus à l'écran. La rotation des gabarits est un compteur partagé par tous les
+// écrans de fin (`recap-seance.ts`, `recapAutonomeHTML`) : on la tient désormais sur deux
+// SPRINTS consécutifs, qui gardent la phrase (`.sprint-recap`).
+test('critère 6 : deux séances consécutives sur la même page ne répètent pas le même gabarit de phrase', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
 
-	const phrase1 = await bilanNumComparerRecap(page);
+	await lancerSprintNumComparer(page);
+	const phrase1 = await page.locator('.sprint-recap').innerText();
+	await fermerModalesRecompense(page);
 	// Navigation SPA vers un hash différent (pas de rechargement) : le compteur de
 	// rotation des gabarits (mémoire de page, jamais persisté) survit — c'est justement
 	// ce qu'on veut mesurer. Revenir directement sur LE MÊME hash forcerait un
 	// `.reload()` (cf. gotoHash) et repartirait de zéro.
 	await gotoHash(page, 'accueil');
-	const phrase2 = await bilanNumComparerRecap(page);
+	await lancerSprintNumComparer(page, false);
+	const phrase2 = await page.locator('.sprint-recap').innerText();
 
 	// Même leçon, donc même CONTENU nommé dans les deux cas : si les phrases diffèrent,
 	// ce ne peut être que le gabarit.

@@ -6,29 +6,33 @@
    porte `data-answer` (et `data-attendue` = le LIBELLÉ si les choix ont une vue
    riche), alimenté par le radio coché (`initSession`).
 
-   Deux leçons, choisies pour leur déterminisme (bilan scopé à UNE leçon via le
-   composeur, cf. README) :
+   Deux leçons, rejouées dans la séance partagée (#777, voir plus bas) :
    - `num-frac-sens` (math-numeration) : QCM à vue riche (fractions empilées,
      libellé « trois quarts » ≠ valeur « 3/4 ») → tient le journal et la
      révélation par libellé ;
    - `geo-angles` (math-geometrie) : QCM à libellés bruts → la révélation est la
      valeur elle-même.
-   Contre-exemple : `fr-homophones-a` (QCM À TROU) garde son champ texte.
+
+   Retirés par #777 (le bilan joué à l'écran est un parcours, la page unique n'est
+   plus qu'imprimée ; aucun écran réel ne garde ces gestes) :
+   - « bon radio ✓, changer de radio après correction efface la marque » : la séance
+     partagée fige la correction (radios `aria-disabled`), les leçons QCM passent par
+     `lqcm` sans fiche : plus aucun écran ne permet « Vérifier puis rechoisir » ;
+   - « reprise : le radio coché reste coché après rechargement » : la séance partagée
+     n'a pas de reprise, et le parcours reprend la question, pas un radio à moitié coché ;
+   - « après Vérifier, le groupe fautif est amené à l'écran » : la séance partagée défile
+     vers la correction (`partage-seance.ts`), pas vers la question fausse ; « mener
+     l'enfant à son erreur » est porté par la fin de partie du parcours ;
+   - « QCM à trou (fr-homophones-a) garde son champ texte » : exigeait l'ancien
+     comportement ; l'exigence inverse (le QCM à trou se joue en radios à l'écran) est le
+     critère 1 tenu par `e2e/bilan-parcours-suivi.spec.ts`.
    ============================================================ */
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
+import { codeDe, envoiBilanDe } from './partage-fixtures';
+import { fractionChoiceViews } from '../src/core/fraction-text';
 
 const CLEAR_PIN = `localStorage.removeItem('ludaskia_encadrant_lock');`;
-
-/* Lance un bilan scopé à UNE leçon d'une catégorie (mode « bilan », pas sprint). */
-async function lancerBilan(page: Page, categorieId: string, lessonId: string): Promise<void> {
-	await gotoHash(page, `bilan-cat-${categorieId}`);
-	await page.locator('#bcSelectNone').click();
-	await page.locator(`.bc-lesson-check[value="${lessonId}"]`).check();
-	await expect(page.locator('.bc-mode-radio[value="bilan"]')).toBeChecked();
-	await page.locator('#bcRun').click();
-	await page.locator('#sheets .fiche-choix').first().waitFor();
-}
 
 /* Le champ caché (porteur de la réponse) et le groupe de radios d'un item. */
 const champs = (page: Page): Locator => page.locator('#sheets input.ans');
@@ -59,18 +63,86 @@ const journal = async (page: Page) =>
 		question: string;
 	}[];
 
-for (const [categorie, lecon] of [
-	['math-numeration', 'num-frac-sens'],
-	['math-geometrie', 'geo-angles'],
+/* ---------- #777 : écran « séance partagée » ----------
+   Depuis #777, un bilan joué à l'écran est un PARCOURS (une question par écran, voir
+   bilan-parcours.spec.ts) : la page unique et ses groupes de radios `fieldset.fiche-choix`
+   ne servent plus que dans la séance partagée par lien (`#envoi/<code>`, partage-seance.spec.ts),
+   qui garde le même rendu (`renderItem`) et corrige à la demande. Les tests ci-dessous y
+   ont été déplacés : mêmes exigences, nouvel écran. */
+
+type ExoQcm = {
+	type: 'qcm';
+	question: string;
+	answer: string;
+	choices: string[];
+	choicesView?: ReturnType<typeof fractionChoiceViews>;
+};
+
+/* Un envoi (bilan) à une leçon, joué jusqu'à l'affichage des items. */
+async function ouvrirSeancePartagee(page: Page, lecon: string, exercices: ExoQcm[]) {
+	const code = await codeDe(envoiBilanDe([{ lecon, exercices }]));
+	await gotoHash(page, `envoi/${code}`);
+	await page.locator('#partageCommencer').click();
+	await expect(page.locator('.partage-item').first()).toBeVisible();
+}
+
+/* Répond juste à tous les items SAUF le premier (déjà répondu faux par le test) : sous
+   60 % de réponses, « J'ai fini » ne fige rien (partage-seance.spec.ts, critère 23). */
+async function repondreJusteSaufLePremier(page: Page): Promise<void> {
+	const n = await champs(page).count();
+	for (let i = 1; i < n; i++) {
+		const champ = champs(page).nth(i);
+		const bonne = (await champ.getAttribute('data-answer')) as string;
+		await optionPar(await groupeDe(page, champ), bonne).click();
+	}
+}
+
+const angles: ExoQcm[] = [
+	{
+		type: 'qcm',
+		question: 'Un angle droit mesure…',
+		answer: '90°',
+		choices: ['45°', '90°', '180°'],
+	},
+	{
+		type: 'qcm',
+		question: 'Un angle plat mesure…',
+		answer: '180°',
+		choices: ['90°', '180°', '360°'],
+	},
+];
+const FRACS = ['3/4', '1/2', '1/4'];
+const fractions: ExoQcm[] = [
+	{
+		type: 'qcm',
+		question: 'Quelle fraction est la plus grande ?',
+		answer: '3/4',
+		choices: FRACS,
+		choicesView: fractionChoiceViews(FRACS),
+	},
+	{
+		type: 'qcm',
+		question: 'Quelle fraction vaut une moitié ?',
+		answer: '1/2',
+		choices: FRACS,
+		choicesView: fractionChoiceViews(FRACS),
+	},
+];
+
+for (const [lecon, exercices] of [
+	['num-frac-sens', fractions],
+	['geo-angles', angles],
 ] as const) {
+	// #777 (catégorie C) : exigence inchangée, écran déplacé du bilan en page unique vers
+	// la séance partagée, seul écran qui rend encore ces QCM en radios.
 	test(`${lecon} : chaque QCM sans trou montre un groupe de radios, aucun champ texte vide à remplir`, async ({
 		page,
 	}) => {
 		const errors = watchErrors(page);
-		await lancerBilan(page, categorie, lecon);
+		await ouvrirSeancePartagee(page, lecon, [...exercices]);
 
 		const n = await champs(page).count();
-		expect(n).toBeGreaterThan(0);
+		expect(n).toBe(exercices.length);
 		// Autant de groupes que de champs : aucun item sans rien à répondre.
 		await expect(page.locator('#sheets fieldset.fiche-choix')).toHaveCount(n);
 		for (let i = 0; i < n; i++) {
@@ -88,37 +160,23 @@ for (const [categorie, lecon] of [
 	});
 }
 
-test('bon radio : ✓ ; changer de radio après correction efface la marque', async ({ page }) => {
-	const errors = watchErrors(page);
-	await lancerBilan(page, 'math-geometrie', 'geo-angles');
-
-	const champ = champs(page).first();
-	const bonne = (await champ.getAttribute('data-answer')) as string;
-	const groupe = await groupeDe(page, champ);
-	const marque = page.locator('#sheets .mark').first();
-
-	await optionPar(groupe, bonne).click();
-	await page.locator('#btnVerify').click();
-	await expect(marque).toHaveClass(/\bcorrect\b/);
-
-	// Rechoisir (n'importe quel autre radio) : le marquage se lève, comme une saisie.
-	await optionPar(groupe, await mauvaiseValeur(groupe, bonne)).click();
-	await expect(marque).not.toHaveClass(/\b(correct|wrong)\b/);
-	expect(errors).toEqual([]);
-});
-
+// #777 (catégorie C) : l'exigence « une erreur révèle la bonne réponse, rattachée au groupe »
+// vaut dans la séance partagée, où la correction se demande (« Voir ma correction ») au lieu
+// de se déclencher par `#btnVerify`.
 test('mauvais radio sur geo-angles : ✗ et la bonne réponse révélée', async ({ page }) => {
 	const errors = watchErrors(page);
-	await lancerBilan(page, 'math-geometrie', 'geo-angles');
+	await ouvrirSeancePartagee(page, 'geo-angles', [...angles]);
 
 	const champ = champs(page).first();
 	const bonne = (await champ.getAttribute('data-answer')) as string;
 	const groupe = await groupeDe(page, champ);
 	await optionPar(groupe, await mauvaiseValeur(groupe, bonne)).click();
-	await page.locator('#btnVerify').click();
+	await repondreJusteSaufLePremier(page);
+	await page.locator('#partageFini').click();
+	await page.locator('#partageVoirCorrection').click();
 
-	const marque = page.locator('#sheets .mark').first();
-	await expect(marque).toHaveClass(/\bwrong\b/);
+	const marque = page.locator('#sheets .mark.wrong').first();
+	await expect(marque).toBeVisible();
 	await expect(marque).toContainText(bonne);
 	// La marque est rattachée au groupe (nom/description lus par un lecteur d'écran).
 	const marqueId = await marque.getAttribute('id');
@@ -127,12 +185,14 @@ test('mauvais radio sur geo-angles : ✗ et la bonne réponse révélée', async
 	expect(errors).toEqual([]);
 });
 
+// #777 (catégorie C) : même exigence (libellés lisibles, jamais « a/b »), déplacée vers la
+// séance partagée ; le journal y est écrit à « J'ai fini » (mode « partage »).
 test('vue riche (fractions) : ✗ révèle le LIBELLÉ, le journal encadrant écrit libellés et non valeurs internes', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(CLEAR_PIN);
-	await lancerBilan(page, 'math-numeration', 'num-frac-sens');
+	await ouvrirSeancePartagee(page, 'num-frac-sens', [...fractions]);
 
 	const champ = champs(page).first();
 	const bonne = (await champ.getAttribute('data-answer')) as string; // valeur interne « 3/4 »
@@ -149,10 +209,12 @@ test('vue riche (fractions) : ✗ révèle le LIBELLÉ, le journal encadrant éc
 	expect(libelleFausse).toBeTruthy();
 
 	await optionPar(groupe, fausse).click();
-	await page.locator('#btnVerify').click();
+	await repondreJusteSaufLePremier(page);
+	await page.locator('#partageFini').click();
+	await page.locator('#partageVoirCorrection').click();
 
-	const marque = page.locator('#sheets .mark').first();
-	await expect(marque).toHaveClass(/\bwrong\b/);
+	const marque = page.locator('#sheets .mark.wrong').first();
+	await expect(marque).toBeVisible();
 	await expect(marque).toContainText(libelleBonne);
 	await expect(marque).not.toContainText(bonne);
 
@@ -170,101 +232,5 @@ test('vue riche (fractions) : ✗ révèle le LIBELLÉ, le journal encadrant éc
 	const ligne = page.locator('.enc-err-item').first();
 	await expect(ligne.locator('.enc-err-bonne')).toContainText(libelleBonne);
 	await expect(ligne.locator('.enc-err-donnee')).toContainText(libelleFausse);
-	expect(errors).toEqual([]);
-});
-
-test('reprise : le radio coché est toujours coché après avoir quitté le bilan et rechargé', async ({
-	page,
-}) => {
-	const errors = watchErrors(page);
-	await lancerBilan(page, 'math-geometrie', 'geo-angles');
-
-	const champ = champs(page).first();
-	const id = (await champ.getAttribute('id')) as string;
-	const bonne = (await champ.getAttribute('data-answer')) as string;
-	const groupe = await groupeDe(page, champ);
-	// Un choix NON trivial (pas le 1er radio) : une restauration « coche le premier » échouerait.
-	const valeurs = await groupe
-		.locator('input[type=radio]')
-		.evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
-	const choisie = valeurs[valeurs.length - 1];
-	expect(choisie).toBeTruthy();
-	await optionPar(groupe, choisie).click();
-	expect(bonne).toBeTruthy();
-
-	await page.locator('#toolbarBurger').click();
-	await page.locator('#btnHome').click();
-	await expect(page.locator('#home')).toBeVisible();
-	await page.reload({ waitUntil: 'networkidle' });
-
-	const carte = page.locator('.reprise-card').first();
-	await expect(carte).toBeVisible();
-	await carte.locator('.reprise-continue').click();
-
-	// Le HTML rejoué garde les ids : on retrouve le même item.
-	const groupeRepris = page.locator(`fieldset.fiche-choix[data-for="${id}"]`);
-	await expect(groupeRepris).toBeVisible();
-	await expect(groupeRepris.locator('input[type=radio]:checked')).toHaveCount(1);
-	await expect(groupeRepris.locator('input[type=radio]:checked')).toHaveValue(choisie);
-	// Et le champ caché suit (sinon « Vérifier » corrigerait une réponse vide).
-	await expect(page.locator(`#${id}`)).toHaveValue(choisie);
-	expect(errors).toEqual([]);
-});
-
-test('QCM à trou (fr-homophones-a) : garde son champ texte au trou, sans groupe de radios', async ({
-	page,
-}) => {
-	const errors = watchErrors(page);
-	// L'orthographe n'a pas de bilan de catégorie : on passe par le composeur global,
-	// dont on déplie toutes les rubriques repliées pour atteindre la case de la leçon.
-	await gotoHash(page, 'bilan-custom');
-	await page.locator('#bcSelectNone').click();
-	await page.evaluate(() =>
-		document.querySelectorAll('details').forEach((d) => d.setAttribute('open', '')),
-	);
-	await page.locator('.bc-lesson-check[value="fr-homophones-a"]').check();
-	await page.locator('#bcRun').click();
-
-	const champ = page.locator('#sheets input.ans').first();
-	await champ.waitFor();
-	expect(await champ.getAttribute('type')).not.toBe('hidden');
-	expect(await champ.getAttribute('data-answer')).toBeTruthy();
-	await expect(page.locator('#sheets fieldset.fiche-choix')).toHaveCount(0);
-
-	// Le geste reste : écrire le mot au trou puis vérifier.
-	await champ.fill((await champ.getAttribute('data-answer')) as string);
-	await page.locator('#btnVerify').click();
-	await expect(page.locator('#sheets .mark.correct').first()).toBeVisible();
-	expect(errors).toEqual([]);
-});
-
-test('après « Vérifier » depuis le bas du bilan, le groupe de choix de la question fausse est amené à l’écran', async ({
-	page,
-}) => {
-	const errors = watchErrors(page);
-	await lancerBilan(page, 'math-numeration', 'num-frac-sens');
-
-	const n = await champs(page).count();
-	expect(n).toBeGreaterThanOrEqual(3); // sinon la page ne défile pas assez pour que le test dise quelque chose
-	// Tout juste, sauf la PREMIÈRE question (la plus haute), répondue faux.
-	let idFaux = '';
-	for (let i = 0; i < n; i++) {
-		const champ = champs(page).nth(i);
-		const bonne = (await champ.getAttribute('data-answer')) as string;
-		const groupe = await groupeDe(page, champ);
-		const valeur = i === 0 ? await mauvaiseValeur(groupe, bonne) : bonne;
-		if (i === 0) idFaux = (await champ.getAttribute('id')) as string;
-		await optionPar(groupe, valeur).click();
-	}
-	const groupeFaux = page.locator(`fieldset.fiche-choix[data-for="${idFaux}"]`);
-
-	// Garde de construction : en bas de page, la question fausse est HORS de la fenêtre.
-	await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-	await expect(groupeFaux).not.toBeInViewport();
-
-	await page.locator('#btnVerify').click();
-	await expect(page.locator(`.mark[data-for="${idFaux}"]`)).toHaveClass(/\bwrong\b/);
-	// Exigence : l'enfant est mené à son erreur (le défilement fluide laisse `toBeInViewport` réessayer).
-	await expect(groupeFaux).toBeInViewport();
 	expect(errors).toEqual([]);
 });

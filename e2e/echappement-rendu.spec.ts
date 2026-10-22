@@ -304,3 +304,61 @@ test('révision problème : l’énoncé et ses sous-questions se rendent sans b
 	await expect(page.locator('.rev-feedback')).toBeVisible();
 	expect(errors).toEqual([]);
 });
+
+/* #777 (catégorie B, ajouté) : un bilan joué à l'écran n'est plus la fiche en page unique
+   (famille 1) mais le PARCOURS guidé, un pipeline de rendu de plus : question (vrai widget),
+   correction de fin de partie, récapitulatif. Aucune des familles ci-dessus ne l'atteint,
+   et c'est là que « [object Object] » ou une balise en clair se verraient. Une leçon
+   numérique (saisie) et une leçon à QCM, pour deux gabarits de question ; contrat d'écran :
+   bilan-parcours.spec.ts. */
+test('bilan en parcours : question, correction de fin de partie et récapitulatif se rendent sans balisage en clair', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(() =>
+		localStorage.setItem(
+			'e2e/ludaskia_bilans',
+			JSON.stringify([
+				{
+					id: 'fav-777',
+					label: 'Parcours 777',
+					lessonIds: ['math-complements', 'fr-conj-groupe'],
+					questionsPerLesson: 2,
+					mode: 'bilan',
+				},
+			]),
+		),
+	);
+	await gotoHash(page, 'accueil');
+	await page.locator('.favori-btn-run').first().click();
+	await expect(page.locator('#sheets .bilan-parcours')).toBeVisible();
+
+	let ecrans = 0;
+	for (let garde = 0; garde < 100; garde++) {
+		await page.locator('#bpStage, .bp-fin-partie, .bp-recap').first().waitFor({ state: 'visible' });
+		if (await page.locator('.bp-recap').isVisible()) {
+			await verifierTexteVisible(page, 'bilan en parcours (récapitulatif)');
+			break;
+		}
+		ecrans++;
+		if (await page.locator('.bp-fin-partie').isVisible()) {
+			await verifierTexteVisible(page, 'bilan en parcours (fin de partie)');
+			await page.locator('#bpPartieSuivante, #bpVoirBilan').first().click();
+			continue;
+		}
+		await verifierTexteVisible(page, 'bilan en parcours (question)');
+		const avant = `${await page.locator('.bp-partie-num').innerText()}|${await page.locator('.bp-question-num').innerText()}`;
+		// « Je passe » : la fin de partie liste alors des erreurs « pas de réponse » + attendue.
+		await page.locator('#bpPasser').click();
+		await page.waitForFunction((a) => {
+			if (!document.querySelector('#bpStage') || document.querySelector('.bp-fin-partie'))
+				return true;
+			const p = document.querySelector('.bp-partie-num')?.textContent;
+			const q = document.querySelector('.bp-question-num')?.textContent;
+			return `${p}|${q}` !== a;
+		}, avant);
+	}
+	await expect(page.locator('.bp-recap')).toBeVisible();
+	expect(ecrans, 'au moins une question et une fin de partie vérifiées').toBeGreaterThanOrEqual(2);
+	expect(errors).toEqual([]);
+});

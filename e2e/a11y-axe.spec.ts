@@ -163,30 +163,47 @@ const VIEWS: View[] = [
 		},
 	},
 	{
-		// Bilan ordinaire à QCM SANS trou : groupes de radios (fieldset + legend) et marque
-		// ✗ rattachée au groupe. Une mauvaise réponse est corrigée AVANT le scan, pour
-		// couvrir aussi l'état corrigé (réponse révélée, contrastes de la marque).
-		name: 'Bilan à choix (radios, après correction)',
-		hash: 'bilan-cat-math-numeration',
+		// #777 (catégorie B) : un bilan joué à l'écran est un PARCOURS (une question par écran),
+		// plus la page unique de radios. L'exigence reste : l'écran de bilan à choix est sans
+		// violation a11y. On scanne l'écran de CORRECTION de fin de partie, après une réponse
+		// fausse à chaque question (état le plus chargé : erreur révélée, contrastes) ; les
+		// questions à choix y ont été jouées au passage. Contrat d'écran : bilan-parcours.spec.ts.
+		name: 'Bilan en parcours (QCM, correction de fin de partie)',
+		hash: 'accueil',
 		open: async (page) => {
-			await gotoHash(page, 'bilan-cat-math-numeration');
-			await page.locator('#bcSelectNone').click();
-			await page.locator('.bc-lesson-check[value="num-frac-sens"]').check();
-			await page.locator('#bcRun').click();
-			const groupes = page.locator('#sheets fieldset.fiche-choix');
-			await groupes.first().waitFor({ state: 'visible' });
-			// TOUS les items reçoivent une réponse (fausse) : sous 60 % de réponses, la fiche
-			// ajoute la bannière `.rb-warn`, hors sujet ici (constat à part, cf. compte rendu).
-			for (let i = 0; i < (await groupes.count()); i++) {
-				const bonne = await page.locator('#sheets input.ans').nth(i).getAttribute('data-answer');
-				await groupes
-					.nth(i)
-					.locator(`label.fiche-choix-opt:not(:has(input[value="${bonne}"]))`)
-					.first()
-					.click();
+			await page.addInitScript(() =>
+				localStorage.setItem(
+					'e2e/ludaskia_bilans',
+					JSON.stringify([
+						{
+							id: 'fav-777',
+							label: 'Parcours 777',
+							lessonIds: ['num-frac-sens'],
+							questionsPerLesson: 3,
+							mode: 'bilan',
+						},
+					]),
+				),
+			);
+			await gotoHash(page, 'accueil');
+			await page.locator('.favori-btn-run').first().click();
+			const fin = page.locator('.bp-fin-partie');
+			for (let garde = 0; garde < 30 && !(await fin.isVisible()); garde++) {
+				const stage = page.locator('#bpStage');
+				await stage.waitFor({ state: 'visible' });
+				const bonne = await stage.getAttribute('data-answer');
+				const avant = await page.locator('.bp-question-num').innerText();
+				await page.locator(`.bp-choice[data-value]:not([data-value="${bonne}"])`).first().click();
+				await page.locator('#bpValider').click();
+				await page.waitForFunction(
+					(a) =>
+						!!document.querySelector('.bp-fin-partie') ||
+						document.querySelector('.bp-question-num')?.textContent !== a,
+					avant,
+				);
 			}
-			await page.locator('#btnVerify').click();
-			await page.locator('#sheets .mark.wrong').first().waitFor({ state: 'visible' });
+			await expect(fin).toBeVisible();
+			await expect(fin.locator('.bp-erreur').first()).toBeVisible();
 		},
 	},
 	{

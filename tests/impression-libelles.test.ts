@@ -1,16 +1,21 @@
 /* ============================================================
-   Ce que le PAPIER et la forme écrite disent d'une leçon (#777, tranche 1) :
+   Ce que le PAPIER et la forme écrite disent d'une leçon (#777) :
    - le libellé imprimé (`labelImpressionLecon`, critère 19) ;
    - la consigne de fiche des leçons « clique sur le mot » (critères 5 et 19) ;
    - le repli d'une manche « relier » hors de son widget (critères 2 et 20) ;
-   - le corrigé imprimé de « Décomposer pour calculer une multiplication » (critère 22).
+   - le corrigé imprimé de « Décomposer pour calculer une multiplication » (critère 22) ;
+   - la plage CM1 de « Je décompose » (critère 26) ;
+   - le repli de « Repère le groupe nominal » quand la phrase a deux groupes (critère 27).
    ------------------------------------------------------------
-   Écrit APRÈS l'implémentation, par un auteur distinct de celui du code : les attendus
-   viennent des critères de l'issue ou de premiers principes (l'arithmétique d'une
-   décomposition, la résolution de niveau déjà spécifiée par #225/#436), jamais des
-   chaînes ou des formules du code. Ces tests sont donc verts à l'arrivée, et chacun a son
-   TÉMOIN : le même contrôle, joué sur une donnée fabriquée ou sur un « mutant » écrit ici
-   (une variante fautive plausible du code), doit rougir. Aucune mutation de `src/`.
+   Sections 1 à 4 et 6 : écrites APRÈS l'implémentation de la tranche 1, par un auteur
+   distinct de celui du code ; vertes à l'arrivée. Section 5 (formes décidées le 22/10/2026)
+   et sections 7-8 (critères 26 et 27, ajoutés le même jour) : écrites AVANT leur
+   implémentation, donc rouges à l'arrivée sauf non-régressions.
+   Les attendus viennent des critères de l'issue ou de premiers principes (l'arithmétique
+   d'une décomposition, la résolution de niveau déjà spécifiée par #225/#436), jamais des
+   chaînes ou des formules du code. Chaque contrôle a son TÉMOIN : le même contrôle, joué
+   sur une donnée fabriquée ou sur un « mutant » écrit ici (une variante fautive plausible
+   du code), doit rougir. Aucune mutation de `src/`.
 
    Ce que ce fichier ne refait pas :
    - impression-gate.test.ts : le texte imprimé de tout le catalogue aux niveaux SERVIS
@@ -22,6 +27,7 @@
    ============================================================ */
 import { describe, it, expect } from 'vitest';
 import {
+	genLessonItem,
 	getAllLessons,
 	getLessonById,
 	isPairingLesson,
@@ -32,20 +38,20 @@ import {
 import { effectiveLevel, labelImpressionLecon, labelLecon, LEVEL_ORDER } from '../src/core/levels';
 import { buildLessonFiche } from '../src/core/build';
 import { buildPrintableDOM } from '../src/core/lessons';
-import { createRenderContext, type Item } from '../src/core/items';
+import { checkItemAnswer, createRenderContext, type Item } from '../src/core/items';
 import { choice, normalizeText, withSeed } from '../src/core/utils';
 import type { Exercise } from '../src/core/exercise';
+import { etayagePour } from '../src/core/etayage';
+import { deroulePosition } from '../src/core/etayage-position';
+import { FAMILLES, type ItemFamille } from '../src/data/francais/familles';
+import { PHRASES_GN } from '../src/data/francais/grammaire-groupe-nominal';
+import { premierGeste } from './gardes-gestes';
 
 type Manche = Extract<Exercise, { type: 'appariement' }>;
 
-/* ---------- Détecteurs partagés ---------- */
-
-/** Verbes de geste d'écran (#777, critère 19 : clique, touche, tape, glisse, déplace,
-    appuie, écoute ; plus « relie », faux sans colonnes, critère 2), en mot entier et
-    fléchis. Frontières en LETTRES : « étapes », « tapis », « relief », « écouteur » ne
-    sont pas des gestes. */
-const GESTE_ECRAN =
-	/(?<!\p{L})(?:cliqu|touch|tap|gliss|déplac|déplaç|appui|appuy|écout|reli)(?:e|es|ent|er|ez|ons|ant|é|ée|és|ées)(?!\p{L})/iu;
+/* ---------- Détecteurs ----------
+   Les gestes d'écran (critère 19, plus « relier ») : détecteur partagé avec
+   impression-gate, `tests/gardes-gestes.ts`, éprouvé dans `gardes-gestes.test.ts`. */
 
 /** Tâche d'écriture : recopier, écrire. */
 const TACHE_ECRITE = /(?<!\p{L})(?:(?:re)?copi(?:e|es|ez|er)|écri(?:s|re|vez|t))(?!\p{L})/iu;
@@ -214,8 +220,8 @@ function gestesImprimes(r: Resolveur): { id: string; texte: string }[] {
 	for (const l of getAllLessons()) {
 		for (const n of NIVEAUX_ET_SANS) {
 			const titre = r(l, n);
-			const m = GESTE_ECRAN.exec(titre);
-			if (m) out.push({ id: l.id, texte: `${l.id}@${nomNiveau(n)} : « ${titre} » (${m[0]})` });
+			const geste = premierGeste(titre);
+			if (geste) out.push({ id: l.id, texte: `${l.id}@${nomNiveau(n)} : « ${titre} » (${geste})` });
 		}
 	}
 	return out;
@@ -248,31 +254,8 @@ describe('Libellés imprimés du catalogue (#777, critère 19)', () => {
 		expect(gestesImprimes(labelImpressionLecon).map((g) => g.texte)).toEqual([]);
 	});
 
-	it('témoins : le détecteur de geste signale ce qu’il doit, et seulement ça', () => {
-		for (const t of [
-			'Clique sur le verbe',
-			'Familles de mots à relier',
-			'Touche le mot',
-			'Glisse les tuiles',
-			'Je déplace les tuiles',
-			'Écoute et écris',
-			'Appuie sur le bouton',
-			'Tape le nombre',
-		]) {
-			expect(GESTE_ECRAN.test(t), t).toBe(true);
-		}
-		for (const t of [
-			'Trouve le verbe',
-			'Mots de la même famille',
-			'Repère le groupe nominal',
-			'Problèmes en deux étapes',
-			'Le relief',
-			'Le tapis',
-			'Les écouteurs',
-		]) {
-			expect(GESTE_ECRAN.test(t), t).toBe(false);
-		}
-		// Le titre imprimé d'avant #777 était le libellé d'ÉCRAN : ce contrôle l'aurait vu.
+	it('témoin : le titre imprimé d’avant #777 (le libellé d’écran) aurait été signalé', () => {
+		// Le détecteur lui-même est éprouvé dans gardes-gestes.test.ts.
 		const avant = new Set(gestesImprimes(labelLecon).map((g) => g.id));
 		expect([...avant]).toEqual(
 			expect.arrayContaining(['fr-gram-clic-verbe', 'fr-vocab-familles-relier']),
@@ -349,7 +332,7 @@ describe('Fiche et bilan imprimés : titre sans geste, dans la langue du niveau'
 				for (const [quoi, titre] of Object.entries(titresImprimes(l.id, n))) {
 					if (titre !== attendu)
 						ecarts.push(`${l.id}@${n} ${quoi} : « ${titre} » ≠ « ${attendu} »`);
-					if (GESTE_ECRAN.test(titre))
+					if (premierGeste(titre) !== null)
 						ecarts.push(`${l.id}@${n} ${quoi} : geste dans « ${titre} »`);
 				}
 			}
@@ -414,8 +397,8 @@ const LECONS_CLIC_MOT = getAllLessons().filter((l) =>
 );
 
 function fauteConsigneEcrite(consigne: string, notion: RegExp): string | null {
-	const geste = GESTE_ECRAN.exec(consigne);
-	if (geste) return `demande un geste d'écran (« ${geste[0]} ») : « ${consigne} »`;
+	const geste = premierGeste(consigne);
+	if (geste) return `demande un geste d'écran (« ${geste} ») : « ${consigne} »`;
 	if (!TACHE_ECRITE.test(consigne)) return `ne nomme pas la tâche écrite : « ${consigne} »`;
 	if (!notion.test(consigne))
 		return `ne nomme pas ce qu'il faut trouver (${notion}) : « ${consigne} »`;
@@ -425,7 +408,7 @@ function fauteConsigneEcrite(consigne: string, notion: RegExp): string | null {
 function fauteConsigneGeste(consigne: string): string | null {
 	const ecrire = TACHE_ECRITE.exec(consigne);
 	if (ecrire) return `demande d'écrire (« ${ecrire[0]} ») au toucher : « ${consigne} »`;
-	if (!GESTE_ECRAN.test(consigne)) return `ne dit pas le geste : « ${consigne} »`;
+	if (premierGeste(consigne) === null) return `ne dit pas le geste : « ${consigne} »`;
 	return null;
 }
 
@@ -507,9 +490,19 @@ describe('« Clique sur le mot » : consigne de fiche écrite, consigne de runne
      modifie pas la manche.
    - VARIÉ : « Nomme les mots du groupe » interrogeait toujours le premier mot du groupe,
      c'est-à-dire le déterminant (#777, constat du 22/10). Sur un échantillon de manches, la
-     question ne porte pas toujours sur le premier mot, chaque étiquette finit par être
-     demandée, et la bonne réponse ne tient pas toujours la même place parmi les choix.
-   - CHOIX : ceux de la colonne de droite du widget, intrus compris, sans doublon.
+     question ne porte pas toujours sur le premier mot, et chaque étiquette finit par être
+     demandée.
+   - Décisions du 22/10/2026 (avis pedagogue-primaire, feu vert du mainteneur, commentaire
+     daté sur #777) qui remplacent « choix = la colonne de droite du widget » :
+     · À ÉTIQUETTES (critère 2) : toujours les trois étiquettes « déterminant », « nom »,
+       « adjectif », dans CET ordre, même quand la manche n'en a que deux ; la question
+       demande la NATURE du mot désigné, en citant le groupe entier et le mot.
+     · À MOTS (critère 20) : 4 choix distincts, la réponse et 3 distracteurs, dont au moins
+       un faux-ami (un intrus de la manche), aucun de la même famille que le mot demandé,
+       tirés de façon déterministe : la feuille et son corrigé impriment les mêmes choix.
+       En plus, deux invariants QCM maison : chaque distracteur est un vrai mot de la
+       banque (jamais une forme inventée), et la bonne réponse ne tient pas toujours la
+       même place.
    ============================================================ */
 const LECONS_RELIER = getAllLessons().filter(isPairingLesson);
 const GRAINES_RELIER = Array.from({ length: 200 }, (_, k) => k + 1);
@@ -537,6 +530,7 @@ function motDesigne(texte: string, ex: Manche): string | null {
 
 interface Observation {
 	ex: Manche;
+	texte: string;
 	designe: string;
 	reponse: string;
 	choix: string[];
@@ -547,7 +541,8 @@ function observer(l: LessonDef): Observation[] {
 		const item = itemDepuisExercice(l, ex);
 		const designe = motDesigne(item.text, ex);
 		if (designe === null) throw new Error(`${l.id} : « ${item.text} » ne désigne pas un mot`);
-		return { ex, designe, reponse: String(item.answer), choix: item.choices ?? [] };
+		const reponse = String(item.answer);
+		return { ex, texte: item.text, designe, reponse, choix: item.choices ?? [] };
 	});
 }
 
@@ -570,7 +565,8 @@ function fautesVariete(obs: Observation[], etiquettes: boolean): string[] {
 	if (obs.every((o) => o.designe === premierMot(o))) {
 		f.push('la question porte toujours sur le premier mot de la manche');
 	}
-	if (new Set(obs.map((o) => o.choix.indexOf(o.reponse))).size < 2) {
+	// Ordre fixe à étiquettes (décision) : la place de la réponse n'y dit rien.
+	if (!etiquettes && new Set(obs.map((o) => o.choix.indexOf(o.reponse))).size < 2) {
 		f.push('la bonne réponse occupe toujours la même place parmi les choix');
 	}
 	if (etiquettes) {
@@ -583,17 +579,164 @@ function fautesVariete(obs: Observation[], etiquettes: boolean): string[] {
 	return f;
 }
 
-function fauteChoix(choix: string[], reponse: string, ex: Manche): string | null {
-	const colonne = new Set([...ex.paires.map((p) => p.droite), ...(ex.intrus ?? [])]);
-	const cles = choix.map((c) => normalizeText(c).toLocaleLowerCase('fr'));
-	if (choix.length < 2) return `moins de deux choix : ${JSON.stringify(choix)}`;
-	if (new Set(cles).size !== cles.length) return `choix en double : ${JSON.stringify(choix)}`;
-	if (!choix.includes(reponse)) return `« ${reponse} » absente de ${JSON.stringify(choix)}`;
-	const manquants = [...colonne].filter((c) => !choix.includes(c));
-	if (manquants.length > 0) return `colonne du widget incomplète, manque ${manquants.join(', ')}`;
-	const inventes = choix.filter((c) => !colonne.has(c));
-	if (inventes.length > 0) return `choix hors de la colonne du widget : ${inventes.join(', ')}`;
+/* ---------- À étiquettes (critère 2, décision du 22/10/2026) ---------- */
+
+/** Les étiquettes proposées, toutes et dans cet ordre, quelle que soit la manche. */
+const ETIQUETTES_GN = ['déterminant', 'nom', 'adjectif'];
+
+const citationsDe = (texte: string): string[] =>
+	[...texte.matchAll(/«\s*([^«»]+?)\s*»/gu)].map((m) => m[1].replace(/\s+/g, ' '));
+
+/** Le texte sans ses citations « … » (imbriquées comprises) : ce qui reste est la consigne. */
+function sansCitations(texte: string): string {
+	let avant = '';
+	let apres = texte;
+	while (avant !== apres) {
+		avant = apres;
+		apres = apres.replace(/«[^«»]*»/gu, ' ');
+	}
+	return apres;
+}
+
+function fauteChoixEtiquettes(choix: string[]): string | null {
+	return JSON.stringify(choix) === JSON.stringify(ETIQUETTES_GN)
+		? null
+		: `choix ${JSON.stringify(choix)} au lieu de ${JSON.stringify(ETIQUETTES_GN)}`;
+}
+
+/** La question demande la NATURE d'un mot, cite le groupe entier et le mot désigné. Ce
+    qu'elle dit mot pour mot n'est pas figé. */
+function fauteQuestionEtiquettes(texte: string, ex: Manche): string | null {
+	const cles = citationsDe(texte).map((c) => c.toLocaleLowerCase('fr'));
+	const groupe = ex.paires
+		.map((p) => p.gauche)
+		.join(' ')
+		.toLocaleLowerCase('fr');
+	if (!/(?<!\p{L})nature(?!\p{L})/iu.test(sansCitations(texte))) {
+		return `ne demande pas la nature : « ${texte} »`;
+	}
+	if (!cles.includes(groupe)) return `ne cite pas le groupe « ${groupe} » : « ${texte} »`;
+	if (motDesigne(texte, ex) === null) return `ne cite pas UN mot du groupe : « ${texte} »`;
 	return null;
+}
+
+/* ---------- À mots (critère 20, décision du 22/10/2026) ---------- */
+
+/** Pour chaque mot de la banque, les mots de SA famille : composantes du graphe des liens
+    « mot → dérivé » de la banque (deux entrées qui partagent un mot sont une même famille).
+    Le faux-ami et le mot sans rapport n'y entrent pas : ils sont, par définition, d'une
+    autre famille.
+    Limite mesurée le 22/10/2026 : dans `FAMILLES`, aucune famille ne compte plus de deux
+    mots (aucun mot partagé entre deux entrées). Sur la banque réelle, ce contrôle ne peut
+    donc signaler qu'une famille connue de la banque ; il ne sait rien d'une parenté que la
+    banque ne note pas (« mer » / « marée »). Son témoin est joué sur une banque fabriquée. */
+function famillesDeLaBanque(banque: readonly ItemFamille[]): Map<string, Set<string>> {
+	const voisins = new Map<string, Set<string>>();
+	const lier = (a: string, b: string): void => {
+		for (const [x, y] of [
+			[a, b],
+			[b, a],
+		]) {
+			const v = voisins.get(x) ?? new Set<string>();
+			v.add(y);
+			voisins.set(x, v);
+		}
+	};
+	for (const f of banque) lier(f.mot.toLocaleLowerCase('fr'), f.famille.toLocaleLowerCase('fr'));
+	const membres = new Map<string, Set<string>>();
+	for (const depart of voisins.keys()) {
+		if (membres.has(depart)) continue;
+		const groupe = new Set<string>([depart]);
+		const file = [depart];
+		while (file.length > 0) {
+			for (const v of voisins.get(file.pop()!) ?? []) {
+				if (!groupe.has(v)) {
+					groupe.add(v);
+					file.push(v);
+				}
+			}
+		}
+		for (const m of groupe) membres.set(m, groupe);
+	}
+	return membres;
+}
+
+const motsDeLaBanque = (banque: readonly ItemFamille[]): Set<string> =>
+	new Set(
+		banque.flatMap((f) =>
+			[f.mot, f.famille, f.fauxAmi, f.autre].map((m) => m.toLocaleLowerCase('fr')),
+		),
+	);
+
+interface BanqueFamilles {
+	familles: Map<string, Set<string>>;
+	mots: Set<string>;
+}
+
+const BANQUE_FAMILLES: BanqueFamilles = {
+	familles: famillesDeLaBanque(FAMILLES),
+	mots: motsDeLaBanque(FAMILLES),
+};
+
+/** Défauts des choix d'un repli « relier » à mots, pour le mot demandé `mot`. */
+function fautesChoixFamille(o: Observation, banque: BanqueFamilles): string[] {
+	const { choix, reponse, ex } = o;
+	const mot = o.designe;
+	const f: string[] = [];
+	const cles = choix.map((c) => normalizeText(c).toLocaleLowerCase('fr'));
+	if (choix.length !== 4) f.push(`${choix.length} choix au lieu de 4 : ${JSON.stringify(choix)}`);
+	if (new Set(cles).size !== cles.length) f.push(`choix en double : ${JSON.stringify(choix)}`);
+	if (!choix.includes(reponse)) f.push(`« ${reponse} » absente de ${JSON.stringify(choix)}`);
+	const distracteurs = choix.filter((c) => c !== reponse);
+	const intrus = new Set(ex.intrus ?? []);
+	if (!distracteurs.some((d) => intrus.has(d))) {
+		f.push(
+			`aucun faux-ami de la manche (${[...intrus].join(', ')}) parmi ${JSON.stringify(choix)}`,
+		);
+	}
+	const famille = banque.familles.get(mot) ?? new Set([mot]);
+	const parents = distracteurs.filter((d) => famille.has(d.toLocaleLowerCase('fr')));
+	if (parents.length > 0) f.push(`« ${parents.join(', ')} » est de la famille de « ${mot} »`);
+	const inventes = distracteurs.filter((d) => !banque.mots.has(d.toLocaleLowerCase('fr')));
+	if (inventes.length > 0) f.push(`« ${inventes.join(', ')} » n'est pas un mot de la banque`);
+	return f;
+}
+
+/** Les listes de choix imprimées (une par question à choix), feuille puis corrigé, d'un
+    bilan imprimé AVEC corrigé : `buildPrintableDOM` rend les deux sous une même graine. */
+function choixImprimes(l: LessonDef, seed: number): { feuille: string[][]; corrige: string[][] } {
+	const doc = withSeed(seed, () =>
+		buildPrintableDOM({
+			title: 'T',
+			lessonIds: [l.id],
+			kind: 'bilan',
+			nbQ: 3,
+			corrige: true,
+			level: l.levels[0],
+		}),
+	);
+	const racine = document.createElement('div');
+	racine.innerHTML = doc.balisage;
+	const listes = [...racine.querySelectorAll('.qcm-print-choices')].map((ul) =>
+		[...ul.querySelectorAll('.qcm-print-label')].map((e) =>
+			(e.textContent ?? '').replace(/\s+/g, ' ').trim(),
+		),
+	);
+	const moitie = listes.length / 2;
+	return { feuille: listes.slice(0, moitie), corrige: listes.slice(moitie) };
+}
+
+function ecartsFeuilleCorrige(feuille: string[][], corrige: string[][]): string[] {
+	if (feuille.length !== corrige.length) {
+		return [`${feuille.length} question(s) à choix sur la feuille, ${corrige.length} au corrigé`];
+	}
+	return feuille
+		.map((c, i) =>
+			JSON.stringify(c) === JSON.stringify(corrige[i])
+				? null
+				: `question ${i + 1} : ${JSON.stringify(c)} / ${JSON.stringify(corrige[i])}`,
+		)
+		.filter((e): e is string => e !== null);
 }
 
 /** Un mot répété dans le groupe serait désigné deux fois par « « le » est… ». */
@@ -640,7 +783,7 @@ describe('Repli d’une manche « relier » (#777, critères 2 et 20)', () => {
 		expect(ecartsDeterminisme(trieEnPlace, manches.map(commeDansLeLien))).not.toEqual([]);
 	});
 
-	it('VARIÉTÉ : pas toujours le premier mot, toutes les étiquettes demandées, réponse à place variable', () => {
+	it('VARIÉTÉ : pas toujours le premier mot, toutes les étiquettes demandées ; à mots, réponse à place variable', () => {
 		for (const l of LECONS_RELIER) {
 			expect(fautesVariete(observer(l), estEtiquettes(l)), l.id).toEqual([]);
 		}
@@ -659,45 +802,150 @@ describe('Repli d’une manche « relier » (#777, critères 2 et 20)', () => {
 				// Le groupe s'ouvre toujours sur le déterminant : rien d'autre n'était demandé.
 				expect(fautesVariete(premiere, true).join(' | '), l.id).toMatch(/jamais demandée/);
 			}
-			const enTete = obs.map((o) => ({
-				...o,
-				choix: [o.reponse, ...o.choix.filter((c) => c !== o.reponse)],
-			}));
-			expect(fautesVariete(enTete, estEtiquettes(l)).join(' | '), l.id).toMatch(/même place/);
+			if (!estEtiquettes(l)) {
+				const enTete = obs.map((o) => ({
+					...o,
+					choix: [o.reponse, ...o.choix.filter((c) => c !== o.reponse)],
+				}));
+				expect(fautesVariete(enTete, false).join(' | '), l.id).toMatch(/même place/);
+			}
 		}
 	});
 
-	it('CHOIX : la colonne de droite du widget, intrus compris, sans doublon, avec la réponse', () => {
+	it('critère 2 : à étiquettes, toujours « déterminant », « nom », « adjectif », dans cet ordre', () => {
 		const fautes: string[] = [];
-		for (const l of LECONS_RELIER) {
-			for (const o of observer(l)) {
-				const f = fauteChoix(o.choix, o.reponse, o.ex);
-				if (f) {
-					fautes.push(`${l.id} : ${f}`);
-					break;
-				}
+		for (const l of LECONS_RELIER.filter(estEtiquettes)) {
+			const o = observer(l).find((x) => fauteChoixEtiquettes(x.choix) !== null);
+			if (o) fautes.push(`${l.id} « ${o.texte} » : ${fauteChoixEtiquettes(o.choix)}`);
+		}
+		expect(fautes).toEqual([]);
+	});
+
+	it('critère 2 : à étiquettes, la question demande la nature du mot, groupe entier et mot cités', () => {
+		const fautes: string[] = [];
+		for (const l of LECONS_RELIER.filter(estEtiquettes)) {
+			const o = observer(l).find((x) => fauteQuestionEtiquettes(x.texte, x.ex) !== null);
+			if (o) fautes.push(`${l.id} : ${fauteQuestionEtiquettes(o.texte, o.ex)}`);
+		}
+		expect(fautes).toEqual([]);
+	});
+
+	it('témoins (étiquettes) : ordre alphabétique, étiquette manquante, question sans nature ou sans groupe', () => {
+		const ex: Manche = {
+			type: 'appariement',
+			question: '',
+			colonneDroite: 'etiquettes',
+			paires: [
+				{ gauche: 'son', droite: 'déterminant' },
+				{ gauche: 'vélo', droite: 'nom' },
+			],
+		};
+		expect(fauteChoixEtiquettes(['déterminant', 'nom', 'adjectif'])).toBeNull();
+		expect(fauteChoixEtiquettes(['adjectif', 'déterminant', 'nom'])).not.toBeNull();
+		// Une manche sans adjectif : les deux étiquettes de la manche ne suffisent plus.
+		expect(fauteChoixEtiquettes(['déterminant', 'nom'])).not.toBeNull();
+		expect(
+			fauteQuestionEtiquettes('Dans « son vélo », quelle est la nature du mot « son » ? @', ex),
+		).toBeNull();
+		// La forme livrée par la tranche 1 : ne demande pas la nature.
+		expect(fauteQuestionEtiquettes('Dans « son vélo », « son » est… @', ex)).not.toBeNull();
+		expect(fauteQuestionEtiquettes('Quelle est la nature du mot « son » ? @', ex)).not.toBeNull();
+		expect(
+			fauteQuestionEtiquettes('Dans « son vélo », quelle est la nature de ce mot ? @', ex),
+		).not.toBeNull();
+		// « nature » cité n'est pas la consigne.
+		expect(
+			fauteQuestionEtiquettes('Dans « son vélo », « son » est… « nature » @', ex),
+		).not.toBeNull();
+	});
+
+	it('critère 20 : à mots, 4 choix distincts (réponse + 3), un faux-ami au moins, aucun de la même famille, des mots de la banque', () => {
+		const fautes: string[] = [];
+		for (const l of LECONS_RELIER.filter((x) => !estEtiquettes(x))) {
+			const o = observer(l).find((x) => fautesChoixFamille(x, BANQUE_FAMILLES).length > 0);
+			if (o) {
+				fautes.push(
+					`${l.id} « ${o.texte} » : ${fautesChoixFamille(o, BANQUE_FAMILLES).join(' ; ')}`,
+				);
 			}
 		}
 		expect(fautes).toEqual([]);
 	});
 
-	it('témoins : réponse absente, doublon à la casse près, intrus perdu ou choix inventé sont signalés', () => {
-		for (const l of LECONS_RELIER) {
-			const o = observer(l).find((x) => x.choix.length >= 2)!;
-			const autres = o.choix.filter((c) => c !== o.reponse);
-			expect(fauteChoix(o.choix, o.reponse, o.ex), l.id).toBeNull();
-			expect(fauteChoix(autres, o.reponse, o.ex), `${l.id} sans réponse`).not.toBeNull();
-			const casse = o.reponse.charAt(0).toUpperCase() + o.reponse.slice(1);
-			expect(fauteChoix([...o.choix, casse], o.reponse, o.ex), `${l.id} doublon`).not.toBeNull();
-			expect(
-				fauteChoix([o.reponse, ...autres.slice(1)], o.reponse, o.ex),
-				`${l.id} colonne amputée`,
-			).not.toBeNull();
-			expect(
-				fauteChoix([...o.choix, 'parapluie'], o.reponse, o.ex),
-				`${l.id} inventé`,
-			).not.toBeNull();
+	it('témoins (mots) : 6 choix, faux-ami absent, même famille, mot inventé, doublon à la casse près', () => {
+		// Banque fabriquée : « dent » a DEUX dérivés, « dentelle » est son faux-ami.
+		const banque: ItemFamille[] = [
+			{ mot: 'dent', famille: 'dentiste', fauxAmi: 'dentelle', autre: 'chou', explication: '' },
+			{ mot: 'dent', famille: 'dentier', fauxAmi: 'dentelle', autre: 'pré', explication: '' },
+			{ mot: 'fleur', famille: 'fleuriste', fauxAmi: 'flûte', autre: 'mer', explication: '' },
+		];
+		const b: BanqueFamilles = {
+			familles: famillesDeLaBanque(banque),
+			mots: motsDeLaBanque(banque),
+		};
+		const ex: Manche = {
+			type: 'appariement',
+			question: '',
+			paires: [
+				{ gauche: 'dent', droite: 'dentiste' },
+				{ gauche: 'fleur', droite: 'fleuriste' },
+			],
+			intrus: ['dentelle', 'flûte'],
+		};
+		const obs = (choix: string[]): Observation => ({
+			ex,
+			texte: '',
+			designe: 'dent',
+			reponse: 'dentiste',
+			choix,
+		});
+		expect(fautesChoixFamille(obs(['chou', 'dentelle', 'dentiste', 'fleuriste']), b)).toEqual([]);
+		for (const [cas, choix] of [
+			['six choix', ['chou', 'dentelle', 'dentiste', 'fleuriste', 'flûte', 'pré']],
+			['sans faux-ami', ['chou', 'dentiste', 'fleuriste', 'pré']],
+			['même famille', ['dentelle', 'dentier', 'dentiste', 'fleuriste']],
+			['mot inventé', ['chou', 'dentelle', 'dentiste', 'xylophonerie']],
+			['doublon', ['Dentiste', 'dentelle', 'dentiste', 'fleuriste']],
+			['sans la réponse', ['chou', 'dentelle', 'fleuriste', 'pré']],
+		] as const) {
+			expect(fautesChoixFamille(obs([...choix]), b), cas).not.toEqual([]);
 		}
+		// Une manche réelle telle que livrée par la tranche 1 (toute la colonne : 6 choix).
+		const l = LECONS_RELIER.find((x) => !estEtiquettes(x))!;
+		const reel = observer(l)[0];
+		const colonne = [...reel.ex.paires.map((p) => p.droite), ...(reel.ex.intrus ?? [])];
+		expect(fautesChoixFamille({ ...reel, choix: colonne }, BANQUE_FAMILLES)).not.toEqual([]);
+	});
+
+	it('critère 20 : à mots, la feuille et son corrigé imprimés proposent les mêmes 4 choix, dans le même ordre', () => {
+		const l = LECONS_RELIER.find((x) => !estEtiquettes(x))!;
+		const fautes: string[] = [];
+		let questions = 0;
+		for (let seed = 1; seed <= 10; seed++) {
+			const { feuille, corrige } = choixImprimes(l, seed);
+			questions += feuille.length;
+			fautes.push(...ecartsFeuilleCorrige(feuille, corrige).map((e) => `graine ${seed} : ${e}`));
+			const tailles = [...new Set(feuille.map((c) => c.length))].filter((n) => n !== 4);
+			if (tailles.length > 0) fautes.push(`graine ${seed} : ${tailles.join(', ')} choix imprimés`);
+		}
+		expect(questions, 'aucune question à choix imprimée').toBeGreaterThan(0);
+		expect(fautes).toEqual([]);
+	});
+
+	it('témoins : un corrigé qui retire, réordonne ou perd une question est signalé', () => {
+		const f = [
+			['a', 'b', 'c', 'd'],
+			['e', 'f', 'g', 'h'],
+		];
+		expect(
+			ecartsFeuilleCorrige(
+				f,
+				f.map((c) => [...c]),
+			),
+		).toEqual([]);
+		expect(ecartsFeuilleCorrige(f, [['b', 'a', 'c', 'd'], f[1]])).not.toEqual([]);
+		expect(ecartsFeuilleCorrige(f, [['a', 'b', 'c', 'x'], f[1]])).not.toEqual([]);
+		expect(ecartsFeuilleCorrige(f, [f[0]])).not.toEqual([]);
 	});
 
 	/* Les banques réelles n'ont pas de groupe à mot répété : la manche est FABRIQUÉE, et
@@ -873,5 +1121,263 @@ describe('Corrigé imprimé : « Décomposer pour calculer une multiplication »
 		// Sur des lignes réelles : la feuille vierge, prise pour un corrigé, serait signalée.
 		const { feuille } = feuilleEtCorrige(1);
 		for (const t of feuille) expect(fautesCorrige(lue(t)), t).not.toEqual([]);
+	});
+});
+
+/* ============================================================
+   7. Critère 26 — « Je décompose » au CM1 reste dans le programme de CM1.
+   ------------------------------------------------------------
+   Le programme de CM1 s'arrête aux nombres à six chiffres (999 999,
+   docs/reference/programmes/cm1-maths.md). Au CM1, aucun nombre de la leçon — énoncé ou
+   réponse, en chiffres ou nommé par son rang (« 7 millions ») — ne dépasse 999 999, et son
+   étayage ne parle plus des millions. Au CE2, la leçon reste « jusqu'à 10 000 ».
+   ============================================================ */
+const DECOMPOSE = 'num-decompose-10000';
+const PLAFOND_CM1 = 999_999;
+const PLAFOND_CE2 = 10_000;
+const GRAINES_PLAGE = Array.from({ length: 600 }, (_, k) => k + 1);
+
+/** Le rang des millions, nommé (« 7 millions », « un million ») : au-delà du programme. */
+const MILLION = /(?<!\p{L})millions?(?!\p{L})/iu;
+
+/** Les nombres écrits en chiffres d'un texte, groupes de milliers recollés (l'espace, la
+    fine insécable et l'insécable sont toutes dans `\s`) : « 6 643 665 » vaut 6 643 665. */
+const nombresEcrits = (texte: string): number[] =>
+	[...texte.matchAll(/\d{1,3}(?:\s\d{3})+(?!\d)|\d+/gu)].map((m) =>
+		Number(m[0].replace(/\s/g, '')),
+	);
+
+/** Défauts de plage d'un item : un nombre au-dessus du plafond, ou le rang des millions
+    nommé quand le plafond est sous le million. */
+function fautesPlage(item: Item, plafond: number): string[] {
+	const f: string[] = [];
+	const nombres = [...nombresEcrits(item.text), ...nombresEcrits(String(item.answer))];
+	const trop = nombres.filter((n) => n > plafond);
+	if (trop.length > 0) f.push(`${trop.join(', ')} > ${plafond} dans « ${item.text} »`);
+	if (plafond < 1_000_000 && MILLION.test(item.text)) f.push(`millions nommés : « ${item.text} »`);
+	return f;
+}
+
+function itemsDecompose(niveau: SchoolLevel): Item[] {
+	const lecon = getLessonById(DECOMPOSE)!;
+	return GRAINES_PLAGE.map((seed) => withSeed(seed, () => genLessonItem(lecon, niveau)));
+}
+
+/** Tout le texte d'un étayage, déroulé de l'exemple compris. */
+function texteEtayage(niveau: SchoolLevel): string {
+	const contenu = etayagePour(getLessonById(DECOMPOSE)!, niveau);
+	if (!contenu) return '';
+	const deroule =
+		contenu.exemple?.moteur === 'position'
+			? JSON.stringify(deroulePosition(contenu.exemple.spec))
+			: '';
+	return `${JSON.stringify(contenu)} ${deroule}`;
+}
+
+describe('Critère 26 : « Je décompose » au CM1 ne dépasse pas 999 999', () => {
+	it('critère 26 : au CM1, aucun nombre de l’énoncé ni de la réponse ne dépasse 999 999', () => {
+		const fautes = itemsDecompose('cm1').flatMap((it) => fautesPlage(it, PLAFOND_CM1));
+		expect([...new Set(fautes)].slice(0, 10)).toEqual([]);
+	});
+
+	it('NON-RÉGRESSION : au CM1, la leçon reste au-delà de la plage du CE2 (« les grands nombres »)', () => {
+		const max = Math.max(...itemsDecompose('cm1').flatMap((it) => nombresEcrits(it.text)));
+		expect(max).toBeGreaterThan(PLAFOND_CE2);
+	});
+
+	it('critère 26 : au CE2, inchangé — jusqu’à 10 000, et des nombres à quatre chiffres', () => {
+		const items = itemsDecompose('ce2');
+		expect(items.flatMap((it) => fautesPlage(it, PLAFOND_CE2))).toEqual([]);
+		expect(Math.max(...items.flatMap((it) => nombresEcrits(it.text)))).toBeGreaterThanOrEqual(1000);
+	});
+
+	it('critère 26 : l’étayage CM1 de la leçon existe et ne parle plus de millions', () => {
+		const texte = texteEtayage('cm1');
+		expect(texte, 'étayage CM1 absent').not.toBe('');
+		expect(texte).not.toMatch(MILLION);
+	});
+
+	it('témoins : sept chiffres, millions nommés et étayage CE2 sont lus comme il faut', () => {
+		const item = (text: string, answer: string): Item => ({ text, answer, kind: 'num' });
+		expect(nombresEcrits('6 643 665 = 6 millions + @ unités')).toEqual([6643665, 6]);
+		expect(nombresEcrits('9312 = 9 milliers + @ unités')).toEqual([9312, 9]);
+		// L'état livré par la tranche 1 : sept chiffres au CM1.
+		expect(
+			fautesPlage(
+				item('6 643 665 = 6 millions + 6 centaines de mille + @ milliers', '3'),
+				PLAFOND_CM1,
+			),
+		).toHaveLength(2);
+		expect(
+			fautesPlage(item('@ = 9 centaines de mille + 9 unités', '900 009'), PLAFOND_CM1),
+		).toEqual([]);
+		expect(fautesPlage(item('999 999 = @', '1 000 000'), PLAFOND_CM1)).not.toEqual([]);
+		expect(
+			fautesPlage(item('12 004 = @ dizaines de mille + 4 unités', '1'), PLAFOND_CE2),
+		).not.toEqual([]);
+		for (const t of ['7 millions', 'un million', 'Millions']) expect(t).toMatch(MILLION);
+		for (const t of ['milliers', 'un millier', 'des milliards']) expect(t).not.toMatch(MILLION);
+		// L'étayage CE2 de la même leçon, lui, n'en a jamais parlé : le contrôle sait lire vide.
+		expect(texteEtayage('ce2')).not.toMatch(MILLION);
+	});
+});
+
+/* ============================================================
+   8. Critère 27 — « Repère le groupe nominal » hors de son exercice désigne UN groupe.
+   ------------------------------------------------------------
+   Quand la phrase porte deux groupes nominaux, l'exercice d'écran le précise par une ANCRE
+   (« Montre le groupe nominal qui contient le mot « oiseaux » »). Le repli écrit (fiche,
+   bilan, papier) doit désigner le groupe attendu sans ambiguïté, « par un repère tiré de la
+   cible » (commentaire daté de #777) : un mot ou des mots CITÉS entre « », pris dans le
+   groupe attendu, et qui ne figurent qu'UNE fois dans la phrase. C'est ce qui garantit
+   qu'aucun autre groupe de la phrase ne satisfait l'énoncé : un groupe disjoint de la cible
+   ne peut ni contenir ce repère ni commencer par lui. Le texte LU (synthèse vocale) porte
+   le même repère. Inventaire : la banque elle-même (`PHRASES_GN`, phrases à ancre).
+   ============================================================ */
+const GROUPE_NOMINAL = 'fr-gram-groupe-nominal';
+
+const motsDe = (s: string): string[] => s.toLocaleLowerCase('fr').match(/[\p{L}\p{N}]+/gu) ?? [];
+
+/** Nombre d'occurrences de la suite de mots `aiguille` dans `botte`. */
+function occurrences(botte: readonly string[], aiguille: readonly string[]): number {
+	if (aiguille.length === 0) return 0;
+	let n = 0;
+	for (let i = 0; i + aiguille.length <= botte.length; i++) {
+		if (aiguille.every((m, k) => botte[i + k] === m)) n++;
+	}
+	return n;
+}
+
+type ClicMot = Extract<Exercise, { type: 'clicMot' }>;
+
+/** Défaut de désignation du repli d'une phrase à deux groupes, ou `null`. */
+function fauteDesignationGroupe(
+	texte: string,
+	parle: string | undefined,
+	ex: Pick<ClicMot, 'tokens' | 'cibleIndices'>,
+): string | null {
+	const phrase = motsDe(ex.tokens.join(' '));
+	const cible = motsDe(ex.cibleIndices.map((i) => ex.tokens[i]).join(' '));
+	const reperes = citationsDe(texte)
+		.map(motsDe)
+		.filter((r) => r.length > 0 && JSON.stringify(r) !== JSON.stringify(phrase));
+	if (reperes.length === 0) return `aucun repère cité : « ${texte} »`;
+	const bons = reperes.filter((r) => occurrences(cible, r) > 0 && occurrences(phrase, r) === 1);
+	if (bons.length === 0) {
+		return `repère hors du groupe attendu « ${cible.join(' ')} », ou répété dans la phrase : « ${texte} »`;
+	}
+	if (parle !== undefined && !bons.some((r) => occurrences(motsDe(parle), r) >= 2)) {
+		return `le texte lu ne dit pas le repère : « ${parle} »`;
+	}
+	return null;
+}
+
+/** Les exercices à ANCRE réellement tirés par la leçon, un par phrase. */
+function exercicesAncres(): ClicMot[] {
+	const lecon = getLessonById(GROUPE_NOMINAL)!;
+	const parPhrase = new Map<string, ClicMot>();
+	for (let seed = 1; seed <= 1500; seed++) {
+		const ex = withSeed(seed, () => lecon.exerciseType.generate({ level: 'cm1' }));
+		if (ex.type === 'clicMot' && citationsDe(ex.consigne).length > 0) {
+			parPhrase.set(ex.tokens.join(' '), ex);
+		}
+	}
+	return [...parPhrase.values()];
+}
+
+describe('Critère 27 : « Repère le groupe nominal » replié désigne sans ambiguïté le groupe attendu', () => {
+	const ancrees = PHRASES_GN.filter(
+		(p) => p.consigne !== undefined && citationsDe(p.consigne).length > 0,
+	);
+
+	it('inventaire : toutes les phrases à ancre de la banque sont tirées et éprouvées', () => {
+		expect(
+			ancrees.length,
+			'banque sans phrase à deux groupes : contrôle vide',
+		).toBeGreaterThanOrEqual(10);
+		expect(exercicesAncres().length).toBe(ancrees.length);
+	});
+
+	it('critère 27 : le repli cite un repère pris dans le groupe attendu, unique dans la phrase, dit aussi à l’oral', () => {
+		const lecon = getLessonById(GROUPE_NOMINAL)!;
+		const fautes: string[] = [];
+		for (const ex of exercicesAncres()) {
+			const item = itemDepuisExercice(lecon, ex);
+			const f = fauteDesignationGroupe(item.text, item.parle, ex);
+			if (f) fautes.push(f);
+		}
+		expect(fautes).toEqual([]);
+	});
+
+	/* Donnée : l'ancre de l'écran est un repère valable (dans le groupe attendu, une seule
+	   fois dans la phrase). Sinon le critère serait intenable avec la banque telle quelle, et
+	   l'écran lui-même serait ambigu. */
+	it('critère 27 (donnée) : chaque ancre de la banque est dans le groupe attendu, et une seule fois dans la phrase', () => {
+		const fautes: string[] = [];
+		for (const ex of exercicesAncres()) {
+			const [ancre] = citationsDe(ex.consigne);
+			const phrase = `« ${ex.tokens.join(' ')} »`;
+			const f = fauteDesignationGroupe(`… qui contient « ${ancre} » : ${phrase} @`, undefined, ex);
+			if (f) fautes.push(f);
+		}
+		expect(fautes).toEqual([]);
+	});
+
+	it('NON-RÉGRESSION : le groupe attendu, recopié tel quel, reste juste', () => {
+		const lecon = getLessonById(GROUPE_NOMINAL)!;
+		for (const ex of exercicesAncres()) {
+			const item = itemDepuisExercice(lecon, ex);
+			const groupe = ex.cibleIndices.map((i) => ex.tokens[i]).join(' ');
+			expect(checkItemAnswer(item, groupe), `${groupe} dans « ${item.text} »`).toBe(true);
+		}
+	});
+
+	it('témoins : sans repère, repère hors du groupe, repère répété ou absent de l’oral, c’est signalé', () => {
+		const ex = {
+			tokens: ['Le', 'chien', 'regarde', 'les', 'oiseaux', '.'],
+			cibleIndices: [3, 4],
+		};
+		const phrase = '« Le chien regarde les oiseaux. »';
+		// La forme livrée par la tranche 1 : rien ne dit lequel des deux groupes.
+		expect(
+			fauteDesignationGroupe(`Recopie le groupe nominal : ${phrase} @`, undefined, ex),
+		).not.toBeNull();
+		expect(
+			fauteDesignationGroupe(
+				`Recopie le groupe nominal qui contient « oiseaux » : ${phrase} @`,
+				'Recopie le groupe nominal qui contient oiseaux. Le chien regarde les oiseaux.',
+				ex,
+			),
+		).toBeNull();
+		expect(
+			fauteDesignationGroupe(
+				`Recopie le groupe nominal qui commence par « les » : ${phrase} @`,
+				undefined,
+				ex,
+			),
+		).toBeNull();
+		expect(
+			fauteDesignationGroupe(
+				`Recopie le groupe nominal qui contient « chien » : ${phrase} @`,
+				undefined,
+				ex,
+			),
+		).not.toBeNull();
+		expect(
+			fauteDesignationGroupe(
+				`Recopie le groupe nominal qui contient « oiseaux » : ${phrase} @`,
+				'Recopie le groupe nominal. Le chien regarde les oiseaux.',
+				ex,
+			),
+		).not.toBeNull();
+		// « le » ouvre les deux groupes (casse ignorée) : il ne désigne rien.
+		const deuxLe = { tokens: ['Le', 'chat', 'regarde', 'le', 'chien', '.'], cibleIndices: [3, 4] };
+		expect(
+			fauteDesignationGroupe(
+				'Recopie le groupe nominal qui commence par « le » : « Le chat regarde le chien. » @',
+				undefined,
+				deuxLe,
+			),
+		).not.toBeNull();
 	});
 });

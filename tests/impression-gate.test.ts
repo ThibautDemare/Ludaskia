@@ -49,6 +49,7 @@ import { buildPrintableDOM, type PrintScope } from '../src/core/lessons';
 import { createRenderContext, renderItem, type Item } from '../src/core/items';
 import { withSeed } from '../src/core/utils';
 import type { Exercise } from '../src/core/exercise';
+import { GESTES, RADICAUX_GESTES, radicalCanonique } from './gardes-gestes';
 
 /* ============================================================
    Exceptions écrites (critères 19 et 21).
@@ -245,34 +246,8 @@ class Recueil {
    Critère 19 — détecteur : texte imprimé sain.
    ============================================================ */
 
-/** Verbes de geste d'écran : radical canonique → ses variantes graphiques. « relier » en
-    fait partie : le papier n'imprime jamais les deux colonnes d'un « relier », donc
-    « Relie… » y est une consigne fausse. */
-const RADICAUX_GESTES: Record<string, string[]> = {
-	cliqu: ['cliqu'],
-	touch: ['touch'],
-	tap: ['tap'],
-	gliss: ['gliss'],
-	déplac: ['déplac', 'déplaç'],
-	appui: ['appui', 'appuy'],
-	écout: ['écout'],
-	reli: ['reli'],
-};
-const radicalCanonique = new Map(
-	Object.entries(RADICAUX_GESTES).flatMap(([canon, variantes]) =>
-		variantes.map((v) => [v, canon] as const),
-	),
-);
-
-/** Ces verbes en mots entiers, avec leurs flexions courantes (présent, impératif,
-    infinitif, participes) : « Clique », « touchez », « glisser », « écouté », « Reliez »…
-    Les frontières sont des LETTRES (`\p{L}`), pas `\b`, qui ignore les accents :
-    « écouteur », « étape », « tapis », « cliquetis », « relief », « tu relis » ne sont pas
-    des gestes. Le groupe 1 capture la variante de radical. */
-const GESTES = new RegExp(
-	`(?<!\\p{L})(${[...radicalCanonique.keys()].join('|')})(?:e|es|ent|er|ez|ons|ant|é|ée|és|ées)(?!\\p{L})`,
-	'giu',
-);
+/* Les verbes de geste d'écran (`RADICAUX_GESTES`, `GESTES`) viennent du détecteur partagé
+   `tests/gardes-gestes.ts`, éprouvé seul dans `gardes-gestes.test.ts`. */
 
 /** Retire d'un énoncé le texte cité entre « » (citations imbriquées comprises) : c'est
     du contenu. Un « ouvrant sans fermant est laissé tel quel. */

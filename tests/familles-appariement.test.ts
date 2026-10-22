@@ -18,7 +18,8 @@ import {
 	type ItemFamille,
 } from '../src/data/francais/familles';
 import { getLessonById } from '../src/core/catalog';
-import type { Exercise } from '../src/core/exercise';
+import { consignePourNiveau, type Exercise } from '../src/core/exercise';
+import { premierGeste } from './gardes-gestes';
 
 const NB_PAIRES = 4;
 const NB_INTRUS = 2;
@@ -214,15 +215,32 @@ describe('Familles à relier — bornes de la banque (nbManches vs 54 familles)'
 describe('Familles à relier — fabrique appariementType (#392)', () => {
 	const type = appariementType(FAMILLES);
 
-	it('métadonnées : mode « relier », format appariement, consigne, check() toujours false', () => {
+	it('métadonnées : mode « relier », format appariement, check() toujours false', () => {
 		expect(type.exerciseKind).toBe('appariement');
 		expect((type.modes ?? []).map((mo) => mo.id)).toEqual(['relier']);
-		expect(type.consigne).toBe('Relie chaque mot à un mot de sa famille.');
 		expect(typeof type.generateSession).toBe('function');
 		// Corrigé lien par lien par le runner → la vérification générique renvoie toujours false.
 		const [manche] = tirerSessionAppariement(FAMILLES, 1);
 		expect(type.check(manche, 'dentiste')).toBe(false);
 		expect(type.check(manche, '')).toBe(false);
+	});
+
+	/* La consigne de FICHE est celle de la forme écrite (#777, critères 5 et 19) : hors du
+	   widget — fiche, bilan, papier —, il n'y a pas deux colonnes, la manche devient une
+	   question à choix. Ce test figeait « Relie chaque mot à un mot de sa famille. », c'est-
+	   à-dire la consigne du widget servie là où l'on ne relie rien : il gardait le défaut.
+	   L'exigence : ne pas demander de relier (ni aucun geste d'écran), et dire ce qu'on
+	   cherche — un mot de la même famille. Le widget, lui, garde son geste (énoncé de la
+	   manche), qui n'est pas figé ici. */
+	it('consigne de fiche : ne demande pas de relier, et nomme la famille de mots (#777)', () => {
+		const consigne = consignePourNiveau(type, 'ce2') ?? '';
+		expect(consigne.trim(), 'consigne de fiche absente').not.toBe('');
+		expect(premierGeste(consigne), `« ${consigne} »`).toBeNull();
+		expect(consigne).toMatch(/(?<!\p{L})famille(?!\p{L})/iu);
+	});
+
+	it('témoin : la consigne d’avant #777 serait signalée', () => {
+		expect(premierGeste('Relie chaque mot à un mot de sa famille.')).not.toBeNull();
 	});
 
 	it('generate() : une manche (4 paires, ≤ 2 décoys, mots distincts)', () => {

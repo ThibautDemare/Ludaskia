@@ -1,0 +1,595 @@
+/* ============================================================
+   Bilan en PARCOURS guidé (#777) — ui/bilan-parcours.ts.
+   Spécification de rendu arrêtée (designer-ux-enfant, arbitrages du rédacteur) :
+   colonne unique de 640 px, une carte par écran, aucun nouveau token.
+   Trois écrans : A. question (en-tête collant + carte + actions), B. fin de partie,
+   C. récapitulatif.
+   ============================================================ */
+
+/* `#sheets` impose la largeur « cahier » (210 mm) des fiches : le parcours est une page
+   d'écran, recentrée sur une colonne de lecture, comme la révision. */
+.bilan-parcours {
+	max-width: 640px;
+	margin: 0 auto;
+	padding: 0 16px;
+	font-family: var(--ui);
+	text-align: center;
+	color: var(--ink);
+}
+.bp-titre {
+	margin: 4px 0 2px;
+}
+
+/* ---------- Écran A : en-tête ---------- */
+
+/* Collé SOUS la barre d'outils (elle-même collante, `--toolbar-h` tenu à jour par
+   ui/menu.ts), sur le fond de page pour masquer ce qui défile dessous. */
+.bp-entete {
+	position: sticky;
+	top: var(--toolbar-h, 60px);
+	z-index: 5;
+	background: var(--page-bg);
+	padding: 8px 0 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+/* Repli GeckoView : un écran très bas (clavier ouvert sur la tablette) ne garde pas
+   l'en-tête collé, qui mangerait la place de la question. */
+@media (max-height: 480px) {
+	.bp-entete {
+		position: static;
+	}
+}
+.bp-entete-ligne {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+.bp-partie-nom {
+	font-size: 14px;
+	font-weight: 800;
+	color: var(--accent);
+	background: var(--accent-soft);
+	border-radius: 999px;
+	padding: 4px 14px;
+}
+.bp-partie-num {
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--grey);
+}
+.bp-question-num {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 800;
+	color: var(--ink);
+	text-align: left;
+}
+/* Jauge du bilan : recette de la jauge de l'accueil (`.progress-card .lvl-bar`), et non
+   celle de la barre d'outils, à la base brune en dur. */
+.bp-progression {
+	height: 10px;
+	width: 100%;
+	border-radius: 999px;
+	background: var(--accent-soft);
+	overflow: hidden;
+}
+.bp-progression-fill {
+	height: 100%;
+	width: 0;
+	border-radius: 999px;
+	background: var(--accent);
+	transition: width 0.3s ease;
+}
+
+/* ---------- Écran A : la carte de question ---------- */
+
+.bp-stage,
+.bp-carte {
+	position: relative; /* ancre le bouton d'aide au geste (#272) */
+	background: var(--paper);
+	border-radius: 16px;
+	box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12);
+}
+.bp-stage {
+	padding: 28px 20px;
+	min-height: 180px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 16px;
+}
+.bp-stage:focus {
+	outline: none;
+}
+.bp-stage:focus-visible {
+	outline: 3px solid var(--accent);
+	outline-offset: 3px;
+}
+/* Couloir du bouton d'aide (coin haut-droit) : la consigne ne passe pas dessous. */
+.bp-stage--aide > :first-child {
+	padding-left: 44px;
+	padding-right: 44px;
+}
+.bp-consigne {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.bp-consigne-titre {
+	font-size: 16px;
+	font-weight: 800;
+	color: var(--accent);
+}
+.bp-consigne-action {
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--grey);
+}
+.bp-enonce {
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 1.35;
+	color: var(--ink);
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+/* Champ de saisie : bordure PLEINE et hauteur de cible tactile (critère 18). Un nombre
+   garde une largeur modeste pour que l'égalité tienne sur sa ligne ; un mot prend la
+   place d'une réponse écrite. Jamais sous 96 px, jamais au-delà de 280 px. */
+.bp-input {
+	box-sizing: border-box;
+	font-family: var(--ui);
+	font-size: 24px;
+	min-height: 52px;
+	width: 160px;
+	min-width: 96px;
+	max-width: min(100%, 280px);
+	padding: 8px 12px;
+	text-align: center;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--field-line);
+	border-radius: 10px;
+}
+.bp-input-text {
+	width: 100%;
+}
+.bp-input:focus {
+	outline: none;
+}
+.bp-input:focus-visible {
+	outline: 3px solid var(--accent);
+	outline-offset: 2px;
+}
+/* Trou d'un QCM : le choix touché vient s'y écrire (la phrase se relit entière). */
+.bp-trou {
+	display: inline-block;
+	min-width: 60px;
+	min-height: 1.2em;
+	border-bottom: 3px solid var(--accent);
+	color: var(--ink);
+}
+.bp-choix {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	width: 100%;
+}
+.bp-choice {
+	box-sizing: border-box;
+	font-family: var(--ui);
+	font-size: 20px;
+	color: var(--ink);
+	background: var(--paper);
+	border: 2px solid var(--control-line);
+	border-radius: 12px;
+	padding: 12px 22px;
+	min-height: 52px;
+	min-width: 100px;
+	cursor: pointer;
+	transition:
+		border-color 0.12s ease,
+		background 0.12s ease;
+}
+.bp-choice:hover {
+	border-color: var(--accent);
+}
+/* Choix retenu : bordure épaissie (le padding compense, rien ne bouge) et `aria-pressed`
+   — jamais un état juste/faux pendant la partie. */
+.bp-choice[aria-pressed='true'],
+.bp-choice:active {
+	border: 3px solid var(--accent);
+	padding: 11px 21px;
+	background: var(--accent-soft);
+}
+.bp-choice:focus-visible {
+	outline: 3px solid var(--accent);
+	outline-offset: 2px;
+}
+.bp-posee,
+.bp-probleme {
+	align-self: stretch;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+@media (min-width: 600px) {
+	.bp-stage {
+		padding: 36px 24px;
+		gap: 20px;
+	}
+	.bp-enonce {
+		font-size: 28px;
+	}
+	.bp-choix {
+		flex-direction: row;
+		flex-wrap: wrap;
+		justify-content: center;
+	}
+	.bp-choice {
+		font-size: 22px;
+	}
+}
+
+/* ---------- Actions (les trois écrans) ---------- */
+
+.bp-decide {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 32px;
+	margin: 24px 0 32px;
+}
+.bp-valider {
+	font-family: var(--ui);
+	font-size: 18px;
+	font-weight: 700;
+	width: 100%;
+	max-width: 320px;
+	min-height: 52px;
+	padding: 12px 28px;
+	border: 0;
+	border-radius: 10px;
+	background: var(--accent);
+	color: var(--on-accent);
+	cursor: pointer;
+	transition:
+		box-shadow 0.15s ease,
+		transform 0.08s ease;
+}
+.bp-valider:hover:not(:disabled) {
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.bp-valider:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+/* Anneau de focus décollé, couleur de l'accent : il se lit sur le fond de page. */
+.bp-valider:focus-visible {
+	outline: 3px solid var(--accent);
+	outline-offset: 3px;
+}
+/* « Je passe », « Retour à l'accueil » : sorties assumées, discrètes par le style et
+   jamais par la taille de cible (recette de « Je ne sais pas, montre-moi »). */
+.bp-passer {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 48px;
+	padding: 8px 16px;
+	font-family: var(--ui);
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--grey);
+	background: none;
+	border: 0;
+	border-radius: 12px;
+	cursor: pointer;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	transition:
+		color 0.12s ease,
+		background 0.12s ease;
+}
+.bp-passer:hover {
+	color: var(--ink);
+	background: var(--accent-soft);
+}
+.bp-passer:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+.bp-passer .ph-icon {
+	width: 20px;
+	height: 20px;
+	flex: none;
+}
+.bp-valider:active:not(:disabled),
+.bp-passer:active,
+.bp-choice:active {
+	transform: translateY(1px);
+}
+
+/* ---------- Écran B : fin de partie ---------- */
+
+.bp-carte {
+	padding: 24px 20px;
+	margin: 16px 0 0;
+}
+.bp-carte:focus {
+	outline: none;
+}
+.bp-fin-partie {
+	text-align: left;
+}
+.bp-fin-titre,
+.bp-recap-titre {
+	margin: 0 0 16px;
+	text-align: center;
+	font-weight: 800;
+	color: var(--accent);
+}
+.bp-fin-titre {
+	font-size: 22px;
+}
+.bp-reussites {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 0 0 16px;
+	padding: 12px 16px;
+	border-radius: 12px;
+	background: var(--ok-soft);
+	color: var(--ink);
+	font-size: 18px;
+	font-weight: 700;
+}
+.bp-reussites .ph-icon {
+	width: 24px;
+	height: 24px;
+	flex: none;
+	color: var(--ok);
+}
+.bp-revoir-titre {
+	margin: 8px 0 12px;
+	font-size: 18px;
+	font-weight: 800;
+	color: var(--ink);
+}
+.bp-erreurs,
+.bp-lecons {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+.bp-erreur {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 12px 16px;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+.bp-erreur .figure {
+	max-width: 240px;
+}
+.bp-erreur .figure svg {
+	max-width: 100%;
+	height: auto;
+}
+.bp-erreur-enonce {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 700;
+	color: var(--ink);
+}
+.bp-erreur-donnee,
+.bp-erreur-attendue {
+	margin: 0;
+	font-size: 16px;
+	color: var(--ink);
+}
+/* La valeur en couleur, jamais seule : « Ta réponse : » / « La bonne réponse : » portent
+   le sens, la bonne réponse vient toujours APRÈS la réponse donnée. */
+.bp-erreur-donnee strong {
+	color: var(--ko);
+}
+.bp-erreur-attendue strong {
+	color: var(--ok);
+}
+.bp-aucune-erreur {
+	margin: 8px 0 0;
+	font-size: 18px;
+	font-weight: 700;
+	text-align: center;
+	color: var(--ink);
+}
+
+/* ---------- Écran C : récapitulatif ---------- */
+
+.bp-recap-titre {
+	font-size: 24px;
+}
+.bp-lecons {
+	text-align: left;
+}
+.bp-lecon {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	min-height: 56px;
+	padding: 12px 16px;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+.bp-lecon-texte {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 6px;
+	min-width: 0;
+}
+.bp-lecon-nom {
+	font-size: 17px;
+	font-weight: 700;
+	color: var(--ink);
+	overflow-wrap: anywhere;
+}
+/* Verdict : une pastille icône + MOT (jamais la couleur seule, N5). */
+.bp-verdict {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 10px 2px 6px;
+	border-radius: 999px;
+	font-size: 14px;
+	font-weight: 800;
+}
+.bp-verdict .ph-icon {
+	width: 24px;
+	height: 24px;
+	flex: none;
+}
+.bp-verdict--reussi {
+	background: var(--ok-soft);
+	color: var(--ok);
+}
+.bp-verdict--presque {
+	background: var(--warn-bg);
+	color: var(--warn-text);
+}
+.bp-verdict--a-retravailler {
+	background: var(--track);
+	color: var(--ink);
+}
+.bp-score {
+	flex: none;
+	white-space: nowrap;
+	font-size: 16px;
+	font-weight: 800;
+	color: var(--ink);
+}
+.bp-recap-total {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	margin: 20px 0 0;
+	font-size: 18px;
+	font-weight: 800;
+	color: var(--ok);
+}
+.bp-recap-total .ph-icon {
+	width: 24px;
+	height: 24px;
+	flex: none;
+}
+.bp-recompenses {
+	list-style: none;
+	margin: 12px 0 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	font-size: 16px;
+	font-weight: 700;
+	color: var(--ink);
+}
+.bp-seuil {
+	margin: 12px 0 0;
+	padding: 10px 14px;
+	border-radius: 12px;
+	background: var(--warn-bg);
+	color: var(--warn-text);
+	font-size: 15px;
+	font-weight: 600;
+}
+
+/* ---------- Micro-interactions ---------- */
+
+@keyframes bp-fondu {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+@keyframes bp-entree {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+@keyframes bp-pose {
+	from {
+		transform: scale(0.9);
+	}
+	to {
+		transform: scale(1);
+	}
+}
+.bp-stage.bp-entree {
+	animation: bp-entree 0.15s ease-out;
+}
+.bp-fin-partie,
+.bp-recap {
+	animation: bp-fondu 0.15s ease-out;
+}
+/* Cartes d'erreur décalées de 40 ms, au plus 6 (`--bp-rang` borné par l'écran). */
+.bp-erreur {
+	animation: bp-fondu 0.15s ease-out both;
+	animation-delay: calc(var(--bp-rang, 0) * 40ms);
+}
+.bp-recap-total .ph-icon {
+	animation: bp-pose 0.2s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+	.bp-stage.bp-entree,
+	.bp-fin-partie,
+	.bp-recap,
+	.bp-erreur {
+		animation: bp-fondu 80ms ease-out both;
+		animation-delay: 0s;
+	}
+	.bp-recap-total .ph-icon {
+		animation: none;
+	}
+	.bp-progression-fill {
+		transition: none;
+	}
+}
+html.anim-reduced {
+	.bp-stage.bp-entree,
+	.bp-fin-partie,
+	.bp-recap,
+	.bp-erreur {
+		animation: bp-fondu 80ms ease-out both;
+		animation-delay: 0s;
+	}
+	.bp-recap-total .ph-icon {
+		animation: none;
+	}
+	.bp-progression-fill {
+		transition: none;
+	}
+}

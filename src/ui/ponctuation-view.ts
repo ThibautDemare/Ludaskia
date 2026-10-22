@@ -1,20 +1,17 @@
 /* ============================================================
    Présentation partagée des signes de ponctuation finale (#204).
    Utilisé par le runner QCM (boutons-symboles de « Quel point à la fin ? ») ET
-   par la révision espacée (libellés lisibles). Source unique du mapping
-   glyphe → mot, pour éviter toute désynchronisation.
+   par la révision espacée (libellés lisibles). Le mapping glyphe → mot vit dans le
+   noyau (`core/erreur-representation.ts`) depuis que la correction différée du bilan
+   (#777, `core/bilan-parcours.ts`) en a besoin sans DOM ; il est réexporté ici pour
+   les écrans qui l'importaient déjà.
    ============================================================ */
 import type { ChoiceView } from '../core/exercise';
+import { PONCT_MOTS } from '../core/erreur-representation';
 
 import { html } from '../core/html';
 
-/** Mot de chaque signe : libellé accessible des boutons-symboles ET libellé
- *  lisible affiché en révision (un « . » nu serait quasi invisible). */
-export const PONCT_MOTS: Record<string, string> = {
-	'.': 'point',
-	'?': "point d'interrogation",
-	'!': "point d'exclamation",
-};
+export { PONCT_MOTS };
 
 /** Vue riche (#200) d'un bouton-symbole : gros glyphe + mot dessous. Le mot porte
  *  le libellé accessible (choiceButtonHTML en fait l'aria-label du bouton). Le

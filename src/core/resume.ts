@@ -8,14 +8,15 @@
 
    DEUX NATURES d'instantané (#498), parce que les exercices n'ont pas tous la
    même mémoire :
-   - `grille` (#63) : fiche en saisie et bilans. Tout l'état tient dans le DOM
-     (des champs remplis), on rejoue donc le rendu exact ;
+   - `grille` (#63) : fiche en saisie. Tout l'état tient dans le DOM (des champs
+     remplis), on rejoue donc le rendu exact. Les bilans en relevaient jusqu'à #777 ;
+     un tel instantané de bilan est désormais écarté (cf. `normaliser`) ;
    - `runner` (#498) : les écrans « une question à la fois » (QCM, tri, ordre,
-     tuiles, tableau, appariement, clic-mot, droite graduée, problème…). Leur
-     état vit en mémoire, pas dans le DOM : les questions DÉJÀ TIRÉES, l'index
-     courant et le score. On rejoue donc l'ÉTAT LOGIQUE et c'est le runner qui
-     re-rend l'écran. Granularité : le début de la question courante — l'enfant
-     refait la question entamée, jamais celles déjà validées.
+     tuiles, tableau, appariement, clic-mot, droite graduée, problème…) et, depuis
+     #777, le parcours d'un bilan. Leur état vit en mémoire, pas dans le DOM : les
+     questions DÉJÀ TIRÉES, l'index courant et le score. On rejoue donc l'ÉTAT
+     LOGIQUE et c'est l'écran qui se re-rend. Granularité : le début de la question
+     courante — l'enfant refait la question entamée, jamais celles déjà validées.
      Sans ça, ces dix runners n'avaient aucune reprise : une leçon interrompue
      y était perdue, alors que la fiche en saisie, elle, se reprenait.
 
@@ -76,16 +77,13 @@ export interface ResumeGrille extends ResumeCommun {
 	elapsedMs: number; // temps actif déjà écoulé
 }
 
-/** Runner « une question à la fois » (#498) : l'état vit en mémoire, pas dans le DOM.
+/** Écran « une question à la fois » (#498) : l'état vit en mémoire, pas dans le DOM.
     `questions` est la liste DÉJÀ TIRÉE (données pures, sérialisables) — on la conserve
     telle quelle pour que l'enfant retrouve exactement ses questions, et non un nouveau
-    tirage qui rendrait sa progression absurde. Le runner qui restaure connaît seul la
+    tirage qui rendrait sa progression absurde. L'écran qui restaure connaît seul la
     forme de ses questions, d'où le `unknown[]` : ce module ne fait que transporter. */
-export interface ResumeRunner extends ResumeCommun {
+interface ResumeRunnerCommun extends ResumeCommun {
 	kind: 'runner';
-	// Toujours une leçon (les bilans sont des grilles) : on RESSERRE le type hérité, ce qui
-	// évite à chaque runner de re-vérifier la nature avant de lire son `lessonId`.
-	relaunch: { type: 'lecon'; lessonId: string };
 	runner: string; // nom du runner (clé du registre de restauration, côté UI)
 	exerciseMode: string | null; // mode d'exercice retenu (#69) ; null pour un type mono-mode
 	questions: unknown[]; // questions déjà tirées, dans l'ordre
@@ -93,7 +91,28 @@ export interface ResumeRunner extends ResumeCommun {
 	score: number; // bonnes réponses accumulées avant `idx`
 }
 
-export type ResumeSnapshot = ResumeGrille | ResumeRunner;
+/** Runner d'une LEÇON (#498). Le `relaunch` est RESSERRÉ à la leçon, ce qui évite à
+    chaque runner de re-vérifier la nature avant de lire son `lessonId`. */
+export interface ResumeRunner extends ResumeRunnerCommun {
+	relaunch: { type: 'lecon'; lessonId: string };
+}
+
+/** Parcours d'un BILAN (#777, critère 16) : même nature « runner » (l'état logique, pas
+    le DOM), mais il se relance comme un bilan. `questions` porte les PARTIES tirées (leurs
+    questions comprises), `idx` le rang global de la première question sans réponse ;
+    `parcours` l'état propre au parcours (réponses données, parties déjà corrigées, temps
+    écoulé), opaque ici comme `questions`. */
+export interface ResumeParcours extends ResumeRunnerCommun {
+	relaunch: { type: 'bilan'; config: BilanConfig };
+	parcours: unknown;
+}
+
+export type ResumeSnapshot = ResumeGrille | ResumeRunner | ResumeParcours;
+
+/** L'instantané « runner » est-il celui d'un parcours de bilan (et non d'une leçon) ? */
+export function estResumeParcours(s: ResumeRunner | ResumeParcours): s is ResumeParcours {
+	return s.relaunch.type === 'bilan';
+}
 
 /* ---------- Clés stables (une reprise par identité d'exercice) ---------- */
 export const leconKey = (lessonId: string) => `lecon-${lessonId}`;
@@ -123,6 +142,12 @@ function normaliser(s: unknown): ResumeSnapshot | null {
 	if (!s || typeof s !== 'object') return null;
 	const o = s as Record<string, unknown>;
 	if (!communValide(o)) return null;
+	const relaunch = o.relaunch;
+	const relanceBilan =
+		typeof relaunch === 'object' &&
+		relaunch !== null &&
+		'type' in relaunch &&
+		relaunch.type === 'bilan';
 	if (o.kind === 'runner') {
 		if (
 			typeof o.runner !== 'string' ||
@@ -131,11 +156,26 @@ function normaliser(s: unknown): ResumeSnapshot | null {
 			typeof o.score !== 'number'
 		)
 			return null;
+		// Parcours de bilan (#777) : sans son état propre ni sa config, rien à relancer.
+		if (relanceBilan) {
+			const config = 'config' in relaunch ? relaunch.config : undefined;
+			const configValide =
+				typeof config === 'object' &&
+				config !== null &&
+				'lessonIds' in config &&
+				Array.isArray(config.lessonIds);
+			if (!configValide || typeof o.parcours !== 'object' || o.parcours === null) return null;
+			return o as unknown as ResumeParcours;
+		}
 		return o as unknown as ResumeRunner;
 	}
 	// Nature inconnue (une 3e forme, écrite par une version future puis rétrogradée) : on
 	// l'ignore plutôt que de la lire comme une grille sur la foi de ses seuls champs.
 	if (o.kind !== undefined && o.kind !== 'grille') return null;
+	// Grille d'un BILAN (#777, critère N1) : le bilan ne se joue plus en page unique, cet
+	// instantané n'a plus d'écran où se rejouer. Écarté (donc purgé), le bilan repart en
+	// parcours au prochain lancement.
+	if (relanceBilan) return null;
 	if (
 		typeof o.sheetsHTML !== 'string' ||
 		typeof o.elapsedMs !== 'number' ||

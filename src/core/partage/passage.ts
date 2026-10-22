@@ -162,7 +162,10 @@ function jeuDuBloc(
 	return jeux.size === 1 ? jeu : null;
 }
 
-/* Même consigne que la fiche ordinaire (`buildLessonFiche`). */
+/* Consigne d'action du TYPE d'exercice au niveau de l'envoi, comme la fiche ordinaire d'une
+   leçon moderne (`buildLessonFiche`). Pas pour le calcul mental HÉRITÉ : sa fiche ordinaire
+   porte la consigne propre à la leçon (`LESSONS_CALCUL_MENTAL`), la séance partagée celle
+   de son type. */
 function consigneFiche(lecon: LessonDef, niveau: SchoolLevel): string {
 	return (
 		consignePourNiveau(lecon.exerciseType, niveau) ??

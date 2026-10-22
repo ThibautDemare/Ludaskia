@@ -155,16 +155,3 @@ export function bilanBlocksForIds(lessonIds: string[], nbQ: number, level?: Scho
 	}
 	return blocks;
 }
-
-/* Fiches complètes pour un sous-ensemble de leçons (bilan complet personnalisé).
-   `ctx` (#352) partagé entre toutes les fiches : compteur d'id commun (ids uniques
-   dans le document) et items conservés pour la correction d'une session interactive. */
-export function buildFichesForIds(
-	lessonIds: string[],
-	level?: SchoolLevel,
-	ctx: RenderContext = createRenderContext(),
-): SafeHtml[] {
-	return getAllLessons()
-		.filter((l) => lessonIds.includes(l.id))
-		.map((l) => buildLessonFiche(l.id, level, ctx));
-}

@@ -223,6 +223,12 @@ export const SCHEMAS_EXERCICE: SchemasExercice = {
 				refuser(chemin, 'cible hors de la phrase');
 			if (new Set(e.cibleIndices).size !== e.cibleIndices.length)
 				refuser(chemin, 'cible en double');
+			// L'ancre désigne le groupe attendu (« le groupe nominal qui contient le mot … ») :
+			// hors de la cible, elle en désignerait un autre. Même règle que la banque
+			// (`gn`, data/francais/grammaire-groupe-nominal.ts), casse comprise.
+			const ancre = e.ancre?.toLowerCase();
+			if (ancre !== undefined && !e.cibleIndices.some((i) => e.tokens[i].toLowerCase() === ancre))
+				refuser(chemin, 'ancre hors de la cible');
 		},
 	),
 	droiteGraduee: objet<Ex<'droiteGraduee'>>(

@@ -17,74 +17,27 @@ import { classeChoisie, classeDeCategorie, leverClasseChoisie } from '../core/ni
 import { subjectIcon, subjectTint, catTint } from './cat-visuals';
 import { loadBilans, saveBilan } from '../core/bilans';
 import { startCustomSprint } from './sprint';
-import { fichesPagesHTML } from '../core/lessons';
-import { bilanBlocksForIds, buildFichesForIds } from '../core/build';
-import { renderItem, createRenderContext, withLessonId } from '../core/items';
-import type { RenderContext } from '../core/items';
-
-import {
-	setCurrentMode,
-	setCurrentLessonId,
-	setCurrentFavoriId,
-	afterStart,
-	setRenderCtx,
-} from './navigation';
 import { printScope } from './session';
 import { bilanCategoryKey, bilanCustomKey } from '../core/resume';
-import { setResumeCtx, clearResumeCtx, maybeRelaunch, type ResumeCtx } from './resume';
+import { clearResumeCtx, maybeRelaunch, type ResumeCtx } from './resume';
+import { lancerParcours } from './bilan-parcours';
 import { icon } from './icon';
 import { html, type SafeHtml, VIDE, joindre, drapeau } from '../core/html';
 
-/* ---------- Génération de bilan express personnalisé ---------- */
-
-function bilanCustomExpressHTML(config: BilanConfig, ctx: RenderContext): SafeHtml {
-	const blocks = bilanBlocksForIds(config.lessonIds, config.questionsPerLesson as number);
-	const cells = joindre(
-		blocks.map((b) => {
-			const ops = withLessonId(ctx, b.id, () =>
-				joindre(b.ops.map((o) => html`<div class="bop">${renderItem(o, ctx)}</div>`)),
-			);
-			return html`<div class="bloc"><span class="btheme">${b.theme}</span>${ops}</div>`;
-		}),
-	);
-	const nbq = config.questionsPerLesson as number;
-	return html`<div class="page">
-    <p class="bilan-title">${config.label}</p>
-    <p class="bilan-sub">${nbq} question${nbq > 1 ? 's' : ''} par leçon · ${config.lessonIds.length} leçon${config.lessonIds.length > 1 ? 's' : ''}</p>
-    <div class="bilan-grid">${cells}</div>
-    <p class="foot print-only">Ludaskia</p>
-  </div>`;
-}
-
 /* ---------- Exécution d'un BilanConfig ---------- */
 
+/* Joue un bilan à l'écran : en PARCOURS guidé (#777), une question par écran, quel que soit
+   le point d'entrée (configurateur, favori, bilan express ou complet de catégorie, programme
+   du jour). La page unique ne sert plus qu'à l'impression (`printScope`). Le parcours pose
+   lui-même le mode d'enregistrement (« complet » / « express », #35) et l'id du favori
+   (#636 : seul un favori ENREGISTRÉ en porte un, ce qui coche l'étape du programme).
+   Contexte de reprise (#63) : celui du bilan, ou `null` quand il ne se reprend pas (classe
+   choisie, #772, cf. startBilan). Le contexte de GRILLE est levé : le parcours a sa propre
+   reprise (nature `runner`), et une photo de son DOM n'aurait rien à rejouer. */
 export function runBilanConfig(config: BilanConfig, ctx?: ResumeCtx | null): void {
 	if (!config.lessonIds.length) return;
-	const renderCtx = createRenderContext();
-	setRenderCtx(renderCtx);
-	let contenu: SafeHtml;
-	if (config.questionsPerLesson === 'all') {
-		contenu = fichesPagesHTML(buildFichesForIds(config.lessonIds, undefined, renderCtx));
-	} else {
-		contenu = bilanCustomExpressHTML(config, renderCtx);
-	}
-	document.getElementById('sheets')!.innerHTML = contenu.balisage;
-	// Un bilan compte pour les objectifs de régularité : « complet » quand toutes
-	// les questions sont demandées, « express » sinon (#35). Ces essais ne sont
-	// pas classés (cf. session.ts) car les leçons varient d'un bilan à l'autre.
-	setCurrentMode(config.questionsPerLesson === 'all' ? 'complet' : 'express');
-	setCurrentLessonId(null);
-	// #636 : seul un favori ENREGISTRÉ porte un id (`genId()` à la sauvegarde) ; un bilan de
-	// catégorie (express, complet) et une sélection composée à la volée naissent avec
-	// `id: ''`. Ce champ est donc exactement « ce bilan vient-il d'un favori ». Posé ici, au
-	// seul chemin par lequel passe un bilan — reprise comprise, puisqu'elle relance la même
-	// config, ce qui crédite l'étape d'un favori commencé hier et fini aujourd'hui.
-	setCurrentFavoriId(config.id || null);
-	// Contexte de reprise (#63) : ce bilan devient « l'exercice en cours ». Sans contexte
-	// (`null`), il ne se reprend pas : c'est le cas d'une classe choisie (#772, cf. startBilan).
-	if (ctx) setResumeCtx(ctx);
-	else clearResumeCtx();
-	afterStart();
+	clearResumeCtx();
+	lancerParcours(config, ctx ?? null);
 }
 
 /* Lance un bilan en gérant la reprise : si le même bilan était commencé, on

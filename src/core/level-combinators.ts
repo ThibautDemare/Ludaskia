@@ -6,7 +6,7 @@
    - `bankByLevel` : banque d'items tagués chacun par niveau (QCM : vocabulaire,
      grammaire, homophones…), dont on dérive l'ensemble des niveaux couverts.
    ============================================================ */
-import type { ExerciseType, GenerateOpts } from './exercise';
+import type { ConsigneFiche, ExerciseType, GenerateOpts } from './exercise';
 import type { SchoolLevel } from './catalog';
 import { LEVEL_ORDER, closestSupported } from './levels';
 import { choice } from './utils';
@@ -76,6 +76,17 @@ export function calibrated<P>(
 				}
 			: {}),
 	};
+}
+
+/* Consigne de fiche DÉCLINÉE PAR NIVEAU (#777, critère 4), pour une leçon dont la tâche ne
+   se formule pas pareil selon la classe (« Complète la décomposition du nombre en milliers… »
+   au CE2, « …du grand nombre, rang par rang » au CM1). Forme FONCTION de `ConsigneFiche`,
+   résolue avec le MÊME repli que `calibrated` (`closestSupported` sur les niveaux de la
+   table, le plus bas sans niveau) : un CM2 lit la consigne du niveau dont il reçoit les
+   exercices, jamais celle d'un autre. */
+export function consigneParNiveau(table: Partial<Record<SchoolLevel, string>>): ConsigneFiche {
+	const niveaux = LEVEL_ORDER.filter((l) => table[l] !== undefined);
+	return (level) => table[closestSupported(niveaux, level ?? niveaux[0])];
 }
 
 /* Banque d'items tagués par niveau. Expose l'union des niveaux couverts (`levels`,

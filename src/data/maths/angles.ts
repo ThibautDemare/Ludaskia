@@ -38,12 +38,12 @@
    variées. La mesure au rapporteur relève du CM1 (future leçon).
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption } from '../../core/exercise';
-import { checkAnswer } from '../../core/exercise';
+import { avecConsigne, checkAnswer } from '../../core/exercise';
 import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { renderFigure } from '../../core/figures';
 import type { AngleSpec } from '../../core/figures';
-import { calibrated } from '../../core/level-combinators';
+import { calibrated, consigneParNiveau } from '../../core/level-combinators';
 import { rnd, choice, sample } from '../../core/utils';
 import { type SafeHtml } from '../../core/html';
 import { suite } from '../../core/recette-fragment';
@@ -391,12 +391,20 @@ export const ANGLES_LESSONS: LessonInput[] = [
 		motsCles: ['angle droit', 'aigu', 'obtus', 'équerre'],
 		// Calibré par niveau (#225/#252) : le CE2 reste inchangé ; le CM1 ajoute la
 		// comparaison de deux angles. `levels` (dérivé par le catalogue) devient CE2+CM1.
-		exerciseType: calibrated<AngleConfig>(
-			{
-				ce2: { gen: () => genAngle().ex },
-				cm1: { gen: () => genAngleCM1().ex },
-			},
-			anglesType,
+		// Consigne de fiche par niveau (#777, critère 4) : la tâche change de classe en
+		// classe (nommer un angle au CE2, comparer des ouvertures au CM1).
+		exerciseType: avecConsigne(
+			calibrated<AngleConfig>(
+				{
+					ce2: { gen: () => genAngle().ex },
+					cm1: { gen: () => genAngleCM1().ex },
+				},
+				anglesType,
+			),
+			consigneParNiveau({
+				ce2: "Observe l'angle et compare-le à l'angle droit.",
+				cm1: 'Observe le ou les angles et réponds à la question sur leur ouverture.',
+			}),
 		),
 		// DEUX entrées, une par niveau : c'est ici le cas prévu par `etayageRedige`, où la
 		// TÂCHE change de classe en classe et pas seulement la plage. Le CE2 nomme un angle

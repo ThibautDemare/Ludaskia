@@ -180,6 +180,7 @@ function faitReflet(): Fait {
 function symetrieType(): ExerciseType {
 	return {
 		modes: MODES,
+		consigne: 'Observe la figure et réponds à la question sur la symétrie.', // #777, critère 4
 		generate(): Exercise {
 			const r = rnd(1, 100);
 			const f = r <= 15 ? faitAmorce() : r <= 40 ? faitAxe() : faitReflet();

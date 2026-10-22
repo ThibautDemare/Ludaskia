@@ -23,6 +23,7 @@
      pas de double négation ; une propriété observable et tranchée.
    ============================================================ */
 import type { Exercise, ExerciseType, ModeOption, GenerateOpts } from '../../core/exercise';
+import { avecConsigne } from '../../core/exercise';
 import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import type { LessonInput } from '../_shared';
 import { propQType, type PropQ } from './_shared';
@@ -147,6 +148,7 @@ function compterFait(): Fait {
 function reconnaitreType(): ExerciseType {
 	return {
 		modes: MODES,
+		consigne: 'Observe la figure et réponds à la question.', // #777, critère 4
 		generate(opts?: GenerateOpts): Exercise {
 			const mode = opts?.mode;
 			const f = rnd(1, 100) <= 60 ? nommerFait() : compterFait();
@@ -274,7 +276,10 @@ export const GEOMETRIE_LESSONS: LessonInput[] = [
 		id: 'geo-figures-proprietes',
 		label: 'Les propriétés des figures',
 		motsCles: ['côtés', 'angles droits', 'carré', 'triangle'],
-		exerciseType: propQType(PROPRIETES),
+		exerciseType: avecConsigne(
+			propQType(PROPRIETES),
+			'Réponds à la question sur les propriétés de la figure.',
+		),
 		// Une carte d'identité par figure, une par pas : c'est exactement ce que le QCM
 		// interroge (nombre de côtés, côtés égaux, angles droits).
 		etayage: [

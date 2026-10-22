@@ -28,7 +28,7 @@
    encadrer → ranger), toutes en Numération, sous la rubrique « Nombres décimaux ».
    ============================================================ */
 import type { Exercise, ExerciseType, GenerateOpts, ModeOption } from '../../core/exercise';
-import { checkAnswer } from '../../core/exercise';
+import { avecConsigne, checkAnswer } from '../../core/exercise';
 import type { LessonInput } from '../_shared';
 import { etayageRedige, MODE_QCM_POINT } from '../_shared';
 import { rnd, choice, sample } from '../../core/utils';
@@ -363,7 +363,10 @@ export const DECIMAUX_LESSONS: LessonInput[] = [
 		id: 'num-dec-position',
 		label: 'Le chiffre des dixièmes et des centièmes',
 		motsCles: ['décimaux', 'virgule', 'après la virgule'],
-		exerciseType: positionType(),
+		exerciseType: avecConsigne(
+			positionType(),
+			"Trouve le chiffre des dixièmes ou des centièmes d'un nombre décimal.",
+		),
 		etayage: [
 			etayageRedige(
 				'Les rangs après la virgule',
@@ -380,7 +383,10 @@ export const DECIMAUX_LESSONS: LessonInput[] = [
 		id: 'num-dec-egales',
 		label: 'Le même nombre ?',
 		motsCles: ['décimaux', 'virgule', 'égalité', 'zéro'],
-		exerciseType: qcmDecType(egalesFact, 'Je choisis oui ou non'),
+		exerciseType: avecConsigne(
+			qcmDecType(egalesFact, 'Je choisis oui ou non'),
+			'Indique par oui ou par non si les deux écritures à virgule désignent le même nombre.',
+		),
 		// Les deux pièges sont montrés CÔTE À CÔTE, et c'est le point : pris isolément, « le
 		// zéro final ne compte pas » se généralise aussitôt en « les zéros ne comptent pas »,
 		// qui fait lire 6,03 comme 6,3.
@@ -400,7 +406,10 @@ export const DECIMAUX_LESSONS: LessonInput[] = [
 		id: 'num-dec-comparer',
 		label: 'Je compare les nombres décimaux',
 		motsCles: ['comparer', 'virgule', 'plus grand', 'plus petit'],
-		exerciseType: situerDecType(compareDecFact),
+		exerciseType: avecConsigne(
+			situerDecType(compareDecFact),
+			'Compare deux nombres décimaux avec le signe <, > ou =.',
+		),
 		// La règle nomme l'erreur au lieu de la contourner : comparer 8 et 67 comme deux
 		// entiers est le réflexe de tous les enfants, et il donne juste assez souvent
 		// (0,84 < 11,2) pour ne pas se corriger tout seul.
@@ -420,7 +429,10 @@ export const DECIMAUX_LESSONS: LessonInput[] = [
 		id: 'num-dec-encadrer',
 		label: "J'encadre entre deux entiers",
 		motsCles: ['encadrer', 'décimaux', 'virgule', 'nombre entier'],
-		exerciseType: situerDecType(encadreDecFact),
+		exerciseType: avecConsigne(
+			situerDecType(encadreDecFact),
+			"Trouve l'entier juste avant ou juste après un nombre décimal.",
+		),
 		etayage: [
 			etayageRedige(
 				'Encadrer un décimal entre deux entiers',
@@ -437,7 +449,10 @@ export const DECIMAUX_LESSONS: LessonInput[] = [
 		id: 'num-dec-ranger',
 		label: 'Je range les nombres décimaux',
 		motsCles: ['ranger', 'virgule', 'ordre croissant', 'ordre décroissant'],
-		exerciseType: qcmDecType(rangerFact, 'Je choisis la bonne suite'),
+		exerciseType: avecConsigne(
+			qcmDecType(rangerFact, 'Je choisis la bonne suite'),
+			"Trouve la suite de nombres décimaux rangée dans l'ordre demandé.",
+		),
 		// Le 3ᵉ pas est propre au QCM : les distracteurs ne sont faux que par UNE paire mal
 		// placée, donc une suite jugée sur ses deux premiers nombres se choisit au hasard.
 		etayage: [

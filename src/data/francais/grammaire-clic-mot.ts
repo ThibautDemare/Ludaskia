@@ -431,7 +431,7 @@ const ECRIT_NOM_CE2 = 'Recopie tous les noms de chaque phrase.';
 const ECRIT_NOYAU = 'Recopie le nom noyau du groupe nominal.';
 const ECRIT_GN = 'Recopie le groupe nominal de chaque phrase.';
 const ECRIT_SUJET =
-	'Recopie le nom noyau du sujet. Parfois, le sujet est composé de deux noms : recopie les deux.';
+	'Recopie le nom noyau du sujet. Parfois, le sujet a deux noms : recopie les deux.';
 
 export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 	{

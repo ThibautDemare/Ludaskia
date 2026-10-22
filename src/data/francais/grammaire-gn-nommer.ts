@@ -297,11 +297,21 @@ export const enonceGnNommer = (g: GroupeNomme): string =>
    nom noyau » (critère 1 de #731).
    C'est la consigne de la forme ÉCRITE (#777, critère 19) : hors du widget — fiche, bilan,
    impression —, il n'y a pas de colonnes à relier, la manche est repliée en UNE question sur
-   un mot désigné du groupe (« Dans « son vélo », « son » est… », étiquettes en choix ;
-   `itemDepuisExercice`). « Relie » y serait faux. Le widget, lui, garde l'énoncé de la
-   manche (`enonceGnNommer`), où le geste est vrai. */
-export const CONSIGNE_GN_NOMMER =
-	'Nomme le mot demandé : est-ce un déterminant, un nom ou un adjectif ?';
+   un mot désigné du groupe (« Dans « son vélo », quelle est la nature du mot « son » ? »,
+   les trois étiquettes en choix ; `itemDepuisExercice`). « Relie » y serait faux. Le widget,
+   lui, garde l'énoncé de la manche (`enonceGnNommer`), où le geste est vrai.
+   « nature » n'entre que dans la question du repli (décision du 22/10/2026, pédagogue et
+   rédacteur) : la consigne, elle, garde les trois classes en clair, ce qui dit à l'enfant
+   ce que « nature » veut dire ici. */
+export const CONSIGNE_GN_NOMMER = 'Dis si le mot est un déterminant, un nom ou un adjectif.';
+
+/* Les trois étiquettes du repli (#777, critère 2) : TOUTES, dans l'ordre de lecture du
+   groupe type (déterminant, nom, adjectif), quelle que soit la manche. */
+const ETIQUETTES_REPLI: readonly string[] = [
+	ETIQUETTES.determinant,
+	ETIQUETTES.nom,
+	ETIQUETTES.adjectif,
+];
 
 /* Mode unique (pas d'écran de choix), mais d'id PROPRE : le geste est bien celui de
    l'appariement, seulement l'id de mode est la MAILLE de `tests/couverture-e2e-gate.test.ts`.
@@ -339,6 +349,7 @@ export function gnNommerType(banque: GroupeNomme[]): ExerciseType {
 	return {
 		modes: MODE_NOMMER,
 		consigne: CONSIGNE_GN_NOMMER,
+		etiquettesRelier: ETIQUETTES_REPLI,
 		exerciseKind: 'appariement',
 		levels: ['cm1'],
 		generate(): Exercise {

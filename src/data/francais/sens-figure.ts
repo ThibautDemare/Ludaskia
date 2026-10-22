@@ -321,6 +321,7 @@ const MODE_QCM: ModeOption[] = [{ ...MODE_QCM_CHECK, label: 'Je choisis le bon s
 export function sensFigureType(): ExerciseType {
 	return {
 		modes: MODE_QCM,
+		consigne: 'Trouve quel sens du mot est employé dans la phrase.', // #777, critère 4
 		generate(): Exercise {
 			const g = choice(GROUPES_SENS);
 			const ph = choice(g.phrases);

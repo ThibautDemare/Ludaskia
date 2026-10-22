@@ -23,6 +23,7 @@
 import { choice, rnd, sample } from '../../core/utils';
 import { checkNumerique } from '../../core/check-helpers';
 import type { Exercise, ExerciseType } from '../../core/exercise';
+import { avecConsigne } from '../../core/exercise';
 import { etayageRedige, type LessonInput } from '../_shared';
 import { calibrated } from '../../core/level-combinators';
 import { deuxSousQuestionsType } from './_probleme-deux-sous-questions';
@@ -42,6 +43,7 @@ interface MoitieQuartConfig {
 
 function moitieQuartType(config: MoitieQuartConfig): ExerciseType {
 	return {
+		consigne: 'Calcule de tête la moitié ou le quart du nombre.', // #777, critère 4
 		generate(): Exercise {
 			if (rnd(0, 1) === 0) {
 				const q = rnd(2, config.moitieQuotientMax); // résultat 2..max (X = 2·q)
@@ -69,6 +71,8 @@ function tirePartition(): { diviseur: number; quotient: number; total: number } 
 
 function partageType(): ExerciseType {
 	return {
+		// #777, critère 4 : les deux sens du partage (valeur d'une part, nombre de parts).
+		consigne: 'Trouve combien il y a dans chaque part, ou combien de paquets on peut faire.',
 		generate(): Exercise {
 			const { diviseur, quotient, total } = tirePartition();
 			const groupement = rnd(0, 1) === 0;
@@ -422,7 +426,7 @@ export const DIVISION_LESSONS: DivisionLessonDef[] = [
 		id: 'math-div-reste',
 		label: 'Je découvre le reste',
 		motsCles: ['division', 'reste', 'divisé par'],
-		exerciseType: resteType(),
+		exerciseType: avecConsigne(resteType(), 'Trouve le résultat du partage et ce qui reste.'),
 		// ⚠ La leçon tire DEUX sens (partage en paniers ET groupement par paquets, cf.
 		// `genResteProbleme`). Le contrôle du reste se dit donc par le nombre qui SERT à
 		// partager, jamais « le nombre de parts » : en groupement, « 8 jetons par paquets de
@@ -452,7 +456,7 @@ export const DIVISION_EUCLIDIENNE_LESSONS: DivisionLessonDef[] = [
 		id: 'math-division-euclidienne',
 		label: 'Quotient et reste',
 		motsCles: ['divisé par', 'division', 'reste'],
-		exerciseType: euclidienneType(),
+		exerciseType: avecConsigne(euclidienneType(), 'Trouve le quotient et le reste de la division.'),
 		// Version CM1, abstraite, de `math-div-reste` : mêmes deux champs, mais on nomme les
 		// deux résultats (quotient, reste) et on s'appuie sur la table de multiplication au
 		// lieu de distribuer objet par objet.

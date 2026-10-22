@@ -184,6 +184,7 @@ function ordreGrandeurType(): ExerciseType {
 	return {
 		levels: BANQUE_ORDRE_GRANDEUR.levels,
 		modes: MODES,
+		consigne: "Estime l'ordre de grandeur du produit, sans le calculer exactement.", // #777
 		generate(opts?: GenerateOpts): Exercise {
 			return exerciceOrdreGrandeur(pickFromBank(BANQUE_ORDRE_GRANDEUR, opts?.level));
 		},

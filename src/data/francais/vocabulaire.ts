@@ -137,11 +137,12 @@ function genNiveau2(): Exercise {
 /* Fabrique un ExerciseType mono-mode « tuiles » (ranger la suite). Le runner
    d'écran compare directement la suite posée à `ordre` ; `check()` ne sert
    qu'au repli texte (fiche/bilan) : mots écrits dans l'ordre, séparés par des
-   espaces ou des virgules. */
-function ordreType(gen: () => Exercise): ExerciseType {
+   espaces ou des virgules. `consigne` : consigne de fiche de la leçon (#777, critère 4). */
+function ordreType(gen: () => Exercise, consigne: string): ExerciseType {
 	return {
 		// Rangement d'une suite (#108) : classé sans appeler generate() (#348), hors sprint.
 		exerciseKind: 'tuilesOrdre',
+		consigne,
 		modes: [
 			{
 				id: 'tuiles',
@@ -193,14 +194,20 @@ export const VOCAB_LESSONS: LessonInput[] = [
 		id: 'fr-vocab-alpha-initiale',
 		label: 'Ordre alphabétique — la 1re lettre',
 		motsCles: ['alphabet', "ranger dans l'ordre", 'dictionnaire'],
-		exerciseType: ordreType(genNiveau1),
+		exerciseType: ordreType(
+			genNiveau1,
+			"Mets ces mots dans l'ordre alphabétique : regarde leur première lettre.",
+		),
 		etayage: [ETAYAGE_ALPHA_INITIALE],
 	},
 	{
 		id: 'fr-vocab-alpha-deuxieme',
 		label: 'Ordre alphabétique — la 2e lettre',
 		motsCles: ['alphabet', "ranger dans l'ordre", 'dictionnaire'],
-		exerciseType: ordreType(genNiveau2),
+		exerciseType: ordreType(
+			genNiveau2,
+			"Mets ces mots dans l'ordre alphabétique. Ils commencent par la même lettre : regarde la deuxième.",
+		),
 		etayage: [ETAYAGE_ALPHA_DEUXIEME],
 	},
 ];

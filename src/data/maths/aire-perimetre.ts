@@ -203,6 +203,8 @@ function airePerimetreType(): ExerciseType {
 	return {
 		levels: NIVEAUX,
 		modes: [MODE_QCM],
+		// #777, critère 4.
+		consigne: "Observe le quadrillage et réponds à la question sur l'aire ou le périmètre.",
 		generate(_opts?: GenerateOpts): Exercise {
 			const r = rnd(1, 100);
 			if (r <= 35) return factAire(); // aire seule

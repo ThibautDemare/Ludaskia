@@ -977,9 +977,16 @@ export const ITEMS_SENS_PROCHE_CM1: ItemSensQcm[] = SENS_PROCHE_CM1.map((it) =>
 	toQcm(it, CONFIG_SENS_PROCHE),
 );
 
-function sensType(items: ItemSensQcm[]): ExerciseType {
+/* Consignes de FICHE (#777, critère 4), une par notion, communes aux deux niveaux : la
+   tâche est la même au CM1, seul le lexique change. Le mot-cible est en gras à l'écran
+   comme sur papier. */
+const FICHE_CONTRAIRES = 'Trouve le mot qui veut dire le contraire du mot en gras.';
+const FICHE_SENS_PROCHE = 'Trouve le mot qui veut dire presque la même chose que le mot en gras.';
+
+function sensType(items: ItemSensQcm[], consigne: string): ExerciseType {
 	return {
 		modes: MODE_QCM,
+		consigne,
 		generate(): Exercise {
 			const it = choice(items);
 			return {
@@ -1039,7 +1046,7 @@ export const SENS_LESSONS: SensLessonDef[] = [
 		label: 'Les contraires',
 		motsCles: ['antonymes', 'le contraire de', 'mot opposé'],
 		levels: ['ce2'],
-		exerciseType: sensType(ITEMS_CONTRAIRES),
+		exerciseType: sensType(ITEMS_CONTRAIRES, FICHE_CONTRAIRES),
 		etayage: [ETAYAGE_CONTRAIRES],
 	},
 	{
@@ -1047,7 +1054,7 @@ export const SENS_LESSONS: SensLessonDef[] = [
 		label: 'Les mots de sens proche',
 		motsCles: ['synonymes', 'même sens', 'mots qui veulent dire pareil'],
 		levels: ['ce2'],
-		exerciseType: sensType(ITEMS_SENS_PROCHE),
+		exerciseType: sensType(ITEMS_SENS_PROCHE, FICHE_SENS_PROCHE),
 		etayage: [ETAYAGE_SENS_PROCHE],
 	},
 	{
@@ -1055,7 +1062,7 @@ export const SENS_LESSONS: SensLessonDef[] = [
 		label: 'Les contraires (CM1)',
 		motsCles: ['antonymes', 'le contraire de', 'mot opposé'],
 		levels: ['cm1'],
-		exerciseType: sensType(ITEMS_CONTRAIRES_CM1),
+		exerciseType: sensType(ITEMS_CONTRAIRES_CM1, FICHE_CONTRAIRES),
 		etayage: [ETAYAGE_CONTRAIRES],
 	},
 	{
@@ -1063,7 +1070,7 @@ export const SENS_LESSONS: SensLessonDef[] = [
 		label: 'Les mots de sens proche (CM1)',
 		motsCles: ['synonymes', 'même sens', 'mots qui veulent dire pareil'],
 		levels: ['cm1'],
-		exerciseType: sensType(ITEMS_SENS_PROCHE_CM1),
+		exerciseType: sensType(ITEMS_SENS_PROCHE_CM1, FICHE_SENS_PROCHE),
 		etayage: [ETAYAGE_SENS_PROCHE],
 	},
 ];

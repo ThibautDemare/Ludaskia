@@ -156,8 +156,9 @@ function formuleFact(): Exercise {
 
 /* ---------- Fabrique + descripteurs ---------- */
 
-function perimetreType(genFact: () => Exercise): ExerciseType {
+function perimetreType(genFact: () => Exercise, consigne: string): ExerciseType {
 	return {
+		consigne, // #777, critère 4 : consigne de fiche, propre à la leçon
 		generate(_opts?: GenerateOpts): Exercise {
 			return genFact();
 		},
@@ -170,7 +171,7 @@ export const PERIMETRE_LESSONS: LessonInput[] = [
 		id: 'mes-perimetre-cotes',
 		label: 'Je calcule le périmètre',
 		motsCles: ['calculer', "tour d'une figure", 'addition des côtés'],
-		exerciseType: perimetreType(cotesFact),
+		exerciseType: perimetreType(cotesFact, 'Calcule le périmètre de la figure, en centimètres.'),
 		// Les trois leçons de périmètre partagent la même idée-force (le TOUR) et diffèrent
 		// par le geste : additionner les côtés notés, compter des côtés de carreaux, ou
 		// utiliser la régularité du rectangle. Trois entrées distinctes, donc, et non une
@@ -191,7 +192,10 @@ export const PERIMETRE_LESSONS: LessonInput[] = [
 		id: 'mes-perimetre-quadrillage',
 		label: 'Le périmètre sur quadrillage',
 		motsCles: ['carreaux', 'tour de la figure'],
-		exerciseType: perimetreType(quadrillageFact),
+		exerciseType: perimetreType(
+			quadrillageFact,
+			'Compte les côtés de carreaux sur le tour de la figure.',
+		),
 		etayage: [
 			etayageRedige(
 				'Le périmètre sur quadrillage',
@@ -208,7 +212,10 @@ export const PERIMETRE_LESSONS: LessonInput[] = [
 		id: 'mes-perimetre-formule',
 		label: 'Périmètre du carré et du rectangle',
 		motsCles: ['formule', 'côtés', 'longueur', 'largeur'],
-		exerciseType: perimetreType(formuleFact),
+		exerciseType: perimetreType(
+			formuleFact,
+			'Calcule le périmètre du carré ou du rectangle, en centimètres.',
+		),
 		etayage: [
 			etayageRedige(
 				'Le périmètre du carré et du rectangle',

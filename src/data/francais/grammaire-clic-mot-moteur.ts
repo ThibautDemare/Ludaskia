@@ -75,6 +75,10 @@ export interface PhraseClicMot {
 	    suivent : une cible contiguë par hasard — le verbe « a mangé » — reste une
 	    sélection libre. Absent ⇒ comportement historique. */
 	segment?: boolean;
+	/** Mot de la cible qui la désigne quand la phrase en porte plusieurs possibles (#716),
+	    recopié dans l'exercice (`Exercise` clicMot, champ `ancre`) pour le repli écrit
+	    (#777, critère 27). Posé par le constructeur de la banque (`gn`). */
+	ancre?: string;
 	/** Patron du groupe nominal ciblé (#731), posé par le constructeur de la banque du
 	    groupe nominal (`gn`). Jusqu'ici le patron était DÉCLARÉ à la construction, servait
 	    à vérifier le nombre de mots du groupe, puis il était jeté — si bien que la donnée
@@ -307,6 +311,8 @@ export function itemClicMot(
 		cibleLabel: p.cibleLabel ?? cibleLabelDefaut,
 		explicationNommeCible: p.explicationNommeCible,
 		segment: p.segment,
+		// Posé seulement s'il existe : un exercice sans repère garde sa forme d'avant #777.
+		...(p.ancre !== undefined ? { ancre: p.ancre } : {}),
 	};
 }
 

@@ -245,6 +245,9 @@ const MODE_QCM: ModeOption[] = [MODE_QCM_CHECK];
 export function motJusteType(): ExerciseType {
 	return {
 		modes: MODE_QCM,
+		// #777, critère 4 : couvre les deux formes tirées (définition → mot, et intrus).
+		consigne:
+			"Trouve le mot demandé : celui qui correspond à la définition, ou celui qui n'appartient pas au thème.",
 		generate(): Exercise {
 			return choice([genDefinition, genIntrus])();
 		},
@@ -267,6 +270,7 @@ export function triType(): ExerciseType {
 		// Tri par thème (#114) : classé sans appeler generate() (#348), hors sprint.
 		exerciseKind: 'tuilesTri',
 		modes: MODE_TRI,
+		consigne: 'Classe chaque mot dans le bon thème.', // #777, critère 4
 		generate(): Exercise {
 			const [a, b] = sample(CHAMPS, 2);
 			// Uniquement des mots non ambigus : chaque tuile appartient sans conteste

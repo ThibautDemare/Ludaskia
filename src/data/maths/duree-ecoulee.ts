@@ -34,6 +34,7 @@
 import { rnd, sample } from '../../core/utils';
 import { nombreEnMots } from '../../core/nombres';
 import type { Exercise } from '../../core/exercise';
+import { avecConsigne } from '../../core/exercise';
 import { etayageRedige, type LessonInput } from '../_shared';
 import { deuxSousQuestionsType } from './_probleme-deux-sous-questions';
 
@@ -283,12 +284,15 @@ export const DUREE_ECOULEE_LESSONS: DureeEcouleeLessonDef[] = [
 		id: 'mes-duree-ecoulee',
 		label: 'Je calcule une durée',
 		motsCles: ['calculer', 'temps écoulé', 'heure de début', 'heure de fin'],
-		exerciseType: deuxSousQuestionsType({
-			levels: ['cm1'],
-			labelSaisie: "J'écris les heures et les minutes",
-			generateProbleme: genProbleme,
-			generateQcm: genQcm,
-		}),
+		exerciseType: avecConsigne(
+			deuxSousQuestionsType({
+				levels: ['cm1'],
+				labelSaisie: "J'écris les heures et les minutes",
+				generateProbleme: genProbleme,
+				generateQcm: genQcm,
+			}),
+			"Calcule la durée ou l'heure d'arrivée, en heures et minutes.",
+		),
 		// Deux champs (heures + minutes) + lecture d'énoncé : hors chrono.
 		excludeFromSprint: true,
 		// Le déroulé suit EXACTEMENT le découpage des trois bonds (heure ronde, heures

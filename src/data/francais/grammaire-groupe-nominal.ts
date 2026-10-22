@@ -153,6 +153,9 @@ export function gn(
 	// quel mot est l'adjectif (« le petit chien » contre « un manteau chaud »). #716 ne le
 	// lit pas — son comportement est inchangé.
 	p.patron = patron;
+	// L'ancre voyage jusqu'à l'exercice : le repli écrit la cite comme la consigne d'écran
+	// (#777, critère 27).
+	if (opts.ancre) p.ancre = opts.ancre;
 
 	const tete = p.tokens[p.cibleIndices[0]];
 	if (estElide(tete)) {

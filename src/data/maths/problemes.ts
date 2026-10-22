@@ -647,12 +647,15 @@ function genDeuxEtapes(): Exercise {
 // les structures ouvertes au CM1 le déclarent (['ce2','cm1']) pour que le catalogue en
 // dérive `LessonDef.levels`. `generate` reçoit `opts` (mode + niveau, #225) : le runner
 // « problème » le transmet, un générateur mono-niveau l'ignore (comportement identique).
+// `consigne` (#777, critère 4) : consigne de fiche, propre à la leçon.
 const monoMode = (
 	generate: (opts?: GenerateOpts) => Exercise,
+	consigne: string,
 	levels?: SchoolLevel[],
 ): ExerciseType => ({
 	// Format « problème » (#199) : classé sans appeler generate() (#348), exclu du sprint.
 	exerciseKind: 'probleme',
+	consigne,
 	...(levels ? { levels } : {}),
 	generate,
 	check: () => false, // corrigé par le runner dédié (étape par étape), jamais génériquement
@@ -664,6 +667,9 @@ const monoMode = (
 // Quatre structures ouvertes au CM1 en décimal (#255) → levels ['ce2','cm1']. Partage
 // (quotient décimal = CM2) et « deux étapes » (hors « à une étape ») restent CE2-only.
 const CE2_CM1: SchoolLevel[] = ['ce2', 'cm1'];
+
+/* Consigne commune aux problèmes à une étape posés en plusieurs questions (#777). */
+const CONSIGNE_PROBLEME = 'Résous le problème : réponds à chaque question.';
 
 /* ---------- Étayage de la notion (#490) ----------
    Ces leçons n'ont PAS d'exemple canonique, et c'est délibéré : la difficulté d'un problème
@@ -683,7 +689,7 @@ export const PROBLEMES_LESSONS: LessonInput[] = [
 		id: 'math-prob-composition',
 		label: 'Parties et tout',
 		motsCles: ['problème', 'addition', 'soustraction', 'énoncé'],
-		exerciseType: monoMode(genComposition, CE2_CM1),
+		exerciseType: monoMode(genComposition, CONSIGNE_PROBLEME, CE2_CM1),
 		etayage: etayageProbleme(
 			'Parties et tout',
 			'Si tu connais les parties, tu les ajoutes pour trouver le tout ; si tu connais le tout et une partie, tu retires.',
@@ -693,7 +699,7 @@ export const PROBLEMES_LESSONS: LessonInput[] = [
 		id: 'math-prob-transformation',
 		label: 'Gagner ou perdre',
 		motsCles: ['problème', 'addition', 'soustraction', 'énoncé', 'argent'],
-		exerciseType: monoMode(genTransformation, CE2_CM1),
+		exerciseType: monoMode(genTransformation, CONSIGNE_PROBLEME, CE2_CM1),
 		etayage: etayageProbleme(
 			'Gagner ou perdre',
 			"Ce qu'on gagne s'ajoute, ce qu'on perd se retire. Mais pour retrouver le DÉBUT, il faut faire le contraire.",
@@ -703,7 +709,7 @@ export const PROBLEMES_LESSONS: LessonInput[] = [
 		id: 'math-prob-multiplication',
 		label: 'Des groupes égaux',
 		motsCles: ['problème', 'multiplication', 'fois', 'énoncé'],
-		exerciseType: monoMode(genMultiplication, CE2_CM1),
+		exerciseType: monoMode(genMultiplication, CONSIGNE_PROBLEME, CE2_CM1),
 		etayage: etayageProbleme(
 			'Des groupes égaux',
 			'Quand tous les groupes ont la même taille, tu multiplies le nombre de groupes par ce que contient un groupe.',
@@ -713,7 +719,7 @@ export const PROBLEMES_LESSONS: LessonInput[] = [
 		id: 'math-prob-partage',
 		label: 'Partager et grouper',
 		motsCles: ['problème', 'division', 'énoncé'],
-		exerciseType: monoMode(genPartage),
+		exerciseType: monoMode(genPartage, 'Résous le problème : réponds à la question.'),
 		etayage: etayageProbleme(
 			'Partager et grouper',
 			"Partager en parts égales et faire des paquets identiques, c'est la même opération : une division.",
@@ -723,7 +729,7 @@ export const PROBLEMES_LESSONS: LessonInput[] = [
 		id: 'math-prob-comparaison',
 		label: 'Comparer (plus ou moins)',
 		motsCles: ['problème', 'énoncé', 'différence', 'de plus', 'de moins'],
-		exerciseType: monoMode(genComparaison, CE2_CM1),
+		exerciseType: monoMode(genComparaison, CONSIGNE_PROBLEME, CE2_CM1),
 		etayage: etayageProbleme(
 			'Comparer (plus ou moins)',
 			'« De plus » ne veut pas toujours dire « on ajoute » : regarde bien de QUI on parle avant de choisir ton opération.',
@@ -733,7 +739,10 @@ export const PROBLEMES_LESSONS: LessonInput[] = [
 		id: 'math-prob-deux-etapes',
 		label: 'Problèmes en deux étapes',
 		motsCles: ['énoncé', 'exercice avec texte'],
-		exerciseType: monoMode(genDeuxEtapes),
+		exerciseType: monoMode(
+			genDeuxEtapes,
+			"Résous le problème : réponds d'abord à la première question, puis à la seconde.",
+		),
 		etayage: etayageProbleme(
 			'Problèmes en deux étapes',
 			"Tu réponds d'abord à la première question, puis tu te sers de son résultat pour répondre à la seconde.",

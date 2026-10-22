@@ -1324,6 +1324,22 @@ un test dédié exige que chaque leçon, chaque type d'aide, chaque classe de fa
 romaine et chaque trophée apporte encore son texte, sans quoi une source tarie (export
 renommé, champ déplacé) resterait verte en n'ayant plus rien regardé.
 
+### Édition d'un favori depuis l'espace encadrant (#778)
+
+Trois fichiers, un par versant :
+- `tests/edition-favori.test.ts` — la **donnée** : `modifierBilanFor` écrit chez le
+  propriétaire sous le même id (jamais de doublon chez le profil actif, un favori de même id
+  chez un autre profil n'est pas touché), `categoryId` recalculé, `contenuFavoriChange`
+  (renommage ≠ changement de contenu), reprise adressée par uuid (`hasResumeFor`,
+  `removeResumeFor`).
+- `tests/app-calme-edition.test.ts` — `ecranCalme()` tient l'éditeur pour non calme (une mise
+  à jour automatique perdrait la saisie), mais pas le composeur de création, ni un formulaire
+  d'édition resté dans le DOM sous un autre écran.
+- `e2e/favori-edition-encadrant.spec.ts` — le **parcours** (crayon, pleine page, pré-remplissage,
+  repère « pas en sprint », confirmation de reprise, retour et focus, accès direct renvoyé à
+  l'espace encadrant, aucun bouton de modification côté enfant). Les titres reprennent les
+  numéros des critères de l'issue, pour qu'un échec dise lequel n'est plus tenu.
+
 ## Smoke tests e2e (Playwright)
 
 **Smoke tests e2e (`e2e/`, Playwright, #129).** Complémentaires : ils pilotent

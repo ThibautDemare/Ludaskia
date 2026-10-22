@@ -792,3 +792,18 @@ n'est pas une incohérence.
 
 **Laissé ouvert** : la flèche de la fiche (« ✗ → Y ») est gardée en attendant un essai avec
 l'enfant.
+
+## Titre de confirmation : l'ÉTAT, pas un événement passé (#778)
+
+Une confirmation qui prévient d'une perte nomme **ce qui est vrai maintenant**, pas ce qui
+s'est passé : « Léa a une partie en cours de « X » », pas « Léa a commencé « X » ». Le passé
+composé raconte un épisode que l'adulte n'a pas vu et laisse entendre qu'il a déjà eu lieu
+ailleurs ; l'état dit pourquoi la question se pose, ici et maintenant (cas posé par
+`ui/bilan-edition.ts`, reprise abandonnée à l'enregistrement d'un favori).
+
+**Rejets écrits (#778, 22/10/2026)**, à ne pas re-remonter :
+- **Guillemets « » sans espace insécable** dans les libellés de `src/ui` : c'est la convention
+  de fait du projet (la même que pour les deux-points, cf. #691 plus haut). On ne la change pas
+  libellé par libellé : une correction isolée créerait deux typographies côte à côte.
+- **« pas en sprint »** (repère d'une leçon qui ne se joue pas en sprint) : compris tel quel,
+  puisque le mode s'appelle « Sprint » à l'écran. Pas de périphrase.

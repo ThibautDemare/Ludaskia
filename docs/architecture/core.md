@@ -813,6 +813,10 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (tirage) et `tests/sprint-tts-gate.test.ts` l'appellent tous deux, pour que le gate du
   texte parlé du sprint interroge exactement le même pool que ce qui est tiré — un
   pool reconstitué à la main dans le test aurait divergé au premier format ajouté.
+  **`sprintJouable(lessonIds)`** (#778) dit si une sélection peut alimenter un sprint : au moins
+  une leçon connue et éligible, soit le pool que tire `startCustomSprint` pour un favori. Le
+  composeur de bilan (`ui/bilan.ts:lireSelection`) s'en sert pour refuser un sprint sans leçon
+  jouable, à la création comme à l'édition.
 - **`ordre.ts`** — **ordre pédagogique** des leçons (#208). Consomme la table de
   données `data/ordre-pedagogique.ts` (`ORDRE_LECONS[matière][niveau]` = liste d'`id`
   **ordonnée** = progression de l'année, validée avec `pedagogue-primaire`) et expose
@@ -1129,7 +1133,13 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   ci-dessous), pour l'espace encadrant : **`loadBilansFor(uuid)`** (même `backfillCategory`
   que `loadBilans` — invariant à tenir, `loadBilansFor(uuidActif)` = `loadBilans()`) et
   **`deleteBilanFor(uuid, id)`** (écrit la seule clé de ce profil + `touchProfile`, comme
-  `enregistrerSeancesFor`).
+  `enregistrerSeancesFor`). **`modifierBilanFor(uuid, config)`** (#778) remplace un favori
+  EXISTANT à la même place et sous le même id (une étape de programme qui le visait le vise
+  toujours), chez ce seul profil ; ne crée jamais (id ou profil inconnu → `false`) ; recalcule
+  le `categoryId` depuis les leçons (`commonCategoryId`) au lieu de reprendre l'ancien ; recopie
+  les autres favoris tels que stockés. **`contenuFavoriChange(avant, après)`** dit si le
+  CONTENU a changé (ensemble de leçons sans l'ordre, mode effectif, questions par leçon — ni
+  nom ni catégorie) : c'est ce qui décide d'abandonner une reprise.
 
 - **`regles-justesse.ts`** (#777, pur) — **règle de justesse unique** de chaque widget :
   `tuileJuste`, `ordreJuste`, `triJuste`, `appariementJuste`, `motsChoisisJustes`,
@@ -1166,7 +1176,9 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   « une question à la fois », qui se re-rendent eux-mêmes — granularité : la
   question **entamée**, jamais celles déjà validées) — `loadResumes`/`getResume`/
   `upsertResume`/`removeResume`/`clearResumes`, **clés stables** par identité
-  d'exercice (`leconKey`, `bilanCategoryKey`, `bilanCustomKey` ; relancer écrase),
+  d'exercice (`leconKey`, `bilanCategoryKey`, `bilanCustomKey`, `bilanFavoriKey(id)` — un slot
+  par favori, seule source de cette clé : l'écran qui lance le favori l'écrit, l'éditeur de
+  l'espace encadrant l'efface ; relancer écrase),
   **validation versionnée** (un instantané d'une autre version ou mal formé est
   ignoré proprement ; un instantané D'AVANT #498, sans `kind`, est lu comme une
   `grille` — seule nature qui existait alors, aucune reprise en cours perdue à la
@@ -1174,6 +1186,9 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   de stockage (`RESUME_MAX_STORED`). `now` passé en paramètre (testable sans
   horloge). Sprint et révision espacée **hors périmètre** (le sprint est un défi
   borné ; la révision est déjà persistée item par item, comme l'orthographe).
+  Accès **par UUID** (#778), sans basculer le profil actif : **`hasResumeFor(uuid, key, now)`**
+  (même verdict que `hasResume`, lecture SANS purge) et **`removeResumeFor(uuid, key)`**
+  (n'efface que cette reprise, n'écrit rien si la clé est absente, ne fait pas `touchProfile`).
 - **`revision.ts`** — **révision espacée** (#45), brique **pure** : escalier
   d'intervalles CE2 (`etatNeuf`, `avancerEtat`, `estDu`/`estAcquis` ; `now` passé
   en paramètre). État `EtatRevision` partagé par les mots d'orthographe et les

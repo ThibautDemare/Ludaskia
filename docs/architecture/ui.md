@@ -388,6 +388,45 @@ ci-dessous.
   qu'une étape de programme peut viser un favori, laisser la corbeille à l'enfant reviendrait
   à lui laisser effacer une consigne de l'adulte sans que personne ne le sache. La
   **création**, elle, reste côté enfant (asymétrie assumée au cadrage).
+
+  **Modification d'un favori (#778)** — chaque ligne porte un bouton « Modifier » (crayon,
+  `seance-favori-edit`, nom accessible « Modifier le bilan favori X ») avant « Supprimer ».
+  Il appelle `ouvrirEditionFavori(uuid, id)` de **`ui/bilan-edition.ts`**, qui capture
+  l'uuid du propriétaire et l'id **en mémoire** (jamais dans l'URL) puis mène à `#bilan-edit`
+  (cf. [Modes & navigation](modes-et-navigation.md)). `navigation.ts:showBilanEditView` rend
+  alors `renderBilanConfigScreen(el, undefined, edition)` — le composeur de l'enfant en **mode
+  édition** (`EditionComposeur`), pré-rempli (nom, mode Tranquille/Sprint, leçons cochées et
+  volets dépliés, questions par leçon), avec Enregistrer / Annuler / Imprimer et sans
+  lancement. Le composeur ne fait que pré-remplir et valider (mêmes refus qu'à la création) ;
+  `bilan-edition.ts` écrit. Invariants :
+  - l'écriture va chez le **propriétaire capturé** (`modifierBilanFor`), même si le profil actif
+    ou consulté change entre-temps ; le formulaire déjà saisi est **conservé** quand le routeur
+    re-rend sur un changement de profil (`AffichageEdition = 'conserve'`) ;
+  - si le CONTENU change (`contenuFavoriChange`) alors que l'enfant a une partie en cours de ce
+    favori (`hasResumeFor(…, bilanFavoriKey(id))`), `uiConfirm` prévient (titre à l'état :
+    « [prénom] a une partie en cours de « X » ») puis la reprise est abandonnée, **après** une
+    écriture réussie ; un simple renommage la garde ;
+  - retour par `location.replace` sur l'onglet d'origine, profil propriétaire consulté
+    (`consulterALaProchaineEntree`) : l'éditeur ne reste pas dans l'historique. Le focus revient
+    au crayon du favori édité (ou au titre de la section s'il a disparu) et l'enregistrement est
+    annoncé dans une région `status` (`.enc-favoris-statut`) ; « Annuler » n'annonce rien.
+    Le dépôt se fait par `preparerRetourEdition`, la consommation par `appliquerRetourEdition`
+    (`encadrant-favoris.ts`), même modèle que `consulterALaProchaineEntree` ;
+  - un favori supprimé entre-temps → message d'erreur dans l'éditeur, rien n'est écrit ;
+  - `app-calme.ts:ecranCalme()` tient l'éditeur pour **non calme** (saisie d'adulte non
+    enregistrée, qu'un rechargement de mise à jour perdrait).
+
+  **Repère « pas en sprint » (#778)** — dans le composeur, en mode Sprint, toute leçon non
+  éligible (`estEligibleSprintHorsNiveau`) porte le repère textuel `.bc-hors-sprint`
+  (affiché par la feuille de style en mode Sprint seulement), et un sprint sans aucune leçon
+  jouable (`sprintJouable`) est refusé par `lireSelection`, à la création comme à l'édition.
+
+  **Rejets écrits (#778, 22/10/2026)** :
+  - le repère « pas en sprint » **n'est pas retesté au zoom texte 200 %** : écarté par le
+    mainteneur, enjeu jugé mineur (ne pas le re-remonter) ;
+  - le nom accessible d'une leçon (libellé + repère) repose sur l'insertion d'une espace entre
+    les enfants d'un `label` en `display:flex` (Chrome, Firefox, WebKit). **Non mesuré sur
+    TalkBack** : à vérifier si un retour d'usage l'y signale.
 - **`encadrant-reglages.ts`** — **réglages** sur le profil consulté (onglet
   **Réglages**, #459) : classe de référence + niveau par matière, longueur d'une
   séance de Révision (#439, menu à paliers fixes `REVISION_PLAFOND_CHOIX`),
@@ -976,7 +1015,8 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   ouvert (iOS Safari, Android Chrome) sous un titre de barre long qui force deux
   lignes ; retour sur l'écran des matières avec une recherche active sous NVDA/
   VoiceOver — l'annonce initiale ne doit ni rester muette ni doubler.
-- **`bilan.ts`** — **bilan personnalisé** : `renderBilanConfigScreen(el, categoryId?)`.
+- **`bilan.ts`** — **bilan personnalisé** : `renderBilanConfigScreen(el, categoryId?, edition?)` (le 3e paramètre
+  active le **mode édition** d'un favori, #778, cf. `encadrant-favoris.ts` plus haut).
   En **global**, les leçons sont organisées **Matière → Catégorie → Rubrique** (#195) :
   matières en **volets repliables** (`<details>`), catégories à pastille/gouttière
   colorée, rubriques reprenant le registre de l'écran de catégorie ; chaque niveau
@@ -1006,7 +1046,8 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   (#636) : `renderFavoris` ne câble plus qu'un bouton « Lancer » — la corbeille est passée
   à l'espace encadrant (cf. [Espace encadrant](espace-encadrant.md)), dès qu'une étape de
   programme peut viser un favori. La CRÉATION (`renderBilanConfigScreen`, « Garder pour plus
-  tard ») reste côté enfant. **`runBilanConfig` ne rend plus la page unique** : il délègue à
+  tard ») reste côté enfant, la **modification** passe comme la suppression côté adulte
+  (#778). **`runBilanConfig` ne rend plus la page unique** : il délègue à
   `lancerParcours` (ci-dessous).
 - **`bilan-parcours.ts`, `bilan-parcours-question.ts`, `bilan-parcours-recap.ts`** (#777,
   styles `src/styles/bilan-parcours.scss`, logique pure `core/bilan-parcours.ts`). Un écran =

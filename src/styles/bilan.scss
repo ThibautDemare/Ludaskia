@@ -235,6 +235,24 @@
 	height: 22px;
 	flex-shrink: 0;
 }
+/* Repère « pas en sprint » (#778) : du TEXTE, pas une couleur seule. --grey sur --paper
+   comme sur --accent-soft (carte cochée) est tenu AA par tests/contraste-tokens.test.ts ;
+   le contour reprend la couleur du texte. Visible en mode Sprint seulement : le composeur
+   porte son mode dans `data-mode` (cf. `applyMode`, ui/bilan.ts). */
+.bc-hors-sprint {
+	margin-left: auto;
+	flex-shrink: 0;
+	padding: 1px 8px;
+	border: 1.5px solid currentColor;
+	border-radius: 999px;
+	font-size: 12.5px;
+	font-weight: 700;
+	color: var(--grey);
+	white-space: nowrap;
+}
+.bilan-config:not([data-mode='sprint']) .bc-hors-sprint {
+	display: none;
+}
 /* Questions par leçon (#195) : 4 cartes verticales (icône agrandie au-dessus
    du libellé + nombre), pour un picto lisible et tapable au doigt. */
 .bc-nbq {
@@ -420,12 +438,14 @@
 .bc-btn-run:hover {
 	background: var(--accent-dark);
 }
-.bc-btn-save {
+.bc-btn-save,
+.bc-btn-cancel {
 	background: transparent;
 	color: var(--accent);
 	border: 2px solid var(--accent);
 }
-.bc-btn-save:hover {
+.bc-btn-save:hover,
+.bc-btn-cancel:hover {
 	background: var(--accent);
 	color: var(--on-accent);
 }
@@ -459,6 +479,30 @@
 }
 .bc-scope strong {
 	color: var(--accent);
+}
+
+/* Édition d'un favori (#778) : le titre nomme le favori et l'enfant, puis le nom se modifie
+   à découvert, sous un libellé au registre des autres titres de section. */
+.bc-edit-title {
+	font-family: var(--ui);
+	font-size: 18px;
+	font-weight: 800;
+	color: var(--ink);
+	margin: 0 0 4px;
+	overflow-wrap: anywhere;
+}
+/* Focus posé par le code à l'ouverture (repère de lecteur d'écran), pas une cible du
+   clavier : pas de contour, comme `.partage-titre`. */
+.bc-edit-title:focus {
+	outline: none;
+}
+.bc-edit-name {
+	display: block;
+}
+.bc-edit-name + .bc-label-input {
+	width: 100%;
+	box-sizing: border-box;
+	min-height: 44px;
 }
 
 /* Ligne d'action principale + compteur de leçons choisies */

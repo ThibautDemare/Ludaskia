@@ -32,7 +32,7 @@
      n'a pas de champ `kind` : il est lu comme une `grille`, donc aucune reprise
      en cours n'est perdue à la mise à jour.
    ============================================================ */
-import { lsGet, lsSet } from './storage';
+import { lsGet, lsSet, lsGetRaw, lsSetRaw } from './storage';
 import type { Item } from './items';
 import type { BilanConfig } from './catalog';
 
@@ -122,6 +122,10 @@ export const bilanCategoryKey = (mode: 'express' | 'complet', categoryId: string
 /** Bilan personnalisé : un slot global, ou un par catégorie s'il est scopé. */
 export const bilanCustomKey = (categoryId?: string | null) =>
 	categoryId ? `bilan-custom-${categoryId}` : 'bilan-custom';
+/** Bilan lancé depuis un favori : un slot par favori. Seule source de cette clé (#778) :
+    l'écran qui lance le favori l'ÉCRIT, l'éditeur de l'espace encadrant l'EFFACE quand le
+    contenu change. Deux chaînes recopiées pourraient diverger sans qu'aucun test le voie. */
+export const bilanFavoriKey = (id: string) => `bilan-favori-${id}`;
 
 /* ---------- Validation / lecture ---------- */
 /* Partie commune : sans elle, aucune carte « À continuer » n'est rendable. */
@@ -193,15 +197,20 @@ function normaliser(s: unknown): ResumeSnapshot | null {
    (format obsolète, expiration), pour ne pas les retraîner. */
 export function loadResumes(now: number): ResumeSnapshot[] {
 	const raw = lsGet(RESUME_KEY, []);
-	const list: ResumeSnapshot[] = Array.isArray(raw)
-		? raw.map(normaliser).filter((s): s is ResumeSnapshot => s !== null)
-		: [];
-	const fresh = list
-		.filter((s) => now - s.savedAt < RESUME_TTL_MS)
-		.sort((a, b) => b.savedAt - a.savedAt);
+	const fresh = reprisesFraiches(raw, now);
 	// Réécrit si on a éliminé des entrées (obsolètes/expirées/mal formées).
 	if (!Array.isArray(raw) || fresh.length !== raw.length) lsSet(RESUME_KEY, fresh);
 	return fresh;
+}
+
+/* Reprises valides et non expirées d'une valeur brute du stockage, les plus récentes
+   d'abord. Partagé par la lecture du profil actif et la lecture par UUID, pour qu'elles
+   appliquent la MÊME validation et le MÊME délai d'expiration. */
+function reprisesFraiches(raw: unknown, now: number): ResumeSnapshot[] {
+	const list: ResumeSnapshot[] = Array.isArray(raw)
+		? raw.map(normaliser).filter((s): s is ResumeSnapshot => s !== null)
+		: [];
+	return list.filter((s) => now - s.savedAt < RESUME_TTL_MS).sort((a, b) => b.savedAt - a.savedAt);
 }
 
 export function getResume(key: string, now: number): ResumeSnapshot | null {
@@ -235,4 +244,27 @@ export function removeResume(key: string): void {
 
 export function clearResumes(): void {
 	lsSet(RESUME_KEY, []);
+}
+
+/* ---------- Accès par UUID (#778) ----------
+   L'espace encadrant modifie un favori d'un profil CONSULTÉ sans basculer le profil actif
+   (même parti pris que `loadBilansFor`, core/bilans.ts) : il doit savoir si CET enfant a
+   commencé le bilan, et abandonner sa reprise si le contenu change. */
+
+/** Même verdict que `hasResume`, sur le profil désigné. Lecture SANS purge : consulter un
+    profil depuis l'espace encadrant n'écrit rien chez lui (l'enfant purgera à sa prochaine
+    lecture, comme d'habitude). Uuid inconnu ou clé absente : `false`. */
+export function hasResumeFor(uuid: string, key: string, now: number): boolean {
+	return reprisesFraiches(lsGetRaw(uuid + '/' + RESUME_KEY, []), now).some((s) => s.key === key);
+}
+
+/** Abandonne la reprise `key` du profil désigné, et elle seule : les autres entrées sont
+    recopiées telles quelles, et rien n'est écrit si la clé est absente. N'écrit que la clé
+    de CE profil. Ne marque pas le profil comme modifié : l'appelant (l'éditeur d'un favori)
+    vient d'appeler `modifierBilanFor`, qui l'a déjà fait. */
+export function removeResumeFor(uuid: string, key: string): void {
+	const raw: unknown = lsGetRaw(uuid + '/' + RESUME_KEY, []);
+	if (!Array.isArray(raw)) return;
+	const restants = raw.filter((s) => !(s && typeof s === 'object' && s.key === key));
+	if (restants.length !== raw.length) lsSetRaw(uuid + '/' + RESUME_KEY, JSON.stringify(restants));
 }

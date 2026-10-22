@@ -2,7 +2,7 @@
    Persistance des BilanConfig sauvegardés (« favoris »).
    ============================================================ */
 import { lsGet, lsSet, lsGetRaw, lsSetRaw } from './storage';
-import { commonCategoryId } from './catalog';
+import { bilanMode, commonCategoryId } from './catalog';
 import { touchProfile } from './profiles';
 import type { BilanConfig } from './catalog';
 
@@ -58,4 +58,45 @@ export function deleteBilanFor(uuid: string, id: string): void {
 	const restants = loadBilansFor(uuid).filter((b) => b.id !== id);
 	lsSetRaw(uuid + '/' + BILANS_KEY, JSON.stringify(restants));
 	touchProfile(uuid);
+}
+
+/* ---------- Édition d'un favori depuis l'espace encadrant (#778) ---------- */
+
+/** Remplace un favori EXISTANT d'un profil désigné par son UUID, à la même place et sous le
+    même id : une étape de programme qui le visait le vise toujours. Écrit chez CE profil
+    seulement, quel que soit le profil actif (l'adulte a pu en changer pendant l'édition).
+
+    Le rattachement de catégorie (#65) est RECALCULÉ depuis les leçons, jamais repris de
+    `config` : le composeur pré-rempli renvoie volontiers l'ancien, et un favori devenu
+    multi-catégories resterait alors affiché dans sa catégorie d'origine.
+
+    Ne crée jamais : un id absent chez ce profil (ou un profil inconnu) renvoie `false` sans
+    rien écrire. Les AUTRES favoris sont recopiés tels qu'ils sont stockés (sans le
+    `backfillCategory` de la lecture) : modifier l'un ne réécrit pas les autres. */
+export function modifierBilanFor(uuid: string, config: BilanConfig): boolean {
+	const brut: unknown = lsGetRaw(uuid + '/' + BILANS_KEY, []);
+	if (!Array.isArray(brut)) return false;
+	const stockes = brut as BilanConfig[];
+	const idx = stockes.findIndex((b) => !!b && b.id === config.id);
+	if (idx < 0) return false;
+	const neuf: BilanConfig = { ...config };
+	delete neuf.categoryId;
+	const categoryId = commonCategoryId(config.lessonIds);
+	if (categoryId) neuf.categoryId = categoryId;
+	stockes[idx] = neuf;
+	lsSetRaw(uuid + '/' + BILANS_KEY, JSON.stringify(stockes));
+	touchProfile(uuid);
+	return true;
+}
+
+/** Le CONTENU d'un favori a-t-il changé entre deux versions (#778) ? Ce qui se joue :
+    l'ensemble des leçons (l'ordre ne compte pas), le mode effectif (un favori sans `mode`
+    est un bilan) et le nombre de questions par leçon. Ni le nom ni la catégorie : un bilan
+    commencé reste le même bilan après un renommage, et sa reprise doit survivre. */
+export function contenuFavoriChange(avant: BilanConfig, apres: BilanConfig): boolean {
+	if (bilanMode(avant) !== bilanMode(apres)) return true;
+	if (avant.questionsPerLesson !== apres.questionsPerLesson) return true;
+	const a = new Set(avant.lessonIds);
+	const b = new Set(apres.lessonIds);
+	return a.size !== b.size || [...a].some((id) => !b.has(id));
 }

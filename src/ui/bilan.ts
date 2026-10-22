@@ -8,17 +8,20 @@ import {
 	getLessonsByCategory,
 	bilanMode,
 	commonCategoryId,
+	estEligibleSprintHorsNiveau,
+	sprintJouable,
 	CATEGORIES,
 	SUBJECTS,
 } from '../core/catalog';
 import type { BilanConfig, LessonDef, Category } from '../core/catalog';
 import { labelLecon } from '../core/levels';
+import { elisionDe } from '../core/utils';
 import { classeChoisie, classeDeCategorie, leverClasseChoisie } from '../core/niveau-actif';
 import { subjectIcon, subjectTint, catTint } from './cat-visuals';
 import { loadBilans, saveBilan } from '../core/bilans';
 import { startCustomSprint } from './sprint';
 import { printScope } from './session';
-import { bilanCategoryKey, bilanCustomKey } from '../core/resume';
+import { bilanCategoryKey, bilanCustomKey, bilanFavoriKey } from '../core/resume';
 import { clearResumeCtx, maybeRelaunch, type ResumeCtx } from './resume';
 import { lancerParcours } from './bilan-parcours';
 import { icon } from './icon';
@@ -92,7 +95,9 @@ function customBilanCtx(config: BilanConfig, categoryId: string | null): ResumeC
 }
 function favoriBilanCtx(config: BilanConfig): ResumeCtx {
 	return {
-		key: `bilan-favori-${config.id}`,
+		// Clé partagée avec l'éditeur de l'espace encadrant (#778), qui l'efface quand le
+		// contenu du favori change : une seule source, sinon les deux divergeraient.
+		key: bilanFavoriKey(config.id),
 		mode: 'custom',
 		label: config.label,
 		icon: 'bookmark',
@@ -124,6 +129,24 @@ function readFormConfig(form: HTMLElement): BilanConfig | null {
 	return { id: '', label: 'Bilan personnalisé', lessonIds, questionsPerLesson, mode, categoryId };
 }
 
+/* Lit la sélection et la VALIDE : au moins une leçon, et en mode Sprint au moins une leçon
+   qui se joue en sprint (#778). Le message va dans `errEl`. Partagé par Lancer, Garder et
+   Enregistrer : aucun des trois ne laisse passer ce qu'un autre refuse. */
+function lireSelection(form: HTMLElement, errEl: HTMLElement): BilanConfig | null {
+	const config = readFormConfig(form);
+	if (!config) {
+		errEl.textContent = 'Coche au moins une leçon.';
+		return null;
+	}
+	if (bilanMode(config) === 'sprint' && !sprintJouable(config.lessonIds)) {
+		errEl.textContent =
+			'Aucune des leçons choisies ne se joue en sprint. Ajoute une leçon sans la mention « pas en sprint », ou choisis Tranquille.';
+		return null;
+	}
+	errEl.textContent = '';
+	return config;
+}
+
 function genId(): string {
 	try {
 		return crypto.randomUUID();
@@ -138,7 +161,11 @@ function genId(): string {
    Le composeur liste TOUTES les leçons (tous niveaux confondus, volontairement) ; le
    libellé, lui, est celui de la classe dans laquelle la leçon sera imprimée/jouée (#436) :
    celle de sa catégorie, donc la classe choisie sur l'écran de la catégorie s'il y en a
-   une (#772), sinon la classe suivie par la matière. */
+   une (#772), sinon la classe suivie par la matière.
+   Une leçon qui ne se joue pas en sprint porte le repère TEXTUEL « pas en sprint » (#778),
+   affiché par la feuille de style en mode Sprint seulement : la couleur seule ne dirait rien
+   à qui ne la distingue pas, et l'enfant comprendrait mal pourquoi son sprint l'ignore.
+   `<small>` et non `<span>` : le `<span>` de la carte est son libellé, et le seul. */
 function lessonChecks(lessons: LessonDef[]): SafeHtml {
 	return joindre(
 		lessons.map(
@@ -146,6 +173,7 @@ function lessonChecks(lessons: LessonDef[]): SafeHtml {
 				html`<label class="bc-item">
           <input type="checkbox" class="bc-lesson-check" value="${l.id}" checked>
           <span>${labelLecon(l, classeDeCategorie(l.category))}</span>
+          ${estEligibleSprintHorsNiveau(l) ? VIDE : html`<small class="bc-hors-sprint">pas en sprint</small>`}
         </label>`,
 		),
 	);
@@ -214,13 +242,74 @@ function categoryBlock(cat: Category, lessons: LessonDef[], tint: string): SafeH
     </div>`;
 }
 
+/* ---------- Mode édition d'un favori (#778) ---------- */
+
+/** Ce que le composeur reçoit pour éditer un favori. Il ne sait rien du propriétaire au-delà
+    de son prénom, ni de la reprise : il pré-remplit, refuse ce que la création refuse, et
+    remet la config validée à `enregistrer`, qui décide où et comment l'écrire
+    (cf. `ui/bilan-edition.ts`). */
+export interface EditionComposeur {
+	/** Version enregistrée du favori : pré-remplit le formulaire. */
+	favori: BilanConfig;
+	/** Prénom de l'enfant à qui appartient le favori (titre de la page). */
+	proprietaire: string;
+	/** Reçoit la config validée, id et nom du favori posés. Résout un message d'erreur à
+	    afficher, ou `null` quand il n'y a rien à dire (enregistré, ou abandonné). */
+	enregistrer: (config: BilanConfig) => Promise<string | null>;
+	annuler: () => void;
+}
+
+/* Coche EXACTEMENT les leçons du favori et déplie les volets de matière qui en contiennent
+   une : un volet replié cacherait une coche (critère 2). */
+function cocherFavori(form: HTMLElement, favori: BilanConfig): void {
+	const ids = new Set(favori.lessonIds);
+	form
+		.querySelectorAll<HTMLInputElement>('.bc-lesson-check')
+		.forEach((cb) => (cb.checked = ids.has(cb.value)));
+	form.querySelectorAll<HTMLDetailsElement>('details.bc-subject').forEach((d) => {
+		if (d.querySelector('.bc-lesson-check:checked')) d.open = true;
+	});
+}
+
+/* Boutons « Enregistrer » et « Annuler ». Mêmes refus qu'à la création (nom vide, aucune
+   leçon, sprint sans leçon jouable), dans le même ordre ; l'écriture appartient à
+   l'appelant. */
+function brancherEdition(
+	el: HTMLElement,
+	form: HTMLElement,
+	errEl: HTMLElement,
+	edition: EditionComposeur,
+): void {
+	el.querySelector('#bcUpdate')!.addEventListener('click', () => {
+		const label = el.querySelector<HTMLInputElement>('#bcLabel')!.value.trim();
+		if (!label) {
+			errEl.textContent = 'Entre un nom pour enregistrer le bilan.';
+			return;
+		}
+		const config = lireSelection(form, errEl);
+		if (!config) return;
+		config.id = edition.favori.id;
+		config.label = label;
+		void edition.enregistrer(config).then((erreur) => {
+			if (erreur) errEl.textContent = erreur;
+		});
+	});
+	el.querySelector('#bcCancel')!.addEventListener('click', () => edition.annuler());
+}
+
 /* Écran de composition d'un bilan.
    - global (categoryId absent) : leçons groupées par matière > catégorie ;
    - scopé à une catégorie : liste à plat de ses leçons (entrée « Je choisis
      mes leçons » depuis l'écran de catégorie).
    Pensé tablette/mobile (cf. avis UX enfant) : grosses cibles tactiles, une
-   action principale « C'est parti », sauvegarde repliée pour le parent. */
-export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): void {
+   action principale « C'est parti », sauvegarde repliée pour le parent.
+   - en ÉDITION (`edition`, #778) : le même écran global, pré-rempli avec un favori, avec
+     « Enregistrer / Annuler / Imprimer » à la place de « C'est parti » et « Garder ». */
+export function renderBilanConfigScreen(
+	el: HTMLElement,
+	categoryId?: string,
+	edition?: EditionComposeur,
+): void {
 	const category = categoryId ? CATEGORIES.find((c) => c.id === categoryId) : null;
 	const scoped = !!category;
 
@@ -262,8 +351,12 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 		);
 	}
 
-	// Défaut : « Moyen » sur un écran scopé (révision pour de vrai), « Un peu » sinon.
-	const defaultNbq = scoped ? '5' : '3';
+	// Défaut : « Moyen » sur un écran scopé (révision pour de vrai), « Un peu » sinon. En
+	// édition, le réglage du favori, s'il fait partie des quatre proposés : l'écran montre
+	// alors exactement ce qui sera enregistré.
+	const nbqFavori = edition ? String(edition.favori.questionsPerLesson) : '';
+	const defaultNbq = ['3', '5', '10', 'all'].includes(nbqFavori) ? nbqFavori : scoped ? '5' : '3';
+	const defaultMode = edition ? bilanMode(edition.favori) : 'bilan';
 	// Carte verticale : icône (agrandie) au-dessus du libellé et du nombre, pour
 	// un picto lisible et tapable au doigt (cf. avis UX enfant). Le bouton radio
 	// est masqué visuellement (l'état coché est porté par la carte).
@@ -284,13 +377,30 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 
 	const modeItem = (value: string, ico: SafeHtml, title: string, sub: string) =>
 		html`<label class="bc-mode-item">
-      <input type="radio" name="bcMode" class="bc-mode-radio" value="${value}"${value === 'bilan' ? drapeau('checked') : ''}>
+      <input type="radio" name="bcMode" class="bc-mode-radio" value="${value}"${value === defaultMode ? drapeau('checked') : ''}>
       <span>${ico} ${title} <span class="bc-mode-sub">${sub}</span></span>
     </label>`;
 
+	// En édition, l'écran nomme le favori ET l'enfant à qui il appartient (#778, critère 4) :
+	// le profil actif, celui de la barre, n'est pas forcément le sien. Le nom se modifie en
+	// tête, à découvert, et non dans le volet replié « Garder pour plus tard ».
+	const enTete = edition
+		? html`<h2 class="bc-edit-title" tabindex="-1">Modifier « ${edition.favori.label} », bilan favori ${elisionDe(edition.proprietaire)}</h2>
+      <label class="bc-section-title bc-edit-name" for="bcLabel">Nom du bilan</label>
+      <input id="bcLabel" class="bc-label-input" type="text" maxlength="60" value="${edition.favori.label}">`
+		: scoped
+			? html`<p class="bc-scope">Catégorie : <strong>${category!.label}</strong></p>`
+			: VIDE;
+	// Pas de lancement en édition : il jouerait sur le profil ACTIF, qui n'est pas forcément
+	// l'enfant concerné (#778, critère 5).
+	const actions = edition
+		? html`<button id="bcUpdate" class="bc-btn bc-btn-run">${icon('check')} Enregistrer</button>
+        <button id="bcCancel" class="bc-btn bc-btn-cancel">${icon('x')} Annuler</button>`
+		: html`<button id="bcRun" class="bc-btn bc-btn-run">${icon('play')} C'est parti !</button>`;
+
 	el.innerHTML = html`
-    <div class="bilan-config" id="bilanConfigForm">
-      ${scoped ? html`<p class="bc-scope">Catégorie : <strong>${category!.label}</strong></p>` : ''}
+    <div class="bilan-config" id="bilanConfigForm"${edition ? drapeau('data-edition') : ''}>
+      ${enTete}
       <div class="bc-section-title">Que veux-tu faire ?</div>
       <div class="bc-mode">
         ${modeItem('bilan', icon('feather'), 'Tranquille', 'à ton rythme')}
@@ -314,7 +424,7 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
       </div>
 
       <div class="bc-run-row">
-        <button id="bcRun" class="bc-btn bc-btn-run">${icon('play')} C'est parti !</button>
+        ${actions}
         <button id="bcPrint" class="bc-btn bc-btn-print" title="Imprimer ce bilan à remplir au crayon">${icon('printer')} Imprimer</button>
         <span class="bc-count" id="bcCount"></span>
       </div>
@@ -323,21 +433,24 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
         <span>${icon('printer')} Imprimer aussi le corrigé pour le parent (avec les réponses)</span>
       </label>
 
-      <details class="bc-save">
+      ${
+				edition
+					? VIDE
+					: html`<details class="bc-save">
         <summary>${icon('bookmark')} Garder pour plus tard</summary>
         <div class="bc-save-row">
           <input id="bcLabel" class="bc-label-input" type="text" placeholder="Nom du bilan" maxlength="60" value="${defaultName}">
           <button id="bcSave" class="bc-btn bc-btn-save">${icon('bookmark')} Garder</button>
         </div>
         <div class="bc-saved" id="bcSaved" role="status"></div>
-      </details>
-      <div class="bc-err" id="bcErr"></div>
+      </details>`
+			}
+      <div class="bc-err" id="bcErr" role="alert"></div>
     </div>`.balisage;
 
 	const form = el.querySelector<HTMLElement>('#bilanConfigForm')!;
 	const errEl = el.querySelector<HTMLElement>('#bcErr')!;
 	const countEl = el.querySelector<HTMLElement>('#bcCount')!;
-	const savedEl = el.querySelector<HTMLElement>('#bcSaved')!;
 
 	// Groupes (matière / catégorie / rubrique) : chaque groupe porte une case
 	// parent (`.bc-group-check`) et un compteur (`.bc-group-count`) dans son
@@ -392,6 +505,7 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 		if ((e.target as HTMLElement).classList.contains('bc-lesson-check')) refresh();
 	});
 
+	if (edition) cocherFavori(form, edition.favori);
 	refresh();
 
 	const setAll = (checked: boolean) => {
@@ -415,32 +529,19 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 		printBtn.hidden = sprint;
 		// Le corrigé n'a de sens qu'à l'impression (chemin papier), pas en sprint.
 		corrigeWrap.hidden = sprint;
+		// Montre les repères « pas en sprint » (#778) : cf. bilan.scss.
+		form.dataset.mode = sprint ? 'sprint' : 'bilan';
 	};
 	applyMode();
 	form
 		.querySelectorAll<HTMLInputElement>('.bc-mode-radio')
 		.forEach((r) => r.addEventListener('change', applyMode));
 
-	el.querySelector('#bcRun')!.addEventListener('click', () => {
-		const config = readFormConfig(form);
-		if (!config) {
-			errEl.textContent = 'Coche au moins une leçon.';
-			return;
-		}
-		errEl.textContent = '';
-		if (bilanMode(config) === 'sprint') {
-			config.label = sprintLabel;
-			startCustomSprint(config);
-		} else {
-			config.label = runLabel;
-			startBilan(config, customBilanCtx(config, categoryId ?? null));
-		}
-	});
-
 	// Chemin B (#40) : imprimer le bilan tel que configuré, sans le lancer.
 	// « Toutes » → fiches d'entraînement ; un nombre → bilan (grille de N questions).
 	el.querySelector('#bcPrint')!.addEventListener('click', () => {
-		savedEl.textContent = '';
+		// Efface la confirmation « enregistré » de la création (absente en édition).
+		el.querySelector<HTMLElement>('#bcSaved')?.replaceChildren();
 		const config = readFormConfig(form);
 		if (!config) {
 			errEl.textContent = 'Coche au moins une leçon.';
@@ -450,13 +551,36 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 		const isAll = config.questionsPerLesson === 'all';
 		// #41 : si la case est cochée, on ajoute un corrigé (mêmes items, réponses révélées).
 		const corrige = el.querySelector<HTMLInputElement>('#bcCorrige')?.checked ?? false;
+		// En édition, la fiche porte le nom du favori (celui du champ, s'il est rempli).
+		const nom = edition
+			? el.querySelector<HTMLInputElement>('#bcLabel')!.value.trim() || edition.favori.label
+			: runLabel;
 		printScope({
-			title: runLabel,
+			title: nom,
 			lessonIds: config.lessonIds,
 			kind: isAll ? 'fiches' : 'bilan',
 			nbQ: isAll ? undefined : (config.questionsPerLesson as number),
 			corrige,
 		});
+	});
+
+	if (edition) {
+		brancherEdition(el, form, errEl, edition);
+		return;
+	}
+
+	const savedEl = el.querySelector<HTMLElement>('#bcSaved')!;
+
+	el.querySelector('#bcRun')!.addEventListener('click', () => {
+		const config = lireSelection(form, errEl);
+		if (!config) return;
+		if (bilanMode(config) === 'sprint') {
+			config.label = sprintLabel;
+			startCustomSprint(config);
+		} else {
+			config.label = runLabel;
+			startBilan(config, customBilanCtx(config, categoryId ?? null));
+		}
 	});
 
 	// Enregistrer un favori SANS le lancer (#55) : on confirme sur place ; le
@@ -469,12 +593,8 @@ export function renderBilanConfigScreen(el: HTMLElement, categoryId?: string): v
 			errEl.textContent = 'Entre un nom pour enregistrer le bilan.';
 			return;
 		}
-		const config = readFormConfig(form);
-		if (!config) {
-			errEl.textContent = 'Coche au moins une leçon.';
-			return;
-		}
-		errEl.textContent = '';
+		const config = lireSelection(form, errEl);
+		if (!config) return;
 		config.label = label;
 		config.id = genId();
 		saveBilan(config);

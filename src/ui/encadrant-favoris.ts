@@ -13,6 +13,8 @@
    étape de programme peut viser un favori, laisser la corbeille sous sa main revient à lui
    laisser effacer une consigne de l'adulte sans que personne ne le sache. La CRÉATION, elle,
    lui reste : il compose et enregistre depuis son écran. Asymétrie assumée au cadrage.
+   La MODIFICATION (#778) suit la suppression : le crayon de chaque ligne ouvre l'éditeur
+   (`ui/bilan-edition.ts`), réservé à l'adulte pour la même raison.
 
    Ce module ne porte AUCUN état : le re-rendu et le message d'alerte de la carte restent à
    `encadrant-seance.ts`, qui décide quoi faire du booléen que `supprimerFavori` renvoie.
@@ -129,7 +131,7 @@ export function gestionFavorisHTML(consulte: Profile, defs: SeanceDef[]): SafeHt
 	if (!favoris.length)
 		return html`<div class="enc-block enc-seance-favoris-gestion">
       ${titre}
-      <p class="enc-hint">${consulte.name} n'a pas encore enregistré de bilan favori. Ils se composent depuis son écran, et vous pouvez les supprimer ici.</p>
+      <p class="enc-hint">${consulte.name} n'a pas encore enregistré de bilan favori. Ils se composent depuis son écran, et vous pouvez les modifier ou les supprimer ici.</p>
     </div>`;
 	const lignes = joindre(
 		favoris.map((b) => {
@@ -137,19 +139,25 @@ export function gestionFavorisHTML(consulte: Profile, defs: SeanceDef[]): SafeHt
 			const repere = vise
 				? html`<span class="enc-favori-gere-vise">${icon('calendar')} utilisé par ${vise} programme${vise > 1 ? 's' : ''}</span>`
 				: VIDE;
+			// Le crayon (#778) précède « Supprimer » : l'action courante d'abord, la destructive
+			// en dernier. Son nom accessible porte le nom du favori, comme celui de « Supprimer » :
+			// une liste de « Modifier » identiques ne se distinguerait pas au lecteur d'écran.
 			return html`<div class="enc-favori-gere" data-id="${b.id}">
           <div class="enc-favori-gere-info">
             <span class="enc-favori-gere-nom">${b.label}</span>
             <span class="enc-favori-gere-detail">${detailFavori(b)}</span>
             ${repere}
           </div>
-          <button type="button" class="enc-btn-sec enc-danger" data-act="seance-favori-del" data-id="${b.id}" aria-label="Supprimer le bilan favori ${b.label}">${icon('trash')} Supprimer</button>
+          <div class="enc-favori-gere-actions">
+            <button type="button" class="enc-btn-sec" data-act="seance-favori-edit" data-id="${b.id}" aria-label="Modifier le bilan favori ${b.label}">${icon('pencil')} Modifier</button>
+            <button type="button" class="enc-btn-sec enc-danger" data-act="seance-favori-del" data-id="${b.id}" aria-label="Supprimer le bilan favori ${b.label}">${icon('trash')} Supprimer</button>
+          </div>
         </div>`;
 		}),
 	);
 	return html`<div class="enc-block enc-seance-favoris-gestion">
       ${titre}
-      <p class="enc-hint">${consulte.name} compose ses bilans favoris depuis son écran ; c'est ici que vous les supprimez, pour qu'une activité du programme ne disparaisse pas d'un clic.</p>
+      <p class="enc-hint">${consulte.name} compose ses bilans favoris depuis son écran ; c'est ici que vous les modifiez ou les supprimez, pour qu'une activité du programme ne disparaisse pas d'un clic.</p>
       ${lignes}
     </div>`;
 }

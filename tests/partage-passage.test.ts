@@ -93,11 +93,42 @@ import {
 	type ChampCorrige,
 } from '../src/core/partage/passage';
 
+/* Leçons FABRIQUÉES, servies par `getLessonById` en plus du catalogue réel : depuis #777
+   (critère 4), toute leçon du catalogue déclare sa consigne, donc le repli générique
+   (« Complète. » / « Écris la forme correcte. ») ne se voit plus que sur une leçon qui n'en
+   déclare pas — qu'il faut fabriquer. Tout autre id est résolu par le vrai catalogue. */
+const FABRIQUEES = vi.hoisted(() => new Map<string, LessonDef>());
+vi.mock('../src/core/catalog', async (importOriginal) => {
+	const orig = await importOriginal<typeof import('../src/core/catalog')>();
+	return {
+		...orig,
+		getLessonById: (id: string) => FABRIQUEES.get(id) ?? orig.getLessonById(id),
+	};
+});
+
 beforeEach(() => {
 	localStorage.clear();
 	setOnDataWrite(touchActiveProfile);
 	initProfiles();
+	FABRIQUEES.clear();
 });
+
+/** Une leçon SANS consigne de fiche, inscrite pour le test en cours (`getLessonById`). */
+function leconSansConsigne(id: string, subject: 'math' | 'francais'): LessonDef {
+	const l: LessonDef = {
+		id,
+		label: `Leçon fabriquée ${subject}`,
+		subject,
+		category: subject === 'math' ? 'math-numeration' : 'fr-grammaire',
+		levels: ['ce2'],
+		exerciseType: {
+			generate: (): Exercise => ({ type: 'text', question: '2 + 3 = @', answer: '5' }),
+			check: () => false,
+		},
+	};
+	FABRIQUEES.set(id, l);
+	return l;
+}
 
 /* ---------- Outils ---------- */
 
@@ -352,34 +383,42 @@ describe('preparerPassage — capture : énoncé et attendu lisibles (critère 1
 		}
 	});
 
-	it('titre = libellé de la leçon ; consigne = celle du type, sinon « Complète. » en maths', () => {
-		const conj = lecon('fr-conj-etre-present');
-		const consigneConj = consignePourNiveau(conj.exerciseType, 'ce2');
-		expect(consigneConj, 'précondition : la conjugaison a sa consigne').toBeTruthy();
-		const [bConj] = blocsDe(
-			envoiLecon(
-				bloc(
-					'fr-conj-etre-present',
-					tirer('fr-conj-etre-present', 2, 'ce2', 'saisie', 'text'),
-					'saisie',
-				),
-			),
-		);
-		expect(bConj.titre).toBe(conj.label);
-		expect(bConj.consigne).toBe(consigneConj);
+	/* Exigence : la séance partagée dit la même consigne que la fiche ordinaire, c'est-à-dire
+	   la consigne DÉCLARÉE par le type au niveau de l'envoi. Ce test vérifiait d'abord que
+	   « num-valeur-position » n'en avait pas, puis attendait « Complète. » : depuis #777
+	   (critère 4), toute leçon en déclare une, et la précondition ne pouvait plus tenir. Le
+	   repli générique est tenu à part, sur une leçon fabriquée sans consigne. */
+	it('titre = libellé de la leçon ; consigne = la consigne déclarée du type au niveau joué', () => {
+		for (const [id, mode] of [
+			['fr-conj-etre-present', 'saisie'],
+			['num-valeur-position', undefined],
+		] as const) {
+			const l = lecon(id);
+			const declaree = consignePourNiveau(l.exerciseType, 'ce2');
+			expect(declaree?.trim(), `${id} : consigne déclarée`).toBeTruthy();
+			// Précondition DISCRIMINANTE : la consigne déclarée n'est pas le repli générique,
+			// sinon ce test passerait même si la séance l'ignorait.
+			expect(declaree, id).not.toBe(
+				l.subject === 'math' ? 'Complète.' : 'Écris la forme correcte.',
+			);
+			const [b] = blocsDe(envoiLecon(bloc(id, tirer(id, 2, 'ce2', mode, 'text'), mode)));
+			expect(b.titre, id).toBe(l.label);
+			expect(b.consigne, id).toBe(declaree);
+		}
+	});
 
-		const num = lecon('num-valeur-position');
-		expect(
-			consignePourNiveau(num.exerciseType, 'ce2'),
-			'précondition : pas de consigne de type',
-		).toBeUndefined();
-		const [bNum] = blocsDe(
-			envoiLecon(
-				bloc('num-valeur-position', tirer('num-valeur-position', 2, 'ce2', undefined, 'text')),
-			),
-		);
-		expect(bNum.titre).toBe(num.label);
-		expect(bNum.consigne).toBe('Complète.');
+	it('repli générique : une leçon SANS consigne déclarée lit « Complète. » (maths) ou « Écris la forme correcte. » (français)', () => {
+		const exs: Exercise[] = [{ type: 'text', question: '2 + 3 = @', answer: '5' }];
+		const math = leconSansConsigne('test-sans-consigne-math', 'math');
+		const fr = leconSansConsigne('test-sans-consigne-fr', 'francais');
+		for (const l of [math, fr]) {
+			expect(consignePourNiveau(l.exerciseType, 'ce2'), 'précondition').toBeUndefined();
+		}
+		expect(blocsDe(envoiLecon(bloc(math.id, exs)))[0].consigne).toBe('Complète.');
+		expect(blocsDe(envoiLecon(bloc(fr.id, exs)))[0].consigne).toBe('Écris la forme correcte.');
+		// Dans un bilan aussi, bloc par bloc.
+		const blocs = blocsDe(envoiBilan([bloc(fr.id, exs), bloc(math.id, exs)]));
+		expect(blocs.map((b) => b.consigne)).toEqual(['Écris la forme correcte.', 'Complète.']);
 	});
 });
 
@@ -477,7 +516,11 @@ describe('preparerPassage — calcul mental hérité (moteur bilanQ)', () => {
 			{ lecon: 'math-tables-addition', enonce: '6 + 6 = …', attendue: '12' },
 		]);
 		expect(b.titre).toBe(lecon('math-tables-addition').label);
-		expect(b.consigne).toBe('Complète.');
+		// La consigne déclarée par le type (#777, critère 4), pas le repli générique.
+		const declaree = consignePourNiveau(lecon('math-tables-addition').exerciseType, 'ce2');
+		expect(declaree?.trim(), 'précondition : consigne déclarée').toBeTruthy();
+		expect(declaree, 'précondition discriminante').not.toBe('Complète.');
+		expect(b.consigne).toBe(declaree);
 		// Rejouer la préparation ne retire rien.
 		expect(blocsDe(envoi)).toEqual([b]);
 	});
@@ -571,35 +614,43 @@ describe('preparerPassage — bilan : les exercices de runner retombent sur leur
 		});
 	});
 
-	it('consignes : celle du type au niveau, sinon « Complète. » (maths) ou « Écris la forme correcte. » (français)', () => {
-		const clic = lecon('fr-gram-clic-verbe');
-		const blocs = blocsDe(
-			envoiBilan([
-				bloc('fr-homophones-a', tirer('fr-homophones-a', 1, 'ce2', 'qcm', 'qcm'), 'qcm'),
-				bloc(
-					'math-prob-composition',
-					tirer('math-prob-composition', 1, 'ce2', undefined, 'probleme'),
+	/* Même réécriture que plus haut : la précondition « pas de consigne » sur de vraies
+	   leçons ne peut plus tenir (#777, critère 4). L'exigence : chaque bloc du bilan dit la
+	   consigne déclarée de SA leçon au niveau de l'envoi, y compris les blocs repliés d'un
+	   runner (problème, clic sur le mot). Le repli générique a son test, sur leçons fabriquées. */
+	it('consignes : chaque bloc dit la consigne déclarée de sa leçon au niveau de l’envoi', () => {
+		const ids = ['fr-homophones-a', 'math-prob-composition', 'fr-gram-clic-verbe'];
+		for (const niveau of ['ce2', 'cm1'] as const) {
+			const blocs = blocsDe(
+				envoiBilan(
+					[
+						bloc('fr-homophones-a', tirer('fr-homophones-a', 1, niveau, 'qcm', 'qcm'), 'qcm'),
+						bloc(
+							'math-prob-composition',
+							tirer('math-prob-composition', 1, niveau, undefined, 'probleme'),
+						),
+						bloc(
+							'fr-gram-clic-verbe',
+							tirer('fr-gram-clic-verbe', 1, niveau, 'clic', 'clicMot'),
+							'clic',
+						),
+					],
+					niveau,
 				),
-				bloc(
-					'fr-gram-clic-verbe',
-					tirer('fr-gram-clic-verbe', 1, 'ce2', 'clic', 'clicMot'),
-					'clic',
-				),
-			]),
-		);
-		expect(
-			consignePourNiveau(lecon('fr-homophones-a').exerciseType, 'ce2'),
-			'précondition',
-		).toBeUndefined();
-		expect(
-			consignePourNiveau(lecon('math-prob-composition').exerciseType, 'ce2'),
-			'précondition',
-		).toBeUndefined();
-		expect(blocs.map((b) => b.consigne)).toEqual([
-			'Écris la forme correcte.',
-			'Complète.',
-			consignePourNiveau(clic.exerciseType, 'ce2'),
-		]);
+			);
+			const declarees = ids.map((id) => consignePourNiveau(lecon(id).exerciseType, niveau));
+			for (const [k, c] of declarees.entries()) {
+				expect(c?.trim(), `${ids[k]}@${niveau} : consigne déclarée`).toBeTruthy();
+			}
+			expect(
+				blocs.map((b) => b.consigne),
+				niveau,
+			).toEqual(declarees);
+		}
+		// Discriminant : le verbe se dit autrement au CM1 (« deux mots ») qu'au CE2. Une
+		// séance qui lirait toujours la consigne CE2 serait prise en défaut ci-dessus.
+		const verbe = lecon('fr-gram-clic-verbe').exerciseType;
+		expect(consignePourNiveau(verbe, 'cm1')).not.toBe(consignePourNiveau(verbe, 'ce2'));
 	});
 });
 

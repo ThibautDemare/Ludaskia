@@ -1002,6 +1002,39 @@ const ENVOIS: Reference<EnvoiJson>[] = [
 		code: 'AUWKmTCeXZE9TgNBDIWvYrmhmUQEum2pkDY0KVGK2VmzMcwf84NAUQ6EOAJduBjyZCNBSvu9sd833iOP2KGxbDb1mcqGJlRoeSBrCTvsCaYUaiTIIqNCr0tNIlkywUuD30hXGeJWqHCwwWTsHvezocOntJiSdgtZsjiPoXdKhg2drOUj0hxjHUQu4YW8aNgTKoxUWNpmp1uGwAkVjiFJlasUVnxGex1_PlHhErcKDQ-W7v0477lWK3WjbkUIPvPkZec6-JII7H9Q6KCEanYEOXiIiRxTAheKglg5t-5Iyc_dZSOKlo0u3KAvPg4oFzh-QU_QWEBIQDjg-A0dmCsx2MrwWhkETEZGnc5XuHwlFsg1SfCZWl404l4PZNuFLo_3J-NDcI7uxI5dSZUUZpoc-XIqD9vD9vAL',
 	},
 	{
+		// #777, critère 27 : l'ancre qui désigne le groupe attendu quand la phrase en porte
+		// deux voyage dans le lien, pour que le repli écrit de la séance la cite.
+		nom: 'leçon clicMot : groupe nominal désigné par son ancre (#777)',
+		json: {
+			id: 'clicGnAncre1',
+			libelle: 'Le groupe nominal',
+			nature: 'bilan',
+			variante: 'express',
+			niveau: 'cm1',
+			blocs: [
+				{
+					lecon: 'fr-gram-groupe-nominal',
+					exercices: [
+						{
+							type: 'clicMot',
+							tokens: ['Le', 'chien', 'regarde', 'les', 'oiseaux', '.'],
+							cibleIndices: [3, 4],
+							consigne:
+								'Montre le groupe nominal qui contient le mot « oiseaux » : touche son premier mot, puis son dernier mot.',
+							explication: 'Le groupe nominal est « les oiseaux ».',
+							parle: 'Le chien regarde les oiseaux.',
+							cibleLabel: 'le groupe nominal',
+							explicationNommeCible: true,
+							segment: true,
+							ancre: 'oiseaux',
+						},
+					],
+				},
+			],
+		},
+		code: 'AUVg4ZAOZZJBTgMxDEWvEnmdVkKwyg6xQEgtF0BdZNLP1CLjDEmmKqp6Io7AridDnk6h0GW-f579neyJ1-QoRA6Pci8h44YsRW4QI8jRAqbNaehhJHUsPpIl8XXIWmw4eiFLW5_ZS1UJuz6jFHXxFn5QdqfIJqZQyL3sKSIkIUevedZm381O_NkvHzvkwAEne_3oMU24TJUs1fQG0RotQJbChqFDZLQ-r1WJ0P6JC_ywI0tzWlkK3EQ8yXri3to7FZMUbkX5yyQ1w8T_ec37wCYkqQypWu5SNcdPM-HN8cs4U9MQNjAliekzOkZWmzX9wGVU18gyqfMxYR85-MrjIq52bFDGHhHloo9e7H0-P8uY20ypL63qG9MufINIjq4y_Z3gOXUdHvQCuZoHWCpoO0g9H71-C3I_Gz2sDqvDNw',
+	},
+	{
 		nom: 'leçon tuilesOrdre : ordre alphabétique (sans nature)',
 		json: {
 			id: 'alpha-init-1',
@@ -1493,5 +1526,32 @@ describe('couverture de la table de références (critère 36)', () => {
 		);
 		expect([...variantes].sort()).toEqual(['complet', 'express']);
 		expect(RESULTATS.length).toBeGreaterThan(0);
+	});
+});
+
+/* #777, critère 27 : le champ `ancre` d'un exercice « clique sur le mot » est FACULTATIF.
+   Les liens émis avant lui doivent se relire, et se relire SANS ancre (rien inventé). Les
+   références ci-dessus le tiennent déjà pour leur contenu entier ; ce test le dit pour ce
+   champ, et voit la référence qui, elle, en porte une. */
+describe('#777 — l’ancre d’un « clique sur le mot » est facultative', () => {
+	const clicMot = (json: EnvoiJson): ExerciceJson[] =>
+		(json.blocs ?? []).flatMap((b) => b.exercices).filter((ex) => ex.type === 'clicMot');
+
+	it('les liens clicMot émis SANS ancre se décodent, et sans ancre ; celui qui en porte une la garde', async () => {
+		const sans = ENVOIS.filter((r) => clicMot(r.json).some((ex) => !('ancre' in ex)));
+		const avec = ENVOIS.filter((r) => clicMot(r.json).some((ex) => 'ancre' in ex));
+		expect(sans.length, 'aucune référence clicMot sans ancre').toBeGreaterThanOrEqual(2);
+		expect(avec.length, 'aucune référence clicMot à ancre').toBeGreaterThanOrEqual(1);
+		for (const ref of [...sans, ...avec]) {
+			const lu = await decoderEnvoi(ref.code);
+			expect(lu.ok, ref.nom).toBe(true);
+			if (!lu.ok || lu.valeur.nature === 'dictee') continue;
+			const lus = lu.valeur.blocs.flatMap((b) => b.exercices).filter((ex) => ex.type === 'clicMot');
+			const attendus = clicMot(ref.json);
+			expect(
+				lus.map((ex) => (ex.type === 'clicMot' ? (ex.ancre ?? null) : null)),
+				ref.nom,
+			).toEqual(attendus.map((ex) => ex.ancre ?? null));
+		}
 	});
 });

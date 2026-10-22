@@ -5,7 +5,7 @@
    vrai-faux / comparaison de deux figures A-B), la comparaison n'arrivant
    qu'~25 % du temps (core/figures : renderQuadrillagePaire, `.quad-pair`).
    Sélecteurs stables : .figure svg, .sprint-choice, #lqcmFeedback, .quad-pair,
-   .quad-pair-item, .bilan-grid, #bcRun/#bcSelectNone.
+   .quad-pair-item, #bcRun/#bcSelectNone, #bpStage/#bpPasser (parcours, #777).
 
    ⚠ Leçon taguée CM1 (comme geometrie-cm1.spec.ts) : on amorce un profil CM1 et
    on navigue DIRECTEMENT sur la route finale `#lecon-...` (pas `gotoHash`, qui
@@ -21,7 +21,7 @@
    redirige silencieusement à l'accueil (`sprint.ts#lessonsForFilter` filtre les
    leçons `excludeFromSprint`, y compris pour un sprint personnalisé). Le mode
    « Tranquille » n'a pas ce filtre : on y génère « Beaucoup » (10) questions
-   d'un coup (page statique, tous les items affichés ensemble), avec ~94 % de
+   (#777 : parcours, une question par écran, chacune passée), avec ~94 % de
    chances qu'au moins l'une soit la comparaison (~25 %/tirage). Bornée à 5
    tentatives (re-composition fraîche), la probabilité résiduelle d'échec tombe
    à ~5×10⁻⁷ — négligeable, sans dépendre d'un seed applicatif inexistant ici. */
@@ -48,23 +48,44 @@ test('CM1 « Aire et périmètre » (QCM mono-mode) : quadrillage rendu, un clic
 	expect(errors).toEqual([]);
 });
 
-/* Compose un bilan « Tranquille » scopé à la SEULE leçon, 10 questions d'un coup
-   (composeur de bilan, #64, cf. pave-signes.spec.ts), et dit si la comparaison
-   (`.quad-pair`) est apparue parmi les 10. Le radio « Beaucoup » (`.bc-nbq-radio`)
-   est visuellement masqué (carte cliquable, cf. bilan.scss) → on clique la carte
-   `.bc-nbq-item` qui le contient plutôt que l'input lui-même. */
+/* Compose un bilan « Tranquille » scopé à la SEULE leçon, 10 questions (composeur de
+   bilan, #64, cf. pave-signes.spec.ts), le joue en PARCOURS (#777 : une question par
+   écran, plus de page unique) en passant chaque question, et dit si la comparaison
+   (`.quad-pair`) est apparue ; si oui, vérifie sur l'écran même ses deux figures A/B.
+   Le radio « Beaucoup » (`.bc-nbq-radio`) est visuellement masqué (carte cliquable,
+   cf. bilan.scss) → on clique la carte `.bc-nbq-item` qui le contient. */
 async function composeBilanTranquille(page: Page): Promise<boolean> {
 	await gotoHash(page, 'bilan-cat-math-grandeurs-mesures');
 	await page.locator('#bcSelectNone').click();
 	await page.locator('.bc-lesson-check[value="mes-aire-perimetre"]').check();
 	await page.locator('.bc-nbq-item:has(.bc-nbq-radio[value="10"])').click();
 	await page.locator('#bcRun').click();
-	await expect(page.locator('.bilan-grid')).toBeVisible();
-	return (await page.locator('.quad-pair').count()) > 0;
+	await expect(page.locator('#sheets .bilan-parcours')).toBeVisible();
+	for (let garde = 0; garde < 40; garde++) {
+		await page.locator('#bpStage, .bp-fin-partie, .bp-recap').first().waitFor({ state: 'visible' });
+		if (await page.locator('.bp-fin-partie, .bp-recap').first().isVisible()) return false;
+		const paires = await page.locator('#bpStage .quad-pair').count();
+		if (paires > 0) {
+			// Chaque comparaison affiche exactement 2 figures (A et B) côte à côte.
+			await expect(page.locator('#bpStage .quad-pair-item')).toHaveCount(paires * 2);
+			return true;
+		}
+		const avant = await page.locator('.bp-question-num').innerText();
+		await page.locator('#bpPasser').click();
+		await page.waitForFunction(
+			(a) =>
+				!document.querySelector('#bpStage') ||
+				document.querySelector('.bp-question-num')?.textContent !== a,
+			avant,
+		);
+	}
+	return false;
 }
 
-test('sous-type comparaison : deux quadrillages A/B se rendent côte à côte', async ({ page }) => {
-	test.setTimeout(60_000);
+test('sous-type comparaison : deux quadrillages A/B se rendent côte à côte (#777 : dans le parcours)', async ({
+	page,
+}) => {
+	test.setTimeout(90_000);
 	const errors = watchErrors(page);
 
 	let found = false;
@@ -72,11 +93,6 @@ test('sous-type comparaison : deux quadrillages A/B se rendent côte à côte', 
 		found = await composeBilanTranquille(page);
 	}
 	expect(found).toBe(true);
-	// Parmi les 10 questions, au moins une comparaison (possiblement plusieurs) : chacune
-	// affiche exactement 2 figures (A et B) côte à côte.
-	const nbPaires = await page.locator('.quad-pair').count();
-	expect(nbPaires).toBeGreaterThan(0);
-	await expect(page.locator('.quad-pair-item')).toHaveCount(nbPaires * 2);
 
 	expect(errors).toEqual([]);
 });

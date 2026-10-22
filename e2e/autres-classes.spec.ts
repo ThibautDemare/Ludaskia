@@ -521,16 +521,28 @@ test('« Je choisis mes leçons » : en vue CE2, seules les leçons CE2 de la ca
 	expect(errors).toEqual([]);
 });
 
-/* Joue un bilan express de la page courante, y remplit un champ, puis quitte vers l'accueil. */
-async function jouerExpressEtQuitter(page: Page): Promise<void> {
+/* #777 : lance un bilan express de la page courante ; il s'ouvre en PARCOURS guidé (une
+   question par écran), plus en page unique. */
+async function lancerExpress(page: Page): Promise<void> {
 	await page.locator('[data-act="express"]').click();
-	const champ = page.locator('#sheets input.ans').first();
-	await expect(champ).toBeVisible();
-	await champ.fill('1');
+	await expect(page.locator('#sheets .bilan-parcours')).toBeVisible();
+	await expect(page.locator('#bpStage')).toBeVisible();
+}
+
+/* Joue un bilan express de la page courante, passe sa première question (une question
+   traitée : de quoi laisser un instantané), puis quitte vers l'accueil. */
+async function jouerExpressEtQuitter(page: Page): Promise<void> {
+	await lancerExpress(page);
+	const avant = await page.locator('.bp-question-num').innerText();
+	await page.locator('#bpPasser').click();
+	await expect(page.locator('.bp-question-num')).not.toHaveText(avant);
 	await gotoHash(page, 'accueil'); // quitter l'exercice (hashchange : capture de reprise)
 	await expect(page.locator('#leconDuJour')).toBeVisible();
 }
 
+// #777 (catégorie B) : exigence inchangée (un bilan en classe choisie ne laisse pas de reprise),
+// rejouée sur le parcours ; le contrôle (même geste dans la classe du profil = une carte) garde
+// le test falsifiable, et vaut aussi pour la reprise du parcours (#777 critère 16).
 test('Bilan en vue CE2 : quitté, il ne laisse aucune carte « À continuer » (#772 crit. 4, précision 3)', async ({
 	page,
 }) => {
@@ -562,18 +574,24 @@ test('Bilan en vue CE2 : quitté, il ne laisse aucune carte « À continuer » (
 	expect(errors).toEqual([]);
 });
 
+// #777 (catégorie B) : exigence inchangée (une reprise en attente n'est pas proposée dans une
+// classe choisie ; le bilan part neuf), rejouée sur le parcours. L'instantané n'est plus un
+// `seedReprise` de grille (format d'avant le parcours) : on le FABRIQUE en jouant un vrai
+// bilan dans la classe du profil, ce qui reste vrai quel que soit le format du parcours.
 test("Bilan en vue CE2 : un instantané CM1 en attente n'ouvre pas « Continuer / Recommencer » (#772 crit. 4, précision 3)", async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(seedProfil('cm1'));
-	await page.addInitScript(
-		seedReprise('bilan-express-math-numeration', 'math-numeration', 'Bilan express — Numération'),
-	);
 	await seedAideVue(page);
 	await gotoHash(page, CAT_NUM);
 
+	// Instantané réel : un bilan express commencé dans la classe du profil, puis quitté.
+	await jouerExpressEtQuitter(page);
+	await expect(page.locator('.reprise-card')).toHaveCount(1);
+
 	// Contrôle : dans la classe du profil, l'offre existe bien (sinon l'absence ne prouve rien).
+	await gotoHash(page, CAT_NUM);
 	await page.locator('[data-act="express"]').click();
 	await expect(page.locator(DIALOGUE)).toBeVisible();
 	await page.keyboard.press('Escape');
@@ -584,22 +602,26 @@ test("Bilan en vue CE2 : un instantané CM1 en attente n'ouvre pas « Continuer 
 	await expect(page.locator('.lesson-item').first()).toBeVisible();
 	await radio(page, 'ce2').click();
 	await expect(radio(page, 'ce2')).toHaveAttribute('aria-checked', 'true');
-	await page.locator('[data-act="express"]').click();
-	// Le bilan part neuf : ses champs sont là, vides, sans dialogue.
-	await expect(page.locator('#sheets input.ans').first()).toBeVisible();
+	await lancerExpress(page);
+	// Le bilan part neuf : première partie, première question, sans dialogue.
 	await expect(page.locator(DIALOGUE)).toHaveCount(0);
-	await expect(page.locator('#sheets input.ans').first()).toHaveValue('');
+	await expect(page.locator('.bp-partie-num')).toHaveText(/1\D+\d+/);
+	await expect(page.locator('.bp-question-num')).toHaveText(/^\s*\D*1\D+\d+/);
 
 	expect(errors).toEqual([]);
 });
 
+// #777 (catégorie C) : l'exigence porte sur la classe dans laquelle une REPRISE se joue, pas sur
+// un bilan. L'instantané de grille d'un bilan (format d'avant le parcours) n'est plus ce que
+// l'appli écrit ; une reprise de FICHE de leçon garde ce format (`kind: 'grille'`) : le test
+// l'utilise à la place.
 test('Reprise lancée depuis une page en vue CE2 : elle se joue dans la classe du profil, la catégorie rouvre en CM1 (#772 précision 2)', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
 	await page.addInitScript(seedProfil('cm1'));
 	await page.addInitScript(
-		seedReprise('bilan-express-math-numeration', 'math-numeration', 'Bilan express — Numération'),
+		seedReprise('lecon-num-comparer', 'math-numeration', 'Je compare les nombres', 'num-comparer'),
 	);
 	await seedAideVue(page);
 	await gotoHash(page, CAT_NUM);
@@ -642,7 +664,8 @@ test('Favori lancé depuis une page en vue CE2 : il se joue dans la classe du pr
 	await expect(radio(page, 'ce2')).toHaveAttribute('aria-checked', 'true');
 
 	await page.locator('#catFavoris [data-run]').first().click();
-	await expect(page.locator('#sheets input.ans').first()).toBeVisible();
+	// #777 (catégorie B) : un favori s'ouvre en parcours guidé, plus en page unique de champs.
+	await expect(page.locator('#sheets .bilan-parcours')).toBeVisible();
 
 	await rejouerRoute(page);
 	await expect(radio(page, 'cm1')).toHaveAttribute('aria-checked', 'true');

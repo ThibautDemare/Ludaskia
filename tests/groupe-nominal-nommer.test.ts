@@ -1086,10 +1086,11 @@ describe('Vocabulaire et périmètre — critères 9, 10 et 13 (#731)', () => {
 	});
 
 	it('repli non interactif (fiche / bilan) : le groupe entier reste lisible dans la question', () => {
-		// Le repli partagé des appariements pose « Quel mot va avec « X » ? ». Pour CETTE
-		// leçon, « X » seul est insuffisant : « le » hors de son groupe peut être un
-		// pronom, et l'enfant ne peut pas répondre. Le critère 1 (« le groupe est montré
-		// déjà délimité ») vaut aussi hors du runner.
+		// Hors du runner, le repli pose la question sur UN mot du groupe (depuis #777,
+		// critère 2 : sa nature, étiquettes en choix). Pour CETTE leçon, ce mot seul est
+		// insuffisant : « le » hors de son groupe peut être un pronom, et l'enfant ne peut
+		// pas répondre. Le critère 1 (« le groupe est montré déjà délimité ») vaut aussi
+		// hors du runner.
 		const def = lecon();
 		const fautes: string[] = [];
 		for (const seed of [1, 9, 55, 210, 777]) {

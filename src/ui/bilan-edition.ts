@@ -22,6 +22,7 @@ import type { BilanConfig } from '../core/catalog';
 import { bilanFavoriKey, hasResumeFor, removeResumeFor } from '../core/resume';
 import { renderBilanConfigScreen } from './bilan';
 import { consulterALaProchaineEntree } from './encadrant-commun';
+import { preparerRetourEdition } from './encadrant-favoris';
 import { uiConfirm } from './ui-modal';
 
 /** Hash de l'éditeur. Il ne porte aucun identifiant, à dessein (cf. en-tête). */
@@ -58,28 +59,33 @@ export function oublierEditionFavori(): void {
 	rendu = null;
 }
 
-/** Rend l'éditeur du favori retenu dans `el`. `false` s'il n'y a rien à éditer (pas de
+/** Issue de `afficherEditionFavori` : formulaire rendu à neuf, formulaire déjà en place et
+    gardé tel quel (changement de profil par la barre), ou rien à éditer. */
+export type AffichageEdition = 'rendu' | 'conserve' | 'absent';
+
+/** Rend l'éditeur du favori retenu dans `el`. `'absent'` s'il n'y a rien à éditer (pas de
     crayon cliqué, ou favori ou profil disparus entre-temps) : l'appelant redirige. */
-export function afficherEditionFavori(el: HTMLElement): boolean {
+export function afficherEditionFavori(el: HTMLElement): AffichageEdition {
 	const edition = enCours;
-	if (!edition) return false;
+	if (!edition) return 'absent';
 	const proprietaire = listProfiles().find((p) => p.uuid === edition.uuid);
 	const favori = proprietaire
 		? loadBilansFor(edition.uuid).find((b) => b.id === edition.id)
 		: undefined;
 	if (!proprietaire || !favori) {
 		oublierEditionFavori();
-		return false;
+		return 'absent';
 	}
-	if (rendu?.edition === edition && rendu.form.isConnected && el.contains(rendu.form)) return true;
+	if (rendu?.edition === edition && rendu.form.isConnected && el.contains(rendu.form))
+		return 'conserve';
 	renderBilanConfigScreen(el, undefined, {
 		favori,
 		proprietaire: proprietaire.name,
 		enregistrer: (config) => enregistrer(edition, config),
-		annuler: () => revenir(edition),
+		annuler: () => revenir(edition, null),
 	});
 	rendu = { edition, form: el.querySelector<HTMLElement>('#bilanConfigForm')! };
-	return true;
+	return 'rendu';
 }
 
 const FAVORI_DISPARU = "Ce bilan favori n'existe plus : il a été supprimé entre-temps.";
@@ -98,7 +104,7 @@ async function enregistrer(edition: EditionEnCours, config: BilanConfig): Promis
 	if (abandon) {
 		const prenom = listProfiles().find((p) => p.uuid === edition.uuid)?.name ?? '';
 		const ok = await uiConfirm({
-			title: `${prenom} a commencé « ${avant.label} »`,
+			title: `${prenom} a une partie en cours de « ${avant.label} »`,
 			message: `Les réponses déjà données seront perdues : au prochain lancement, ${prenom} commencera la nouvelle version.`,
 			confirmLabel: 'Enregistrer quand même',
 			destructive: true,
@@ -110,18 +116,20 @@ async function enregistrer(edition: EditionEnCours, config: BilanConfig): Promis
 	// Dans cet ordre : une reprise effacée pour un favori resté inchangé ferait perdre sa
 	// partie à l'enfant pour rien.
 	if (abandon) removeResumeFor(edition.uuid, cle);
-	revenir(edition);
+	revenir(edition, `Bilan « ${config.label} » enregistré.`);
 	return null;
 }
 
 /* Retour à l'espace encadrant, sur le profil PROPRIÉTAIRE (critères 6 et 10). `replace` et
    non une nouvelle entrée : l'éditeur ne reste pas dans l'historique, et « Précédent » ne
-   ramène pas vers lui (critère 14). */
-function revenir(edition: EditionEnCours): void {
+   ramène pas vers lui (critère 14). Le focus revient au crayon du favori édité, et
+   l'enregistrement est annoncé ; « Annuler » n'annonce rien (`annonce` à `null`). */
+function revenir(edition: EditionEnCours, annonce: string | null): void {
 	if (enCours !== edition) return;
 	// Consommée tout de suite (un second clic n'écrit plus rien) ; le formulaire, lui, part
 	// quand le routeur traite le nouveau hash (`oublierEditionFavori`).
 	enCours = null;
 	consulterALaProchaineEntree(edition.uuid);
+	preparerRetourEdition(edition.id, annonce);
 	location.replace('#' + edition.retour);
 }

@@ -32,6 +32,7 @@ import {
 	type SeanceEtape,
 } from '../core/seance';
 import { uiConfirm } from './ui-modal';
+import { DELAI_ANNONCE } from './encadrant-seance-dictees';
 import { html, type SafeHtml, joindre, drapeau, VIDE } from '../core/html';
 
 /* Bilans favoris du profil CONSULTÉ (#636), dans l'ordre d'enregistrement. Lus par UUID :
@@ -127,11 +128,16 @@ export function retirerFavoriDesEtapes(uuid: string, favoriId: string): void {
 
 export function gestionFavorisHTML(consulte: Profile, defs: SeanceDef[]): SafeHtml {
 	const favoris = favorisProfil(consulte.uuid);
-	const titre = html`<h3 class="enc-h3">${icon('cards')} Bilans favoris de ${consulte.name}</h3>`;
+	// `tabindex="-1"` : le titre reçoit le focus au retour de l'éditeur quand le favori édité
+	// n'existe plus (#778, cf. `appliquerRetourEdition`). La région `status` est rendue VIDE
+	// avec la section, puis remplie : créée déjà pleine, elle ne serait pas annoncée.
+	const titre = html`<h3 class="enc-h3" tabindex="-1">${icon('cards')} Bilans favoris de ${consulte.name}</h3>
+      <p class="sr-only enc-favoris-statut" role="status" aria-live="polite"></p>`;
 	if (!favoris.length)
 		return html`<div class="enc-block enc-seance-favoris-gestion">
       ${titre}
-      <p class="enc-hint">${consulte.name} n'a pas encore enregistré de bilan favori. Ils se composent depuis son écran, et vous pouvez les modifier ou les supprimer ici.</p>
+      <p class="enc-favoris-vide">${consulte.name} n'a pas encore enregistré de bilan favori.</p>
+      <p class="enc-hint">Les bilans favoris se composent depuis son écran ; vous pourrez ensuite les modifier ou les supprimer ici.</p>
     </div>`;
 	const lignes = joindre(
 		favoris.map((b) => {
@@ -203,6 +209,49 @@ export async function supprimerFavori(consulte: Profile, id: string): Promise<bo
 	// suppression échouait, des étapes amputées d'une cible qui existe encore.
 	retirerFavoriDesEtapes(consulte.uuid, id);
 	return true;
+}
+
+/* ---------- Retour de l'éditeur d'un favori (#778) ----------
+   L'éditeur vit hors de l'espace encadrant, qui est entièrement re-rendu au retour : le
+   crayon cliqué n'existe plus, et le focus retomberait sur `<body>`. L'éditeur dépose donc
+   ici, en partant, de quoi reprendre l'adulte où il en était ; le premier rendu de l'espace
+   le CONSOMME (même modèle que `consulterALaProchaineEntree`). */
+interface RetourEdition {
+	id: string; // favori édité : son crayon reprend le focus
+	annonce: string | null; // message pour le lecteur d'écran (rien après « Annuler »)
+}
+let retourEdition: RetourEdition | null = null;
+
+export function preparerRetourEdition(id: string, annonce: string | null): void {
+	retourEdition = { id, annonce };
+}
+
+/** À appeler une fois l'espace rendu dans `racine`. Focus sur le crayon du favori édité,
+    ou sur le titre de la section s'il n'existe plus (supprimé entre-temps) ; puis annonce,
+    différée pour que la région `status`, qui vient d'être créée, soit déjà en place. */
+export function appliquerRetourEdition(racine: HTMLElement): void {
+	const retour = retourEdition;
+	if (!retour) return;
+	retourEdition = null;
+	const ligne = [...racine.querySelectorAll<HTMLElement>('.enc-favori-gere')].find(
+		(l) => l.dataset.id === retour.id,
+	);
+	const cible =
+		ligne?.querySelector<HTMLElement>('[data-act="seance-favori-edit"]') ??
+		racine.querySelector<HTMLElement>('.enc-seance-favoris-gestion h3');
+	// Au frame suivant : la vue d'arrivée remonte la page en haut juste après le rendu, et
+	// ce défilement emporterait la cible hors de l'écran.
+	requestAnimationFrame(() => {
+		if (!cible?.isConnected) return;
+		cible.focus({ preventScroll: true });
+		cible.scrollIntoView({ block: 'center' });
+	});
+	const annonce = retour.annonce;
+	if (!annonce) return;
+	window.setTimeout(() => {
+		const zone = racine.querySelector<HTMLElement>('.enc-favoris-statut');
+		if (zone) zone.textContent = annonce;
+	}, DELAI_ANNONCE);
 }
 
 /** Favoris d'un profil sous la forme que le cœur attend (#636) : de quoi savoir si une étape

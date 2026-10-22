@@ -129,21 +129,67 @@ function readFormConfig(form: HTMLElement): BilanConfig | null {
 	return { id: '', label: 'Bilan personnalisé', lessonIds, questionsPerLesson, mode, categoryId };
 }
 
+/* ---------- Refus du composeur (#778) ---------- */
+
+/* Zone `#bcErr` (role="alert"). Réécrire le MÊME message ne change pas le texte, et un
+   lecteur d'écran ne dirait rien : l'enfant qui réessaie sans comprendre n'entendrait le
+   refus qu'une fois. On vide donc, puis on réécrit au frame suivant. */
+interface ZoneErreur {
+	montrer(message: string): void;
+	effacer(): void;
+}
+function zoneErreur(el: HTMLElement): ZoneErreur {
+	let attente = 0;
+	return {
+		montrer(message) {
+			cancelAnimationFrame(attente);
+			el.textContent = '';
+			attente = requestAnimationFrame(() => {
+				el.textContent = message;
+			});
+		},
+		effacer() {
+			cancelAnimationFrame(attente);
+			el.textContent = '';
+		},
+	};
+}
+
+/* Nom du bilan (« Garder » et « Enregistrer »), ou `null` s'il est vide. Le champ est alors
+   signalé : focus, `aria-invalid`, et le message relié par `aria-describedby` (le champ n'a
+   pas d'autre description). Le signalement tombe dès que l'action est rejouée avec un nom,
+   même si elle échoue ensuite pour une autre raison : c'est le nom qu'il qualifie. */
+function lireNom(el: HTMLElement, erreur: ZoneErreur): string | null {
+	const champ = el.querySelector<HTMLInputElement>('#bcLabel')!;
+	const nom = champ.value.trim();
+	if (nom) {
+		champ.removeAttribute('aria-invalid');
+		champ.removeAttribute('aria-describedby');
+		return nom;
+	}
+	champ.setAttribute('aria-invalid', 'true');
+	champ.setAttribute('aria-describedby', 'bcErr');
+	erreur.montrer('Entre un nom pour enregistrer le bilan.');
+	champ.focus();
+	return null;
+}
+
 /* Lit la sélection et la VALIDE : au moins une leçon, et en mode Sprint au moins une leçon
-   qui se joue en sprint (#778). Le message va dans `errEl`. Partagé par Lancer, Garder et
-   Enregistrer : aucun des trois ne laisse passer ce qu'un autre refuse. */
-function lireSelection(form: HTMLElement, errEl: HTMLElement): BilanConfig | null {
+   qui se joue en sprint. Partagé par Lancer, Garder et Enregistrer : aucun des trois ne
+   laisse passer ce qu'un autre refuse. */
+function lireSelection(form: HTMLElement, erreur: ZoneErreur): BilanConfig | null {
 	const config = readFormConfig(form);
 	if (!config) {
-		errEl.textContent = 'Coche au moins une leçon.';
+		erreur.montrer('Coche au moins une leçon.');
 		return null;
 	}
 	if (bilanMode(config) === 'sprint' && !sprintJouable(config.lessonIds)) {
-		errEl.textContent =
-			'Aucune des leçons choisies ne se joue en sprint. Ajoute une leçon sans la mention « pas en sprint », ou choisis Tranquille.';
+		erreur.montrer(
+			'Aucune des leçons choisies ne se joue en sprint. Ajoute une leçon sans la mention « pas en sprint », ou choisis le mode Tranquille.',
+		);
 		return null;
 	}
-	errEl.textContent = '';
+	erreur.effacer();
 	return config;
 }
 
@@ -277,21 +323,18 @@ function cocherFavori(form: HTMLElement, favori: BilanConfig): void {
 function brancherEdition(
 	el: HTMLElement,
 	form: HTMLElement,
-	errEl: HTMLElement,
+	erreur: ZoneErreur,
 	edition: EditionComposeur,
 ): void {
 	el.querySelector('#bcUpdate')!.addEventListener('click', () => {
-		const label = el.querySelector<HTMLInputElement>('#bcLabel')!.value.trim();
-		if (!label) {
-			errEl.textContent = 'Entre un nom pour enregistrer le bilan.';
-			return;
-		}
-		const config = lireSelection(form, errEl);
+		const label = lireNom(el, erreur);
+		if (!label) return;
+		const config = lireSelection(form, erreur);
 		if (!config) return;
 		config.id = edition.favori.id;
 		config.label = label;
-		void edition.enregistrer(config).then((erreur) => {
-			if (erreur) errEl.textContent = erreur;
+		void edition.enregistrer(config).then((message) => {
+			if (message) erreur.montrer(message);
 		});
 	});
 	el.querySelector('#bcCancel')!.addEventListener('click', () => edition.annuler());
@@ -449,7 +492,7 @@ export function renderBilanConfigScreen(
     </div>`.balisage;
 
 	const form = el.querySelector<HTMLElement>('#bilanConfigForm')!;
-	const errEl = el.querySelector<HTMLElement>('#bcErr')!;
+	const erreur = zoneErreur(el.querySelector<HTMLElement>('#bcErr')!);
 	const countEl = el.querySelector<HTMLElement>('#bcCount')!;
 
 	// Groupes (matière / catégorie / rubrique) : chaque groupe porte une case
@@ -544,10 +587,10 @@ export function renderBilanConfigScreen(
 		el.querySelector<HTMLElement>('#bcSaved')?.replaceChildren();
 		const config = readFormConfig(form);
 		if (!config) {
-			errEl.textContent = 'Coche au moins une leçon.';
+			erreur.montrer('Coche au moins une leçon.');
 			return;
 		}
-		errEl.textContent = '';
+		erreur.effacer();
 		const isAll = config.questionsPerLesson === 'all';
 		// #41 : si la case est cochée, on ajoute un corrigé (mêmes items, réponses révélées).
 		const corrige = el.querySelector<HTMLInputElement>('#bcCorrige')?.checked ?? false;
@@ -565,14 +608,14 @@ export function renderBilanConfigScreen(
 	});
 
 	if (edition) {
-		brancherEdition(el, form, errEl, edition);
+		brancherEdition(el, form, erreur, edition);
 		return;
 	}
 
 	const savedEl = el.querySelector<HTMLElement>('#bcSaved')!;
 
 	el.querySelector('#bcRun')!.addEventListener('click', () => {
-		const config = lireSelection(form, errEl);
+		const config = lireSelection(form, erreur);
 		if (!config) return;
 		if (bilanMode(config) === 'sprint') {
 			config.label = sprintLabel;
@@ -588,12 +631,9 @@ export function renderBilanConfigScreen(
 	// « C'est parti ! » reste disponible (en deux gestes : enregistrer puis lancer).
 	el.querySelector('#bcSave')!.addEventListener('click', () => {
 		savedEl.textContent = '';
-		const label = el.querySelector<HTMLInputElement>('#bcLabel')!.value.trim();
-		if (!label) {
-			errEl.textContent = 'Entre un nom pour enregistrer le bilan.';
-			return;
-		}
-		const config = lireSelection(form, errEl);
+		const label = lireNom(el, erreur);
+		if (!label) return;
+		const config = lireSelection(form, erreur);
 		if (!config) return;
 		config.label = label;
 		config.id = genId();

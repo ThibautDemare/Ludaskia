@@ -471,6 +471,14 @@ export interface ExerciseType {
 	consigne?: ConsigneFiche;
 	/** Lexique d'affichage du runner « problème » (#95) — voir `ProbLexique`. */
 	probLexique?: ProbLexique;
+	/** Question du REPLI d'un « relier » À MOTS hors de son widget (#777, critères 2 et 20) :
+	 *  fiche, bilan, impression, où il n'y a plus deux colonnes à relier. Reçoit le mot de
+	 *  gauche tiré et rend une question qui NOMME la tâche (« Quel mot est de la même famille
+	 *  que « poisson » ? ») ; la réponse se choisit ensuite parmi la colonne de droite
+	 *  (`itemDepuisExercice`). Absente ⇒ « Quel mot va avec « X » ? », qui ne dit pas selon
+	 *  quoi : toute leçon « relier » à mots doit la déclarer. Sans objet pour un « relier » à
+	 *  ÉTIQUETTES, dont les étiquettes proposées nomment la tâche. */
+	questionRelier?: (mot: string) => string;
 	/** Niveaux scolaires couverts (#225), renseigné par les combinateurs multi-niveaux
 	 *  (`calibrated`, `bankByLevel`) : le catalogue en dérive `LessonDef.levels`. */
 	levels?: SchoolLevel[];

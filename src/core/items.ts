@@ -52,10 +52,12 @@ export interface Item {
 	// dans le champ atteignent la même réponse par d'autres chemins), `renderItem` rend un
 	// champ `.ans-romain`, et `ui/session.ts` nomme la règle enfreinte après une erreur.
 	saisieRomaine?: boolean;
-	// QCM (#289) : choix conservés pour le rendu PAPIER en cases à cocher. À l'écran, le
-	// QCM est joué par son runner interactif (qui lit l'Exercise, pas l'Item) ; ces champs
-	// ne servent qu'au chemin fiche/bilan IMPRIMÉ. `choicesView` (vue riche) est aligné
-	// par index sur `choices` (la valeur). Voir genLessonItem et renderItem.
+	// QCM (#289) : choix proposés. Sur PAPIER, des cases à cocher ; à l'ÉCRAN, hors runner
+	// (fiche, bilan, séance partagée, révision d'erreurs), des boutons radio — sous la
+	// question pour un QCM sans trou (#734), sous la phrase dont le trou affiche le choix
+	// touché pour un QCM à trou (#777). Le runner QCM, lui, lit l'Exercise, pas l'Item.
+	// `choicesView` (vue riche) est aligné par index sur `choices` (la valeur). Voir
+	// genLessonItem et renderItem.
 	choices?: string[];
 	choicesView?: ChoiceView[];
 	_lesson?: string;
@@ -360,7 +362,8 @@ export const TEXT_ANSWER_INPUT_ATTRS = brut(
    cocher ☐. Le libellé est le texte échappé, ou la vue riche `choicesView` de confiance
    (fraction empilée, terminaison surlignée, image de symétrie), alignée par index. La
    consigne d'action « Coche… » est portée par la fiche / le bloc de bilan, pas répétée
-   ici. Réservé à l'impression : à l'écran, le QCM est joué par son runner interactif. */
+   ici. Réservé à l'impression : à l'écran, le QCM se joue en boutons radio
+   (`qcmChoixHTML`, `qcmTrouHTML`) ou dans son runner. */
 function qcmCheckboxHTML(it: Item, ctx: RenderContext): SafeHtml {
 	const answer = String(it.answer);
 	const lis = joindre(
@@ -408,6 +411,33 @@ export const poserAuTrou = (texte: SafeHtml, motif: string | RegExp, champ: Safe
 export function qcmChoixHTML(it: Item, ctx: RenderContext): SafeHtml {
 	const id = nextInputId(ctx);
 	ctx.items[id] = it;
+	return html`${figureBlock(it.figure)}<p class="fiche-question">${enonceTexte(it.text)}</p>
+    ${groupeChoixHTML(it, ctx, id)}`;
+}
+
+/** QCM À TROU rendu à l'écran hors runner (#777, critère 1) : la phrase, dont le `@` devient
+ *  un TROU (`.fiche-trou`), puis ses choix en boutons radio. Avant, le trou était un champ
+ *  texte et les choix n'apparaissaient nulle part : « ____ table » sans « la / le / les »,
+ *  ou « « faire » : ____ » qui n'acceptait que « 3e groupe ».
+ *
+ *  Même mécanique que le QCM sans trou (`groupeChoixHTML`) : UN champ `.ans` caché porte la
+ *  réponse et reste la seule clé de correction, de marquage, de journal et de reprise. Le
+ *  trou n'est qu'un AFFICHAGE : le câblage délégué (`initSession`) y recopie le choix touché,
+ *  pour que la phrase se lise complète. Il n'a donc pas d'id à lui, seulement le `data-for`
+ *  de son champ. */
+export function qcmTrouHTML(it: Item, ctx: RenderContext): SafeHtml {
+	const id = nextInputId(ctx);
+	ctx.items[id] = it;
+	const trou = html`<span class="fiche-trou"${attribut('data-for', id)}></span>`;
+	return html`${figureBlock(it.figure)}<p class="fiche-question">${poserAuTrou(enonceTexte(it.text), '@', trou)}</p>
+    ${groupeChoixHTML(it, ctx, id)}`;
+}
+
+/* Les choix d'un QCM joué à l'écran hors runner (#734, #777), communs au QCM sans trou et au
+   QCM à trou : un groupe de boutons radio nommé par l'énoncé, le champ `.ans` CACHÉ qu'il
+   alimente (`id`, déjà enregistré dans `ctx.items` par l'appelant) et la marque ✓/✗.
+   `data-attendue` porte le LIBELLÉ de la bonne réponse quand les choix ont une vue riche. */
+function groupeChoixHTML(it: Item, ctx: RenderContext, id: string): SafeHtml {
 	const choices = it.choices ?? [];
 	const options = joindre(
 		choices.map((valeur, i) => {
@@ -418,8 +448,7 @@ export function qcmChoixHTML(it: Item, ctx: RenderContext): SafeHtml {
 	const attendue = it.choicesView?.length
 		? attribut('data-attendue', libelleChoix(choices, it.choicesView, String(it.answer)))
 		: VIDE;
-	return html`${figureBlock(it.figure)}<p class="fiche-question">${enonceTexte(it.text)}</p>
-    <fieldset class="fiche-choix"${attribut('data-for', id)}><legend class="sr-only">${nomChampReponse(it)}</legend>${options}</fieldset>
+	return html`<fieldset class="fiche-choix"${attribut('data-for', id)}><legend class="sr-only">${nomChampReponse(it)}</legend>${options}</fieldset>
     <input type="hidden" class="ans"${attribut('id', id)}${attribut('data-answer', String(it.answer))}${attendue}${lessonAttr(ctx)}><span class="mark"${attribut('data-for', id)}></span>`;
 }
 
@@ -429,9 +458,10 @@ export function renderItem(it: Item, ctx: RenderContext, extra = ''): SafeHtml {
 	// QCM imprimable (#289) : un item porteur de `choices` est rendu en cases à cocher,
 	// à trou ou non, en impression.
 	if (ctx.printMode && estItemQcm(it)) return qcmCheckboxHTML(it, ctx);
-	// À l'écran, un QCM SANS trou se joue par ses choix (`qcmChoixHTML`). Un QCM à trou
-	// (`@` : homophones, m/b/p…) garde son champ au trou, où l'enfant écrit le mot.
-	if (estItemQcm(it) && !it.text.includes('@')) return qcmChoixHTML(it, ctx);
+	// À l'écran, un QCM se joue par ses choix : sous la question s'il n'a pas de trou
+	// (`qcmChoixHTML`, #734), sous la phrase dont le trou affiche le choix touché s'il en a
+	// un (`qcmTrouHTML`, #777 : homophones, m/b/p, groupe d'un verbe, accords…).
+	if (estItemQcm(it)) return it.text.includes('@') ? qcmTrouHTML(it, ctx) : qcmChoixHTML(it, ctx);
 	const id = nextInputId(ctx);
 	ctx.items[id] = it;
 	// Réponse exposée pour la révélation après correction (échappée pour les attributs).

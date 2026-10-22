@@ -598,6 +598,16 @@ export const NUMERATION_LESSONS: NumerationLessonDef[] = [
 		// est la SUITE des deux précédentes (mêmes gestes, nombres plus grands). 1ʳᵉ personne
 		// comme ses voisines : une série homogène se survole plus vite.
 		label: "Je compare, j'encadre, j'intercale jusqu'à 10 000",
+		// Au CM1, la même leçon tire de GRANDS nombres (comparer et encadrer, autour du million) :
+		// « jusqu'à 10 000 » y coiffait « 917 554 » (#777, critère 3). Le libellé CM1 dit ce
+		// qui est servi — deux gestes, l'intercalation n'étant tirée qu'au CE2 —, sans borne
+		// chiffrée qui mentirait ; il reprend les « grands nombres » de l'ordre CM1 (#240).
+		// Le CE2 est déclaré aussi, comme pour les leçons « clique sur le mot » (#436) : chaque
+		// classe servie lit un libellé écrit pour elle.
+		labelNiveau: {
+			ce2: "Je compare, j'encadre, j'intercale jusqu'à 10 000",
+			cm1: "Je compare et j'encadre les grands nombres",
+		},
 		motsCles: ['10000', 'dix mille', 'comparer', 'encadrer', 'intercaler'],
 		// CE2 : 4 chiffres réservés à cette leçon ; encadrement aussi au millier.
 		// CM1 (#240) : grandes plages (comparer/encadrer jusqu'au million).

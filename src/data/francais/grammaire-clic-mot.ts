@@ -56,7 +56,6 @@
    - interdits d'ambiguïté propres à chaque leçon (homographes/homophones exclus)
      documentés au fil des banques, dans le module de leur classe.
    ============================================================ */
-import type { SchoolLevel } from '../../core/catalog';
 import { etayageRedige, type LessonInput } from '../_shared';
 import { clicMotType, MODE_SEGMENT } from './grammaire-clic-mot-moteur';
 import { CONSIGNE_GN, CIBLE_GN, PHRASES_GN } from './grammaire-groupe-nominal';
@@ -408,16 +407,37 @@ const ETAYAGE_SUJET = etayageRedige(
 );
 
 /** Entrée de leçon « clique sur le mot » : une leçon servie à deux niveaux peut se NOMMER
-    différemment selon la classe (#436, cf. `LessonDef.labelNiveau`). Le catalogue reporte
-    `labelNiveau` tel quel ; les autres familles de leçons n'ont rien à déclarer. */
-export interface ClicMotLessonInput extends LessonInput {
-	labelNiveau?: Partial<Record<SchoolLevel, string>>;
-}
+    différemment selon la classe (#436, `labelNiveau`), et chacune porte un libellé
+    IMPRIMÉ sans geste d'écran (#777, `labelImpression` / `labelImpressionNiveau`) : sur
+    papier, on ne « clique » sur rien. Champs communs à `LessonInput`, que le catalogue
+    reporte tels quels. */
+export type ClicMotLessonInput = LessonInput;
+
+/* ---------- Forme ÉCRITE (#777, critère 19) ----------
+   Hors du runner — fiche, bilan, impression —, la phrase n'est plus touchée : elle est
+   repliée en « Recopie <cible> : « … » » (`itemDepuisExercice`). Le titre et la consigne de
+   fiche disent donc « Trouve » et « Recopie », jamais « Clique » : sur papier, il n'y a rien
+   à toucher. Les libellés et consignes d'ÉCRAN (runner) restent ceux du geste.
+   Le patron « Trouve <la cible> » répond terme à terme au « Clique sur <la cible> » d'écran,
+   pour que l'enfant reconnaisse la même leçon d'un support à l'autre. */
+const ECRIT_DET_CE2 = 'Recopie tous les déterminants de chaque phrase.';
+const ECRIT_DET_CM1 = 'Recopie le déterminant demandé.';
+const ECRIT_ADJ_CE2 = "Recopie l'adjectif de chaque phrase.";
+const ECRIT_ADJ_CM1 = "Recopie l'adjectif demandé.";
+const ECRIT_CONJ = 'Recopie la conjonction de coordination de chaque phrase.';
+const ECRIT_PRON_CE2 = 'Recopie le pronom personnel sujet de chaque phrase.';
+const ECRIT_PRON_CM1 = 'Recopie le pronom personnel demandé.';
+const ECRIT_NOM_CE2 = 'Recopie tous les noms de chaque phrase.';
+const ECRIT_NOYAU = 'Recopie le nom noyau du groupe nominal.';
+const ECRIT_GN = 'Recopie le groupe nominal de chaque phrase.';
+const ECRIT_SUJET =
+	'Recopie le nom noyau du sujet. Parfois, le sujet est composé de deux noms : recopie les deux.';
 
 export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 	{
 		id: 'fr-gram-clic-verbe',
 		label: 'Clique sur le verbe',
+		labelImpression: 'Trouve le verbe',
 		motsCles: ['verbe conjugué', 'trouver le verbe', 'action'],
 		exerciseType: clicVerbeType(),
 		etayage: [ETAYAGE_VERBE_CE2, ETAYAGE_VERBE_CM1],
@@ -425,14 +445,17 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 	{
 		id: 'fr-gram-clic-det',
 		label: 'Clique sur le déterminant',
+		labelImpression: 'Trouve le déterminant',
 		motsCles: ['article', 'le la les', 'mon ton son', 'ce cette ces', 'possessif', 'démonstratif'],
 		exerciseType: clicMotType({
 			banque: PHRASES_DET,
 			consigne: CONSIGNE_DET,
+			consigneEcrite: ECRIT_DET_CM1,
 			levels: ['ce2', 'cm1'],
 			ce2: {
 				banque: PHRASES_DET_CE2,
 				consigne: CONSIGNE_DET_CE2,
+				consigneEcrite: ECRIT_DET_CE2,
 				cibleLabel: CIBLE_DET_CE2,
 			},
 		}),
@@ -461,13 +484,20 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 			ce2: "Clique sur l'adjectif",
 			cm1: "Clique sur l'adjectif épithète ou attribut",
 		},
+		labelImpression: "Trouve l'adjectif",
+		labelImpressionNiveau: {
+			ce2: "Trouve l'adjectif",
+			cm1: "Trouve l'adjectif épithète ou attribut",
+		},
 		exerciseType: clicMotType({
 			banque: PHRASES_ADJ_CM1,
 			consigne: CONSIGNE_ADJ_CM1,
+			consigneEcrite: ECRIT_ADJ_CM1,
 			levels: ['ce2', 'cm1'],
 			ce2: {
 				banque: PHRASES_ADJ_CE2,
 				consigne: CONSIGNE_ADJ_CE2,
+				consigneEcrite: ECRIT_ADJ_CE2,
 				cibleLabel: CIBLE_ADJ_CE2,
 			},
 		}),
@@ -476,10 +506,12 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 	{
 		id: 'fr-gram-clic-conj',
 		label: 'Clique sur la conjonction',
+		labelImpression: 'Trouve la conjonction',
 		motsCles: ['mais ou et donc or ni car', 'conjonction de coordination', 'mot de liaison'],
 		exerciseType: clicMotType({
 			banque: PHRASES_CONJ,
 			consigne: CONSIGNE_CONJ,
+			consigneEcrite: ECRIT_CONJ,
 			cibleLabel: CIBLE_CONJ,
 		}),
 		etayage: [ETAYAGE_CONJ],
@@ -487,14 +519,17 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 	{
 		id: 'fr-gram-clic-pron',
 		label: 'Clique sur le pronom',
+		labelImpression: 'Trouve le pronom',
 		motsCles: ['pronom personnel', 'je tu il elle', 'me te le la lui', 'sujet ou complément'],
 		exerciseType: clicMotType({
 			banque: PHRASES_PRON,
 			consigne: CONSIGNE_PRON,
+			consigneEcrite: ECRIT_PRON_CM1,
 			levels: ['ce2', 'cm1'],
 			ce2: {
 				banque: PHRASES_PRON_CE2,
 				consigne: CONSIGNE_PRON_CE2,
+				consigneEcrite: ECRIT_PRON_CE2,
 				cibleLabel: CIBLE_PRON_CE2,
 			},
 		}),
@@ -509,14 +544,18 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 		label: 'Clique sur le nom',
 		motsCles: ['nom commun', 'nom propre', 'groupe nominal', 'noyau du groupe nominal'],
 		labelNiveau: { ce2: 'Clique sur le nom', cm1: 'Clique sur le nom noyau' },
+		labelImpression: 'Trouve le nom',
+		labelImpressionNiveau: { ce2: 'Trouve le nom', cm1: 'Trouve le nom noyau' },
 		exerciseType: clicMotType({
 			banque: PHRASES_NOYAU,
 			consigne: CONSIGNE_NOYAU,
+			consigneEcrite: ECRIT_NOYAU,
 			cibleLabel: CIBLE_NOYAU,
 			levels: ['ce2', 'cm1'],
 			ce2: {
 				banque: PHRASES_NOM_CE2,
 				consigne: CONSIGNE_NOM_CE2,
+				consigneEcrite: ECRIT_NOM_CE2,
 				cibleLabel: CIBLE_NOM_CE2,
 			},
 		}),
@@ -536,6 +575,7 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 		exerciseType: clicMotType({
 			banque: PHRASES_GN,
 			consigne: CONSIGNE_GN,
+			consigneEcrite: ECRIT_GN,
 			cibleLabel: CIBLE_GN,
 			levels: ['cm1'],
 			modes: MODE_SEGMENT,
@@ -545,10 +585,12 @@ export const CLIC_MOT_LESSONS: ClicMotLessonInput[] = [
 	{
 		id: 'fr-gram-clic-sujet',
 		label: 'Clique sur le sujet',
+		labelImpression: 'Trouve le sujet',
 		motsCles: ['groupe sujet', "qui fait l'action", 'sujet du verbe'],
 		exerciseType: clicMotType({
 			banque: PHRASES_SUJET,
 			consigne: CONSIGNE_SUJET,
+			consigneEcrite: ECRIT_SUJET,
 			cibleLabel: CIBLE_SUJET,
 		}),
 		etayage: [ETAYAGE_SUJET],

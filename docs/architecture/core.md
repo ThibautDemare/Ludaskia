@@ -84,8 +84,11 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   numérique, **texte**, ou **grille posée** selon `kind` ; à l'écran, un QCM **sans
   trou** passe par **`qcmChoixHTML`** : boutons radio dans un `fieldset.fiche-choix` qui
   alimentent un champ `.ans` caché, câblé par `initSession`, et dont la marque est
-  rattachée au groupe ; un QCM à trou garde son champ au trou, et l'impression ses cases à
-  cocher), `checkItemAnswer`
+  rattachée au groupe ; un QCM **à trou** passe par **`qcmTrouHTML`** (#777) : mêmes
+  boutons radio et même `.ans` caché — seule clé de correction, de journal et de reprise —,
+  mais la phrase garde un **trou** `.fiche-trou[data-for]` où `afficherChoixAuTrou`
+  (`ui/session.ts`) recopie le choix coché ; un item à trou **sans** choix garde son champ
+  au trou, et l'impression ses cases à cocher), `checkItemAnswer`
   (correction numérique **ou** texte via `normalizeText`), `gridHTML`,
   `ficheHTML`/`ficheHTMLGeneric`, `lessonAttr(ctx)`.
   **`itemEstNumerique(it)`** — source UNIQUE de « cet item se corrige-t-il
@@ -743,10 +746,12 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   (`id, label, subject, category, levels: SchoolLevel[], exerciseType` — #225). La
   plupart des familles de leçons passent par **`toLessonDefs(inputs, opts)`** (#373) :
   fabrique qui mappe une liste `LessonInput` (#347, cf. [Contenu & leçons](contenu-et-lecons.md))
-  en `LessonDef[]` — `opts.subject`/`category` fixes, et `levels`/`labelNiveau`/`rubrique`/
+  en `LessonDef[]` — `opts.subject`/`category` fixes, et `levels`/`rubrique`/
   `excludeFromSprint`/`repere` optionnels, chacun soit une valeur fixe soit une fonction
   `(input) => valeur` quand il dérive de la donnée ; un champ résolu à `undefined` est
-  omis. **`etayage?: EtayageEntree[]`** (#490) est remonté TEL QUEL depuis
+  omis. `labelNiveau`, `labelImpression` et `labelImpressionNiveau` (#777) sont remontés
+  TELS QUELS depuis `LessonInput`, comme l'étayage : ils nomment UNE leçon.
+  **`etayage?: EtayageEntree[]`** (#490) est remonté TEL QUEL depuis
   `LessonInput` — aucune résolution fixe/fonction comme les champs ci-dessus, juste le
   contenu d'étayage rédigé au plus près de la leçon (cf. « Étayage de la notion »
   plus bas) ; absent = pas de panneau pour cette leçon. **`motsCles?: string[]`** (#718,
@@ -761,7 +766,20 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   précision, jamais contresens). Résolution à la LECTURE via **`labelLecon(lesson, niveau)`**
   (`levels.ts`), au seam qui connaît le niveau : `niveauLecon` en UI (helper partagé
   `leconTitreHTML` pour les runners, cf. [Rendu & interactions](ui.md)), niveau du profil
-  **consulté** dans l'espace encadrant et à l'impression. Seule la conjugaison (`FRENCH_LESSONS`) reste hors du helper : son `exerciseType`
+  **consulté** dans l'espace encadrant et à l'impression. **`labelImpression?` /
+  `labelImpressionNiveau?`** (#777, critère 19) sont le surcroît symétrique pour le
+  **papier** : un libellé d'écran qui décrit un geste (« Clique sur le verbe », « Familles
+  de mots à relier ») ment sur une feuille. Résolus par **`labelImpressionLecon(lesson,
+  niveau)`** (`levels.ts` : par niveau, sinon `labelImpression`, sinon le libellé d'écran),
+  lus par les SEULS chemins d'impression (titre de fiche en `printMode`, `themeImpression`
+  des blocs de `bilanBlocksForIds`). Tenu par `tests/impression-gate.test.ts`.
+  **`repliAppariement`** (#777, critères 2 et 20) replie une manche « relier » hors de son
+  widget en question **à choix**, sur une paire choisie par une **empreinte** de la manche
+  (fonction pure : la séance partagée doit retrouver le repli de la fiche ordinaire) : à
+  étiquettes, « Dans « son vélo », « son » est… » avec les étiquettes en choix ; à mots, la
+  question de `ExerciseType.questionRelier` (déclarée par la leçon) avec la colonne de
+  droite en choix ; choix en ordre alphabétique.
+  Seule la conjugaison (`FRENCH_LESSONS`) reste hors du helper : son `exerciseType`
   est **calculé** (`conjugationType(verbId, tense)`), pas porté par l'entrée, donc son
   descripteur n'est pas un `LessonInput`. Helpers
   `getAllLessons/getLessonById/getLessonsBySubject/getLessonsByCategory` (ces deux
@@ -1085,6 +1103,13 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   modernes & autres matières → liste de questions, consigne « Complète. » pour les
   maths, « Écris la forme correcte. » pour le texte ; même discriminant
   `isLegacyMathLesson`), `bilanBlocksForIds`, `buildFichesForIds` (bilans persos).
+  La consigne de fiche (`ExerciseType.consigne`) est celle de la **forme écrite** : pour
+  les leçons « clique sur le mot », `consigneEcrite` de la variante (« Recopie le verbe
+  conjugué de chaque phrase. »), l'exercice gardant la consigne du geste pour le runner.
+- **`impression-couverture.ts`** (#777, critère 23, pur) — **`FORMES_IMPRIMEES`** :
+  `Record<Exercise['type'], { forme }>`, la forme imprimée de chaque format en une phrase.
+  Un `type` ajouté sans entrée casse `npm run typecheck` ; `tests/impression-couverture.test.ts`
+  exige une entrée non vide pour chaque format que le catalogue produit.
 - **`bilan-express.ts`** — express **borné** (~20 q, cible ~10 min CE2) :
   `expressQuestionsPerLesson` (≤ 3, 1 quand il y a beaucoup de leçons),
   `sampleExpressLessons` (tirage **pondéré** — leçons fragiles/jamais vues

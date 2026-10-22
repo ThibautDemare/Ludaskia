@@ -79,6 +79,7 @@ import { saisieLisibleItem } from '../core/erreur-representation';
 import { bindConsigneTts } from './consigne-tts';
 import { annoncer, causeRefus, copierTexte, urlDuLien } from './lien-partage';
 import {
+	afficherChoixAuTrou,
 	champsIllisibles,
 	lireSaisies,
 	marquerChamps,
@@ -398,8 +399,9 @@ function demarrer(el: HTMLElement, p: PassageOk, entrainement: boolean): void {
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-/* Le rendu de la fiche ordinaire (`renderItem`), QCM sans trou compris : ses choix sont
-   des boutons radio (`qcmChoixHTML`), et un QCM à trou garde son champ au trou. */
+/* Le rendu de la fiche ordinaire (`renderItem`), QCM compris : ses choix sont des boutons
+   radio (`qcmChoixHTML`), et ceux d'un QCM à trou viennent se placer dans la phrase
+   (`qcmTrouHTML`, #777). */
 function itemHTML(ip: ItemPassage, rang: number, ctx: RenderContext): SafeHtml {
 	const corps = renderItem(ip.item, ctx);
 	// Nom de la case : l'énoncé, pas un numéro que rien n'affiche. Sur un bilan, un lecteur
@@ -433,6 +435,12 @@ function brancherQuestions(el: HTMLElement): void {
 			question.classList.remove('partage-item-jnsp');
 			for (const c of visibles()) c.removeAttribute('placeholder');
 		};
+		// Le trou d'un QCM à trou (#777) suit les boutons : vidé quand ils sont décochés,
+		// rempli de nouveau quand la saisie mise de côté est restituée.
+		const majTrous = () => {
+			for (const c of question.querySelectorAll<HTMLInputElement>('input.ans[type="hidden"]'))
+				afficherChoixAuTrou(c);
+		};
 		caseJnsp.addEventListener('change', () => {
 			if (caseJnsp.checked) {
 				deCote = champs().map((c) => ({ valeur: c.value, coche: c.checked }));
@@ -440,6 +448,7 @@ function brancherQuestions(el: HTMLElement): void {
 					if (c.type === 'radio') c.checked = false;
 					else c.value = '';
 				}
+				majTrous();
 				question.classList.add('partage-item-jnsp');
 				for (const c of visibles()) c.placeholder = PLACEHOLDER_JNSP;
 				return;
@@ -451,6 +460,7 @@ function brancherQuestions(el: HTMLElement): void {
 					if (c.type === 'radio') c.checked = gardes[i]?.coche ?? false;
 					else c.value = gardes[i]?.valeur ?? '';
 				});
+			majTrous();
 			quitterJnsp();
 		});
 		question.addEventListener('input', (e) => {

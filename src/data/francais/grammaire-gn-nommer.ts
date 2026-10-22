@@ -291,12 +291,17 @@ export const GROUPES_GN_NOMMER: GroupeNomme[] = assembler(GROUPES_REPRIS, LOT_NE
 export const enonceGnNommer = (g: GroupeNomme): string =>
 	`Relie chaque mot du groupe « ${libelleGroupe(g)} » : est-ce un déterminant, un nom ou un adjectif ?`;
 
-/* Consigne de FICHE (#42) : elle décrit le geste et énumère les trois étiquettes possibles
-   — qui sont à l'écran de toute façon. Ce qu'elle ne fait jamais : nommer UNE classe à
-   chercher (« trouve l'adjectif »), ce qui serait la tâche inverse, déjà couverte par
-   « Clique sur l'adjectif » et « Clique sur le nom noyau » (critère 1 de #731). */
+/* Consigne de FICHE (#42) : elle nomme la tâche et énumère les trois étiquettes possibles.
+   Ce qu'elle ne fait jamais : nommer UNE classe à chercher (« trouve l'adjectif »), ce qui
+   serait la tâche inverse, déjà couverte par « Clique sur l'adjectif » et « Clique sur le
+   nom noyau » (critère 1 de #731).
+   C'est la consigne de la forme ÉCRITE (#777, critère 19) : hors du widget — fiche, bilan,
+   impression —, il n'y a pas de colonnes à relier, la manche est repliée en UNE question sur
+   un mot désigné du groupe (« Dans « son vélo », « son » est… », étiquettes en choix ;
+   `itemDepuisExercice`). « Relie » y serait faux. Le widget, lui, garde l'énoncé de la
+   manche (`enonceGnNommer`), où le geste est vrai. */
 export const CONSIGNE_GN_NOMMER =
-	'Relie chaque mot du groupe : est-ce un déterminant, un nom ou un adjectif ?';
+	'Nomme le mot demandé : est-ce un déterminant, un nom ou un adjectif ?';
 
 /* Mode unique (pas d'écran de choix), mais d'id PROPRE : le geste est bien celui de
    l'appariement, seulement l'id de mode est la MAILLE de `tests/couverture-e2e-gate.test.ts`.

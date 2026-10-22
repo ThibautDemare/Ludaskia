@@ -237,6 +237,11 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 	{
 		id: 'num-decompose-10000',
 		label: "Je décompose jusqu'à 10 000",
+		// Au CM1, la décomposition porte sur des nombres à sept chiffres : « jusqu'à 10 000 »
+		// y coiffait « 7 249 723 » (#777, critère 3). Pas de borne chiffrée au CM1, qui
+		// mentirait au prochain recalibrage : la leçon décompose les grands nombres.
+		// CE2 déclaré aussi : chaque classe servie lit un libellé écrit pour elle (#436).
+		labelNiveau: { ce2: "Je décompose jusqu'à 10 000", cm1: 'Je décompose les grands nombres' },
 		motsCles: ['décomposer', 'milliers', 'centaines'],
 		// CE2 : décomposition « en rangs » jusqu'à 10 000 ; CM1 (#240) : jusqu'au million.
 		levels: ['ce2', 'cm1'],

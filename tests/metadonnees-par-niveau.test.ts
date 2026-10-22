@@ -18,9 +18,10 @@
    ============================================================ */
 import { describe, it, expect } from 'vitest';
 import { labelLecon, effectiveLevel, LEVEL_ORDER } from '../src/core/levels';
-import { consignePourNiveau } from '../src/core/exercise';
+import { avecConsigne, consignePourNiveau } from '../src/core/exercise';
 import type { ConsigneFiche, Exercise, ExerciseType } from '../src/core/exercise';
-import { calibrated } from '../src/core/level-combinators';
+import { calibrated, consigneParNiveau } from '../src/core/level-combinators';
+import { rnd, withSeed } from '../src/core/utils';
 import { getAllLessons, getLessonById } from '../src/core/catalog';
 import type { LessonDef, SchoolLevel } from '../src/core/catalog';
 import { buildLessonFiche } from '../src/core/build';
@@ -245,5 +246,158 @@ describe('Fiche imprimée — titre et consigne parlent du MÊME niveau (#436)',
 		expect(html.balisage).toContain('Clique sur le nom noyau');
 		expect(html.balisage).toContain('nom noyau du groupe nominal');
 		expect(html.balisage).not.toContain('tous les noms');
+	});
+});
+
+/* ============================================================
+   `consigneParNiveau` et `avecConsigne` (#777, critère 4).
+   ------------------------------------------------------------
+   Exigence de `consigneParNiveau` : l'enfant lit la consigne du niveau DONT IL REÇOIT LES
+   EXERCICES. L'oracle est donc `calibrated` lui-même, sur la même table : pour chaque
+   classe de l'échelle et sans niveau, la consigne lue doit être celle de la table dont
+   `calibrated` tire les exercices. Pas de copie de la règle de repli.
+   Exigence d'`avecConsigne` : poser une consigne ne change rien d'autre au type — ni ce
+   qu'il génère (à chaque niveau, sous graine), ni ses modes, ses niveaux, sa correction —
+   et ne touche pas le type d'origine, partagé par d'autres leçons.
+   ============================================================ */
+const NIVEAUX_ET_SANS: (SchoolLevel | undefined)[] = [...LEVEL_ORDER, undefined];
+
+const TABLES_CONSIGNE: Partial<Record<SchoolLevel, string>>[] = [
+	{ ce2: 'C-ce2', cm1: 'C-cm1' },
+	{ cm1: 'C-cm1' }, // leçon CM1 seule : un CE2 lit la consigne du CM1, qu'il reçoit
+	{ ce2: 'C-ce2' },
+	{ ce1: 'C-ce1', cm1: 'C-cm1' }, // trou au CE2 : repli vers le bas, sur le CE1
+];
+
+/** Le paramètre que `calibrated` sert à un niveau : la réponse de l'exercice généré. */
+function paramServi(table: Partial<Record<SchoolLevel, string>>, n?: SchoolLevel): string {
+	const type = calibrated<string>(table, (p) => ({
+		generate: (): Exercise => ({ type: 'text', question: '@', answer: p }),
+		check: () => false,
+	}));
+	const ex = type.generate(n === undefined ? undefined : { level: n });
+	return ex.type === 'text' ? ex.answer : '';
+}
+
+type FabriqueConsigne = (table: Partial<Record<SchoolLevel, string>>) => ConsigneFiche;
+
+function ecartsAvecCalibrated(fabrique: FabriqueConsigne): string[] {
+	const out: string[] = [];
+	for (const table of TABLES_CONSIGNE) {
+		const type = { consigne: fabrique(table) };
+		for (const n of NIVEAUX_ET_SANS) {
+			const lue = consignePourNiveau(type, n);
+			const attendue = paramServi(table, n);
+			if (lue !== attendue) {
+				out.push(
+					`${JSON.stringify(table)} @${n ?? 'sans niveau'} : « ${lue} » au lieu de « ${attendue} »`,
+				);
+			}
+		}
+	}
+	return out;
+}
+
+describe('consigneParNiveau — consigne déclinée par niveau (#777, critère 4)', () => {
+	it('sur { ce2, cm1 } : niveau servi, CM2 et 6e repliés sur le CM1, CP et CE1 ramenés au CE2, sans niveau = CE2', () => {
+		const type = { consigne: consigneParNiveau({ ce2: 'C-ce2', cm1: 'C-cm1' }) };
+		const attendu: [SchoolLevel | undefined, string][] = [
+			['ce2', 'C-ce2'],
+			['cm1', 'C-cm1'],
+			['cm2', 'C-cm1'],
+			['6e', 'C-cm1'],
+			['cp', 'C-ce2'],
+			['ce1', 'C-ce2'],
+			[undefined, 'C-ce2'],
+		];
+		for (const [n, c] of attendu) expect(consignePourNiveau(type, n), n ?? 'sans niveau').toBe(c);
+	});
+
+	it('même résolution que `calibrated` : la consigne lue est celle du niveau dont viennent les exercices', () => {
+		expect(ecartsAvecCalibrated(consigneParNiveau)).toEqual([]);
+	});
+
+	it('témoins : une résolution exacte seule, un repli vers le haut ou un défaut figé au CE2 sont pris en défaut', () => {
+		const mutants: Record<string, FabriqueConsigne> = {
+			'niveau exact seulement': (t) => (l) => (l === undefined ? undefined : t[l]),
+			'repli vers le niveau servi le plus HAUT': (t) => (l) =>
+				(l === undefined ? undefined : t[l]) ?? t.cm1 ?? t.ce2,
+			'sans niveau : toujours le CE2': (t) => (l) => t[l ?? 'ce2'] ?? t.cm1,
+		};
+		for (const [nom, m] of Object.entries(mutants)) {
+			expect(ecartsAvecCalibrated(m), nom).not.toEqual([]);
+		}
+	});
+});
+
+/* Type d'origine FRAIS à chaque appel (un mutant fautif le modifie) : calibré sur deux
+   niveaux, avec modes, session et correction, pour qu'une perte de l'un d'eux se voie. */
+function typeOrigine(): ExerciseType {
+	return calibrated<string>({ ce2: 'p-ce2', cm1: 'p-cm1' }, (p) => ({
+		modes: [
+			{ id: 'saisie', label: 'Écrire' },
+			{ id: 'qcm', label: 'Choisir' },
+		],
+		exerciseKind: 'tuilesOrdre',
+		consigne: 'Consigne d’origine.',
+		generate: (): Exercise => ({ type: 'text', question: `${p} ${rnd(1, 1000)} @`, answer: p }),
+		generateSession: (n: number): Exercise[] =>
+			Array.from({ length: n }, (): Exercise => ({
+				type: 'text',
+				question: `${p} ${rnd(1, 1000)} @`,
+				answer: p,
+			})),
+		check: (_ex, saisie) => saisie === 'ok',
+	}));
+}
+
+type PoseConsigne = (t: ExerciseType, c: ConsigneFiche) => ExerciseType;
+
+function ecartsAvecConsigne(pose: PoseConsigne): string[] {
+	const out: string[] = [];
+	const origine = typeOrigine();
+	const temoin = typeOrigine();
+	const t = pose(origine, consigneParNiveau({ ce2: 'Nouvelle CE2.', cm1: 'Nouvelle CM1.' }));
+	if (consignePourNiveau(t, 'ce2') !== 'Nouvelle CE2.') out.push('consigne CE2 non posée');
+	if (consignePourNiveau(t, 'cm1') !== 'Nouvelle CM1.') out.push('consigne CM1 non posée');
+	if (consignePourNiveau(origine, 'cm1') !== 'Consigne d’origine.')
+		out.push('type d’origine modifié');
+	if (JSON.stringify(t.modes) !== JSON.stringify(temoin.modes)) out.push('modes perdus ou changés');
+	if (JSON.stringify(t.levels) !== JSON.stringify(temoin.levels)) out.push('niveaux perdus');
+	if (t.exerciseKind !== temoin.exerciseKind) out.push('format d’exercice perdu');
+	for (const level of ['ce2', 'cm1'] as const) {
+		for (const seed of [1, 2, 3]) {
+			const a = JSON.stringify(withSeed(seed, () => t.generate({ level })));
+			const b = JSON.stringify(withSeed(seed, () => temoin.generate({ level })));
+			if (a !== b) out.push(`generate @${level} graine ${seed} : ${a} ≠ ${b}`);
+			const sa = JSON.stringify(withSeed(seed, () => t.generateSession?.(3, { level })));
+			const sb = JSON.stringify(withSeed(seed, () => temoin.generateSession?.(3, { level })));
+			if (sa !== sb) out.push(`generateSession @${level} graine ${seed} : ${sa} ≠ ${sb}`);
+		}
+	}
+	const ex = temoin.generate({ level: 'ce2' });
+	for (const saisie of ['ok', 'ko']) {
+		if (t.check(ex, saisie) !== temoin.check(ex, saisie)) out.push(`check(« ${saisie} ») changé`);
+	}
+	return out;
+}
+
+describe('avecConsigne — pose une consigne sans rien changer d’autre (#777, critère 4)', () => {
+	it('la consigne est posée ; génération (par niveau), session, modes, niveaux, format et correction intacts ; origine intacte', () => {
+		expect(ecartsAvecConsigne(avecConsigne)).toEqual([]);
+	});
+
+	it('témoins : modifier l’origine, perdre les modes, ou générer au plus bas niveau est pris en défaut', () => {
+		const mutants: Record<string, PoseConsigne> = {
+			'modifie le type d’origine': (t, c) => {
+				t.consigne = c;
+				return t;
+			},
+			'perd les modes': (t, c) => ({ generate: t.generate, check: t.check, consigne: c }),
+			'perd la calibration': (t, c) => ({ ...t, consigne: c, generate: () => t.generate() }),
+		};
+		for (const [nom, m] of Object.entries(mutants)) {
+			expect(ecartsAvecConsigne(m), nom).not.toEqual([]);
+		}
 	});
 });

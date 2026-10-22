@@ -29,6 +29,7 @@ import {
 	escapeHTML,
 	fmt,
 	normalizeText,
+	withSeed,
 } from '../src/core/utils';
 import { lsGet, lsSet, setOnDataWrite } from '../src/core/storage';
 import {
@@ -3954,14 +3955,47 @@ describe('vocabulaire — appariement « Relier les familles de mots » (#392)',
 		expect(vuDeuxDecoys).toBe(true); // le mécanisme de décoys est réellement exercé
 	});
 
-	test('repli texte (fiche/bilan/révision) : « quel mot va avec X ? », réponse = un dérivé', () => {
+	/* Avant #777, ce test exigeait la tournure « va avec » et le `@` : une phrase et un
+	   mécanisme, pas l'exigence. Les critères 19 et 20 de #777 font évoluer le repli (plus de
+	   « Relie… », réponse parmi des choix). Ce qu'il gardait vraiment, aligné sur
+	   tests/appariement-repli.test.ts (même règle, pour tous les « relier ») : la tâche est
+	   nommée (la FAMILLE de mots, hors citation), le mot de base est cité, la réponse est un
+	   dérivé de la banque, et elle se choisit parmi des choix où elle seule est juste. Aucune
+	   tournure n'est figée. Rouge tant que le repli n'offre pas de choix (critère 20). */
+	test('repli texte (fiche/bilan) : tâche nommée, mot de base cité, réponse = un dérivé parmi des choix', () => {
 		const lesson = getLessonById(ID)!;
-		for (let i = 0; i < 50; i++) {
-			const it = genLessonItem(lesson);
-			expect(it.text).toContain('va avec');
-			expect(it.text).toContain('@'); // emplacement du champ
-			// La réponse est bien un dérivé (valeur d'une famille de la banque).
-			expect([...familleDe.values()]).toContain(it.answer);
+		const derives = new Set(familleDe.values());
+		const famille = /(?<!\p{L})familles?(?!\p{L})/iu;
+		/** Le mot en mot entier (« chant » n'est pas dans « chanteur »). */
+		const cite = (texte: string, mot: string): boolean =>
+			new RegExp(
+				`(?<![\\p{L}'-])${mot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}'-])`,
+				'iu',
+			).test(texte);
+		for (let graine = 1; graine <= 50; graine++) {
+			const it = withSeed(graine, () => genLessonItem(lesson));
+			const ou = `graine ${graine} : « ${it.text} »`;
+			const reponse = String(it.answer);
+			expect(derives.has(reponse), `${ou} : réponse « ${reponse} » hors banque`).toBe(true);
+			// Tâche nommée, hors du texte cité (un mot cité est du contenu).
+			expect(famille.test(it.text.replace(/«[^«»]*»/gu, ' ')), `${ou} : tâche non nommée`).toBe(
+				true,
+			);
+			// Le mot de base cité est l'un de ceux dont la réponse est le dérivé.
+			const bases = [...familleDe].filter(([, d]) => d === reponse).map(([b]) => b);
+			expect(
+				bases.some((b) => cite(it.text, b)),
+				`${ou} : aucun mot de base de « ${reponse} » (${bases.join(', ')}) n'est cité`,
+			).toBe(true);
+			// La réponse se choisit, et elle seule est jugée juste.
+			const choix = it.choices ?? [];
+			expect(new Set(choix).size, `${ou} : choix ${JSON.stringify(choix)}`).toBeGreaterThanOrEqual(
+				2,
+			);
+			expect(
+				choix.filter((c) => checkItemAnswer(it, c)),
+				`${ou} : choix jugés justes`,
+			).toEqual([reponse]);
 		}
 	});
 

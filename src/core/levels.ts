@@ -52,6 +52,19 @@ export function labelLecon(lesson: LessonDef, niveau?: SchoolLevel): string {
 	return lesson.labelNiveau[effectiveLevel(lesson, niveau)] ?? lesson.label;
 }
 
+/* Libellé IMPRIMÉ d'une leçon pour un niveau (#777, critère 19) : celui que portent le titre
+   d'un bloc de bilan imprimé et celui d'une fiche imprimée. Même résolution que `labelLecon`
+   (niveau effectif d'abord) : `labelImpressionNiveau[niveau]`, sinon `labelImpression`, sinon
+   le libellé d'ÉCRAN du niveau — juste sur papier tant qu'il ne décrit pas un geste d'écran.
+   Lu par les seuls chemins d'impression : l'écran garde `labelLecon`. */
+export function labelImpressionLecon(lesson: LessonDef, niveau?: SchoolLevel): string {
+	const parNiveau =
+		niveau === undefined
+			? undefined
+			: lesson.labelImpressionNiveau?.[effectiveLevel(lesson, niveau)];
+	return parNiveau ?? lesson.labelImpression ?? labelLecon(lesson, niveau);
+}
+
 /* Niveau supporté le plus proche d'un niveau demandé, parmi un ensemble :
    - le niveau demandé s'il est supporté ;
    - sinon le plus haut supporté EN-DESSOUS (repli) ;

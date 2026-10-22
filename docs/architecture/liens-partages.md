@@ -358,8 +358,10 @@ séance en runner, 25 à 35 les dictées.
    `core/items.ts`). Introduit ici pour la séance partagée, le rendu a été étendu au bilan
    ordinaire sur décision du mainteneur (10 octobre 2026) : `renderItem` n'y donnait
    aucun champ à un item QCM, et les 39 couples leçon × niveau dont le mode par défaut
-   est un QCM ne laissaient rien à répondre. Un QCM à trou (`@`) garde son champ au
-   trou, dans les deux écrans.
+   est un QCM ne laissaient rien à répondre. Un QCM à trou (`@`) se joue lui aussi en
+   boutons radio depuis #777 (`qcmTrouHTML`) : le choix touché s'affiche dans le trou de
+   la phrase (`afficherChoixAuTrou`, que « Je ne sais pas » vide et restitue), le `.ans`
+   caché restant la seule clé de correction.
 5. **L'entraînement journalise les erreurs** (règle #391 : tout chemin qui corrige
    journalise), mais ne rapporte ni XP ni résultat.
 6. **Pas d'annonce de passage de niveau** si les +5 XP en franchissent un : aucune modale

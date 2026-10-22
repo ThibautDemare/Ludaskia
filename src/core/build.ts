@@ -15,7 +15,7 @@ import {
 import type { LessonDef, SchoolLevel } from './catalog';
 import { consignePourNiveau } from './exercise';
 import type { ExerciseMode } from './exercise';
-import { labelLecon } from './levels';
+import { labelImpressionLecon, labelLecon } from './levels';
 import { niveauLecon } from './niveau-actif';
 import { LESSONS_CALCUL_MENTAL } from './lessons';
 import {
@@ -131,18 +131,25 @@ export function buildLessonFiche(
 			? 'Coche la bonne réponse.'
 			: (consignePourNiveau(lesson.exerciseType, lvl) ??
 				(lesson.subject === 'math' ? 'Complète.' : 'Écris la forme correcte.'));
-	return ficheHTMLGeneric(labelLecon(lesson, lvl), '', consigne, inner);
+	// Titre : sur papier, le libellé IMPRIMÉ (#777, critère 19), sans geste d'écran
+	// (« Trouve le verbe » et non « Clique sur le verbe »).
+	const titre = ctx.printMode ? labelImpressionLecon(lesson, lvl) : labelLecon(lesson, lvl);
+	return ficheHTMLGeneric(titre, '', consigne, inner);
 }
 
 /* Blocs d'un bilan personnalisé : nbQ questions par leçon sélectionnée. `level`
-   (optionnel) force le calibrage (impression au niveau d'un profil consulté, #234). */
+   (optionnel) force le calibrage (impression au niveau d'un profil consulté, #234).
+   Deux titres par bloc : `theme`, le libellé d'écran, et `themeImpression`, celui du
+   bilan IMPRIMÉ (#777, critère 19), résolus au même niveau. */
 export function bilanBlocksForIds(lessonIds: string[], nbQ: number, level?: SchoolLevel) {
-	const blocks: { id: string; theme: string; ops: Item[] }[] = [];
+	const blocks: { id: string; theme: string; themeImpression: string; ops: Item[] }[] = [];
 	for (const lesson of getAllLessons()) {
 		if (!lessonIds.includes(lesson.id)) continue;
+		const lvl = level ?? niveauLecon(lesson);
 		blocks.push({
 			id: lesson.id,
-			theme: labelLecon(lesson, level ?? niveauLecon(lesson)),
+			theme: labelLecon(lesson, lvl),
+			themeImpression: labelImpressionLecon(lesson, lvl),
 			ops: genItems(lesson, nbQ, level),
 		});
 	}

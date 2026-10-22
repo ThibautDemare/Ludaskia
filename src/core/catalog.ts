@@ -106,6 +106,16 @@ export interface LessonDef {
 	// la main affiche `label`, qui doit donc rester juste à tous les niveaux (formulation
 	// la plus neutre) — la dégradation est une perte de précision, jamais un contresens.
 	labelNiveau?: Partial<Record<SchoolLevel, string>>;
+	// Libellé IMPRIMÉ (#777, critère 19) — surcroît optionnel, sur le modèle de `label` /
+	// `labelNiveau`. À ne remplir que quand le libellé d'écran décrit un GESTE d'écran
+	// (« Clique sur le verbe », « Familles de mots à relier ») : le papier n'a ni mot à
+	// toucher ni colonnes à relier, et le titre y mentirait. Résolu par
+	// `labelImpressionLecon(lesson, niveau)` (core/levels.ts), que lisent les SEULS chemins
+	// d'impression (titre de bloc du bilan imprimé, titre de fiche imprimée) ; l'écran garde
+	// `labelLecon`, où le geste est vrai. Absent ⇒ le libellé d'écran, qui est alors juste
+	// sur les deux supports. Tenu par `tests/impression-gate.test.ts`.
+	labelImpression?: string;
+	labelImpressionNiveau?: Partial<Record<SchoolLevel, string>>;
 	subject: SubjectId;
 	category: CategoryId;
 	// Niveaux scolaires supportés par la leçon (#225). Ensemble explicite : la
@@ -181,7 +191,6 @@ interface LessonDefOptions<I extends LessonInput> {
 	subject: SubjectId;
 	category: CategoryId;
 	levels?: Resolvable<SchoolLevel[], I>; // défaut ['ce2'] (le cas courant)
-	labelNiveau?: Resolvable<Partial<Record<SchoolLevel, string>> | undefined, I>;
 	rubrique?: Resolvable<string | undefined, I>;
 	excludeFromSprint?: Resolvable<boolean | undefined, I>;
 	repere?: Resolvable<'plus-difficile' | undefined, I>;
@@ -207,8 +216,12 @@ function toLessonDefs<I extends LessonInput>(inputs: I[], opts: LessonDefOptions
 			levels: resolve(opts.levels, input) ?? ['ce2'],
 			exerciseType: input.exerciseType,
 		};
-		const labelNiveau = resolve(opts.labelNiveau, input);
-		if (labelNiveau !== undefined) def.labelNiveau = labelNiveau;
+		// Libellés par niveau (#436) et imprimés (#777) : recopiés de l'ENTRÉE, comme
+		// l'étayage ci-dessous — ils nomment UNE leçon, jamais toute une famille.
+		if (input.labelNiveau !== undefined) def.labelNiveau = input.labelNiveau;
+		if (input.labelImpression !== undefined) def.labelImpression = input.labelImpression;
+		if (input.labelImpressionNiveau !== undefined)
+			def.labelImpressionNiveau = input.labelImpressionNiveau;
 		const rubrique = resolve(opts.rubrique, input);
 		if (rubrique !== undefined) def.rubrique = rubrique;
 		const excludeFromSprint = resolve(opts.excludeFromSprint, input);
@@ -985,7 +998,7 @@ const CLIC_MOT_LESSONS_DEFS: LessonDef[] = toLessonDefs(CLIC_MOT_LESSONS, {
 	levels: (d) => d.exerciseType.levels ?? ['ce2'],
 	// Libellé par niveau porté par la donnée (#436) : « Clique sur le nom » au CE2,
 	// « Clique sur le nom noyau » au CM1 (vocabulaire du programme de chaque classe).
-	labelNiveau: (d) => d.labelNiveau,
+	// Recopié par `toLessonDefs`, comme le libellé imprimé (#777).
 });
 
 /* ---------- Grammaire — « Nomme les mots du groupe » (#731, CM1) ----------
@@ -1228,6 +1241,82 @@ export function getAllLessons(): LessonDef[] {
    suite fausse. */
 const SEPARATEURS_SUITE = [', ', ' , ', ',', ' ; ', '; ', ' ;', ';'];
 
+type MancheAppariement = Extract<Exercise, { type: 'appariement' }>;
+
+/* Repli d'une manche d'appariement hors de son widget (fiche, bilan, impression ; #777,
+   critères 2, 19 et 20). Hors du widget, il n'y a plus deux colonnes : la manche devient
+   UNE question sur UNE paire, et sa réponse se CHOISIT parmi la colonne de droite.
+
+   Ce que ce repli remplace, et pourquoi : « <énoncé de la manche> **Quel mot va avec « X »
+   ?** », réponse à écrire (#731). L'énoncé repris commençait par « Relie… », consigne
+   fausse sans colonnes ; rien ne montrait les réponses possibles, si bien que « Nomme les
+   mots du groupe » demandait « Quel mot va avec « son » ? » en attendant « déterminant » ;
+   et la paire était toujours `paires[0]` — or l'ordre des paires de cette leçon suit la
+   lecture du groupe, donc toute une fiche ne portait que sur le déterminant.
+
+   - La paire n'est plus la première : elle est choisie par une EMPREINTE de la manche (ses
+     mots), donc varie d'une manche à l'autre. Choix déterministe et non tirage, parce que
+     ce repli doit être une fonction PURE de la manche : la séance partagée fige les
+     exercices dans le lien et doit montrer à l'enfant le repli exact de la fiche ordinaire
+     (tests/partage-passage.test.ts), et la feuille et son corrigé imprimés doivent poser la
+     même question. Revers assumé : une manche donnée interroge toujours le même mot.
+     À étiquettes, le choix se fait parmi les mots qui ne paraissent qu'une fois dans le
+     groupe : un mot répété serait désigné deux fois.
+   - À ÉTIQUETTES (`colonneDroite: 'etiquettes'`) : le groupe ENTIER est cité (hors de son
+     groupe, « le » peut être un pronom), puis le mot désigné, dont on demande la nature ;
+     les choix sont les étiquettes de la manche (celles du widget).
+   - À MOTS : la question nomme la tâche (`ExerciseType.questionRelier`, déclarée par la
+     leçon : « va avec » seul ne dit pas selon quoi) ; les choix sont la colonne de droite
+     du widget, intrus compris (les faux-amis sont le piège voulu).
+   Choix en ordre ALPHABÉTIQUE : stable, et sans indice de position (la bonne réponse n'est
+   ni toujours en tête, ni jamais parmi les intrus placés en fin de colonne). Les mots d'une
+   manche sont deux à deux distincts (garde des fabriques) : la réponse est donc le SEUL
+   choix juste. */
+function repliAppariement(lesson: LessonDef, ex: MancheAppariement): Item {
+	const droites = [...new Set([...ex.paires.map((q) => q.droite), ...(ex.intrus ?? [])])];
+	const choices = droites.sort((a, b) => a.localeCompare(b, 'fr'));
+	const empreinte = empreinteTexte(ex.paires.map((q) => `${q.gauche}→${q.droite}`).join('|'));
+	if (ex.colonneDroite === 'etiquettes') {
+		const cle = (mot: string) => mot.toLocaleLowerCase('fr');
+		const uniques = ex.paires.filter(
+			(q) => ex.paires.filter((r) => cle(r.gauche) === cle(q.gauche)).length === 1,
+		);
+		const candidates = uniques.length > 0 ? uniques : ex.paires;
+		if (candidates.length === 0) return repliAppariementVide(lesson, ex);
+		const p = candidates[empreinte % candidates.length];
+		const groupe = ex.paires.map((q) => q.gauche).join(' ');
+		return {
+			text: `Dans « ${groupe} », « ${p.gauche} » est… @`,
+			answer: p.droite,
+			kind: 'text',
+			choices,
+			_lesson: lesson.id,
+		};
+	}
+	if (ex.paires.length === 0) return repliAppariementVide(lesson, ex);
+	const p = ex.paires[empreinte % ex.paires.length];
+	const question =
+		lesson.exerciseType.questionRelier?.(p.gauche) ?? `Quel mot va avec « ${p.gauche} » ?`;
+	return { text: `${question} @`, answer: p.droite, kind: 'text', choices, _lesson: lesson.id };
+}
+
+/* Empreinte entière d'un texte (FNV-1a 32 bits) : sert à CHOISIR de façon déterministe,
+   jamais à identifier ni à sécuriser quoi que ce soit. */
+function empreinteTexte(texte: string): number {
+	let h = 0x811c9dc5;
+	for (let i = 0; i < texte.length; i++) {
+		h ^= texte.charCodeAt(i);
+		h = Math.imul(h, 0x01000193);
+	}
+	return h >>> 0;
+}
+
+/* Manche sans paire : jamais produite par une banque réelle (repli défensif des fabriques
+   sur banque vide). Rien à demander ; on rend un item à champ plutôt que de lever. */
+function repliAppariementVide(lesson: LessonDef, ex: MancheAppariement): Item {
+	return { text: `${ex.question} @`, answer: '', kind: 'text', _lesson: lesson.id };
+}
+
 /* Génère un Item prêt à rendre pour n'importe quelle leçon du catalogue.
    - math hérité (calcul mental) : générateur numérique existant (bilanQ) ;
    - math moderne (conversions #89, monnaie #96, numération #98…) : item depuis
@@ -1332,36 +1421,9 @@ export function itemDepuisExercice(lesson: LessonDef, ex: Exercise): Item {
 		};
 	}
 	// Appariement (#392) : l'interaction (relier deux colonnes) vit dans son runner
-	// (ui/lecon-appariement.ts). Repli TEXTE non interactif pour fiche/bilan (la révision
-	// monte le vrai widget de liaison, #466) : une paire tirée au sort → « quel mot va
-	// avec X ? », réponse = le mot droite.
-	//
-	// L'énoncé de la manche est REPRIS en tête (#731), et ce n'est pas de la décoration :
-	// hors du widget, le mot de gauche est servi SEUL, sans les autres mots ni le contexte
-	// que la colonne entière lui donnait. « Quel mot va avec « le » ? » n'a alors
-	// littéralement pas de réponse — « le » peut être un pronom, et rien à l'écran ne dit
-	// qu'on parlait du groupe « le petit chien ». La question de la manche porte ce qui
-	// manque (elle montre le groupe), elle est déjà dans l'`Exercise`, et elle est la seule
-	// chose qui soit vraie pour TOUTES les leçons d'appariement : pour « Familles de mots à
-	// relier », c'est la consigne (« Relie chaque mot à un mot de sa famille. »), qui
-	// replace la question dans sa tâche sans rien changer à sa réponse.
-	// La question réellement posée passe en GRAS, comme pour le repli d'un problème
-	// (plus haut) : deux phrases à la suite, c'est la seconde qu'il faut distinguer.
-	if (ex.type === 'appariement') {
-		const p = ex.paires[0]; // l'ordre des paires est déjà mélangé à la génération
-		return {
-			text: `${ex.question} **Quel mot va avec « ${p.gauche} » ?** @`,
-			answer: p.droite,
-			kind: 'text',
-			// Texte lu aligné sur l'AFFICHÉ, et SURTOUT sans les astérisques : `texteParle`
-			// (core/tts-text.ts) nettoie les balises HTML, les entités et le `@`, mais pas le
-			// `**`, puisque le gras n'est posé qu'en aval par `enonceTexte`. Sans ce `parle`,
-			// l'enfant qui écoute s'entendrait dicter la ponctuation du balisage. Même remède
-			// que le repli d'un problème, plus haut, pour la même raison.
-			parle: `${ex.question} Quel mot va avec ${p.gauche} ?`,
-			_lesson: lesson.id,
-		};
-	}
+	// (ui/lecon-appariement.ts). Repli en QCM pour fiche/bilan/impression (la révision
+	// monte le vrai widget de liaison, #466) : cf. `repliAppariement`.
+	if (ex.type === 'appariement') return repliAppariement(lesson, ex);
 	// « Clique sur le mot » (#259, #437) : l'interaction (sélectionner des mots dans une
 	// phrase) vit dans son runner (ui/lecon-clic-mot.ts). Repli TEXTE non interactif pour
 	// fiche/bilan (la révision monte le vrai widget de sélection, #466) : on montre la

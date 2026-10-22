@@ -14,6 +14,7 @@ import { choice } from '../../core/utils';
 import { closestSupported } from '../../core/levels';
 import {
 	MODE_CLIC,
+	consigneEcriteClicMot,
 	itemClicMot,
 	phrase,
 	type PhraseClicMot,
@@ -125,6 +126,11 @@ export const PHRASES_CM1: PhraseClicMot[] = [...PHRASES_CE2, ...CM1_EXTRAS];
 const CONSIGNE_CE2 = 'Clique sur le verbe conjugué de la phrase.';
 const CONSIGNE_CM1 =
 	'Clique sur le verbe conjugué. Au passé composé, il est en deux mots (exemple : a mangé) : clique sur les deux !';
+/* Consignes de la forme ÉCRITE (fiche, bilan, impression ; #777, critère 19) : la phrase y
+   est recopiée, pas touchée. Même micro-indice « deux mots » au CM1. */
+const CONSIGNE_ECRITE_CE2 = 'Recopie le verbe conjugué de chaque phrase.';
+const CONSIGNE_ECRITE_CM1 =
+	'Recopie le verbe conjugué de chaque phrase. Au passé composé, il est en deux mots (exemple : a mangé) : recopie les deux.';
 
 /* Fabrique de la leçon « verbe ». `generate` se branche sur `opts.level` (banque CE2
    ou CM1) et STOCKE l'ensemble cible ; `check` renvoie toujours false (le runner
@@ -141,12 +147,23 @@ export function clicVerbeType(): ExerciseType {
 		// au-dessus d'un contenu de l'autre.
 		const niveau = closestSupported(niveaux, level ?? niveaux[0]);
 		return niveau === 'cm1'
-			? { banque: PHRASES_CM1, consigne: CONSIGNE_CM1, cibleLabel: 'le verbe conjugué' }
-			: { banque: PHRASES_CE2, consigne: CONSIGNE_CE2, cibleLabel: 'le verbe conjugué' };
+			? {
+					banque: PHRASES_CM1,
+					consigne: CONSIGNE_CM1,
+					consigneEcrite: CONSIGNE_ECRITE_CM1,
+					cibleLabel: 'le verbe conjugué',
+				}
+			: {
+					banque: PHRASES_CE2,
+					consigne: CONSIGNE_CE2,
+					consigneEcrite: CONSIGNE_ECRITE_CE2,
+					cibleLabel: 'le verbe conjugué',
+				};
 	};
 	return {
 		modes: MODE_CLIC,
-		consigne: (level) => variante(level).consigne,
+		// Consigne de FICHE = forme écrite (#777) ; l'exercice garde la consigne du geste.
+		consigne: (level) => consigneEcriteClicMot(variante(level)),
 		exerciseKind: 'clicMot',
 		levels: niveaux,
 		generate(opts?: GenerateOpts): Exercise {

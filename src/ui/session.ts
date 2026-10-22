@@ -502,6 +502,23 @@ function groupeDeChoix(inp: HTMLInputElement): HTMLElement | null {
 	return document.querySelector<HTMLElement>(`fieldset.fiche-choix[data-for="${inp.id}"]`);
 }
 
+/** Trou d'un QCM à trou (`qcmTrouHTML`, #777, critère 1) : y montre le choix COCHÉ du
+ *  groupe de `champ`, tel qu'il s'affiche dans son bouton (vue riche comprise), ou le vide
+ *  si rien n'est coché. Lit le bouton coché plutôt que la valeur du champ : c'est ce que
+ *  l'enfant a touché, et la case « Je ne sais pas » de la séance partagée décoche les
+ *  boutons sans toujours repasser par la valeur. Sans trou (QCM sans `@`), ne fait rien.
+ *  Le contenu est RECOPIÉ par nœuds (`cloneNode`), jamais réinjecté en balisage. */
+export function afficherChoixAuTrou(champ: HTMLInputElement): void {
+	const trou = document.querySelector<HTMLElement>(`.fiche-trou[data-for="${champ.id}"]`);
+	if (!trou) return;
+	const coche = groupeDeChoix(champ)?.querySelector<HTMLInputElement>(
+		'input[type="radio"]:checked',
+	);
+	const vue = coche?.closest('label')?.querySelector('.fiche-choix-vue');
+	trou.replaceChildren(...(vue ? [...vue.childNodes].map((n) => n.cloneNode(true)) : []));
+	trou.classList.toggle('fiche-trou--rempli', !!vue);
+}
+
 /** Le champ d'un QCM de fiche est CACHÉ : sa marque (✓, ✗ et la réponse révélée) est
  *  rattachée au GROUPE de choix (`aria-describedby`), sans quoi un lecteur d'écran ne
  *  l'entendrait jamais. */
@@ -625,9 +642,11 @@ let printSnapshot: { sheets: string; banner: string | null } | null = null;
    impression) sont posés ICI et non à l'import du module (#349) : importer
    session.ts (test unitaire, autre module) ne doit produire aucun effet de bord. */
 export function initSession() {
-	// QCM de fiche (`qcmChoixHTML`) : le choix coché devient la valeur du champ caché que la
-	// correction lit. L'événement `input` relancé sur ce champ efface son ancien marquage
-	// (écouteur ci-dessous) et déclenche la sauvegarde de reprise, comme une frappe.
+	// QCM de fiche (`qcmChoixHTML`, `qcmTrouHTML`) : le choix coché devient la valeur du champ
+	// caché que la correction lit, et s'affiche dans le trou de la phrase s'il y en a un
+	// (#777). L'événement `input` relancé sur ce champ efface son ancien marquage (écouteur
+	// ci-dessous) et déclenche la sauvegarde de reprise, comme une frappe : le trou est donc
+	// rempli AVANT, pour que l'instantané de reprise le contienne.
 	document.addEventListener('change', (e: Event) => {
 		const radio = e.target;
 		if (!(radio instanceof HTMLInputElement) || radio.type !== 'radio' || !radio.checked) return;
@@ -635,6 +654,7 @@ export function initSession() {
 		const champ = id ? document.getElementById(id) : null;
 		if (!(champ instanceof HTMLInputElement)) return;
 		champ.value = radio.value;
+		afficherChoixAuTrou(champ);
 		groupeDeChoix(champ)?.removeAttribute('aria-describedby');
 		champ.dispatchEvent(new Event('input', { bubbles: true }));
 	});

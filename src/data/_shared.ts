@@ -84,4 +84,12 @@ export interface LessonInput {
 	// par `toLessonDefs` ; exigé sur chaque leçon du catalogue réel par
 	// `tests/mots-cles-gate.test.ts`.
 	motsCles?: string[];
+	// Libellé PAR NIVEAU (#436), remonté tel quel en `LessonDef.labelNiveau` (cf. sa
+	// documentation) : à ne remplir que quand la leçon se nomme autrement selon la classe.
+	labelNiveau?: Partial<Record<SchoolLevel, string>>;
+	// Libellé IMPRIMÉ (#777, critère 19), remonté tel quel en `LessonDef.labelImpression` /
+	// `labelImpressionNiveau` (cf. leur documentation) : à ne remplir que quand le libellé
+	// d'écran décrit un geste d'écran, faux sur papier.
+	labelImpression?: string;
+	labelImpressionNiveau?: Partial<Record<SchoolLevel, string>>;
 }

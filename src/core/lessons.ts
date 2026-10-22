@@ -392,12 +392,26 @@ export const LESSONS = [
 						'résultat du second produit',
 					];
 					let etape = 0;
-					const free = () =>
-						html`<input class="ans-free" inputmode="numeric" autocomplete="off" aria-label="${`${a} × ${b} — ${ETAPES[etape++]}`}">`;
+					// Corrigé imprimé (#41, #777 critères 20 et 22) : chaque case porte sa valeur
+					// révélée, dans l'ordre du rendu — (a × dizaines) + (a × unités) = produit des
+					// dizaines + produit des unités. Cette ligne est construite à la main, hors de
+					// `renderItem` : elle n'héritait donc pas de la révélation, et son corrigé
+					// restait vide.
+					const dizaines = b - (b % 10);
+					const unites = b % 10;
+					const reveles = [a, dizaines, a, unites, a * dizaines, a * unites];
+					const free = () => {
+						const i = etape++;
+						return ctx.corrigeMode
+							? html`<span class="ans-corrige">${reveles[i]}</span>`
+							: html`<input class="ans-free" inputmode="numeric" autocomplete="off" aria-label="${`${a} × ${b} — ${ETAPES[i]}`}">`;
+					};
 					const finalId = nextInputId(ctx);
 					const item: Item = { text: `${a} × ${b} = @`, answer: a * b };
 					ctx.items[finalId] = item;
-					const finalField = html`<input class="ans" id="${finalId}" data-answer="${a * b}"${lessonAttr(ctx)} inputmode="numeric" autocomplete="off"${ariaChamp(item)}><span class="mark" data-for="${finalId}"></span>`;
+					const finalField = ctx.corrigeMode
+						? html`<span class="ans-corrige">${a * b}</span>`
+						: html`<input class="ans" id="${finalId}" data-answer="${a * b}"${lessonAttr(ctx)} inputmode="numeric" autocomplete="off"${ariaChamp(item)}><span class="mark" data-for="${finalId}"></span>`;
 					return html`<div class="op">${a} × ${b} = (${free()} × ${free()}) + (${free()} × ${free()}) = ${free()} + ${free()} = ${finalField}</div>`;
 				}),
 			);
@@ -686,7 +700,8 @@ function bilanPrintHTML(scope: PrintScope, ctx: RenderContext): SafeHtml {
 			const action = isQcm
 				? html`<span class="bloc-consigne">Coche la bonne réponse.</span>`
 				: VIDE;
-			return html`<div class="bloc"><span class="btheme">${b.theme}</span>${action}${ops}</div>`;
+			// Titre IMPRIMÉ (#777, critère 19) : jamais « Clique sur… » sur papier.
+			return html`<div class="bloc"><span class="btheme">${b.themeImpression}</span>${action}${ops}</div>`;
 		}),
 	);
 	return html`<div class="page">

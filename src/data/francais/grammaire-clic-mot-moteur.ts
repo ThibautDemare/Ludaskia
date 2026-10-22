@@ -327,11 +327,31 @@ export const MODE_SEGMENT: ModeOption[] = [
 ];
 
 /** Ce qu'un niveau apporte à une leçon « clique sur le mot » : sa banque, sa consigne et
-    le nom de sa cible. Une leçon mono-niveau n'en a qu'une. */
+    le nom de sa cible. Une leçon mono-niveau n'en a qu'une.
+
+    Deux consignes, parce que deux supports (#777, critère 19) :
+    - `consigne` est celle du GESTE, portée par l'exercice et affichée par le runner (« Clique
+      sur le verbe conjugué de la phrase. ») ;
+    - `consigneEcrite` est celle de la FORME ÉCRITE, exposée comme consigne de fiche
+      (`ExerciseType.consigne`) : hors runner — fiche, bilan, impression —, la phrase est
+      repliée en « Recopie le verbe conjugué : « … » » (`itemDepuisExercice`), et « Clique »
+      y serait faux, à l'écran comme sur papier. Absente ⇒ dérivée du nom de la cible
+      (`consigneEcriteClicMot`). */
 export interface VarianteClicMot {
 	banque: PhraseClicMot[];
 	consigne: string;
+	consigneEcrite?: string;
 	cibleLabel?: string;
+}
+
+/** Consigne de fiche d'une variante (forme écrite, cf. `VarianteClicMot`) : la sienne, à
+    défaut une phrase dérivée du nom de la cible, qui dit la même chose que le repli
+    (« Recopie <cible> : « … » »). Jamais la consigne du geste. */
+export function consigneEcriteClicMot(v: VarianteClicMot): string {
+	return (
+		v.consigneEcrite ??
+		(v.cibleLabel ? `Recopie ${v.cibleLabel} de chaque phrase.` : 'Recopie le mot demandé.')
+	);
 }
 
 /* ---------- Fabrique GÉNÉRIQUE des natures « clique sur le mot » (#437, #436) ----------
@@ -349,6 +369,8 @@ export interface VarianteClicMot {
 export function clicMotType(opts: {
 	banque: PhraseClicMot[];
 	consigne: string;
+	/** Consigne de la forme ÉCRITE (fiche, bilan, impression), cf. `VarianteClicMot`. */
+	consigneEcrite?: string;
 	cibleLabel?: string;
 	levels?: SchoolLevel[];
 	ce2?: VarianteClicMot;
@@ -359,8 +381,16 @@ export function clicMotType(opts: {
 	    historique n'aurait réclamé aucune spec. */
 	modes?: ModeOption[];
 }): ExerciseType {
-	const { banque, consigne, cibleLabel, ce2, levels = ['cm1'], modes = MODE_CLIC } = opts;
-	const defaut: VarianteClicMot = { banque, consigne, cibleLabel };
+	const {
+		banque,
+		consigne,
+		consigneEcrite,
+		cibleLabel,
+		ce2,
+		levels = ['cm1'],
+		modes = MODE_CLIC,
+	} = opts;
+	const defaut: VarianteClicMot = { banque, consigne, consigneEcrite, cibleLabel };
 	// Niveaux triés par ordre scolaire (comme `calibrated`) : `niveaux[0]` est le plus bas
 	// déclaré, c'est le repli quand aucun niveau n'est transmis.
 	const niveaux = LEVEL_ORDER.filter((l) => levels.includes(l));
@@ -374,7 +404,8 @@ export function clicMotType(opts: {
 	};
 	return {
 		modes,
-		consigne: (level) => variante(level).consigne,
+		// Consigne de FICHE = forme écrite (#777) ; l'exercice garde la consigne du geste.
+		consigne: (level) => consigneEcriteClicMot(variante(level)),
 		exerciseKind: 'clicMot',
 		levels,
 		generate(gen?: GenerateOpts): Exercise {

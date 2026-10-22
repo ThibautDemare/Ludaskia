@@ -648,6 +648,23 @@ html.anim-reduced .mark.correct {
 .fiche-question {
 	margin: 0 0 8px;
 }
+/* Trou d'un QCM à trou joué à l'écran (`qcmTrouHTML`, #777) : la place du mot dans la
+   phrase, que remplit le choix touché. Trait de repos `--control-line`, comme le contour
+   des choix ; une fois rempli, trait `--accent` ET mot en gras : deux indices, jamais la
+   couleur seule. Largeur minimale pour qu'un trou vide se voie. Couples déjà tenus par
+   tests/contraste-tokens.test.ts (`--control-line` et `--accent` sur `--paper`). */
+.fiche-trou {
+	display: inline-block;
+	min-width: 3em;
+	min-height: 1.2em;
+	padding: 0 4px;
+	border-bottom: 2px solid var(--control-line);
+	text-align: center;
+}
+.fiche-trou--rempli {
+	border-bottom-color: var(--accent);
+	font-weight: 700;
+}
 .fiche-choix {
 	display: flex;
 	flex-wrap: wrap;

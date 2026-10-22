@@ -1608,6 +1608,20 @@ const NB_INTRUS_APPARIEMENT = 2;
 
 const CONSIGNE_APPARIEMENT = 'Relie chaque mot à un mot de sa famille.';
 
+/* Question de la forme ÉCRITE (#777, critères 2, 19 et 20). Hors du widget — fiche, bilan,
+   impression —, il n'y a plus deux colonnes à relier : la manche est repliée en UNE
+   question sur un mot de gauche de la manche, la réponse se choisissant parmi la colonne
+   de droite (`itemDepuisExercice`), et « Relie » y serait faux. La question reprend la
+   tournure de la leçon sœur en QCM (« Quel mot est de la même famille ? », #265), le mot
+   de base cité : c'est elle qui dit SELON QUOI deux mots vont ensemble. Le widget, lui,
+   garde `CONSIGNE_APPARIEMENT`, où le geste est vrai.
+   ⚠ La consigne de FICHE (`consigne` ci-dessous) reste `CONSIGNE_APPARIEMENT` : sur papier
+   elle est remplacée par « Coche la bonne réponse. » (le repli est un QCM), mais à l'écran
+   (fiche d'une séance partagée) elle dit encore « Relie ». Elle est figée par
+   tests/familles-appariement.test.ts ; sa reprise relève des consignes de #777 (critère 5). */
+const questionRelierFamille = (mot: string): string =>
+	`Quel mot est de la même famille que « ${mot} » ?`;
+
 /* Mode unique (comme le tri de champs lexicaux) : lancement direct du runner dédié,
    pas d'écran de choix de mode (#69). */
 const MODE_RELIER: ModeOption[] = [{ id: 'relier', label: 'Relier les mots', recommended: true }];
@@ -1686,6 +1700,7 @@ export function appariementType(source: ItemFamille[]): ExerciseType {
 	return {
 		modes: MODE_RELIER,
 		consigne: CONSIGNE_APPARIEMENT,
+		questionRelier: questionRelierFamille,
 		exerciseKind: 'appariement',
 		generate(): Exercise {
 			const [manche] = tirerSessionAppariement(source, 1);
@@ -1778,6 +1793,8 @@ export const FAMILLES_LESSONS: FamillesLessonDef[] = [
 		// dérivé, faux-ami en décoy).
 		id: 'fr-vocab-familles-relier',
 		label: 'Familles de mots à relier',
+		// Sur papier, pas de colonnes à relier (#777, critère 19) : le titre dit la notion.
+		labelImpression: 'Mots de la même famille',
 		motsCles: ['associer les mots', 'préfixe et mot de base', 'même famille'],
 		levels: ['ce2'],
 		exerciseType: appariementType(FAMILLES),

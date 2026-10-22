@@ -51,6 +51,16 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
     du formulaire ni en tête de page. Cas d'origine : l'import d'un résultat (#734)
     rendait le focus au premier bouton radio, et l'annonce de réussite passait
     derrière.
+  - **Un écran plein de passage rend le focus à son déclencheur.** Un éditeur ouvert
+    depuis une ligne de liste ramène, à la sortie (Enregistrer comme Annuler), le focus
+    sur le bouton qui l'a ouvert, ou sur le titre de la section si la ligne a disparu.
+    Cas d'origine : l'éditeur de bilan favori, d'où l'on revenait sur `<body>` (#778).
+  - **Le focus initial ne se pose qu'au rendu.** Une vue re-traversée sans être
+    re-rendue (changement de profil par la barre pendant une saisie) ne reprend pas le
+    focus pour le remettre sur son titre. Cas d'origine : l'éditeur de favori (#778).
+  - **Un message d'erreur identique répété est ré-annoncé** : vider la région, puis
+    réécrire au frame suivant. Réaffecter le même `textContent` n'est pas relu partout
+    (VoiceOver). Cas d'origine : les refus du composeur de bilan (#778).
   - **Quand le focus va sur un conteneur** (la carte d'une question qui vient de
     s'afficher), ce conteneur est NOMMÉ (`role="group"` + `aria-label` qui dit où
     l'on est : « Question 2 sur 5 »). Un `div` sans rôle ni nom est muet ou relu en

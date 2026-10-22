@@ -437,6 +437,10 @@ test('critère 9 : changer le contenu avec une reprise en cours confirme d’abo
 	// Elle dit ce qui sera perdu : on exige un message non vide qui parle de perte/de
 	// partie, pas une phrase exacte.
 	await expect(modale.locator('.modal-msg')).toContainText(/perd|partie|réponse|commenc/i);
+	// Titre validé en relecture (nomme l'enfant ET le bilan) : chaîne intentionnelle.
+	await expect(modale.locator('.modal-title')).toHaveText(
+		'Profil B a une partie en cours de « Favori B1 »',
+	);
 
 	// Annuler la confirmation (action SÛRE = bouton primaire) : rien n'est écrit.
 	await modale.locator('.modal-ok').click();
@@ -574,6 +578,8 @@ test('critère 12 (création) : un Sprint sans leçon jouable est refusé (lance
 
 	await page.locator('#bcRun').click();
 	await expect(page.locator('#bcErr')).not.toBeEmpty();
+	// Libellé validé en relecture : le refus offre une issue à l'enfant (chaîne intentionnelle).
+	await expect(page.locator('#bcErr')).toContainText('ou choisis le mode Tranquille.');
 	await expect(page).toHaveURL(/#bilan-custom$/);
 
 	await page.locator('.bc-save summary').click();
@@ -604,6 +610,7 @@ test('critère 12 (édition) : un Sprint sans leçon jouable est refusé à l’
 	await choisirMode(page, 'sprint');
 	await page.locator('#bcUpdate').click();
 	await expect(page.locator('#bcErr')).not.toBeEmpty();
+	await expect(page.locator('#bcErr')).toContainText('ou choisis le mode Tranquille.');
 	await expect(page.locator(FORM)).toBeVisible();
 	expect(await lire(page, 'e2e/ludaskia_bilans')).toBe(avant);
 
@@ -707,5 +714,221 @@ test('critère 16 : « Garder pour plus tard » ajoute un nouveau favori sans é
 	// VERT d'emblée. Ce qui le fait rougir : un `#bcSave` qui réutiliserait l'id du favori
 	// existant (ou d'un favori « en cours d'édition » resté en mémoire) au lieu d'en générer un.
 	// Mutation NON jouée (pas d'accès à `src/`).
+	expect(errors).toEqual([]);
+});
+
+/* ============================================================
+   Passe 2 : correctifs validés en relecture (C2, C3, C4, S2) et critère 6 « profil
+   ACTIF changé pendant l'édition ». C2, C3, C4 et S2 étaient ROUGES à l'écriture.
+   ============================================================ */
+
+const carte = (page: Page, id: string) => page.locator(`.enc-favori-gere[data-id="${id}"]`);
+const crayonDe = (page: Page, id: string) =>
+	carte(page, id).locator('[data-act="seance-favori-edit"]');
+const annonceEnregistre = (page: Page) =>
+	page.locator('[role="status"]', { hasText: /Bilan « .+ » enregistré\./ });
+
+/* ---------- C2 : focus au retour ---------- */
+
+for (const action of ['#bcUpdate', '#bcCancel'] as const) {
+	test(`C2 : après ${action === '#bcUpdate' ? 'Enregistrer' : 'Annuler'}, le focus est sur le crayon du favori édité`, async ({
+		page,
+	}) => {
+		const errors = watchErrors(page);
+		await semer(page, {
+			'e2e/ludaskia_bilans': [favori('fav-1', 'Favori 1'), favori('fav-2', 'Favori 2')],
+		});
+		await ouvrirEdition(page, 'fav-2');
+		await page.locator(action).click();
+		await expect(page).toHaveURL(/#encadrant/);
+		await expect(crayonDe(page, 'fav-2')).toBeFocused();
+		expect(errors).toEqual([]);
+	});
+}
+
+test('C2 (repli) : si le favori a disparu entre-temps, le focus va au titre « Bilans favoris de… »', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await semer(page, { 'e2e/ludaskia_bilans': [favori('fav-1', 'Favori 1')] });
+	await ouvrirEdition(page, 'fav-1');
+	// Le favori disparaît pendant l'édition (autre onglet, autre adulte) : plus de crayon à viser.
+	await page.evaluate(() => localStorage.removeItem('e2e/ludaskia_bilans'));
+	await page.locator('#bcCancel').click();
+	await expect(page).toHaveURL(/#encadrant/);
+	const titre = page.locator('.enc-seance-favoris-gestion h3');
+	await expect(titre).toContainText('Bilans favoris de');
+	await expect(titre).toBeFocused();
+	expect(errors).toEqual([]);
+});
+
+/* ---------- C3 : annonce ---------- */
+
+test('C3 : Enregistrer annonce « Bilan « <nom> » enregistré. » dans une région status ; Annuler n’annonce rien', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await semer(page, { 'e2e/ludaskia_bilans': [favori('fav-1', 'Favori 1')] });
+
+	await ouvrirEdition(page, 'fav-1');
+	await page.locator('#bcCancel').click();
+	await expect(page).toHaveURL(/#encadrant/);
+	await expect(crayon(page, 'fav-1')).toBeVisible();
+	await expect(annonceEnregistre(page)).toHaveCount(0);
+
+	await crayon(page, 'fav-1').click();
+	await expect(page.locator(FORM)).toBeVisible();
+	await page.locator('#bcLabel').fill('Nom neuf');
+	await page.locator('#bcUpdate').click();
+	await expect(page).toHaveURL(/#encadrant/);
+	// Texte EXACT voulu (relecture a11y) : c'est lui qui est annoncé au lecteur d'écran.
+	await expect(annonceEnregistre(page)).toHaveText('Bilan « Nom neuf » enregistré.');
+
+	expect(errors).toEqual([]);
+});
+
+/* ---------- C4 : erreur de nom ---------- */
+
+const champNomInvalide = async (page: Page) => {
+	await expect(page.locator('#bcLabel')).toBeFocused();
+	await expect(page.locator('#bcLabel')).toHaveAttribute('aria-invalid', 'true');
+	await expect(page.locator('#bcLabel')).toHaveAttribute('aria-describedby', /\bbcErr\b/);
+};
+
+test('C4 (édition) : nom vide, le focus va sur #bcLabel (aria-invalid, aria-describedby) ; le drapeau tombe avec un nom valide', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await semer(page, { 'e2e/ludaskia_bilans': [favori('fav-1', 'Favori 1')] });
+	await ouvrirEdition(page, 'fav-1');
+
+	await page.locator('#bcLabel').fill('');
+	await page.locator('#bcUpdate').click();
+	await champNomInvalide(page);
+
+	// Nom valide, mais un AUTRE refus (aucune leçon) : on reste sur l'écran, le nom n'est
+	// plus signalé invalide.
+	await page.locator('#bcLabel').fill('Un nom');
+	await page.locator('#bcSelectNone').click();
+	await page.locator('#bcUpdate').click();
+	await expect(page.locator('#bcErr')).not.toBeEmpty();
+	await expect(page.locator('#bcLabel')).not.toHaveAttribute('aria-invalid', /.*/);
+
+	expect(errors).toEqual([]);
+});
+
+test('C4 (création) : « Garder pour plus tard » sans nom, focus sur #bcLabel invalide ; le drapeau tombe une fois enregistré', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await semer(page, { 'e2e/ludaskia_bilans': [] });
+	await gotoHash(page, 'bilan-custom');
+	await page.locator('.bc-save summary').click();
+
+	await page.locator('#bcLabel').fill('');
+	await page.locator('#bcSave').click();
+	await champNomInvalide(page);
+
+	await page.locator('#bcLabel').fill('Un nom');
+	await page.locator('#bcSave').click();
+	await expect(page.locator('#bcSaved')).toContainText('Un nom');
+	await expect(page.locator('#bcLabel')).not.toHaveAttribute('aria-invalid', /.*/);
+
+	expect(errors).toEqual([]);
+});
+
+/* ---------- Texte de la section vide (relecture) ---------- */
+
+test('section vide : l’espace encadrant annonce que les favoris se modifient ou se suppriment ici', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await semerDeuxProfils(page, {});
+	await gotoHash(page, 'encadrant/programme');
+	await page.locator('#encConsulteSel').selectOption(PROFIL_B);
+	// Libellé validé en relecture : chaîne intentionnelle.
+	await expect(page.locator('.enc-seance-favoris-gestion .enc-hint')).toHaveText(
+		'Les bilans favoris se composent depuis son écran ; vous pourrez ensuite les modifier ou les supprimer ici.',
+	);
+	expect(errors).toEqual([]);
+});
+
+/* ---------- Critère 6 : profil ACTIF changé depuis la barre pendant l'édition ---------- */
+
+const PROFIL_C = 'e2e-c';
+const TROIS_PROFILS = {
+	list: [
+		...PROFILS.list,
+		{ uuid: PROFIL_C, name: 'Profil C', emoji: '🐼', updatedAt: 1, niveauReference: 'ce2' },
+	],
+	active: PROFIL_A,
+};
+
+/* Barre de profil : `#toolbarProfile` ouvre `#profileMenu`, un `button[data-uuid]` bascule le
+   profil actif (cf. src/main.ts). Sur mobile la barre vit dans le tiroir `#toolbarBurger`. */
+async function changerProfilActif(page: Page, uuid: string): Promise<void> {
+	const burger = page.locator('#toolbarBurger');
+	if (await burger.isVisible()) await burger.click();
+	await page.locator('#toolbarProfile').click();
+	await page.locator(`#profileMenu button[data-uuid="${uuid}"]`).click();
+}
+
+test('critère 6 (barre) : changer le profil actif pendant l’édition n’empêche pas d’écrire chez le propriétaire', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await semer(page, {
+		ludaskia_profiles: TROIS_PROFILS,
+		[`${PROFIL_B}/ludaskia_bilans`]: [favori('fav-b1', 'Favori B1')],
+	});
+	await ouvrirEdition(page, 'fav-b1', PROFIL_B);
+
+	await changerProfilActif(page, PROFIL_C);
+	await expect(page).toHaveURL(/#bilan-edit$/);
+	await expect(page.locator(FORM)).toBeVisible();
+	await expect(page.locator('.bc-edit-title')).toContainText('Profil B');
+
+	await choisirLecons(page, [JOUABLE, JOUABLE_2]);
+	await choisirMode(page, 'sprint');
+	await page.locator('#bcLabel').fill('Favori B1 modifié');
+	await page.locator('#bcUpdate').click();
+
+	await expect(page).toHaveURL(/#encadrant/);
+	await expect(page.locator('#encConsulteSel')).toHaveValue(PROFIL_B);
+	const b = await lireListe(page, `${PROFIL_B}/ludaskia_bilans`);
+	expect(b).toHaveLength(1);
+	expect(b[0]).toMatchObject({ id: 'fav-b1', label: 'Favori B1 modifié', mode: 'sprint' });
+	// Ni le nouveau profil actif, ni l'ancien n'ont reçu quoi que ce soit.
+	expect(await lire(page, `${PROFIL_C}/ludaskia_bilans`)).toBeNull();
+	expect(await lire(page, `${PROFIL_A}/ludaskia_bilans`)).toBeNull();
+
+	expect(errors).toEqual([]);
+});
+
+test('S2 : après un changement de profil sans nouveau rendu, le focus n’est pas rapporté sur le titre', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await semer(page, {
+		ludaskia_profiles: TROIS_PROFILS,
+		[`${PROFIL_B}/ludaskia_bilans`]: [favori('fav-b1', 'Favori B1')],
+	});
+	await ouvrirEdition(page, 'fav-b1', PROFIL_B);
+	await page.locator('#bcLabel').fill('Saisie en cours');
+	// Repère posé sur le nœud du formulaire : s'il survit, il n'a PAS été re-rendu.
+	await page.locator(FORM).evaluate((el) => ((el as HTMLElement & { _s2?: boolean })._s2 = true));
+
+	await changerProfilActif(page, PROFIL_C);
+	await expect(page).toHaveURL(/#bilan-edit$/);
+
+	// Précondition observable : la saisie de l'adulte est conservée, donc le formulaire est
+	// le même nœud (comportement déjà en place, `rendu` dans bilan-edition.ts).
+	await expect(page.locator('#bcLabel')).toHaveValue('Saisie en cours');
+	expect(
+		await page.locator(FORM).evaluate((el) => (el as HTMLElement & { _s2?: boolean })._s2 === true),
+	).toBe(true);
+	// Le focus reporté sur le titre arracherait l'adulte à ce qu'il faisait (lecteur d'écran).
+	await expect(page.locator('.bc-edit-title')).not.toBeFocused();
+
 	expect(errors).toEqual([]);
 });

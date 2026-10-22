@@ -571,8 +571,9 @@ export function bilanBlocks(nbQ: number) {
 	return blocks;
 }
 /* Les bilans personnalisés multi-matières (sélection libre de leçons) sont
-   construits par src/core/build.ts (bilanBlocksForIds / buildFichesForIds),
-   qui aiguille math vs autres matières. */
+   construits par src/core/build.ts (bilanBlocksForIds), qui aiguille math vs
+   autres matières — pour l'impression : à l'écran, un bilan se joue en parcours
+   guidé (#777, core/bilan-parcours.ts). */
 /* numero = libellé ; le bloc temps total est print-only */
 export function bilanHTML(numero: number): SafeHtml {
 	// Un seul contexte pour tout le document : le compteur d'id est partagé entre les
@@ -595,19 +596,6 @@ export function bilanHTML(numero: number): SafeHtml {
     <div class="bilan-grid">${cells}</div>
     <p class="foot print-only">Ludaskia</p>
   </div>`;
-}
-
-/* Pagination « écran » d'un ensemble de fiches (3 par bloc), utilisée par le
-   bilan personnalisé interactif. L'impression a sa propre pagination
-   (fichesPagesForIds, 2 par A4). */
-export function fichesPagesHTML(fiches: SafeHtml[]): SafeHtml {
-	const perPage = 3;
-	const pages: SafeHtml[] = [];
-	for (let i = 0; i < fiches.length; i += perPage) {
-		const bloc = joindre(fiches.slice(i, i + perPage));
-		pages.push(html`<div class="page">${bloc}<p class="foot print-only">Ludaskia</p></div>`);
-	}
-	return joindre(pages);
 }
 
 /* ============================================================

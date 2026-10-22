@@ -19,12 +19,10 @@ import { formatReponseRevelee, saisieEstNombre } from '../core/nombres';
 import { stopChrono } from './chrono';
 import { finishResume } from './resume';
 import { announceRewards } from './effects';
-import { recapHTML, notionsDepuisPerLesson } from './recap-seance';
 import { mascotteBulleHTML, encouragementMascotte } from './unlocks-view';
 import {
 	getCurrentMode,
 	getCurrentLessonId,
-	getCurrentFavoriId,
 	getSessionRecorded,
 	setSessionRecorded,
 	getSessionErreursLoggees,
@@ -265,7 +263,6 @@ export function verify() {
 			questionCount: inputs.length,
 			ms,
 			perLesson,
-			favoriId: getCurrentFavoriId() ?? undefined,
 		});
 		starInfo = out.starInfo;
 		streakDays = out.streakDays;
@@ -377,15 +374,8 @@ export function verify() {
 		else if (!goalRes.goal.done)
 			banniere = html`${banniere}<div class="rb-goal">🎯 Objectif du jour : ${goalRes.goal.label} (${goalRes.goal.progress}/${goalRes.goal.target})</div>`;
 	}
-	// Récap éphémère de fin de séance (#537) : un bilan a traversé PLUSIEURS leçons, et
-	// l'enfant n'en repart qu'avec un pourcentage. On nomme donc ce qu'il vient de
-	// travailler, sous les récompenses (critère 7) et au-dessus des actions. Réservé aux
-	// bilans : une leçon seule nomme déjà la notion que l'enfant a sous les yeux, et
-	// l'étoile est son retour (critère 10). Construit depuis `perLesson`, en mémoire —
-	// aucune lecture de stockage.
-	if (currentMode === 'express' || currentMode === 'complet') {
-		banniere = html`${banniere}${recapHTML(notionsDepuisPerLesson(perLesson), 'rb-recap')}`;
-	}
+	// (Le récap des notions travaillées d'un BILAN, #537, n'est plus ici : un bilan joué à
+	// l'écran est un parcours depuis #777, dont le récapitulatif nomme chaque leçon.)
 	if (lastErrors.length) {
 		banniere = html`${banniere}<button class="rb-redo" id="btnRedo">↻ Réviser mes erreurs (${lastErrors.length})</button>`;
 	}

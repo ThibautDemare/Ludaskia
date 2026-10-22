@@ -141,9 +141,9 @@ let tour = 0;
     ligne (bordure + libellé + méta) qui fait « relevé pour les parents », pas la couleur —
     d'où le parti pris de prose continue (critère 15, avis `designer-ux-enfant`).
 
-    `classe` est fournie par l'écran porteur (`rb-recap`, `sprint-recap`, `rev-recap`) :
-    chacun a déjà sa famille de styles, et une classe transversale aurait dû lutter contre
-    trois contextes de mise en page différents. */
+    `classe` est fournie par l'écran porteur (`sprint-recap`, `rev-recap`) : chacun a déjà
+    sa famille de styles, et une classe transversale aurait dû lutter contre des contextes
+    de mise en page différents. */
 export function recapHTML(notions: readonly NotionRecap[], classe: string): SafeHtml {
 	const contenu = contenuRecap(notions);
 	if (!contenu) return VIDE;

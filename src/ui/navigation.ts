@@ -97,10 +97,11 @@ export const setCurrentLessonId = (v: string | null) => {
 	currentLessonId = v;
 };
 // Id du BILAN FAVORI dont la session en cours est le lancement (#636), sinon null. Posé par
-// `runBilanConfig` (seul chemin d'un bilan), il suit le même cycle de vie que `currentMode` :
-// c'est lui qui donnera sa RÉFÉRENCE à l'entrée du journal d'activité, donc ce qui permet à
-// une étape « bilan favori » du programme du jour de se cocher. Un bilan de catégorie ou une
-// sélection composée à la volée le laisse à null, et ne coche donc rien.
+// le parcours de bilan (`ui/bilan-parcours.ts`, seul chemin d'un bilan joué à l'écran depuis
+// #777), lancement neuf comme reprise ; c'est lui qui donne sa RÉFÉRENCE à l'entrée du
+// journal d'activité, donc ce qui permet à une étape « bilan favori » du programme du jour
+// de se cocher. Un bilan de catégorie ou une sélection composée à la volée le laisse à null,
+// et ne coche donc rien.
 let currentFavoriId: string | null = null;
 export const getCurrentFavoriId = () => currentFavoriId;
 export const setCurrentFavoriId = (v: string | null) => {

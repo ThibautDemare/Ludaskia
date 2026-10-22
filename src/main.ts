@@ -22,6 +22,7 @@ import './styles/recap-seance.scss';
 import './styles/mots-difficiles.scss';
 import './styles/print.scss';
 import './styles/bilan.scss';
+import './styles/bilan-parcours.scss';
 import './styles/partage.scss';
 import './styles/catalog.scss';
 import './styles/recherche-lecon.scss';

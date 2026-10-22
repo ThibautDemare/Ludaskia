@@ -106,6 +106,16 @@ export function libelleChoix(
 	return choicesView?.[choices.indexOf(valeur)]?.label ?? valeur;
 }
 
+/** Mot de chaque signe de ponctuation finale (#204) : libellé accessible des
+ *  boutons-symboles ET libellé lisible d'une correction (un « . » nu serait quasi
+ *  invisible). Donnée pure, logée ici pour que la correction différée du bilan (#777)
+ *  la lise sans DOM ; `ui/ponctuation-view.ts` la réexporte. */
+export const PONCT_MOTS: Record<string, string> = {
+	'.': 'point',
+	'?': "point d'interrogation",
+	'!': "point d'exclamation",
+};
+
 /* Réponse donnée et réponse attendue d'un item de fiche, lisibles hors de l'appli : le
    LIBELLÉ d'un choix de QCM (vue riche : « trois quarts », pas « 3/4 »), sinon la saisie
    telle quelle et `attendueItem`. Partagées par le journal de la fiche (`ui/session.ts`)

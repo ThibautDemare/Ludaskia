@@ -51,6 +51,21 @@ const NOYAU = 'fr-gram-clic-noyau';
 const ADJ = 'fr-gram-clic-adj'; // #528 : second porteur de `labelNiveau` (épithète / attribut)
 const lecon = (id: string): LessonDef => getLessonById(id)!;
 
+/* Les SEULES leçons autorisées à se nommer différemment selon la classe, chacune avec la
+   raison qui l'y oblige. Le mécanisme reste opt-in : une leçon qui se dote d'un
+   `labelNiveau` sans entrée ici fait échouer le test de non-régression ci-dessous, et
+   l'entrée ne s'écrit qu'avec une raison qui dise ce que le libellé neutre aurait de FAUX
+   à l'un des niveaux servis (pas seulement d'imprécis). */
+const LABEL_NIVEAU_JUSTIFIE: Record<string, string> = {
+	[NOYAU]:
+		'« noyau » est du vocabulaire CM1 (analyse du groupe nominal) : un CE2 ne doit pas le lire (#436)',
+	[ADJ]: '« épithète » / « attribut » sont du vocabulaire CM1 : un CE2 ne doit pas les lire (#528)',
+	'num-situer-10000':
+		"au CM1, la leçon compare et encadre de GRANDS nombres (autour du million) : « jusqu'à 10 000 » y est une borne fausse (#777, critère 3)",
+	'num-decompose-10000':
+		"au CM1, la leçon décompose des nombres à sept chiffres : « jusqu'à 10 000 » y est une borne fausse (#777, critère 3)",
+};
+
 describe('labelLecon — nom de la leçon par niveau (#436)', () => {
 	it('« Clique sur le nom » au CE2, « Clique sur le nom noyau » au CM1', () => {
 		const l = lecon(NOYAU);
@@ -98,11 +113,14 @@ describe('labelLecon — nom de la leçon par niveau (#436)', () => {
 			for (const lvl of LEVEL_ORDER) expect(labelLecon(l, lvl), `${l.id}@${lvl}`).toBe(l.label);
 			expect(labelLecon(l), l.id).toBe(l.label);
 		}
-		// Le mécanisme reste OPT-IN : deux leçons en ont besoin aujourd'hui, et toutes deux pour
-		// la même raison — leur titre contient un mot du programme CM1 qu'un CE2 ne doit pas
-		// lire (« noyau », #436 ; « épithète » / « attribut », #528). Le compte EXACT est le
-		// gate : une troisième leçon qui s'en dote devra passer par ici, donc le justifier.
-		expect([...porteurs].sort()).toEqual([ADJ, NOYAU].sort());
+		// Le mécanisme reste OPT-IN : la liste EXACTE est le gate. Deux raisons l'alimentent
+		// aujourd'hui — un mot du programme CM1 qu'un CE2 ne doit pas lire (#436, #528), et une
+		// borne chiffrée qui devient fausse au CM1 (#777, critère 3). Une leçon de plus devra
+		// passer par `LABEL_NIVEAU_JUSTIFIE`, donc dire sa raison.
+		expect([...porteurs].sort()).toEqual(Object.keys(LABEL_NIVEAU_JUSTIFIE).sort());
+		for (const [id, raison] of Object.entries(LABEL_NIVEAU_JUSTIFIE)) {
+			expect(raison.trim(), `${id} : dérogation sans raison`).not.toBe('');
+		}
 	});
 
 	it('un `labelNiveau` ne déclare que des niveaux servis, et jamais un libellé vide', () => {

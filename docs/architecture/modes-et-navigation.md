@@ -13,7 +13,11 @@ l'entrée de ces deux écrans, levé à chaque changement d'écran, cf. [Niveaux
 scolaires](niveaux-scolaires.md)) · la **classe choisie** sur une catégorie (#772) ne
 passe pas par le hash : état de module que `route()` lève via `gardeClasseChoisie`, sauf sur
 la catégorie et ce qui s'y lance · `#sprint-config` ·
-`#sprint` · `#bilan-custom` · `#bilan-cat-<id>` · `#ortho-mode-<id>` (choix de mode
+`#sprint` · `#bilan-custom` · `#bilan-cat-<id>` · `#bilan-edit` (#778 : éditeur d'un bilan
+favori, ouvert par le crayon de l'espace encadrant ; le favori édité est en MÉMOIRE
+(`ui/bilan-edition.ts`), jamais dans le hash, et `route()` l'oublie dès qu'on quitte l'écran :
+lien direct, rechargement ou « Précédent » → `location.replace` vers `#encadrant/programme`,
+qui repasse par son verrou) · `#ortho-mode-<id>` (choix de mode
 d'une liste d'ortho) · `#ortho-new` · `#ortho-edit-<id>` · `#ortho-revoir-<id>`
 (création / édition / relecture des listes d'ortho) · `#ortho-revoir` (#618 : relecture
 d'une SÉLECTION de mots posée en mémoire par un écran de fin de séance, jamais dans le

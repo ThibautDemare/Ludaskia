@@ -1238,6 +1238,14 @@ compose, nomme et enregistre son bilan depuis son propre écran ; seule la corbe
 main. Cette section apparaît même quand le profil n'a pas encore de favori, pour dire
 comment il s'en crée un plutôt que de rester invisible.
 
+**La modification d'un favori est aussi côté adulte (#778)** : un bouton « Modifier » précède
+« Supprimer » sur chaque ligne et ouvre en pleine page (`#bilan-edit`) le composeur de l'enfant,
+pré-rempli (nom, mode, leçons, questions par leçon), avec Enregistrer / Annuler / Imprimer. Les
+programmes du jour qui visaient le favori le visent toujours (même id). Si le contenu change
+alors que l'enfant a une partie en cours de ce bilan, une confirmation prévient et la reprise est
+abandonnée ; un simple renommage la garde. L'enfant, lui, ne peut ni modifier ni supprimer.
+Détail et invariants : [Rendu & interactions](ui.md), `encadrant-favoris.ts` / `bilan-edition.ts`.
+
 Garde-fou « un seul programme par jour » : `recurrencesEnConflit` (`core/seance.ts`)
 refuse une récurrence qui chevaucherait celle d'un autre programme du même profil (message
 d'erreur affiché dans la carte, jamais de blocage dur du **volume** d'étapes/programmes).

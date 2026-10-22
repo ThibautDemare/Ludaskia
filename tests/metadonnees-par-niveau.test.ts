@@ -63,7 +63,7 @@ const LABEL_NIVEAU_JUSTIFIE: Record<string, string> = {
 	'num-situer-10000':
 		"au CM1, la leçon compare et encadre de GRANDS nombres (autour du million) : « jusqu'à 10 000 » y est une borne fausse (#777, critère 3)",
 	'num-decompose-10000':
-		"au CM1, la leçon décompose des nombres à sept chiffres : « jusqu'à 10 000 » y est une borne fausse (#777, critère 3)",
+		"au CM1, la leçon décompose des grands nombres, jusqu'à 999 999 (critère 26) : « jusqu'à 10 000 » y est une borne fausse (#777, critère 3)",
 };
 
 describe('labelLecon — nom de la leçon par niveau (#436)', () => {

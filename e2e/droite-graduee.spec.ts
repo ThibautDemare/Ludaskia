@@ -196,32 +196,50 @@ test('CE2 entiers : placement correct au tap → feedback juste (fenêtre sous 1
 	expect(errors).toEqual([]);
 });
 
-test('CE2 lecture (repli bilan hors runner) : repère déjà posé, le champ se corrige avec data-answer', async ({
+test('CE2 lecture (repli bilan hors runner) : repère déjà posé, le champ se corrige avec data-answer — #777 sur le parcours', async ({
 	page,
 }) => {
 	const errors = watchErrors(page);
-	// Hors du runner dédié (isDroiteGradueeLesson exclut la leçon du sprint), le composeur
-	// de bilan personnalisé scopé à cette SEULE leçon (#64, cf. README) exerce le repli
-	// LECTURE de genLessonItem : la droite est montrée avec le repère déjà posé à la cible,
-	// et la réponse attendue est le nombre lu (kind « num » générique → champ `.ans`).
+	// #777 : le bilan joué à l'écran est un PARCOURS (une question par écran, correction à la
+	// fin de la partie), plus la page unique `.ans` / `#btnVerify`. L'exigence reste : hors du
+	// runner dédié (isDroiteGradueeLesson exclut la leçon du sprint), le composeur de bilan
+	// scopé à cette SEULE leçon exerce le repli LECTURE de genLessonItem : la droite est
+	// montrée avec le repère déjà posé à la cible, et la réponse attendue est le nombre lu
+	// (kind « num » générique → champ `#bpInput[data-answer]`).
 	await gotoHash(page, 'bilan-cat-math-numeration');
 	await page.locator('#bcSelectNone').click();
 	await page.locator('.bc-lesson-check[value="num-droite-entiers"]').check();
 	await expect(page.locator('.bc-mode-radio[value="bilan"]')).toBeChecked(); // pas sprint
 	await page.locator('#bcRun').click();
+	await expect(page.locator('#sheets .bilan-parcours')).toBeVisible();
 
-	const field = page.locator('.ans').first();
-	await field.waitFor();
+	const stage = page.locator('#bpStage');
+	await expect(stage).toHaveAttribute('data-kind', 'num');
+	const field = page.locator('#bpInput');
 	// Le repère (neutre, à lire) est déjà dessiné, contrairement au runner interactif.
 	await expect(
-		page.locator('.figure-droite-graduee circle[data-etat="neutre"]').first(),
+		stage.locator('.figure-droite-graduee circle[data-etat="neutre"]').first(),
 	).toBeVisible();
 
 	const expected = await field.getAttribute('data-answer');
 	expect(expected).toBeTruthy();
 	await field.fill(expected ?? '');
-	await page.locator('#btnVerify').click();
-	await expect(page.locator('.mark.correct').first()).toBeVisible();
+	await page.locator('#bpValider').click();
+
+	// Pas de correction à chaud : on passe le reste de la partie, la bonne réponse y est comptée.
+	for (let garde = 0; garde < 40; garde++) {
+		await page.locator('#bpStage, .bp-fin-partie, .bp-recap').first().waitFor({ state: 'visible' });
+		if (await page.locator('.bp-fin-partie, .bp-recap').first().isVisible()) break;
+		const avant = await page.locator('.bp-question-num').innerText();
+		await page.locator('#bpPasser').click();
+		await page.waitForFunction(
+			(a) =>
+				!document.querySelector('#bpStage') ||
+				document.querySelector('.bp-question-num')?.textContent !== a,
+			avant,
+		);
+	}
+	await expect(page.locator('.bp-fin-partie .bp-reussites')).toHaveAttribute('data-nombre', '1');
 	expect(errors).toEqual([]);
 });
 

@@ -316,6 +316,16 @@
 	flex: 1 1 12rem;
 	min-width: 0;
 }
+/* Titre de la section : focus posé par le code au retour de l'éditeur quand le favori édité
+   a disparu (#778). Repère de lecteur d'écran, pas une cible du clavier : pas de contour,
+   comme `.partage-titre`. */
+.enc-seance-favoris-gestion .enc-h3:focus {
+	outline: none;
+}
+.enc-favoris-vide {
+	margin: 0 0 0.3rem;
+	color: var(--ink);
+}
 /* « Modifier » et « Supprimer » (#778) restent ensemble quand la ligne passe à la ligne. */
 .enc-favori-gere-actions {
 	display: flex;

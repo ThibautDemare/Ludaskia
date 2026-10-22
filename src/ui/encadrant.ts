@@ -56,6 +56,7 @@ import {
 } from './encadrant-progression';
 import { revisionHTML, revisionClick } from './encadrant-revision';
 import { seanceHTML, seanceClick, seanceChange } from './encadrant-seance';
+import { appliquerRetourEdition } from './encadrant-favoris';
 import { seanceInput } from './encadrant-seance-dictees';
 import { envoisHTML, envoisClick, envoisChange, envoisInput } from './encadrant-envois';
 import {
@@ -155,6 +156,8 @@ function renderEspace(): void {
 	// Sections dont le rendu demande une finition JS sur le DOM fraîchement posé
 	// (état « indéterminé » des cases parentes, #478) : impossible en HTML seul.
 	if (tab === 'reglages') reglagesApresRendu();
+	// Retour de l'éditeur d'un bilan favori (#778) : focus et annonce, une seule fois.
+	appliquerRetourEdition(el);
 }
 
 /* En-tête de contexte : « Vous consultez : [profil ▾] », transverse aux onglets Suivi

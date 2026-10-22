@@ -773,13 +773,17 @@ function showBilanEditView() {
 	resetSessionUI();
 	setToolbar({ verify: false, home: true, profile: true });
 	hideMenus();
-	if (!afficherEditionFavori(document.getElementById('bilanCustomContent')!)) {
+	const affichage = afficherEditionFavori(document.getElementById('bilanCustomContent')!);
+	if (affichage === 'absent') {
 		location.replace('#' + RETOUR_EDITION_FAVORI);
 		return;
 	}
 	// « Retour à l'accueil » mènerait chez l'enfant : on quitte l'éditeur par « Annuler ».
 	document.getElementById('backHomeBilanCustom')!.hidden = true;
 	document.getElementById('bilan-custom')!.style.display = '';
+	// Formulaire gardé tel quel (changement de profil par la barre) : l'adulte reste où il
+	// était, ni focus déplacé ni page remontée.
+	if (affichage === 'conserve') return;
 	// Le crayon cliqué a disparu avec l'espace encadrant, le focus irait sur `<body>` : le
 	// titre, lui, dit au lecteur d'écran quel favori et quel enfant sont concernés.
 	document

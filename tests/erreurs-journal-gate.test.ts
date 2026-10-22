@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 
 /* ============================================================
    Gate STATIQUE du journal d'erreurs (#580, règle #391).
@@ -35,17 +35,19 @@ import { readFileSync, readdirSync } from 'node:fs';
 const DIR = 'src/ui';
 const lire = (fichier: string) => readFileSync(`${DIR}/${fichier}`, 'utf8');
 
-/* Chemins correctifs qui ne suivent pas la convention `lecon-*` : la fiche/bilan
-   (session), le sprint, la révision, l'atelier d'orthographe, et la révélation d'une
-   question passée (qui journalise « n'a pas essayé »). À compléter si un nouveau
-   chemin de correction naît hors runner de leçon. */
-const AUTRES_CHEMINS_CORRECTIFS = [
-	'session.ts',
-	'sprint.ts',
-	'revision.ts',
-	'ortho-runner.ts',
-	'revelation-neutre.ts',
-];
+/* Chemins correctifs qui ne suivent pas la convention `lecon-*`, avec leur raison. À
+   compléter si un nouveau chemin de correction naît hors runner de leçon. Une entrée dont
+   le fichier n'existe pas (encore) fait échouer le gate avec un message qui le dit. */
+const AUTRES_CHEMINS_CORRECTIFS: Record<string, string> = {
+	'session.ts': 'la fiche et le bilan (page unique).',
+	'sprint.ts': 'le sprint.',
+	'revision.ts': 'la révision.',
+	'ortho-runner.ts': "l'atelier d'orthographe.",
+	'revelation-neutre.ts': "la révélation d'une question passée (journalisée « n'a pas essayé »).",
+	'bilan-parcours.ts':
+		'écran du parcours de bilan (#777, critère 12) : corrige chaque partie à sa fin, ' +
+		'et chaque erreur ciblable doit atteindre le journal du parent, dans tous les formats.',
+};
 
 /* Modules en `lecon-*` qui ne capturent PAS eux-mêmes, avec la raison. Une entrée ici
    est une dette assumée et relue, pas un oubli : le test vérifie plus bas que chacune
@@ -108,7 +110,7 @@ function notePourLaSeance(source: string): Record<string, boolean> {
 
 const RUNNERS_LECON = readdirSync(DIR).filter((f) => f.startsWith('lecon-') && f.endsWith('.ts'));
 
-const A_VERIFIER = [...RUNNERS_LECON, ...AUTRES_CHEMINS_CORRECTIFS].filter(
+const A_VERIFIER = [...RUNNERS_LECON, ...Object.keys(AUTRES_CHEMINS_CORRECTIFS)].filter(
 	(f) => !(f in SANS_CAPTURE_PROPRE),
 );
 
@@ -119,6 +121,14 @@ describe('Gate du journal d’erreurs (#580)', () => {
 	});
 
 	it.each(A_VERIFIER)('%s importe capterErreur', (fichier) => {
+		// Un chemin déclaré mais absent (module à venir, renommé, supprimé) échoue ici en le
+		// disant, au lieu de planter sur la lecture (ENOENT).
+		expect(
+			existsSync(`${DIR}/${fichier}`),
+			`${DIR}/${fichier} est déclaré comme chemin correctif mais n'existe pas.\n` +
+				`Motif de la déclaration : ${fichier in AUTRES_CHEMINS_CORRECTIFS ? AUTRES_CHEMINS_CORRECTIFS[fichier] : 'runner de leçon (lecon-*.ts)'}\n` +
+				`Créer le module (et lui faire importer capterErreur), ou corriger son nom ici s'il a été renommé.`,
+		).toBe(true);
 		expect(
 			importeCapterErreur(lire(fichier)),
 			`${fichier} corrige des réponses mais n'importe pas capterErreur (src/ui/erreur-capture.ts).\n` +

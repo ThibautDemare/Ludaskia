@@ -6,7 +6,8 @@
    couples leçon × niveau dont le mode par défaut est un QCM). Maintenant :
    - un QCM SANS trou devient un groupe de boutons radio dont la valeur alimente un champ
      `.ans` caché, corrigé comme les autres ;
-   - un QCM À TROU garde son champ texte au trou ;
+   - un QCM À TROU gardait son champ texte au trou : c'est ce que #777 (critère 1) renverse,
+     ses choix se voient désormais en boutons radio (cf. le bloc « QCM À TROU ») ;
    - l'impression garde ses cases à cocher.
    Et le journal lit le LIBELLÉ d'un choix (« trois quarts », pas « 3/4 »).
 
@@ -20,6 +21,7 @@ import {
 	createRenderContext,
 	checkItemAnswer,
 	withLessonId,
+	qcmChoixHTML,
 	type Item,
 	type RenderContext,
 } from '../src/core/items';
@@ -56,7 +58,8 @@ const QCM_RICHE: Item = {
 	kind: 'text',
 };
 
-/** QCM À TROU (homophones) : l'enfant écrit le mot au trou. */
+/** QCM À TROU (homophones) : le mot qui va au trou se choisit parmi « a » / « à » (#777).
+ *  « à » est la forme accentuée de la bonne réponse : un choix jugé juste à tort se voit. */
 const QCM_TROU: Item = {
 	text: 'Le chat @ mangé.',
 	answer: 'a',
@@ -167,24 +170,186 @@ describe('renderItem à l’écran — QCM SANS trou : un groupe de boutons radi
 	});
 });
 
-describe('renderItem à l’écran — QCM À TROU : le champ texte au trou, inchangé', () => {
-	it('rend exactement ce que rendrait le même item SANS choix', () => {
-		// La décision : « rien ne change pour lui ». On le vérifie sans figer le balisage du
-		// champ texte, en le comparant à l'item débarrassé de ses choix.
-		const avec = renderItem(QCM_TROU, createRenderContext()).balisage;
-		const sans = renderItem({ ...QCM_TROU, choices: undefined }, createRenderContext()).balisage;
-		expect(avec).toBe(sans);
+/* ---------- QCM À TROU (#777, critère 1) ----------
+   Ce bloc exigeait, depuis #734, qu'un QCM à trou rende « exactement ce que rendrait le
+   même item SANS choix » : un champ texte au trou, aucun bouton radio. Ce n'était pas une
+   exigence mais l'état du code, et c'est le défaut relevé sur un vrai bilan de CM1
+   (« ____ table » sans « la / le / les »). Le critère 1 de #777 le renverse : à l'écran,
+   les choix se voient, en boutons radio d'UN groupe, et toucher un choix le place dans le
+   trou (geste : spec e2e `bilan-parcours-suivi`).
+
+   Ce que les anciennes assertions gardaient VRAIMENT, et qui reste : une seule clé de
+   correction `.ans`, porteuse de la réponse et rattachée à l'item ; un trou jamais affiché
+   en `@` ; une réponse nommée pour le lecteur d'écran ; et, pour un item à trou SANS choix,
+   le champ à écrire, au trou. Ce qui n'est PAS figé : le type de la clé `.ans` (cachée, ou
+   visible au trou) ni le balisage du trou. Les verrous verts dès l'écriture ont leur témoin,
+   joué en fin de bloc sur des rendus FABRIQUÉS (aucune mutation du code). */
+
+const trie = (valeurs: readonly string[]): string => JSON.stringify([...valeurs].sort());
+
+/** Les choix proposés à l'écran : un bouton radio par choix (l'ordre n'est pas l'exigence,
+    le compte si), tous dans UN groupe (sinon deux réponses se cochent à la fois), chacun
+    nommé par le texte du choix, aucun coché d'avance. */
+function defautsChoixVisibles(it: Item, racine: HTMLElement): string[] {
+	const radios = [...racine.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
+	const valeurs = radios.map((x) => x.value);
+	if (trie(valeurs) !== trie(it.choices ?? [])) {
+		return [`boutons ${JSON.stringify(valeurs)} pour les choix ${JSON.stringify(it.choices)}`];
+	}
+	const d: string[] = [];
+	const noms = new Set(radios.map((x) => x.name));
+	if (noms.size !== 1 || noms.has('')) {
+		d.push(`pas un seul groupe (name : ${JSON.stringify([...noms])})`);
+	}
+	const nommes = radios.map((x) =>
+		(x.getAttribute('aria-label') ?? x.closest('label')?.textContent ?? '').trim(),
+	);
+	if (trie(nommes) !== trie(valeurs)) d.push(`boutons nommés ${JSON.stringify(nommes)}`);
+	if (radios.some((x) => x.checked || x.hasAttribute('checked'))) {
+		d.push('un choix est coché d’avance');
+	}
+	return d;
+}
+
+/** La clé de correction : UN champ `.ans`, porteur de la réponse, sous l'id duquel l'item
+    est enregistré (c'est par lui que la correction retrouve ce qu'elle corrige, et que le
+    journal lit l'erreur). Zéro : rien à corriger ; deux : une question comptée deux fois. */
+function defautsCleCorrection(it: Item, racine: HTMLElement, ctx: RenderContext): string[] {
+	const champs = [...racine.querySelectorAll('.ans')];
+	if (champs.length !== 1) return [`${champs.length} champ(s) .ans au lieu d'un`];
+	const [champ] = champs;
+	const d: string[] = [];
+	if (champ.getAttribute('data-answer') !== String(it.answer)) {
+		d.push(`data-answer « ${champ.getAttribute('data-answer')} »`);
+	}
+	if (ctx.items[champ.id] !== it) d.push(`item non enregistré sous l'id « ${champ.id} »`);
+	return d;
+}
+
+/** L'énoncé à l'écran : le reste de la phrase se lit, le marqueur `@` jamais. */
+function defautsEnonce(racine: HTMLElement, mots: readonly string[]): string[] {
+	const texte = racine.textContent ?? '';
+	const d = mots.filter((m) => !texte.includes(m)).map((m) => `« ${m} » absent de l'énoncé`);
+	if (texte.includes('@')) d.push('« @ » affiché tel quel');
+	return d;
+}
+
+/** Posé à la place du champ, dans une copie du rendu, pour lire OÙ il est dans la phrase. */
+const REPERE = 'XCHAMPX';
+
+/** Un item à trou SANS choix se joue au clavier : UN champ à écrire (ni caché, ni radio),
+    nommé, porteur de la réponse, posé AU trou (entre `avant` et `apres`), sans bouton radio
+    ni « @ » affiché. */
+function defautsSaisieAuTrou(
+	it: Item,
+	racine: HTMLElement,
+	avant: string,
+	apres: string,
+): string[] {
+	const d: string[] = [];
+	if (racine.querySelector('input[type="radio"]')) d.push('bouton radio sans choix');
+	if ((racine.textContent ?? '').includes('@')) d.push('« @ » affiché tel quel');
+	const champs = [...racine.querySelectorAll<HTMLInputElement>('input.ans')];
+	if (champs.length !== 1) return [...d, `${champs.length} champ(s) .ans au lieu d'un`];
+	const [champ] = champs;
+	if (champ.type === 'hidden' || champ.type === 'radio') {
+		d.push(`champ de type « ${champ.type} » : rien à écrire`);
+	}
+	if (champ.dataset.answer !== String(it.answer)) d.push(`data-answer « ${champ.dataset.answer} »`);
+	if (!champ.getAttribute('aria-label')?.trim()) d.push('champ sans nom accessible');
+	const copie = dom(racine.innerHTML);
+	copie.querySelector('input.ans')?.replaceWith(REPERE);
+	const phrase = (copie.textContent ?? '').replace(/\s+/g, ' ').trim();
+	if (!new RegExp(`${avant}\\s*${REPERE}\\s*${apres}`).test(phrase)) {
+		d.push(`champ hors du trou : « ${phrase} »`);
+	}
+	return d;
+}
+
+describe('renderItem à l’écran — QCM À TROU : ses choix se voient (#777, critère 1)', () => {
+	it('critère 1 : un bouton radio par choix, dans UN groupe, chacun nommé, aucun coché d’avance', () => {
+		expect(defautsChoixVisibles(QCM_TROU, rendreEcran(QCM_TROU).racine)).toEqual([]);
 	});
 
-	it('un champ à écrire, nommé, au trou ; aucun bouton radio', () => {
+	it('critère 1 : choisir le bon bouton est jugé juste, et lui seul (« à » n’est pas « a »)', () => {
 		const r = rendreEcran(QCM_TROU);
-		expect(r.groupes).toHaveLength(0);
-		expect(r.radios).toHaveLength(0);
-		expect(r.caches).toHaveLength(0);
-		expect(r.visibles).toHaveLength(1);
-		expect(r.visibles[0].dataset.answer).toBe('a');
-		expect(r.visibles[0].getAttribute('aria-label')?.trim()).toBeTruthy();
-		expect(r.racine.textContent).not.toContain('@');
+		// Précondition de la fixture : sans elle, « lui seul » ne garderait rien.
+		expect(checkItemAnswer(QCM_TROU, 'à'), '« à » jugé juste pour « a »').toBe(false);
+		const item = r.ctx.items[r.racine.querySelector('.ans')?.id ?? ''];
+		expect(item, 'aucun item rattaché au champ .ans').toBeDefined();
+		expect(r.radios.filter((x) => checkItemAnswer(item, x.value)).map((x) => x.value)).toEqual([
+			'a',
+		]);
+	});
+
+	it('critère 1 : UNE clé de correction `.ans`, porteuse de la réponse et rattachée à l’item', () => {
+		const r = rendreEcran(QCM_TROU);
+		expect(defautsCleCorrection(QCM_TROU, r.racine, r.ctx)).toEqual([]);
+	});
+
+	it('critère 1 : le trou ne s’affiche jamais en « @ », et le reste de la phrase se lit', () => {
+		expect(defautsEnonce(rendreEcran(QCM_TROU).racine, ['Le chat', 'mangé'])).toEqual([]);
+	});
+});
+
+describe('renderItem à l’écran — item à trou SANS choix : le champ à écrire, au trou', () => {
+	const SANS_CHOIX: Item = { ...QCM_TROU, choices: undefined };
+
+	it('un champ visible, nommé, porteur de la réponse, AU trou ; ni bouton radio ni « @ »', () => {
+		const racine = rendreEcran(SANS_CHOIX).racine;
+		expect(defautsSaisieAuTrou(SANS_CHOIX, racine, 'Le chat', 'mangé')).toEqual([]);
+	});
+
+	it('témoins : les verrous verts de ce bloc et du précédent mordent', () => {
+		// Choix : le rendu à choix existant (#734) est conforme ; amputé d'un choix, regroupé
+		// sous deux noms, ou coché d'avance, il est signalé.
+		const choix = () => dom(qcmChoixHTML(QCM_TROU, createRenderContext()).balisage);
+		expect(defautsChoixVisibles(QCM_TROU, choix())).toEqual([]);
+		const unSeul = dom(
+			qcmChoixHTML({ ...QCM_TROU, choices: ['a'] }, createRenderContext()).balisage,
+		);
+		expect(defautsChoixVisibles(QCM_TROU, unSeul)).not.toEqual([]);
+		const deuxGroupes = choix();
+		deuxGroupes.querySelector('input[type="radio"]')?.setAttribute('name', 'autre');
+		expect(defautsChoixVisibles(QCM_TROU, deuxGroupes)).not.toEqual([]);
+		const coche = choix();
+		coche.querySelector('input[type="radio"]')?.setAttribute('checked', '');
+		expect(defautsChoixVisibles(QCM_TROU, coche)).toEqual(['un choix est coché d’avance']);
+
+		// Clé de correction : la réalisation naïve du critère 1 (champ texte au trou PLUS un
+		// groupe de choix qui a sa propre clé) compte la question deux fois.
+		const ctx = createRenderContext();
+		const double = dom(renderItem(SANS_CHOIX, ctx).balisage + qcmChoixHTML(QCM_TROU, ctx).balisage);
+		expect(defautsCleCorrection(QCM_TROU, double, ctx)).not.toEqual([]);
+		// … une clé que la correction ne retrouve pas (item enregistré ailleurs) …
+		const r = rendreEcran(QCM_TROU);
+		expect(defautsCleCorrection(QCM_TROU, r.racine, createRenderContext())).not.toEqual([]);
+		// … ou qui porte une autre réponse.
+		r.racine.querySelector('.ans')?.setAttribute('data-answer', 'à');
+		expect(defautsCleCorrection(QCM_TROU, r.racine, r.ctx)).toEqual(['data-answer « à »']);
+
+		// Énoncé : l'aiguillage naïf du QCM à trou vers le rendu à choix des QCM SANS trou
+		// affiche « Le chat @ mangé. » ; un rendu réduit à son champ perd la phrase.
+		expect(defautsEnonce(choix(), ['Le chat', 'mangé'])).toEqual(['« @ » affiché tel quel']);
+		expect(defautsEnonce(dom('<input class="ans">'), ['Le chat', 'mangé'])).toHaveLength(2);
+
+		// Saisie au trou : un item sans choix aiguillé vers le rendu à choix (clé cachée, « @ »
+		// affiché) est signalé ; un champ rejeté APRÈS la phrase aussi ; un champ sans nom aussi.
+		const versChoix = dom(qcmChoixHTML(SANS_CHOIX, createRenderContext()).balisage);
+		expect(defautsSaisieAuTrou(SANS_CHOIX, versChoix, 'Le chat', 'mangé')).not.toEqual([]);
+		const champ = (nom: string) =>
+			`<input class="ans" type="text" data-answer="a"${nom ? ` aria-label="${nom}"` : ''}>`;
+		const apres = dom(`<p>Le chat mangé.</p>${champ('réponse')}`);
+		expect(defautsSaisieAuTrou(SANS_CHOIX, apres, 'Le chat', 'mangé')).toEqual([
+			'champ hors du trou : « Le chat mangé.XCHAMPX »',
+		]);
+		const sansNom = dom(`<p>Le chat ${champ('')} mangé.</p>`);
+		expect(defautsSaisieAuTrou(SANS_CHOIX, sansNom, 'Le chat', 'mangé')).toEqual([
+			'champ sans nom accessible',
+		]);
+		// Et le rendu conforme, fabriqué, n'est PAS signalé : le repère se lit bien au trou.
+		const conforme = dom(`<p>Le chat ${champ('réponse')} mangé.</p>`);
+		expect(defautsSaisieAuTrou(SANS_CHOIX, conforme, 'Le chat', 'mangé')).toEqual([]);
 	});
 });
 
@@ -309,8 +474,17 @@ describe('Catalogue — chaque QCM de fiche est jouable (#734)', () => {
 					const item = ctx.items[champ?.id ?? ''];
 					const radios = [...groupe.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
 					const nom = `${id} (${niveau}, graine ${graine}) « ${item?.text} »`;
-					expect(champ?.type, `${nom} : pas de champ caché`).toBe('hidden');
 					expect(item, `${nom} : item introuvable pour la correction`).toBeDefined();
+					expect(
+						champ?.classList.contains('ans'),
+						`${nom} : le groupe ne désigne pas la clé de correction .ans`,
+					).toBe(true);
+					// Un QCM SANS trou n'a rien à écrire : sa clé est un champ caché (#734). Un QCM
+					// À TROU (#777, critère 1) peut porter la sienne au trou, visible : on n'en
+					// fige pas le type (exiger « caché » pour lui figerait un mécanisme).
+					if (!item?.text.includes('@')) {
+						expect(champ?.type, `${nom} : pas de champ caché`).toBe('hidden');
+					}
 					// Choisir la bonne réponse doit être POSSIBLE…
 					expect(
 						radios.map((x) => x.value),

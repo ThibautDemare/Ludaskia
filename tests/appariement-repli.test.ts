@@ -1,51 +1,61 @@
 /* ============================================================
-   Repli TEXTE du format « appariement » (fiche, bilan, impression).
+   Repli du format « appariement » hors de son widget (fiche, bilan, impression).
    ------------------------------------------------------------
    Le geste de l'appariement — relier deux colonnes — n'existe que dans son runner
    (ui/lecon-appariement.ts). Partout ailleurs (fiche imprimée, bilan, sprint papier),
-   la manche se replie en UNE question à champ unique, construite par le chemin
-   PARTAGÉ `genLessonItem` → `itemDepuisExercice` (src/core/catalog.ts).
+   la manche se replie en UNE question, construite par le chemin PARTAGÉ
+   `genLessonItem` → `itemDepuisExercice` (src/core/catalog.ts).
 
-   ── L'exigence ───────────────────────────────────────────────────────────────
+   ── L'exigence (#731), toujours valable ──────────────────────────────────────
    Hors du widget, le mot de gauche est servi SEUL : ni les autres mots du groupe, ni
-   la colonne de droite, ni rien de ce que l'enfant lisait au-dessus des deux colonnes.
-   « Quel mot va avec « le » ? » n'a alors littéralement pas de réponse — « le » peut
-   être un pronom, et rien ne dit qu'on parlait du groupe « le petit chien ». Même
-   chose, en plus discret, pour « Familles de mots à relier » : « va avec » ne veut
-   rien dire tant que la tâche n'est pas nommée (va avec par le sens ? par la rime ?).
+   la colonne de droite. « Quel mot va avec « le » ? » n'a alors littéralement pas de
+   réponse — « le » peut être un pronom, et rien ne dit qu'on parlait du groupe « le
+   petit chien ». Même chose, en plus discret, pour « Familles de mots à relier » :
+   « va avec » ne veut rien dire tant que la tâche n'est pas nommée (va avec par le
+   sens ? par la rime ?). Et la question posée doit porter sur la paire qu'on corrige.
 
-   L'exigence tenue ici est donc : **la question posée reste répondable sans contexte
-   extérieur, parce que l'énoncé de la manche la précède et porte ce qu'il faut.**
-   Ce n'est pas la graphie du repli qui est verrouillée (aucune assertion ne reconstruit
-   la phrase produite, et l'espacement est neutralisé) mais trois propriétés de ce qu'il
-   contient : l'énoncé survit, il PRÉCÈDE le champ de réponse, et la question posée
-   porte sur la MÊME paire que la réponse attendue.
+   ── Ce qui a changé avec #777 (critères 2, 19 et 20) ─────────────────────────
+   Jusqu'ici, ce fichier tenait l'exigence par son MÉCANISME de #731 : l'énoncé de la
+   manche, repris mot pour mot en tête du repli, devant « Quel mot va avec « X » ? ».
+   Or cet énoncé commence par « Relie… », consigne fausse sans colonnes (interdite sur
+   papier, critère 19) ; un « relier » replié doit offrir sa réponse parmi des choix
+   (critère 20) ; et un « relier » à étiquettes doit demander la nature d'UN mot désigné
+   (critère 2), pas « Quel mot va avec ». Les tests « l'énoncé survit » et « l'énoncé
+   précède le champ » auraient rougi le jour où ces critères seraient tenus : ils sont
+   réécrits sur ce qu'ils gardaient vraiment.
+   - Répondable : un « relier » à étiquettes montre le GROUPE entier (chaque mot de la
+     manche se lit) ; un « relier » à mots NOMME sa tâche (table TACHE_NOMMEE, déclarée par
+     leçon, puisque c'est l'énoncé de la manche qui la nommait et qu'il ne peut plus servir).
+   - Cohérent : la question désigne UN mot de la manche, et la réponse attendue est la
+     sienne. Désigner = citer ce mot seul entre « » ; à défaut, le nommer en mot entier.
+   - Choisi (critère 20) : la réponse est parmi au moins deux choix, et seule jugée juste.
+   - Sans geste (critère 19) : ni l'énoncé affiché ni le texte lu ne disent « relie ».
+   L'ancienne exigence « le contexte PRÉCÈDE le champ » n'a plus d'objet : la réponse se
+   choisit parmi des choix proposés après la question, et une phrase à trou se lit entière.
+   Ce que la question doit dire précisément, mot pour mot, n'est pas figé ici.
 
-   ── Pourquoi toutes les leçons d'appariement, et pas la seule #731 ───────────
-   Ce repli est partagé. Le corriger pour « Nomme les mots du groupe » (#731) ne vaut
-   que si l'autre leçon qui l'emprunte y survit : c'était la condition de l'arbitrage.
-   L'inventaire est donc LU du catalogue (`isPairingLesson`), pas écrit à la main — une
-   troisième leçon d'appariement sera couverte sans que personne y pense, ce qui est
-   exactement ce qui a manqué ici.
+   ── Pourquoi toutes les leçons d'appariement ─────────────────────────────────
+   Ce repli est partagé. L'inventaire est LU du catalogue (`isPairingLesson`), pas écrit
+   à la main : une troisième leçon d'appariement sera couverte sans que personne y pense.
 
    ── Ce que ce fichier NE refait PAS ──────────────────────────────────────────
-   - `tests/groupe-nominal-nommer.test.ts` (§10) tient, pour #731 seulement, que CHAQUE
-     mot du groupe reste lisible dans le repli — la moitié propre à cette leçon ;
-   - `tests/logic.test.ts` tient, pour les familles, que la réponse stockée est bien un
-     dérivé de la banque.
-   Ici : la règle PARTAGÉE, et elle seule.
+   - `tests/bilan-enonces.test.ts` (#777, critère 2) : la forme du repli À ÉTIQUETTES
+     (« Quel mot va avec » proscrit, étiquettes en choix, choix affichés à l'écran et sur
+     papier) ;
+   - `tests/impression-gate.test.ts` (critères 19 et 20) : le papier, tout le catalogue ;
+   - `tests/groupe-nominal-nommer.test.ts` (§10) : chaque mot du groupe lisible, #731 seul ;
+   - `tests/logic.test.ts` : pour les familles, la réponse stockée est un dérivé de la banque.
+   Ici : la règle PARTAGÉE par tous les « relier », et elle seule.
 
    ── Limite assumée ──────────────────────────────────────────────────────────
-   « Répondable » reste, au fond, un jugement pédagogique. Ce qui se mécanise, et qui
-   est ici tenu, c'est que le repli PORTE de quoi répondre (l'énoncé, au bon endroit) et
-   qu'il corrige la paire qu'il pose. Qu'un énoncé donné suffise à un enfant de CM1
-   relève du `pedagogue-primaire`, pas d'une assertion.
+   « Répondable » reste, au fond, un jugement pédagogique. Ce qui se mécanise, et qui est
+   tenu, c'est que le repli PORTE de quoi répondre et qu'il corrige la paire qu'il pose.
 
    ── Verrous verts, donc falsifiabilité démontrée ─────────────────────────────
-   Les trois tests sont verts au moment où ils sont écrits (le repli est déjà corrigé).
-   Le dernier bloc les joue donc sur des replis FABRIQUÉS à partir de manches réelles —
-   dont la forme d'avant la correction — et exige qu'ils soient signalés. Aucune
-   mutation n'est faite sur la donnée ni sur le code.
+   Avant l'implémentation de #777, « répondable » et « cohérent » sont verts, « choisi » et
+   « sans geste » rouges. Le dernier bloc joue chaque prédicat sur des replis FABRIQUÉS à
+   partir de manches réelles — dont les formes d'avant #731 et d'avant #777 — et exige
+   qu'ils soient signalés. Aucune mutation n'est faite sur la donnée ni sur le code.
    ============================================================ */
 import { describe, it, expect } from 'vitest';
 import {
@@ -56,8 +66,8 @@ import {
 	type SchoolLevel,
 } from '../src/core/catalog';
 import { withSeed } from '../src/core/utils';
+import { checkItemAnswer, type Item } from '../src/core/items';
 import type { Exercise } from '../src/core/exercise';
-import type { Item } from '../src/core/items';
 
 type Manche = Extract<Exercise, { type: 'appariement' }>;
 type Paire = Manche['paires'][number];
@@ -68,12 +78,26 @@ type Paire = Manche['paires'][number];
    qu'un inventaire devenu vide ou amputé ne laisse pas la suite verte. */
 const LECONS_ATTENDUES = ['fr-vocab-familles-relier', 'fr-gram-gn-nommer'];
 
-/* Le trou où l'enfant écrit sa réponse : marqueur STRUCTUREL de tout `Item.text`
-   (`poserAuTrou`, core/items.ts), pas une graphie propre à ce repli. */
+/* Ce qui NOMME la tâche dans le repli d'un « relier » À MOTS. Avant #777, c'était l'énoncé
+   de la manche, repris en tête (« Relie chaque mot à un mot de sa famille. ») ; il ne peut
+   plus servir (critère 19). Une leçon « relier » à mots ajoutée sans entrée fait échouer
+   le test « répondable » : c'est voulu, il faut dire ce qui rend SA question répondable.
+   Le motif est cherché HORS des citations « … » (un mot cité est du contenu). Un « relier »
+   à étiquettes n'en a pas besoin : les étiquettes proposées en choix nomment la tâche
+   (tenu par bilan-enonces, critère 2). */
+const TACHE_NOMMEE: Record<string, { motif: RegExp; raison: string }> = {
+	'fr-vocab-familles-relier': {
+		motif: /(?<!\p{L})familles?(?!\p{L})/iu,
+		raison: '« va avec » seul ne dit pas selon quoi : c’est la famille de mots qui est demandée',
+	},
+};
+
+/* Le trou d'un `Item.text` (`poserAuTrou`, core/items.ts) : utilisé pour FABRIQUER des
+   replis témoins, jamais pour lire où se trouve la réponse d'un repli réel. */
 const TROU = '@';
 
-/** Graphie neutralisée : seuls comptent les mots, pas l'espacement qui les sépare. */
-const norm = (s: string): string => s.replace(/\s+/g, ' ').trim();
+/** Énoncé tel que lu : sans le gras `**`, espaces réduits (`\s` couvre les insécables). */
+const lu = (s: string): string => s.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
 
 /** `mot` figure-t-il dans `texte` en MOT ENTIER ? (« le » ne doit pas se trouver dans
     « leçon », ni « chant » dans « chanteur ».) */
@@ -82,48 +106,101 @@ function citeMot(texte: string, mot: string): boolean {
 	return new RegExp(`(?<![\\p{L}\\p{N}'-])${echappe}(?![\\p{L}\\p{N}'-])`, 'iu').test(texte);
 }
 
+/** Segments cités entre guillemets français, en minuscules, espaces intérieurs retirés. */
+const citations = (texte: string): string[] =>
+	[...lu(texte).matchAll(/«\s*([^«»]+?)\s*»/gu)].map((m) => m[1].toLowerCase());
+
+/** Le texte sans ses citations « … » (imbriquées comprises) : ce qui reste est la consigne. */
+function sansCitations(texte: string): string {
+	let avant = '';
+	let apres = texte;
+	while (avant !== apres) {
+		avant = apres;
+		apres = apres.replace(/«[^«»]*»/gu, ' ');
+	}
+	return apres;
+}
+
 /* ============================================================
-   Les trois propriétés, en prédicats réutilisables : le bloc final les joue sur des
+   Les quatre propriétés, en prédicats réutilisables : le bloc final les joue sur des
    replis fabriqués pour montrer qu'ils mordent.
    ============================================================ */
 
-/** Raison pour laquelle l'énoncé de la manche ne survit pas au repli, ou `null`. */
-function enonceAbsent(texte: string, ex: Manche): string | null {
-	if (norm(texte).includes(norm(ex.question))) return null;
-	return `l'énoncé « ${ex.question} » a disparu du repli « ${texte} » : la question posée perd ce qui la situe`;
-}
-
-/** Ce que le repli DEMANDE : la portion qui suit l'énoncé repris en tête, à condition
-    qu'elle porte encore le champ de réponse. `null` si l'énoncé manque, ou s'il ne
-    précède pas l'endroit où l'enfant répond (énoncé rejeté après la question, repli
-    réduit à son seul énoncé…). */
-function questionPosee(texte: string, ex: Manche): string | null {
-	const t = norm(texte);
-	const e = norm(ex.question);
-	const i = t.indexOf(e);
-	if (i < 0) return null;
-	const apres = t.slice(i + e.length);
-	return apres.includes(TROU) ? apres : null;
-}
-
-/** La paire sur laquelle porte la question posée : celle dont le mot de gauche y est
-    cité. `null` si aucune ne l'est (la question ne dit pas sur quoi elle porte) ou si
-    plusieurs le sont (elle en désigne plus d'une, donc aucune). */
-function pairePosee(segment: string, ex: Manche): Paire | null {
-	const cites = ex.paires.filter((p) => citeMot(segment, p.gauche));
-	return cites.length === 1 ? cites[0] : null;
-}
-
-/** Raison pour laquelle le repli ne corrige pas la paire qu'il pose, ou `null`. */
-function repliIncoherent(texte: string, reponse: string, ex: Manche): string | null {
-	const segment = questionPosee(texte, ex);
-	if (segment === null) return `aucune question posée après l'énoncé dans « ${texte} »`;
-	const paire = pairePosee(segment, ex);
-	if (paire === null) {
-		return `« ${segment.trim()} » ne désigne pas un mot et un seul de la manche`;
+/** Répondable : raison pour laquelle le repli ne montre pas de quoi répondre, ou `null`.
+    À étiquettes, chaque mot du GROUPE (la colonne de gauche) se lit ; à mots, la tâche est
+    nommée. */
+function contexteManquant(lesson: LessonDef, texte: string, ex: Manche): string | null {
+	if (ex.colonneDroite === 'etiquettes') {
+		const absents = ex.paires.map((p) => p.gauche).filter((g) => !citeMot(lu(texte), g));
+		return absents.length === 0
+			? null
+			: `groupe illisible : ${absents.map((a) => `« ${a} »`).join(', ')} absent(s) de « ${lu(texte)} »`;
 	}
-	if (reponse !== paire.droite) {
-		return `on interroge « ${paire.gauche} » (réponse « ${paire.droite} ») mais la réponse stockée est « ${reponse} »`;
+	const tache = lesson.id in TACHE_NOMMEE ? TACHE_NOMMEE[lesson.id] : null;
+	if (tache === null) {
+		return 'leçon « relier » à mots absente de TACHE_NOMMEE : rien ne dit ce qui rend sa question répondable';
+	}
+	return tache.motif.test(sansCitations(lu(texte)))
+		? null
+		: `tâche non nommée dans « ${lu(texte)} » (${tache.raison})`;
+}
+
+/** Les paires que la question désigne : celles dont le mot de gauche est cité SEUL entre
+    « » ; à défaut d'une telle citation, celles dont le mot de gauche paraît en mot entier. */
+function pairesDesignees(texte: string, ex: Manche): Paire[] {
+	const cites = citations(texte);
+	const parCitation = ex.paires.filter((p) => cites.includes(p.gauche.toLowerCase()));
+	if (parCitation.length > 0) return parCitation;
+	return ex.paires.filter((p) => citeMot(lu(texte), p.gauche));
+}
+
+/** Cohérent : raison pour laquelle le repli ne corrige pas la paire qu'il pose, ou `null`.
+    La question doit désigner UN mot (un même mot répété dans la manche compte pour un). */
+function repliIncoherent(texte: string, reponse: string, ex: Manche): string | null {
+	const designees = pairesDesignees(texte, ex);
+	const mots = new Set(designees.map((p) => p.gauche.toLowerCase()));
+	if (mots.size !== 1) {
+		return `« ${lu(texte)} » ne désigne pas un mot et un seul de la manche (${mots.size} désigné(s))`;
+	}
+	if (!designees.some((p) => p.droite === reponse)) {
+		const p = designees[0];
+		return `on interroge « ${p.gauche} » (réponse « ${p.droite} ») mais la réponse stockée est « ${reponse} »`;
+	}
+	return null;
+}
+
+/** Choisi (#777, critère 20) : raison pour laquelle la réponse ne se choisit pas parmi des
+    choix proposés, ou `null`. Au moins deux choix distincts, et la réponse est le SEUL
+    choix jugé juste (deux choix équivalents rendraient la question juste quoi qu'on coche).
+    Leur affichage effectif (écran, papier) est tenu ailleurs (cf. en-tête). */
+function choixDefaillants(item: Item): string | null {
+	const choix = item.choices ?? [];
+	const reponse = String(item.answer);
+	if (new Set(choix).size < 2) return `moins de deux choix distincts : ${JSON.stringify(choix)}`;
+	if (new Set(choix).size !== choix.length) return `choix en double : ${JSON.stringify(choix)}`;
+	const justes = choix.filter((c) => checkItemAnswer(item, c));
+	if (justes.length !== 1 || justes[0] !== reponse) {
+		return `choix jugés justes ${JSON.stringify(justes)} pour la réponse « ${reponse} » parmi ${JSON.stringify(choix)}`;
+	}
+	return null;
+}
+
+/** « relier » conjugué (Relie, Reliez, relier…), en mot entier. « relief », « relis »,
+    « relire » ne sont pas des gestes ; un mot CITÉ (« relier » d'une famille) est du
+    contenu. Mêmes flexions que le détecteur du critère 19 (impression-gate). */
+const RELIER = /(?<!\p{L})reli(?:e|es|ent|er|ez|ons|ant|é|ée|és|ées)(?!\p{L})/iu;
+
+/** Sans geste (#777, critère 19) : raison pour laquelle le repli demande de relier, ou
+    `null`. Le repli n'a pas deux colonnes : « Relie… » y est une consigne fausse, sur papier
+    comme à l'écran, et le texte LU doit dire ce que dit l'énoncé affiché. */
+function gesteRelier(item: Item): string | null {
+	const textes: [string, string][] = [
+		['énoncé', item.text],
+		['texte lu', item.parle ?? ''],
+	];
+	for (const [ou, texte] of textes) {
+		const m = RELIER.exec(sansCitations(lu(texte)));
+		if (m) return `${ou} « ${lu(texte)} » : « ${m[0]} » sans colonnes à relier`;
 	}
 	return null;
 }
@@ -163,20 +240,21 @@ function replis(lesson: LessonDef): Repli[] {
 	return out;
 }
 
-/** Nomme la leçon et la graine : un échec doit pouvoir s'ouvrir directement. */
-const ou = (lesson: LessonDef, r: Repli): string => `${lesson.id} / graine ${r.seed}`;
-
-/** Applique `regle` à tous les replis de toutes les leçons d'appariement, et rend la
-    liste (dédoublonnée) des manquements. */
+/** Applique `regle` à tous les replis de toutes les leçons d'appariement, et rend le
+    PREMIER manquement de chaque leçon (les tirages d'une leçon échouent pour la même
+    raison : une ligne par leçon suffit à la liste de travail). */
 function manquements(regle: (lesson: LessonDef, r: Repli) => string | null): string[] {
 	const out: string[] = [];
 	for (const lesson of LECONS_APPARIEMENT) {
 		for (const r of replis(lesson)) {
 			const faute = regle(lesson, r);
-			if (faute !== null) out.push(`${ou(lesson, r)} : ${faute}`);
+			if (faute !== null) {
+				out.push(`${lesson.id} / graine ${r.seed} : ${faute}`);
+				break;
+			}
 		}
 	}
-	return [...new Set(out)];
+	return out;
 }
 
 /* ============================================================
@@ -196,94 +274,127 @@ describe('Repli des appariements — inventaire', () => {
 			'inventaire vide ou amputé : les tests suivants passeraient en ne regardant rien',
 		).toBeGreaterThanOrEqual(LECONS_ATTENDUES.length);
 	});
+
+	it('TACHE_NOMMEE ne déclare que des leçons « relier » À MOTS du catalogue (pas d’entrée morte)', () => {
+		const aMots = new Set(
+			LECONS_APPARIEMENT.filter((l) =>
+				replis(l).some((r) => r.ex.colonneDroite !== 'etiquettes'),
+			).map((l) => l.id),
+		);
+		expect(Object.keys(TACHE_NOMMEE).filter((id) => !aMots.has(id))).toEqual([]);
+	});
 });
 
 /* ============================================================
-   2. Les trois propriétés, sur les replis réellement servis.
+   2. Les quatre propriétés, sur les replis réellement servis.
    ============================================================ */
 describe('Repli non interactif d’une manche d’appariement (fiche / bilan)', () => {
-	it('reprend l’énoncé de la manche : la question garde ce qui la rend répondable', () => {
-		expect(manquements((_l, r) => enonceAbsent(r.item.text, r.ex))).toEqual([]);
+	it('montre de quoi répondre : le groupe entier (étiquettes), ou la tâche nommée (mots)', () => {
+		expect(manquements((l, r) => contexteManquant(l, r.item.text, r.ex))).toEqual([]);
 	});
 
-	it('place l’énoncé AVANT le champ de réponse : on lit le contexte, puis on répond', () => {
-		expect(
-			manquements((_l, r) =>
-				questionPosee(r.item.text, r.ex) === null
-					? `rien ne suit l'énoncé jusqu'au champ de réponse dans « ${r.item.text} » — l'enfant répondrait avant d'avoir lu de quoi on parle`
-					: null,
-			),
-		).toEqual([]);
-	});
-
-	it('la question posée et la réponse attendue portent sur la MÊME paire', () => {
+	it('la question désigne UN mot de la manche, et la réponse attendue est la sienne', () => {
 		expect(
 			manquements((_l, r) => repliIncoherent(r.item.text, String(r.item.answer), r.ex)),
 			'la fiche corrigerait sur une autre paire que celle qu’elle pose',
 		).toEqual([]);
+	});
+
+	it('#777, critère 20 : la réponse se choisit parmi des choix proposés, et elle seule est jugée juste', () => {
+		expect(manquements((_l, r) => choixDefaillants(r.item))).toEqual([]);
+	});
+
+	it('#777, critère 19 : ni l’énoncé affiché ni le texte lu du repli ne demandent de « relier »', () => {
+		expect(manquements((_l, r) => gesteRelier(r.item))).toEqual([]);
 	});
 });
 
 /* ============================================================
    3. Les verrous mordent.
    ------------------------------------------------------------
-   Les trois tests ci-dessus sont verts : seule une mutation jouée pour de vrai dit
-   qu'ils gardent quelque chose. Elle l'est ici, sur des replis FABRIQUÉS à partir de
-   manches réelles.
+   Seule une mutation jouée pour de vrai dit qu'un test vert garde quelque chose. Elle
+   l'est ici, sur des replis FABRIQUÉS à partir de manches réelles.
    ============================================================ */
 describe('Les verrous du repli mordent', () => {
-	it('la forme d’avant la correction (question seule, énoncé jeté) est signalée', () => {
+	it('la forme d’avant #731 (question seule) est signalée : groupe illisible ou tâche non nommée', () => {
 		expect(
-			manquements((_l, r) => {
-				// Exactement le repli servi jusqu'à #731.
+			manquements((l, r) => {
 				const avant = `Quel mot va avec « ${r.ex.paires[0].gauche} » ? ${TROU}`;
-				if (enonceAbsent(avant, r.ex) === null) return 'énoncé jeté non détecté';
-				if (questionPosee(avant, r.ex) !== null) return 'absence d’énoncé non détectée';
-				return null;
+				return contexteManquant(l, avant, r.ex) === null ? 'question seule non détectée' : null;
 			}),
 		).toEqual([]);
 	});
 
-	it('un énoncé rejeté APRÈS le champ de réponse est signalé', () => {
+	it('la forme d’avant #777 (énoncé « Relie… » repris en tête) est signalée', () => {
 		expect(
 			manquements((_l, r) => {
-				// L'énoncé est bien là — mais l'enfant a déjà répondu quand il le lit.
-				const apres = `Quel mot va avec « ${r.ex.paires[0].gauche} » ? ${TROU} ${r.ex.question}`;
-				if (enonceAbsent(apres, r.ex) !== null) {
-					return 'témoin invalide : l’énoncé devrait être jugé présent';
+				const p = r.ex.paires[0];
+				const avant: Item = {
+					text: `${r.ex.question} **Quel mot va avec « ${p.gauche} » ?** ${TROU}`,
+					answer: p.droite,
+					kind: 'text',
+				};
+				return gesteRelier(avant) === null ? '« Relie… » non détecté' : null;
+			}),
+		).toEqual([]);
+	});
+
+	it('une réponse décalée d’une paire est signalée, la bonne ne l’est pas', () => {
+		expect(
+			manquements((_l, r) => {
+				const paire = r.ex.paires[0];
+				const question = `Dans ce groupe, « ${paire.gauche} » est… ${TROU}`;
+				if (repliIncoherent(question, paire.droite, r.ex) !== null) {
+					return 'témoin invalide : la bonne réponse est signalée';
 				}
-				if (questionPosee(apres, r.ex) !== null) return 'énoncé placé trop tard non détecté';
-				return null;
-			}),
-		).toEqual([]);
-	});
-
-	it('une réponse décalée d’une paire est signalée', () => {
-		expect(
-			manquements((_l, r) => {
-				const segment = questionPosee(r.item.text, r.ex);
-				if (segment === null) return 'témoin invalide : repli illisible';
-				const paire = pairePosee(segment, r.ex);
-				if (paire === null) return 'témoin invalide : aucune paire désignée';
 				// La réponse d'une AUTRE paire de la même manche : la fiche corrigerait à côté.
 				const autre = r.ex.paires.find((p) => p.droite !== paire.droite);
 				if (!autre) return 'témoin invalide : toutes les paires ont la même réponse';
-				return repliIncoherent(r.item.text, autre.droite, r.ex) === null
+				return repliIncoherent(question, autre.droite, r.ex) === null
 					? 'réponse décalée non détectée'
 					: null;
 			}),
 		).toEqual([]);
 	});
 
-	it('une question qui ne désigne aucun mot de la manche est signalée', () => {
+	it('une question qui ne désigne aucun mot de la manche, ou plusieurs, est signalée', () => {
 		expect(
 			manquements((_l, r) => {
-				// L'énoncé est là, au bon endroit, mais la question ne dit pas sur quoi elle porte.
-				const flou = `${r.ex.question} Quel mot va avec celui-ci ? ${TROU}`;
-				return repliIncoherent(flou, String(r.item.answer), r.ex) === null
-					? 'question sans cible non détectée'
+				const reponse = r.ex.paires[0].droite;
+				const flou = `Quel mot va avec celui-ci ? ${TROU}`;
+				if (repliIncoherent(flou, reponse, r.ex) === null)
+					return 'question sans cible non détectée';
+				const [a, b] = r.ex.paires;
+				const deux = `« ${a.gauche} » ou « ${b.gauche} » : ${TROU}`;
+				return repliIncoherent(deux, reponse, r.ex) === null
+					? 'question à deux cibles non détectée'
 					: null;
 			}),
 		).toEqual([]);
+	});
+
+	it('des choix absents, sans la réponse, réduits à un ou en double sont signalés ; des choix conformes, non', () => {
+		const base: Item = { text: `« chant » : ${TROU}`, answer: 'chanteur', kind: 'text' };
+		expect(choixDefaillants(base)).not.toBeNull();
+		expect(choixDefaillants({ ...base, choices: ['dentiste', 'plante'] })).not.toBeNull();
+		expect(choixDefaillants({ ...base, choices: ['chanteur'] })).not.toBeNull();
+		expect(choixDefaillants({ ...base, choices: ['chanteur', 'chanteur'] })).not.toBeNull();
+		expect(choixDefaillants({ ...base, choices: ['dentiste', 'chanteur', 'plante'] })).toBeNull();
+	});
+
+	it('« relie / reliez / relier » est signalé, à l’énoncé comme au texte lu ; ses faux amis et un mot cité, non', () => {
+		const item = (text: string, parle?: string): Item => ({
+			text,
+			answer: 'x',
+			kind: 'text',
+			parle,
+		});
+		for (const text of ['Relie chaque mot. @', 'Reliez les mots. @', '**Relier** les mots : @']) {
+			expect(gesteRelier(item(text)), text).not.toBeNull();
+		}
+		expect(gesteRelier(item('Quel mot ? @', 'Relie chaque mot.'))).not.toBeNull();
+		for (const text of ['Le relief. @', 'Tu relis la phrase. @', 'Le mot « relier » : @']) {
+			expect(gesteRelier(item(text)), text).toBeNull();
+		}
 	});
 });

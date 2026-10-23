@@ -402,7 +402,9 @@ est une **régression** → corriger le code, **ne pas** régénérer pour masqu
 **Comment** : via le workflow CI `.github/workflows/update-snapshots.yml`, qui
 régénère dans l'environnement du runner (ubuntu + Chromium) — seul moyen d'obtenir
 des pixels identiques à ceux comparés par le job `e2e`. Il recommite les PNG
-modifiés sur la branche via le `GITHUB_TOKEN`.
+modifiés sur la branche via le `GITHUB_TOKEN`. Il rejoue les specs à capture listées
+dans son étape de régénération (`galerie`, `impression-bilan` depuis #777) : une nouvelle
+spec à `toHaveScreenshot` doit y être ajoutée, sinon sa baseline n'est jamais générée.
 
 - **Workflow déjà sur `main`** : onglet **Actions → « Mettre à jour les snapshots
   visuels » → Run workflow**, choisir la branche. Il régénère et recommite les

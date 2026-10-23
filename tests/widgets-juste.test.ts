@@ -35,6 +35,11 @@ import { bindAppariement, type AppariementSpec } from '../src/ui/appariement';
 import { bindClicMot } from '../src/ui/clic-mot-interaction';
 import { bindSegmentMot } from '../src/ui/segment-mot-interaction';
 import { liensLisibles, pairesErreur, type LienPropose } from '../src/core/erreur-representation';
+import { corrigerQuestion, type ReponseQuestion } from '../src/core/bilan-parcours';
+import { questionDeRevision, type QuestionRevision } from '../src/core/revision-question';
+import { getAllLessons } from '../src/core/catalog';
+import { createRenderContext, renderItem } from '../src/core/items';
+import { withSeed } from '../src/core/utils';
 
 /* ------------------------------------------------------------------ */
 /* Banc d'essai commun                                                 */
@@ -622,5 +627,391 @@ describe('pairesErreur — réponse donnée inchangée depuis l’extraction de 
 			donnee: 'dent → dentelle ; fleur → (non relié)',
 			attendue: 'dent → dentiste ; fleur → fleuriste',
 		});
+	});
+});
+
+/* ==================================================================
+   PARITÉ widget ↔ correction différée (#777). Un parcours de bilan collecte la réponse
+   que le widget expose (`reponse()`, `selected()`) et la corrige plus tard par
+   `corrigerQuestion` ; le jeu libre et la séance partagée, eux, demandent `juste()` au
+   widget. Deux règles pour une même réponse : elles doivent dire la même chose, sinon un
+   enfant serait jugé autrement selon l'écran. Ce bloc tient l'égalité AVANT et APRÈS
+   l'extraction des prédicats dans `core/` (une seule règle partagée).
+
+   Les widgets sont montés exactement comme le parcours les monte (`ui/bilan-parcours.ts`,
+   `monterTuiles`, `monterQuestion`) : même spec, même variante, même lecture de la réponse.
+   Trois volets, sur les questions du CATALOGUE (révision, plusieurs graines) :
+     1. la bonne réponse, jouée au widget geste par geste, est juste pour les deux règles ;
+     2. des gestes au HASARD (générateur maison, reproductible) : égalité après chaque geste ;
+     3. les cas tordus, un par un.
+   Plus la grille d'opération posée : pas de contrôleur, mais chaque case porte sa réponse
+   (`data-answer`), et la révision juge « toutes les cases justes » ; la correction différée
+   doit lire les cases dans le MÊME ordre que l'écran les rend.
+   ================================================================== */
+
+type QWidget = Extract<
+	QuestionRevision,
+	{ kind: 'tuile' | 'ordre' | 'tri' | 'appariement' | 'clicMot' }
+>;
+const FORMATS_WIDGET: QWidget['kind'][] = ['tuile', 'ordre', 'tri', 'appariement', 'clicMot'];
+const estWidget = (q: QuestionRevision): q is QWidget =>
+	(FORMATS_WIDGET as string[]).includes(q.kind);
+
+interface Monte {
+	root: HTMLElement;
+	juste(): boolean;
+	/** La réponse telle que le parcours la lit (`reponseWidget`, `selected()`). */
+	reponse(): ReponseQuestion;
+	/** Tout ce qu'un enfant peut toucher dans le widget. */
+	cliquables(): HTMLElement[];
+}
+
+const tous = (root: HTMLElement, sel: string): HTMLElement[] => [
+	...root.querySelectorAll<HTMLElement>(sel),
+];
+
+function monterWidget(q: QWidget): Monte {
+	const root = racine();
+	const opts = { variant: 'revision' as const, onState: () => undefined };
+	const tuiles = (c: { juste(): boolean; reponse?(): ReponseQuestion }, sel: string): Monte => ({
+		root,
+		juste: () => c.juste(),
+		// Repli du parcours quand le widget n'expose rien : tuile vide, ou question passée.
+		reponse: () =>
+			c.reponse?.() ?? (q.kind === 'tuile' ? { kind: 'tuile', posee: null } : { kind: 'passe' }),
+		cliquables: () => tous(root, sel),
+	});
+	switch (q.kind) {
+		case 'tuile':
+			return tuiles(
+				bindTuileInteraction(
+					root,
+					{
+						kind: 'tuile',
+						question: q.question,
+						answer: q.answer,
+						tuiles: q.tuiles,
+						parle: q.parle,
+					},
+					opts,
+				),
+				'.ltui-tuile, #ltuiSlot',
+			);
+		case 'ordre':
+			return tuiles(
+				bindTuileInteraction(
+					root,
+					{
+						kind: 'ordre',
+						question: q.question,
+						ordre: q.ordre,
+						tuiles: q.tuiles,
+						nature: q.nature,
+					},
+					opts,
+				),
+				'.lord-tuile, .lord-cell',
+			);
+		case 'tri':
+			return tuiles(
+				bindTuileInteraction(
+					root,
+					{ kind: 'tri', question: q.question, categories: q.categories, mots: q.mots },
+					opts,
+				),
+				'.ltri-tuile, .ltri-col-titre, .ltri-posee',
+			);
+		case 'appariement':
+			return tuiles(
+				bindAppariement(root, { question: q.question, paires: q.paires, intrus: q.intrus }, opts),
+				'.lapp-mot',
+			);
+		case 'clicMot': {
+			const monter = q.segment ? bindSegmentMot : bindClicMot;
+			const c = monter(
+				root,
+				{
+					tokens: q.tokens,
+					cibleIndices: q.cibleIndices,
+					parle: q.parle,
+					cibleLabel: q.cibleLabel,
+				},
+				{ onState: () => undefined },
+			);
+			return {
+				root,
+				juste: () => c.juste(),
+				reponse: () => ({ kind: 'clicMot', indices: c.selected() }),
+				cliquables: () => tous(root, '.lclic-mot, .lseg-mot, #lsegReset'),
+			};
+		}
+	}
+}
+
+/** Premier élément de `sel` dont `data-<cle>` vaut `valeur`, cliqué ; faux s'il n'existe pas. */
+function toucher(root: HTMLElement, sel: string, cle: string, valeur: string): boolean {
+	const el = tous(root, sel).find((e) => e.dataset[cle] === valeur);
+	el?.click();
+	return el !== undefined;
+}
+
+/** Joue la BONNE réponse au widget, comme un enfant : rend le geste introuvable, ou null. */
+function jouerBonneReponse(q: QWidget, m: Monte): string | null {
+	const r = m.root;
+	switch (q.kind) {
+		case 'tuile':
+			return toucher(r, '.ltui-tuile', 'val', q.answer) ? null : `tuile « ${q.answer} »`;
+		case 'ordre':
+			for (const v of q.ordre) if (!toucher(r, '.lord-tuile', 'val', v)) return `tuile « ${v} »`;
+			return null;
+		case 'tri':
+			for (const m2 of q.mots) {
+				if (!toucher(r, '.ltri-tuile', 'mot', m2.mot)) return `mot « ${m2.mot} »`;
+				const titre = r.querySelector<HTMLElement>(
+					`.ltri-col[data-col="${m2.cat}"] .ltri-col-titre`,
+				);
+				if (!titre) return `thème ${m2.cat}`;
+				titre.click();
+			}
+			return null;
+		case 'appariement':
+			for (const p of q.paires) {
+				if (!toucher(r, '.lapp-mot[data-side="g"]', 'id', p.gauche)) return `mot « ${p.gauche} »`;
+				if (!toucher(r, '.lapp-mot[data-side="d"]', 'id', p.droite)) return `mot « ${p.droite} »`;
+			}
+			return null;
+		case 'clicMot': {
+			const cible = [...q.cibleIndices].sort((a, b) => a - b);
+			const aToucher = q.segment ? [cible[0], cible[cible.length - 1]] : cible;
+			for (const i of aToucher)
+				if (!toucher(r, '.lclic-mot, .lseg-mot', 'i', String(i))) return `mot n° ${i}`;
+			return null;
+		}
+	}
+}
+
+/** Générateur reproductible (congruentiel), indépendant du hasard de l'appli. */
+function hasard(graine: number): (n: number) => number {
+	let s = graine >>> 0 || 1;
+	return (n) => {
+		s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+		return s % n;
+	};
+}
+
+/* Inventaire : une question de révision par leçon, niveau et graine, pour chaque format. */
+const GRAINES_PARITE = [1, 2, 3, 4, 5, 6];
+interface Tiree {
+	ou: string;
+	graine: number;
+	q: QWidget;
+}
+const WIDGETS: Tiree[] = [];
+const POSEES: { ou: string; q: QuestionRevision & { kind: 'num' } }[] = [];
+for (const l of getAllLessons())
+	for (const niveau of l.levels)
+		for (const graine of GRAINES_PARITE) {
+			const q = withSeed(graine, () => questionDeRevision(l, niveau));
+			const ou = `${l.id} @${niveau} / graine ${graine}`;
+			if (q && estWidget(q)) WIDGETS.push({ ou, graine, q });
+			else if (q?.kind === 'num' && q.item.posed) POSEES.push({ ou, q });
+		}
+
+/** Écart entre les deux règles sur l'état courant du widget, ou null. */
+function ecart(q: QWidget, m: Monte): string | null {
+	const r = m.reponse();
+	const widget = m.juste();
+	const differe = corrigerQuestion(q, r).reussi;
+	return widget === differe
+		? null
+		: `juste()=${widget}, corrigerQuestion=${differe} sur ${JSON.stringify(r)}`;
+}
+
+describe('Parité widget ↔ correction différée (corrigerQuestion), sur le catalogue', () => {
+	it('l’inventaire couvre les cinq formats, segment compris', () => {
+		const vus = new Set(WIDGETS.map(({ q }) => q.kind));
+		expect([...vus].sort()).toEqual([...FORMATS_WIDGET].sort());
+		expect(WIDGETS.some(({ q }) => q.kind === 'clicMot' && q.segment)).toBe(true);
+		expect(WIDGETS.some(({ q }) => q.kind === 'appariement' && (q.intrus?.length ?? 0) > 0)).toBe(
+			true,
+		);
+		expect(WIDGETS.length).toBeGreaterThanOrEqual(60);
+		// Chaque format éprouvé sur plusieurs questions, pas sur une seule.
+		for (const kind of FORMATS_WIDGET)
+			expect(WIDGETS.filter(({ q }) => q.kind === kind).length, kind).toBeGreaterThanOrEqual(5);
+	});
+
+	it('la bonne réponse, jouée au widget, est juste pour les DEUX règles', () => {
+		const fautes: string[] = [];
+		for (const { ou, graine, q } of WIDGETS) {
+			const m = withSeed(graine, () => monterWidget(q));
+			const introuvable = jouerBonneReponse(q, m);
+			if (introuvable) fautes.push(`${ou} (${q.kind}) : geste impossible, ${introuvable}`);
+			else if (!m.juste())
+				fautes.push(`${ou} (${q.kind}) : bonne réponse jugée fausse par juste()`);
+			else if (!corrigerQuestion(q, m.reponse()).reussi)
+				fautes.push(`${ou} (${q.kind}) : bonne réponse jugée fausse par corrigerQuestion`);
+			m.root.remove();
+		}
+		expect(fautes).toEqual([]);
+	});
+
+	it('gestes au hasard : après CHAQUE geste, juste() === corrigerQuestion(…).reussi', () => {
+		const fautes: string[] = [];
+		let etats = 0;
+		for (const { ou, graine, q } of WIDGETS)
+			for (let essai = 0; essai < 4; essai++) {
+				const m = withSeed(graine, () => monterWidget(q));
+				const tirer = hasard(graine * 1000 + essai * 7 + 1);
+				const avant = ecart(q, m);
+				if (avant) fautes.push(`${ou} (${q.kind}) au montage : ${avant}`);
+				for (let pas = 0; pas < 12; pas++) {
+					const possibles = m.cliquables();
+					if (!possibles.length) break;
+					possibles[tirer(possibles.length)].click();
+					etats++;
+					const e = ecart(q, m);
+					if (e) {
+						fautes.push(`${ou} (${q.kind}) essai ${essai}, geste ${pas + 1} : ${e}`);
+						break;
+					}
+				}
+				m.root.remove();
+			}
+		expect(etats).toBeGreaterThanOrEqual(2000);
+		expect(fautes.slice(0, 15)).toEqual([]);
+	});
+});
+
+describe('Parité widget ↔ correction différée : cas tordus', () => {
+	const premiere = <K extends QWidget['kind']>(
+		kind: K,
+		filtre: (q: Extract<QWidget, { kind: K }>) => boolean = () => true,
+	): { q: Extract<QWidget, { kind: K }>; graine: number } => {
+		const t = WIDGETS.find(
+			(w): w is Tiree & { q: Extract<QWidget, { kind: K }> } =>
+				w.q.kind === kind && filtre(w.q as Extract<QWidget, { kind: K }>),
+		);
+		if (!t) throw new Error(`aucune question ${kind} dans l'inventaire`);
+		return { q: t.q, graine: t.graine };
+	};
+	const monter = (q: QWidget, graine: number) => withSeed(graine, () => monterWidget(q));
+
+	it('tuile vide : faux pour les deux ; une tuile « vide » (chaîne vide) ne vaut pas mieux', () => {
+		const { q, graine } = premiere('tuile');
+		const m = monter(q, graine);
+		expect(m.juste()).toBe(false);
+		expect(ecart(q, m)).toBe(null);
+		expect(corrigerQuestion(q, { kind: 'tuile', posee: '' }).reussi).toBe(false);
+	});
+
+	it('ordre partiel : le début juste, une tuile de moins — faux pour les deux', () => {
+		const { q, graine } = premiere('ordre', (x) => x.ordre.length >= 3);
+		const m = monter(q, graine);
+		for (const v of q.ordre.slice(0, -1))
+			expect(toucher(m.root, '.lord-tuile', 'val', v)).toBe(true);
+		expect(m.juste()).toBe(false);
+		expect(ecart(q, m)).toBe(null);
+	});
+
+	it('tri : un mot laissé au bac, tous les autres bien rangés — faux pour les deux', () => {
+		const { q, graine } = premiere('tri', (x) => x.mots.length >= 2);
+		const m = monter(q, graine);
+		for (const mot of q.mots.slice(1)) {
+			expect(toucher(m.root, '.ltri-tuile', 'mot', mot.mot)).toBe(true);
+			m.root
+				.querySelector<HTMLElement>(`.ltri-col[data-col="${mot.cat}"] .ltri-col-titre`)!
+				.click();
+		}
+		expect(m.juste()).toBe(false);
+		expect(ecart(q, m)).toBe(null);
+	});
+
+	it('relier : un mot relié à l’INTRUS, les autres justes — faux pour les deux', () => {
+		const { q, graine } = premiere('appariement', (x) => (x.intrus?.length ?? 0) > 0);
+		const m = monter(q, graine);
+		const [p0, ...reste] = q.paires;
+		expect(toucher(m.root, '.lapp-mot[data-side="g"]', 'id', p0.gauche)).toBe(true);
+		expect(toucher(m.root, '.lapp-mot[data-side="d"]', 'id', q.intrus![0])).toBe(true);
+		for (const p of reste) {
+			toucher(m.root, '.lapp-mot[data-side="g"]', 'id', p.gauche);
+			toucher(m.root, '.lapp-mot[data-side="d"]', 'id', p.droite);
+		}
+		expect(m.juste()).toBe(false);
+		expect(ecart(q, m)).toBe(null);
+	});
+
+	it('clic sur le mot : un indice en double ne change rien (un ENSEMBLE de mots)', () => {
+		const { q, graine } = premiere('clicMot', (x) => !x.segment);
+		const m = monter(q, graine);
+		for (const i of q.cibleIndices) toucher(m.root, '.lclic-mot', 'i', String(i));
+		expect(m.juste(), 'précondition : sélection juste').toBe(true);
+		const sel = (m.reponse() as Extract<ReponseQuestion, { kind: 'clicMot' }>).indices;
+		expect(corrigerQuestion(q, { kind: 'clicMot', indices: [...sel, ...sel] }).reussi).toBe(true);
+		// Et une sélection fausse le reste, doublée ou non.
+		const faux = [...sel.slice(1)];
+		expect(corrigerQuestion(q, { kind: 'clicMot', indices: [...faux, ...faux] }).reussi).toBe(
+			false,
+		);
+	});
+
+	it('clic sur le mot : un indice HORS de la phrase (que le widget ne peut pas produire) ne change pas le verdict — règle actuelle, figée pour le refactor', () => {
+		const { q, graine } = premiere('clicMot', (x) => !x.segment);
+		const m = monter(q, graine);
+		for (const i of q.cibleIndices) toucher(m.root, '.lclic-mot', 'i', String(i));
+		const sel = (m.reponse() as Extract<ReponseQuestion, { kind: 'clicMot' }>).indices;
+		for (const hors of [q.tokens.length, q.tokens.length + 5, -1])
+			expect(
+				corrigerQuestion(q, { kind: 'clicMot', indices: [...sel, hors] }).reussi,
+				String(hors),
+			).toBe(m.juste());
+	});
+});
+
+describe('Parité grille d’opération posée ↔ correction différée', () => {
+	it('l’inventaire porte des opérations posées', () => {
+		expect(POSEES.length).toBeGreaterThanOrEqual(5);
+	});
+
+	it('cases remplies au hasard : « toutes les cases égales à leur data-answer » ⇔ corrigerQuestion juste', () => {
+		const fautes: string[] = [];
+		let grilles = 0;
+		for (const { ou, q } of POSEES)
+			for (let essai = 0; essai < 25; essai++) {
+				const tirer = hasard(essai * 31 + ou.length);
+				const hote = document.createElement('div');
+				hote.innerHTML = renderItem(q.item, createRenderContext()).balisage;
+				document.body.appendChild(hote);
+				const cases = [...hote.querySelectorAll<HTMLInputElement>('.posee-input')];
+				if (!cases.length || cases.some((c) => c.dataset.answer === undefined)) {
+					fautes.push(`${ou} : cases sans data-answer`);
+					hote.remove();
+					break;
+				}
+				// Un essai sur trois tout juste ; sinon chaque case juste à 80 %, fausse ou vide.
+				for (const c of cases) {
+					const juste = essai % 3 === 0 || tirer(10) < 8;
+					c.value = juste
+						? String(c.dataset.answer)
+						: tirer(5) === 0
+							? ''
+							: String((Number(c.dataset.answer) + 1 + tirer(8)) % 10);
+				}
+				grilles++;
+				const grille = cases.every(
+					(c) => c.value.trim() !== '' && Number(c.value) === Number(c.dataset.answer),
+				);
+				const differe = corrigerQuestion(q, {
+					kind: 'posee',
+					chiffres: cases.map((c) => c.value.trim()),
+				}).reussi;
+				if (grille !== differe)
+					fautes.push(
+						`${ou} essai ${essai} : grille ${grille}, corrigerQuestion ${differe} sur ${JSON.stringify(cases.map((c) => c.value))}`,
+					);
+				hote.remove();
+			}
+		expect(grilles).toBeGreaterThanOrEqual(100);
+		expect(fautes.slice(0, 10)).toEqual([]);
 	});
 });

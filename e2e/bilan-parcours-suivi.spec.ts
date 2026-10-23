@@ -475,6 +475,9 @@ test('critère 12 : saisie fausse, QCM faux, clic-mot faux et question passée r
 	}
 
 	// Côté encadrant : même constat à l'écran, une carte par leçon.
+	// #777 : un bilan annonce ses récompenses par les modales habituelles ; une éventuelle
+	// modale ouverte rendrait le reste de la page inerte, on la ferme avant de naviguer.
+	await fermerModalesRecompense(page);
 	await gotoHash(page, 'encadrant');
 	const lecons = page.locator('.enc-err-lecon');
 	await expect(lecons.first()).toBeVisible();

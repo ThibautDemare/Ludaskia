@@ -760,7 +760,7 @@ export function showBilanCustomView(categoryId?: string) {
 	resetSessionUI();
 	setToolbar({ verify: false, home: true, profile: true });
 	hideMenus();
-	renderBilanConfigScreen(document.getElementById('bilanCustomContent')!, categoryId);
+	renderBilanConfigScreen(document.getElementById('bilanCustomContent')!, { categoryId });
 	document.getElementById('backHomeBilanCustom')!.hidden = false;
 	document.getElementById('bilan-custom')!.style.display = '';
 	window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -782,13 +782,8 @@ function showBilanEditView() {
 	document.getElementById('backHomeBilanCustom')!.hidden = true;
 	document.getElementById('bilan-custom')!.style.display = '';
 	// Formulaire gardé tel quel (changement de profil par la barre) : l'adulte reste où il
-	// était, ni focus déplacé ni page remontée.
+	// était, page non remontée. Le focus d'un rendu neuf, lui, est l'affaire de l'éditeur.
 	if (affichage === 'conserve') return;
-	// Le crayon cliqué a disparu avec l'espace encadrant, le focus irait sur `<body>` : le
-	// titre, lui, dit au lecteur d'écran quel favori et quel enfant sont concernés.
-	document
-		.querySelector<HTMLElement>('#bilan-custom .bc-edit-title')
-		?.focus({ preventScroll: true });
 	window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 /* Runner d'écran dédié de chaque type qui en a un (#734 : table typée sur `TypeRunner`,

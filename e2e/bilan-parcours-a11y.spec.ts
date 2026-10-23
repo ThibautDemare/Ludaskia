@@ -297,17 +297,72 @@ test('point 2 : toucher un choix le place dans le trou, le trou reste lisible au
 
 	// Nom du groupe de choix : dit le trou, jamais le marqueur interne « @ ».
 	const nomGroupe = await choix.first().evaluate((el) => {
-		const g = el.closest('[role="group"]');
+		const g = el.closest('[role="radiogroup"]');
 		if (!g) return null;
 		const ids = (g.getAttribute('aria-labelledby') ?? '').split(/\s+/).filter(Boolean);
 		return `${g.getAttribute('aria-label') ?? ''} ${ids.map((id) => document.getElementById(id)?.textContent ?? '').join(' ')}`;
 	});
-	expect(nomGroupe, 'les choix sont dans un role="group"').not.toBeNull();
+	expect(nomGroupe, 'les choix sont dans un role="radiogroup"').not.toBeNull();
 	expect.soft(nomGroupe).toContain('(trou)');
 	expect.soft(nomGroupe).not.toContain('@');
 	expect(errors).toEqual([]);
 	// Ce qui le ferait rougir : `aria-hidden="true"` sur `.bp-trou` (état actuel), un nom de
 	// groupe fixe « Choix de réponse », ou un nom construit sur l'énoncé brut contenant « @ ».
+});
+
+test('point 2 bis : les choix du QCM forment un radiogroup nommé (aria-checked, tabindex mobile, flèches qui déplacent ET sélectionnent)', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await lancerFavoriAccueil(page, [favori([LECON_TROU], 3)]);
+	const stage = page.locator('#bpStage');
+	await expect(stage).toHaveAttribute('data-kind', 'qcm');
+	const groupe = stage.locator('[role="radiogroup"]');
+	await expect(groupe, 'un radiogroup autour des choix').toHaveCount(1);
+	const nom = await groupe.evaluate((g) => {
+		const ids = (g.getAttribute('aria-labelledby') ?? '').split(/\s+/).filter(Boolean);
+		return `${g.getAttribute('aria-label') ?? ''} ${ids.map((id) => document.getElementById(id)?.textContent ?? '').join(' ')}`.trim();
+	});
+	expect.soft(nom, 'nom du radiogroup').not.toBe('');
+	const choix = groupe.locator('.bp-choice[data-value]');
+	const n = await choix.count();
+	expect(n).toBeGreaterThanOrEqual(2);
+	// Contrat radio : role, aria-checked, plus aucun aria-pressed.
+	for (let i = 0; i < n; i++) {
+		await expect.soft(choix.nth(i), `choix ${i} : role`).toHaveAttribute('role', 'radio');
+		await expect
+			.soft(choix.nth(i), `choix ${i} : aria-checked`)
+			.toHaveAttribute('aria-checked', 'false');
+		await expect
+			.soft(choix.nth(i), `choix ${i} : pas d'aria-pressed`)
+			.not.toHaveAttribute('aria-pressed', /.*/);
+	}
+	const tabindex = () => choix.evaluateAll((els) => els.map((e) => e.getAttribute('tabindex')));
+	const coches = () => choix.evaluateAll((els) => els.map((e) => e.getAttribute('aria-checked')));
+	// Aucun choix coché : seul le premier est dans l'ordre de tabulation.
+	expect
+		.soft(await tabindex(), 'tabindex sans sélection')
+		.toEqual(['0', ...Array(n - 1).fill('-1')]);
+
+	await choix.nth(0).click();
+	expect.soft(await coches(), 'un seul coché').toEqual(['true', ...Array(n - 1).fill('false')]);
+	expect
+		.soft(await tabindex(), 'tabindex = le choix coché')
+		.toEqual(['0', ...Array(n - 1).fill('-1')]);
+
+	// Flèche droite : déplace le focus ET sélectionne le suivant.
+	await choix.nth(0).focus();
+	await page.keyboard.press('ArrowRight');
+	expect
+		.soft(await coches(), 'la flèche sélectionne le suivant')
+		.toEqual(['false', 'true', ...Array(n - 2).fill('false')]);
+	expect
+		.soft(await tabindex(), 'le tabindex suit')
+		.toEqual(['-1', '0', ...Array(n - 2).fill('-1')]);
+	await expect.soft(choix.nth(1), 'le focus suit').toBeFocused();
+	expect(errors).toEqual([]);
+	// Ce qui le ferait rougir : `aria-pressed` au lieu de `role="radio"` + `aria-checked` (état actuel),
+	// tous les choix à tabindex 0, une flèche qui ne sélectionne pas, ou plusieurs `aria-checked="true"`.
 });
 
 /* ============================================================

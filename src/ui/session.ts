@@ -48,6 +48,7 @@ import {
 import { html, brut, VIDE, type SafeHtml } from '../core/html';
 import { enNombre, libelleRegleRomaine, regleEnfreinte } from '../core/chiffres-romains';
 import { MODE_PARTAGE } from '../core/partage/passage';
+import { DELAI_ANNONCE } from './annonce';
 
 /* Règle enfreinte par une écriture romaine fausse (#717, critère 5). Révéler la bonne
    écriture ne suffit pas : l'enfant qui a écrit `XXXXIIII` lit « → XLIV » sans savoir
@@ -83,12 +84,6 @@ function regleRomaineHTML(item: Item | undefined, saisie: string): SafeHtml {
    La région est créée VIDE puis remplie au tour suivant : une région vivante insérée
    déjà pleine n'est pas annoncée de façon fiable, c'est le changement qui l'est. */
 const ID_VERDICT_SR = 'verdictAnnonce';
-
-/* Délai de référence du dépôt pour le patron « région vivante créée puis remplie »
-   (`selecteur-lecon.ts`, `encadrant-banque.ts`). On garde le même chiffre plutôt que d'en
-   inventer un troisième : aucun des trois n'est issu d'une mesure sur un moteur vocal
-   réel, donc la cohérence est le seul argument disponible. */
-const DELAI_ANNONCE = 350;
 
 /* Annonce du VERDICT au lecteur d'écran (relecture a11y #717).
 

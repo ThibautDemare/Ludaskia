@@ -61,9 +61,7 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
 - **`annonce.ts`** — module feuille, sans import : **`DELAI_ANNONCE`** (350 ms), constante
   unique du délai avant d'écrire dans une région live (créée vide puis remplie, ou résumé
   recalculé à chaque frappe). Utilisée par l'espace encadrant (`encadrant-*`), les sélecteurs
-  de leçons et de dictées, et `recherche-lecon.ts`. **Une copie locale subsiste dans
-  `ui/session.ts`**, laissée hors de #778 parce que #777 modifie ce fichier : à rattacher à
-  `annonce.ts` après la fusion de #777.
+  de leçons et de dictées, `recherche-lecon.ts` et l'annonce du verdict de `session.ts`.
 - **`pwa.ts`** — enregistrement du service worker (`src/sw.ts`, via
   `virtual:pwa-register`/`workbox-window`) et **réchauffement de fond** du
   cache hors-ligne. `initPwa()` enregistre le worker, relance

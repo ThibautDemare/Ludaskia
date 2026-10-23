@@ -315,8 +315,10 @@ function afficherEcranCourant(): void {
    quand la question n'a pas de champ, et un focus sans nom ne dit rien à qui ne voit pas
    l'écran. Le numéro affiché n'est donc plus une région live (il serait lu deux fois).
    « Valider » n'est jamais `disabled` : `aria-disabled` le garde dans l'ordre de
-   tabulation, et l'appuyer trop tôt DIT pourquoi rien ne se passe, dans `#bpStatut`
-   (région insérée VIDE avec le squelette, remplie ensuite : c'est ce qui la fait lire). */
+   tabulation, et l'appuyer trop tôt DIT pourquoi rien ne se passe — à l'écran sous les
+   boutons (`#bpMessage`, tu aux technologies d'assistance pour n'être pas lu deux fois),
+   et à l'oreille dans `#bpStatut` (région insérée VIDE avec le squelette, remplie
+   ensuite : c'est ce qui la fait lire). */
 function rendreSquelette(): void {
 	const e = etat!;
 	const titre = e.rejeu ? 'Révision — tes erreurs' : e.config.label;
@@ -327,7 +329,7 @@ function rendreSquelette(): void {
         <span class="bp-partie-nom"></span>
         <span class="bp-partie-num"></span>
       </div>
-      <p class="bp-question-num"></p>
+      <p class="bp-question-num" id="bpQuestionNum"></p>
       <div class="bp-progression" role="progressbar" aria-label="Progression du bilan" aria-valuemin="0">
         <div class="bp-progression-fill"></div>
       </div>
@@ -337,6 +339,7 @@ function rendreSquelette(): void {
       <button type="button" class="bp-valider" id="bpValider" aria-disabled="true">Valider</button>
       <button type="button" class="bp-passer" id="bpPasser">Je passe</button>
     </div>
+    <p class="bp-message" id="bpMessage" aria-hidden="true" hidden></p>
     <p class="sr-only" id="bpStatut" role="status"></p>
   </div>`.balisage;
 	const racine = sheets().querySelector<HTMLElement>('.bilan-parcours')!;
@@ -378,10 +381,16 @@ const REPONSE_ATTENDUE = "Réponds d'abord, ou touche « Je passe ».";
 /* Jeton de la dernière annonce : une question qui change entre-temps l'annule. */
 let jetonStatut = 0;
 
-/* Écrit dans `#bpStatut`, vidé d'abord : le même message redit (deuxième Entrée) doit être
-   relu, et une région qui garde son texte ne réannonce rien. */
+/* Dit le message : tout de suite à l'écran (`#bpMessage`), et dans `#bpStatut` vidé
+   d'abord — le même message redit (deuxième Entrée) doit être relu, et une région qui
+   garde son texte ne réannonce rien. */
 function direReponseAttendue(): void {
 	const region = document.getElementById('bpStatut');
+	const message = document.getElementById('bpMessage');
+	if (message) {
+		message.textContent = REPONSE_ATTENDUE;
+		message.hidden = false;
+	}
 	if (!region) return;
 	const jeton = ++jetonStatut;
 	region.textContent = '';
@@ -390,11 +399,18 @@ function direReponseAttendue(): void {
 	}, 50);
 }
 
-/* Vide `#bpStatut` (nouvelle question, réponse devenue complète) et annule l'annonce en vol. */
+/* Retire le message, à l'écran et dans `#bpStatut` (nouvelle question, réponse devenue
+   complète), et annule l'annonce en vol. Par `hidden` et texte vidé, pas par une classe :
+   rien ne dépend de la feuille de style. */
 function viderStatut(): void {
 	jetonStatut++;
 	const region = document.getElementById('bpStatut');
 	if (region) region.textContent = '';
+	const message = document.getElementById('bpMessage');
+	if (message) {
+		message.textContent = '';
+		message.hidden = true;
+	}
 }
 
 /* Champs à remplir de la question affichée (saisie, cases d'une posée, étapes). */
@@ -609,8 +625,14 @@ function monterSaisie(
 	stage.innerHTML =
 		html`${consigneHTML(q, it.parle ?? it.text)}${figureBlock(it.figure)}<div class="bp-enonce">${enonce}</div>`.balisage;
 	const inp = stage.querySelector<HTMLInputElement>('#bpInput')!;
-	// Le nom du champ est l'énoncé ; la consigne (« Calcule », « Écris le mot… ») le décrit.
-	const decrit = consigneDecrite(stage);
+	// Le nom du champ est l'énoncé ; sa description dit d'abord où l'on en est (« Question 2
+	// sur 5 », l'en-tête, hors de la carte), puis la consigne (« Calcule », « Écris le mot… »).
+	const decrit = [
+		document.getElementById('bpQuestionNum')?.textContent?.trim() ? 'bpQuestionNum' : '',
+		consigneDecrite(stage),
+	]
+		.filter(Boolean)
+		.join(' ');
 	if (decrit) inp.setAttribute('aria-describedby', decrit);
 	inp.addEventListener('input', () => pret(inp.value.trim() !== ''));
 	return () => ({ kind: 'saisie', valeur: inp.value });

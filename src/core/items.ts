@@ -305,21 +305,25 @@ export const MARQUE_TROU = '(trou)';
     (accords, homophones — l'oral trahirait la réponse), et ailleurs il n'est qu'une
     consigne (« Choisis le bon mot… ») qui ne dit pas la phrase. `nomChampReponse`, qui
     s'en sert, donnait donc « réponse » ou la consigne seule, et taisait le trou.
-    Les marques visuelles partent : le gras `**`, la flèche « devient » et les séparateurs
-    (·, —, –), muets comme à l'écoute (`texteParle`). Le marqueur se détache d'un mot
-    qu'il coupe (« lo (trou) gue ») ; contre une ponctuation, il reste collé.
+    Un mot en GRAS est souvent LE mot visé (« le contraire du mot en gras ») : il est dit
+    entre guillemets, « tirer », plutôt que fondu dans la phrase, où l'oreille ne le
+    retrouverait plus. Guillemets à espaces ordinaires, comme partout dans `src/`.
+    Les autres marques visuelles partent : la flèche « devient » et les séparateurs
+    (·, —, –), muets comme à l'écoute (`texteParle`). Le marqueur se détache d'un mot ou
+    d'un guillemet qu'il touche (« lo (trou) gue ») ; contre une ponctuation, il reste collé.
     Sans `@`, rend l'énoncé ainsi nettoyé : le parcours de bilan nomme de même le groupe
     de choix d'un QCM sans trou. Vide si l'énoncé l'est (question à figure seule). */
 export function legendeQcmTrou(it: Item): string {
 	const t = it.text
+		.replace(/\*\*(.+?)\*\*/g, '« $1 »')
 		.replace(/\*\*/g, '')
 		.replace(/[·—–→]/g, ' ')
 		.replace(/\s+/g, ' ');
-	const lettre = (c: string | undefined): boolean => !!c && /[\p{L}\p{N}]/u.test(c);
+	const detache = (c: string | undefined): boolean => !!c && /[\p{L}\p{N}«»]/u.test(c);
 	return t
 		.replace(/@/g, (_m, i: number) => {
-			const avant = lettre(t[i - 1]) ? ' ' : '';
-			const apres = lettre(t[i + 1]) ? ' ' : '';
+			const avant = detache(t[i - 1]) ? ' ' : '';
+			const apres = detache(t[i + 1]) ? ' ' : '';
 			return `${avant}${MARQUE_TROU}${apres}`;
 		})
 		.replace(/\s+/g, ' ')

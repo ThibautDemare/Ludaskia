@@ -505,7 +505,21 @@ export function afficherChoixAuTrou(champ: HTMLInputElement): void {
 		'input[type="radio"]:checked',
 	);
 	const vue = coche?.closest('label')?.querySelector('.fiche-choix-vue');
-	trou.replaceChildren(...(vue ? [...vue.childNodes].map((n) => n.cloneNode(true)) : []));
+	const copie = vue ? [...vue.childNodes].map((n) => n.cloneNode(true)) : [];
+	// Choix à vue RICHE (fraction empilée, terminaison surlignée), reconnaissable à
+	// l'`aria-label` de son bouton : la copie se lirait en morceaux (« 3 4 »). Elle est tue,
+	// et le libellé du choix (« trois quarts ») se dit à sa place, DANS le trou. Un choix
+	// simple se lit tel quel.
+	const libelle = coche?.getAttribute('aria-label');
+	if (vue && libelle) {
+		const cache = document.createElement('span');
+		cache.setAttribute('aria-hidden', 'true');
+		cache.append(...copie);
+		const lu = document.createElement('span');
+		lu.className = 'sr-only';
+		lu.textContent = libelle;
+		trou.replaceChildren(cache, lu);
+	} else trou.replaceChildren(...copie);
 	trou.classList.toggle('fiche-trou--rempli', !!vue);
 }
 

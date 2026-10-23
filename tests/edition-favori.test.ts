@@ -19,8 +19,9 @@
    Modèle : tests/bilans-par-profil.test.ts (fraîcheur, deux profils, semis par le chemin
    réel : l'enfant compose ses favoris et joue ses bilans en étant le profil ACTIF).
    ============================================================ */
-import { beforeEach, describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import {
+	BILANS_KEY,
 	loadBilans,
 	saveBilan,
 	loadBilansFor,
@@ -555,6 +556,126 @@ describe('renommer un favori garde la reprise de l’enfant (critère 9, versant
 		modifierBilanFor(b, apres);
 
 		expect(hasResumeFor(b, bilanFavoriKey('f-b'), NOW + 1_000)).toBe(true);
+	});
+});
+
+/* ======================================================================================
+   Écriture refusée par le stockage (relecture qualité Q1)
+   ------------------------------------------------------------------------------------
+   `lsSetRaw` avale l'erreur d'un `setItem` qui échoue (quota dépassé, stockage bloqué).
+   Si `modifierBilanFor` répond quand même `true`, l'éditeur annonce « enregistré » et
+   abandonne la partie de l'enfant pour un favori resté inchangé. Exigence : `true` veut
+   dire « la nouvelle version est stockée », rien d'autre.
+   ====================================================================================== */
+describe('modifierBilanFor : une écriture refusée par le stockage n’est pas un enregistrement', () => {
+	const cleFavoris = (uuid: string) => `${uuid}/${BILANS_KEY}`;
+
+	/* Refus simulé : `setItem` remplacé sur l'INSTANCE `localStorage`, puis remis tel quel.
+	   Constaté sous happy-dom : son `Storage` est un Proxy qui lie ses méthodes à l'instance
+	   au premier accès, donc un espion sur `Storage.prototype` n'intercepte rien, et
+	   `vi.spyOn(localStorage, …)` ne se restaure pas (le Proxy avale la réaffectation, et
+	   les tests suivants héritent d'un stockage cassé). `Object.defineProperty` passe, lui,
+	   dans les deux sens. */
+	let restaurer: (() => void) | null = null;
+	function restaurerEcriture(): void {
+		restaurer?.();
+		restaurer = null;
+	}
+	afterEach(restaurerEcriture);
+
+	/** Fait lever `setItem` (quota dépassé) pour les clés désignées, laisse passer les autres.
+	    Sonde ensuite que le refus prend VRAIMENT sur `cleSonde`, en y réécrivant sa valeur
+	    actuelle (sans effet si la simulation était inopérante). */
+	function refuserEcriture(refuse: (cle: string) => boolean, cleSonde: string): void {
+		const original = localStorage.setItem.bind(localStorage);
+		const descripteur = Object.getOwnPropertyDescriptor(localStorage, 'setItem');
+		const poser = (value: (cle: string, valeur: string) => void) =>
+			Object.defineProperty(localStorage, 'setItem', { configurable: true, writable: true, value });
+		poser((cle, valeur) => {
+			if (refuse(cle)) throw new DOMException('Quota dépassé', 'QuotaExceededError');
+			original(cle, valeur);
+		});
+		restaurer = () => {
+			if (descripteur) Object.defineProperty(localStorage, 'setItem', descripteur);
+			else poser(original);
+		};
+		const actuelle = localStorage.getItem(cleSonde) ?? '[]';
+		expect(() => localStorage.setItem(cleSonde, actuelle)).toThrow();
+	}
+
+	it('stockage plein (toute écriture refusée) : renvoie false, rien n’a changé', () => {
+		const a = activeProfile().uuid;
+		const b = addProfile('Enfant B').uuid;
+		semerFavoris(b, favori('f-b', 'Ancien nom'));
+		setActiveProfile(a);
+		const avant = instantane();
+
+		refuserEcriture(() => true, cleFavoris(b));
+		const ok = modifierBilanFor(b, favori('f-b', 'Nouveau nom', { mode: 'sprint' }));
+		restaurerEcriture();
+
+		expect(ok).toBe(false);
+		expect(instantane()).toEqual(avant);
+	});
+
+	it('seule la clé des favoris est refusée : renvoie false, la liste du profil est celle d’avant', () => {
+		const a = activeProfile().uuid;
+		const b = addProfile('Enfant B').uuid;
+		semerFavoris(b, favori('f-1', 'Un'), favori('f-b', 'Ancien nom'));
+		setActiveProfile(a);
+		const brutAvant = localStorage.getItem(cleFavoris(b));
+		const listeAvant = loadBilansFor(b);
+
+		refuserEcriture((cle) => cle === cleFavoris(b), cleFavoris(b));
+		const ok = modifierBilanFor(
+			b,
+			favori('f-b', 'Nouveau nom', { lessonIds: [MATH_1, AUTRE_1], questionsPerLesson: 'all' }),
+		);
+		restaurerEcriture();
+
+		expect(ok).toBe(false);
+		expect(localStorage.getItem(cleFavoris(b))).toBe(brutAvant);
+		expect(loadBilansFor(b)).toEqual(listeAvant);
+	});
+
+	it('refus pendant un changement de contenu : la partie de l’enfant survit (abandon seulement après un `true`)', () => {
+		// Protocole de l'appelant (l'éditeur) : on n'abandonne la reprise QUE si l'écriture a
+		// pris. Ce test vérifie que `modifierBilanFor` lui donne de quoi le respecter : la clé
+		// des reprises, elle, reste écrivable, donc un `true` menteur l'effacerait vraiment.
+		const a = activeProfile().uuid;
+		const b = addProfile('Enfant B').uuid;
+		const avant = favori('f-b', 'Doubles');
+		semerFavoris(b, avant);
+		const cle = bilanFavoriKey('f-b');
+		semerReprise(b, cle);
+		setActiveProfile(a);
+		const apres = favori('f-b', 'Doubles et autre', { lessonIds: [MATH_1, MATH_2, AUTRE_1] });
+		expect(contenuFavoriChange(avant, apres)).toBe(true); // précondition : abandon prévu
+
+		refuserEcriture((k) => k === cleFavoris(b), cleFavoris(b));
+		if (modifierBilanFor(b, apres)) removeResumeFor(b, cle);
+		restaurerEcriture();
+
+		expect(hasResumeFor(b, cle, NOW + 1_000)).toBe(true);
+		expect(trouver(b, 'f-b')!.lessonIds).toEqual([MATH_1, MATH_2]); // l'ancienne version
+	});
+
+	it('écriture réussie d’un contenu identique à l’existant : renvoie true, pas false', () => {
+		// « Enregistrer » sans rien changer est un enregistrement réussi. Une implémentation qui
+		// déduirait l'échec de « rien n'a bougé dans le stockage » répondrait `false` ici, et
+		// l'éditeur afficherait « ce bilan favori n'existe plus » à tort.
+		const a = activeProfile().uuid;
+		const b = addProfile('Enfant B').uuid;
+		// Stocké tel que l'éditeur l'écrirait : catégorie recalculée comprise.
+		semerFavoris(b, favori('f-b', 'Doubles', { categoryId: CAT_MATH }));
+		setActiveProfile(a);
+		const brutAvant = localStorage.getItem(cleFavoris(b));
+		const tel = trouver(b, 'f-b')!;
+
+		expect(modifierBilanFor(b, tel)).toBe(true);
+		expect(localStorage.getItem(cleFavoris(b))).toBe(brutAvant); // rien n'a bougé
+		// Deuxième « Enregistrer » à l'identique, juste derrière : toujours un succès.
+		expect(modifierBilanFor(b, trouver(b, 'f-b')!)).toBe(true);
 	});
 });
 

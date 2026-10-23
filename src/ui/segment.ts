@@ -54,26 +54,35 @@ export function segmentHTML(c: SegmentConfig): SafeHtml {
 const SUIVANT = ['ArrowRight', 'ArrowDown'];
 const PRECEDENT = ['ArrowLeft', 'ArrowUp'];
 
-/* Navigation clavier du segment (à poser sur le conteneur délégué de l'espace).
-   Renvoie `true` si la touche a été consommée. La sélection SUIT le focus (contrat
-   radiogroup) : on se contente de cliquer l'option visée, et le handler de la
-   section fait le reste (état → re-rendu → focus rendu à l'option cochée). */
-export function segmentKeydown(e: KeyboardEvent): boolean {
-	const cible = (e.target as HTMLElement | null)?.closest?.<HTMLElement>(
-		'.enc-act-mode[role="radio"]',
-	);
+/* Option visée par une touche de navigation d'un groupe radio (APG « Radio Group ») : la
+   suivante ou la précédente aux flèches (en boucle), la première ou la dernière à
+   Home/End. `selecteur` désigne les options ; la cible doit en être une, dans un
+   `role="radiogroup"`. `null` si la touche ne navigue pas. Une touche consommée est
+   neutralisée (les flèches ne doivent pas faire défiler la page). Partagée par le segment
+   et par les choix de QCM du parcours de bilan (#777) : le contrat clavier est le même. */
+export function radioVisee(e: KeyboardEvent, selecteur: string): HTMLElement | null {
+	const cible = (e.target as HTMLElement | null)?.closest?.<HTMLElement>(selecteur);
 	const groupe = cible?.closest('[role="radiogroup"]');
-	if (!cible || !groupe) return false;
-	const boutons = [...groupe.querySelectorAll<HTMLElement>('.enc-act-mode[role="radio"]')];
+	if (!cible || !groupe) return null;
+	const boutons = [...groupe.querySelectorAll<HTMLElement>(selecteur)];
 	const i = boutons.indexOf(cible);
-	if (i < 0) return false;
+	if (i < 0) return null;
 	let j: number;
 	if (SUIVANT.includes(e.key)) j = (i + 1) % boutons.length;
 	else if (PRECEDENT.includes(e.key)) j = (i - 1 + boutons.length) % boutons.length;
 	else if (e.key === 'Home') j = 0;
 	else if (e.key === 'End') j = boutons.length - 1;
-	else return false;
-	e.preventDefault(); // les flèches ne doivent pas faire défiler la page
-	boutons[j].click();
-	return true;
+	else return null;
+	e.preventDefault();
+	return boutons[j];
+}
+
+/* Navigation clavier du segment (à poser sur le conteneur délégué de l'espace).
+   Renvoie `true` si la touche a été consommée. La sélection SUIT le focus (contrat
+   radiogroup) : on se contente de cliquer l'option visée, et le handler de la
+   section fait le reste (état → re-rendu → focus rendu à l'option cochée). */
+export function segmentKeydown(e: KeyboardEvent): boolean {
+	const visee = radioVisee(e, '.enc-act-mode[role="radio"]');
+	visee?.click();
+	return visee !== null;
 }

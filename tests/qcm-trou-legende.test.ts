@@ -16,8 +16,10 @@
      puis sur tous les QCM à trou des fiches du catalogue ;
    - le RENDU : la `legend` du `fieldset` de `renderItem` à l'écran, mêmes exigences ;
    - le critère négatif : un QCM SANS trou ne gagne pas de « (trou) » ;
-   - les formes que le nom NETTOIE (contrat de `legendeQcmTrou`) : gras `**`, flèche `→`,
-     séparateurs `·` `—` `–` muets ; le marqueur détaché d'un mot qu'il coupe
+   - les formes que le nom NETTOIE (contrat de `legendeQcmTrou`) : flèche `→`, séparateurs
+     `·` `—` `–` muets ; un mot en GRAS `**x**` dit entre guillemets « x » (décision après
+     relecture : le gras désigne souvent LE mot visé — « le contraire du mot en gras » — et
+     le dissoudre le rendait introuvable à l'oreille) ; le marqueur détaché d'un mot qu'il coupe
      (« lo (trou) gue »), collé à une ponctuation ; sans `@`, l'énoncé nettoyé, sans
      « (trou) » inventé ; vide pour un énoncé vide ;
    - les témoins du détecteur partagé `defautsNom` (`tests/qcm-trou-nom.ts`).
@@ -118,7 +120,7 @@ describe('legendeQcmTrou — l’énoncé, trou marqué « (trou) »', () => {
 	it('item muet (parle vide) : la phrase et son trou, jamais « réponse » ni un silence', () => {
 		expect(lu(legendeQcmTrou(MUET))).toContain(`Le chat ${TROU} mangé`);
 		expect(defautsNom(legendeQcmTrou(ACCORD), ACCORD.text)).toEqual([]);
-		expect(lu(legendeQcmTrou(ACCORD))).toContain(`Elle est ${TROU}`);
+		expect(lu(legendeQcmTrou(ACCORD))).toContain(`« Elle » est ${TROU}`);
 	});
 
 	it('parle réduit à une consigne (homophones) : la légende dit la PHRASE, pas la consigne seule', () => {
@@ -187,6 +189,7 @@ describe('Témoins : defautsNom signale ce qu’il prétend signaler', () => {
 		expect(defautsNom(`Le chat ${TROU} mangé.`, PHRASE.text)).toEqual([]);
 		expect(defautsNom(`le chat ${TROU} mangé`, PHRASE.text)).toEqual([]);
 		expect(defautsNom(`Il est revenu. Elle est ${TROU}`, ACCORD.text)).toEqual([]);
+		expect(defautsNom(`Il est revenu. « Elle » est ${TROU}`, ACCORD.text)).toEqual([]);
 		expect(defautsNom(`lo${TROU}gue`, DANS_LE_MOT.text)).toEqual([]);
 		expect(defautsNom(`lo ${TROU} gue`, DANS_LE_MOT.text)).toEqual([]);
 	});
@@ -214,11 +217,14 @@ describe('legendeQcmTrou — énoncé SANS trou : défini, et sans « (trou) » 
 		expect(legendeQcmTrou(SANS_TROU)).not.toContain(TROU);
 	});
 
-	it('sans `@`, avec gras ou flèche : les marques partent, les mots restent', () => {
-		expect(legendeQcmTrou(enonce('Le cheval doit **tirer** la grosse charrette.'))).toBe(
-			'Le cheval doit tirer la grosse charrette.',
-		);
+	it('sans `@`, avec flèche : la flèche part, les mots restent', () => {
 		expect(legendeQcmTrou(enonce('un chat → des chats'))).toBe('un chat des chats');
+	});
+
+	it('sans `@`, avec gras : le mot visé est dit entre guillemets, pas dissous dans la phrase', () => {
+		expect(lu(legendeQcmTrou(enonce('Le cheval doit **tirer** la grosse charrette.')))).toBe(
+			'Le cheval doit « tirer » la grosse charrette.',
+		);
 	});
 
 	it('énoncé vide (question à dessin seul) : nom vide, à l’appelant de se replier', () => {
@@ -238,8 +244,18 @@ describe('legendeQcmTrou — formes retirées, marqueur à sa place', () => {
 		[
 			'gras et flèche (accords)',
 			'Il est revenu. → **Elle** est @',
-			'Il est revenu. Elle est (trou)',
+			'Il est revenu. « Elle » est (trou)',
 		],
+		[
+			'deux mots en gras',
+			'Le **petit** chat @ le **gros** chien.',
+			'Le « petit » chat (trou) le « gros » chien.',
+		],
+	])('gras : %s : « %s » → « %s » (espaces de toute nature)', (_cas, text, attendu) => {
+		expect(lu(legendeQcmTrou(enonce(text)))).toBe(attendu);
+	});
+
+	it.each([
 		['puce et tiret long (conjugaison)', 'être · présent — nous @', 'être présent nous (trou)'],
 		['tiret moyen', 'tenir – @', 'tenir (trou)'],
 		['flèche seule (accords)', 'le mur vert → @', 'le mur vert (trou)'],
@@ -271,6 +287,8 @@ describe('legendeQcmTrou — formes retirées, marqueur à sa place', () => {
 					const ou = `${l.id} @${niveau} / ${graine} « ${q.item.text} » → « ${nom} »`;
 					if (MARQUES.test(nom)) fautes.push(`${ou} : marque visuelle`);
 					if (nom.includes(TROU) !== q.item.text.includes('@')) fautes.push(`${ou} : trou`);
+					for (const [, gras] of q.item.text.matchAll(/\*\*(.+?)\*\*/g))
+						if (!lu(nom).includes(`« ${gras} »`)) fautes.push(`${ou} : « ${gras} » non désigné`);
 					for (const d of defautsNom(nom, q.item.text))
 						if (q.item.text.trim()) fautes.push(`${ou} : ${d}`);
 				}

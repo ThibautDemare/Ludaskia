@@ -268,3 +268,132 @@ describe('Parcours : les récompenses passent par les modales, pas par une liste
 		for (const r of deblocages) expect(ecran.textContent ?? '', r.texte).not.toContain(r.texte);
 	});
 });
+
+/* ============================================================
+   Résidus de la relecture accessibilité (R1, R3). Écrits avant la correction : rouges.
+   ============================================================ */
+
+const lu = (s: string): string => s.replace(/\s+/g, ' ').trim();
+
+/** Bilan dont les questions se répondent dans un champ (`#bpInput`). */
+const SAISIE = 'math-complements';
+
+/** Éléments désignés par l'`aria-describedby` de `el`, dans l'ordre ; `null` pour un id
+    qui ne désigne rien. */
+const decritPar = (el: Element): (HTMLElement | null)[] =>
+	(el.getAttribute('aria-describedby') ?? '')
+		.split(/\s+/)
+		.filter(Boolean)
+		.map((id) => document.getElementById(id));
+
+describe('Parcours : le champ de saisie dit d’abord son numéro, puis la consigne (R1)', () => {
+	it('« Question i sur m » en tête de la description de #bpInput, puis la consigne ; chaque id existe et a du texte', () => {
+		withSeed(3, () => lancerParcours(bilan([SAISIE], 2), null));
+		const champ = document.getElementById('bpInput');
+		expect(champ, 'précondition : une question à champ').not.toBe(null);
+		const decrits = decritPar(champ!);
+		expect(decrits.length, 'numéro ET consigne').toBeGreaterThanOrEqual(2);
+		expect(decrits.every((e) => e !== null && lu(e.textContent ?? '') !== '')).toBe(true);
+		expect(lu(decrits[0]?.textContent ?? '')).toBe('Question 1 sur 2');
+		const consigne = lu(document.querySelector('#bpStage .bp-consigne-action')?.textContent ?? '');
+		expect(consigne, 'précondition : une consigne affichée').not.toBe('');
+		expect(
+			lu(
+				decrits
+					.slice(1)
+					.map((e) => e?.textContent ?? '')
+					.join(' '),
+			),
+		).toContain(consigne);
+	});
+
+	it('à la question suivante, le numéro décrit est le nouveau', () => {
+		withSeed(3, () => lancerParcours(bilan([SAISIE], 2), null));
+		const champ = document.getElementById('bpInput') as HTMLInputElement;
+		champ.value = '1';
+		champ.dispatchEvent(new Event('input', { bubbles: true }));
+		document.getElementById('bpValider')!.click();
+		const suivant = document.getElementById('bpInput');
+		expect(suivant, 'précondition : 2e question à champ').not.toBe(null);
+		expect(lu(decritPar(suivant!)[0]?.textContent ?? '')).toBe('Question 2 sur 2');
+	});
+});
+
+const REPONDS = "Réponds d'abord, ou touche « Je passe ».";
+
+/** Est-il VISIBLE ? Ni `.sr-only`, ni `hidden`, ni `display: none` en style, lui ou un parent.
+    (happy-dom ne charge pas les feuilles : un masquage par classe CSS ne se verrait pas ici —
+    le message se retire en vidant son texte, par `hidden` ou par `display: none`.) */
+function visible(el: Element): boolean {
+	for (let n: Element | null = el; n; n = n.parentElement) {
+		if (n.classList.contains('sr-only') || n.hasAttribute('hidden')) return false;
+		if (n instanceof HTMLElement && n.style.display === 'none') return false;
+	}
+	return true;
+}
+
+/** Le message « Réponds d'abord… » affiché à l'écran (pas la région lue), ou `null`. */
+const messageVisible = (): HTMLElement | null =>
+	[...document.querySelectorAll<HTMLElement>('#sheets *')].find(
+		(e) => lu(e.textContent ?? '') === REPONDS && e.children.length === 0 && visible(e),
+	) ?? null;
+
+const regionStatut = (): string =>
+	lu(document.querySelector('#sheets [role="status"]')?.textContent ?? '');
+
+/** Laisse passer l'annonce différée de la région (vidée puis remplie). */
+const attendre = (): Promise<void> => new Promise((r) => setTimeout(r, 120));
+
+describe('Parcours : valider trop tôt le DIT à l’écran, pas seulement à l’oreille (R3)', () => {
+	it('clic sur Valider sans choix : message visible SOUS les boutons, et lu par la région', async () => {
+		withSeed(3, () => lancerParcours(bilan(['fr-homophones-et'], 3), null));
+		expect(messageVisible(), 'aucun message avant d’avoir validé').toBe(null);
+		document.getElementById('bpValider')!.click();
+		await attendre();
+		const msg = messageVisible();
+		expect(msg, 'message visible').not.toBe(null);
+		const valider = document.getElementById('bpValider')!;
+		expect(valider.compareDocumentPosition(msg!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(regionStatut()).toBe(lu(REPONDS));
+	});
+
+	it('Entrée dans un champ vide : même message visible ; il disparaît dès que la réponse est complète', async () => {
+		withSeed(3, () => lancerParcours(bilan([SAISIE], 2), null));
+		const champ = document.getElementById('bpInput') as HTMLInputElement;
+		champ.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		await attendre();
+		expect(messageVisible(), 'message visible après Entrée').not.toBe(null);
+		champ.value = '1';
+		champ.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(messageVisible(), 'message encore visible, réponse complète').toBe(null);
+		await attendre();
+		expect(messageVisible(), 'message revenu après coup').toBe(null);
+	});
+
+	it('choisir une réponse pendant l’annonce en vol : le message ne réapparaît pas', async () => {
+		withSeed(3, () => lancerParcours(bilan(['fr-homophones-et'], 3), null));
+		document.getElementById('bpValider')!.click();
+		document.querySelector<HTMLButtonElement>('.bp-choice')!.click();
+		await attendre();
+		expect(messageVisible()).toBe(null);
+		expect(regionStatut()).toBe('');
+	});
+
+	it('la question change (« Je passe ») : le message disparaît', async () => {
+		withSeed(3, () => lancerParcours(bilan(['fr-homophones-et'], 3), null));
+		document.getElementById('bpValider')!.click();
+		await attendre();
+		expect(messageVisible(), 'précondition : message visible').not.toBe(null);
+		document.getElementById('bpPasser')!.click();
+		expect(document.querySelector('.bp-question-num')?.textContent).toContain('Question 2');
+		expect(messageVisible()).toBe(null);
+	});
+
+	it('témoins : visible() refuse sr-only, hidden et display none', () => {
+		document.getElementById('sheets')!.innerHTML =
+			`<p class="sr-only">${REPONDS}</p><div hidden><p>${REPONDS}</p></div><p style="display: none">${REPONDS}</p>`;
+		expect(messageVisible()).toBe(null);
+		document.getElementById('sheets')!.insertAdjacentHTML('beforeend', `<p>${REPONDS}</p>`);
+		expect(messageVisible()).not.toBe(null);
+	});
+});

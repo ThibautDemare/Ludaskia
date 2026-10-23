@@ -15,6 +15,10 @@ import { beforeAll, beforeEach, describe, it, expect } from 'vitest';
 import { initSession, marquerChamps, champsIllisibles } from '../src/ui/session';
 import { renderItem, createRenderContext, type Item, type RenderContext } from '../src/core/items';
 import { brut } from '../src/core/html';
+import { fractionChoiceViews } from '../src/core/fraction-text';
+import { getAllLessons } from '../src/core/catalog';
+import { buildLessonFiche } from '../src/core/build';
+import { withSeed } from '../src/core/utils';
 
 const QCM_SIMPLE: Item = {
 	text: 'Que fait cette phrase ? Où vas-tu ?',
@@ -210,5 +214,151 @@ describe('champsIllisibles — un champ caché n’est jamais une saisie illisib
 		expect(parItem[0].champ.value).toBe('aucun'); // préalable : le champ caché est rempli
 		parItem[1].champ.value = '3-';
 		expect(champsIllisibles(champs, ctx.items)).toEqual([parItem[1].champ]);
+	});
+});
+
+/* ============================================================
+   Le TROU rempli d'un QCM à trou se dit par le LIBELLÉ du choix (#777, relecture
+   accessibilité R2). Écrit avant la correction : rouge à l'arrivée.
+
+   Cocher un choix le recopie dans le trou (`afficherChoixAuTrou`) pour que la phrase se
+   lise complète. Une vue RICHE (fraction empilée, terminaison surlignée) recopiée telle
+   quelle se lit en morceaux (« 3 4 ») : la décision veut la copie visuelle `aria-hidden`,
+   et un `.sr-only` DANS le trou qui porte le libellé lisible — l'`aria-label` du bouton
+   coché (« trois quarts »). Un choix simple, lui, se lit tel quel, une seule fois.
+   ============================================================ */
+
+/** Texte que lit un lecteur d'écran : sans les sous-arbres `aria-hidden`, et le nom d'une
+    image (`role="img"` + `aria-label`) à la place de son contenu. */
+function texteAccessible(n: Node): string {
+	if (n.nodeType === Node.TEXT_NODE) return n.textContent ?? '';
+	if (!(n instanceof Element) || n.getAttribute('aria-hidden') === 'true') return '';
+	const nom = n.getAttribute('aria-label');
+	if (n.getAttribute('role') === 'img' && nom !== null) return ` ${nom} `;
+	return [...n.childNodes].map(texteAccessible).join(' ');
+}
+const lu = (s: string): string => s.replace(/\s+/g, ' ').trim();
+
+/** Cocher comme un navigateur : les autres boutons du même groupe se décochent (happy-dom ne
+    le fait pas hors d'un formulaire, et le trou lit le bouton `:checked`). */
+function choisir(radio: HTMLInputElement): void {
+	for (const r of document.querySelectorAll<HTMLInputElement>(
+		`input[type="radio"][name="${radio.name}"]`,
+	))
+		r.checked = false;
+	cocher(radio);
+}
+
+const trouDe = (champ: HTMLInputElement): HTMLElement =>
+	document.querySelector<HTMLElement>(`.fiche-trou[data-for="${champ.id}"]`)!;
+
+/** Défauts du trou après qu'on a coché `radio` : copie visuelle `aria-hidden`, libellé du
+    choix en `.sr-only`, et rien d'autre à entendre. */
+function defautsTrouRiche(trou: HTMLElement, radio: HTMLInputElement): string[] {
+	const d: string[] = [];
+	const libelle = radio.getAttribute('aria-label') ?? '';
+	const vue = radio.closest('label')?.querySelector('.fiche-choix-vue')?.innerHTML ?? '';
+	const caches = [...trou.querySelectorAll('[aria-hidden="true"]')];
+	if (!caches.some((c) => c.innerHTML === vue)) d.push('copie visuelle absente ou non aria-hidden');
+	const srOnly = [...trou.querySelectorAll('.sr-only')].map((e) => lu(e.textContent ?? ''));
+	if (!srOnly.includes(libelle))
+		d.push(`pas de .sr-only « ${libelle} » (vus : ${JSON.stringify(srOnly)})`);
+	const entendu = lu(texteAccessible(trou));
+	if (entendu !== libelle) d.push(`le trou se lit « ${entendu} » au lieu de « ${libelle} »`);
+	return d;
+}
+
+const TROU_FRACTION: Item = {
+	text: 'Léa a mangé @ du gâteau.',
+	answer: '3/4',
+	choices: ['1/4', '2/4', '3/4'],
+	choicesView: fractionChoiceViews(['1/4', '2/4', '3/4']),
+	kind: 'text',
+};
+/** Fraction empilée SANS nom d'image : sa copie brute se lit « 3 4 ». */
+const TROU_EMPILE: Item = {
+	...TROU_FRACTION,
+	choicesView: [1, 2, 3].map((n) => ({
+		html: brut(`<span class="frac"><span>${n}</span><span>4</span></span>`),
+		label: ['un quart', 'deux quarts', 'trois quarts'][n - 1],
+	})),
+};
+const TROU_SIMPLE: Item = {
+	text: 'Le chat @ mangé.',
+	answer: 'a',
+	choices: ['a', 'à'],
+	kind: 'text',
+};
+
+describe('QCM à trou d’une fiche : le trou rempli se lit par le libellé du choix (R2)', () => {
+	it('fraction : copie visuelle cachée, « trois quarts » en .sr-only dans le trou', () => {
+		const { parItem } = monter([TROU_FRACTION]);
+		const { champ, radios } = parItem[0];
+		expect(radios[2].getAttribute('aria-label'), 'précondition').toBe('trois quarts');
+		choisir(radios[2]);
+		expect(defautsTrouRiche(trouDe(champ), radios[2])).toEqual([]);
+	});
+
+	it('fraction empilée sans nom d’image : jamais « 3 4 », toujours « trois quarts »', () => {
+		const { parItem } = monter([TROU_EMPILE]);
+		choisir(parItem[0].radios[2]);
+		const entendu = lu(texteAccessible(trouDe(parItem[0].champ)));
+		expect(entendu).not.toMatch(/\d\s*\d/);
+		expect(defautsTrouRiche(trouDe(parItem[0].champ), parItem[0].radios[2])).toEqual([]);
+	});
+
+	it('changer de choix remplace le libellé : un seul, celui du nouveau choix', () => {
+		const { parItem } = monter([TROU_FRACTION]);
+		choisir(parItem[0].radios[2]);
+		choisir(parItem[0].radios[0]);
+		const trou = trouDe(parItem[0].champ);
+		expect(defautsTrouRiche(trou, parItem[0].radios[0])).toEqual([]);
+		expect(trou.querySelectorAll('.sr-only')).toHaveLength(1);
+	});
+
+	it('critère négatif : un choix SIMPLE se lit tel quel, une seule fois', () => {
+		const { parItem } = monter([TROU_SIMPLE]);
+		choisir(parItem[0].radios[1]);
+		expect(lu(texteAccessible(trouDe(parItem[0].champ)))).toBe('à');
+	});
+
+	it('catalogue : chaque QCM à trou de fiche à vues riches, pour chacun de ses choix', () => {
+		let vus = 0;
+		const fautes: string[] = [];
+		for (const l of getAllLessons())
+			for (const niveau of l.levels) {
+				const ctx = createRenderContext();
+				document.body.innerHTML = `<div id="sheets">${withSeed(1, () => buildLessonFiche(l.id, niveau, ctx)).balisage}</div>`;
+				for (const groupe of document.querySelectorAll<HTMLFieldSetElement>(
+					'fieldset.fiche-choix',
+				)) {
+					const champ = document.getElementById(groupe.dataset.for ?? '');
+					const it = ctx.items[champ?.id ?? ''];
+					if (
+						!(champ instanceof HTMLInputElement) ||
+						!it?.text.includes('@') ||
+						!it.choicesView?.length
+					)
+						continue;
+					vus++;
+					for (const radio of groupe.querySelectorAll<HTMLInputElement>('input[type="radio"]')) {
+						choisir(radio);
+						for (const d of defautsTrouRiche(trouDe(champ), radio))
+							fautes.push(`${l.id} @${niveau} « ${it.text} » / ${radio.value} : ${d}`);
+					}
+				}
+			}
+		expect(vus, 'plancher : QCM à trou à vues riches dans les fiches').toBeGreaterThanOrEqual(5);
+		expect(fautes.slice(0, 10)).toEqual([]);
+	});
+
+	it('témoins : defautsTrouRiche signale la copie brute, et pas un trou conforme', () => {
+		document.body.innerHTML =
+			'<label><input type="radio" aria-label="trois quarts"><span class="fiche-choix-vue"><span>3</span><span>4</span></span></label>' +
+			'<span id="t1"><span>3</span><span>4</span></span>' +
+			'<span id="t2"><span aria-hidden="true"><span>3</span><span>4</span></span><span class="sr-only">trois quarts</span></span>';
+		const radio = document.querySelector<HTMLInputElement>('input')!;
+		expect(defautsTrouRiche(document.getElementById('t1')!, radio)).toHaveLength(3);
+		expect(defautsTrouRiche(document.getElementById('t2')!, radio)).toEqual([]);
 	});
 });

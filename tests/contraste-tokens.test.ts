@@ -312,7 +312,7 @@ const PAIRES_TEXTE: Paire[] = [
 	{
 		avant: '--on-accent',
 		arriere: '--accent',
-		ou: 'bilan.scss .bilan-cta, aide-exercice.scss ; catalog.scss .classe-choix .enc-act-mode.on (classe cochée, #772)',
+		ou: 'bilan.scss .bilan-cta, aide-exercice.scss ; catalog.scss .classe-choix .enc-act-mode.on (classe cochée, #772) ; bilan-parcours.scss .bp-valider (#777)',
 	},
 	{ avant: '--on-accent', arriere: '--accent-dark', ou: 'survol des mêmes boutons (bilan.scss)' },
 	{
@@ -330,7 +330,11 @@ const PAIRES_TEXTE: Paire[] = [
 		arriere: '--paper',
 		ou: 'accessibility.scss, aide-exercice.scss, mots-difficiles.scss .mots-difficiles-relire',
 	},
-	{ avant: '--accent', arriere: '--paper', ou: 'sprint.scss, titres et libellés dans une carte' },
+	{
+		avant: '--accent',
+		arriere: '--paper',
+		ou: 'sprint.scss, titres et libellés dans une carte ; bilan-parcours.scss .bp-consigne-titre, .bp-fin-titre, .bp-recap-titre (#777)',
+	},
 	{
 		avant: '--accent',
 		arriere: '--page-bg',
@@ -339,14 +343,26 @@ const PAIRES_TEXTE: Paire[] = [
 	{
 		avant: '--accent',
 		arriere: '--accent-soft',
-		ou: 'revision.scss .rev-cat, lecon-mode.scss .ltri-col-titre',
+		ou: 'revision.scss .rev-cat, lecon-mode.scss .ltri-col-titre ; bilan-parcours.scss .bp-partie-nom (#777)',
 	},
 	{
 		avant: '--ok',
 		arriere: '--ok-soft',
-		ou: 'lecon-mode.scss .mode-btn-badge, .sprint-choice.correct ; lessons.scss .posee-input.correct (fiche, et révision depuis #503)',
+		ou: 'lecon-mode.scss .mode-btn-badge, .sprint-choice.correct ; lessons.scss .posee-input.correct (fiche, et révision depuis #503) ; bilan-parcours.scss .bp-verdict--reussi (verdict « Réussi » du récapitulatif, #777)',
 	},
-	{ avant: '--ok', arriere: '--paper', ou: 'encadrant.scss (mise en avant positive)' },
+	// Bandeau des réussites en fin de partie du parcours de bilan (#777) : texte NOIR sur le
+	// vert pâle, la pastille verte n'étant que l'icône. Surface nouvelle pour `--ink`, absente
+	// de la rampe #576 (qui ne connaît que --paper, --page-bg et --accent-soft).
+	{
+		avant: '--ink',
+		arriere: '--ok-soft',
+		ou: 'bilan-parcours.scss .bp-reussites (« 7 réussites », fin de partie, #777)',
+	},
+	{
+		avant: '--ok',
+		arriere: '--paper',
+		ou: 'encadrant.scss (mise en avant positive) ; bilan-parcours.scss .bp-erreur-attendue strong (bonne réponse en fin de partie) et .bp-recap-total (« Tu as réussi 6 leçons sur 9. »), sur la carte .bp-carte (#777)',
+	},
 	{
 		avant: '--ko',
 		arriere: '--ko-soft',
@@ -355,12 +371,12 @@ const PAIRES_TEXTE: Paire[] = [
 	{
 		avant: '--ko',
 		arriere: '--paper',
-		ou: 'encadrant.scss (alerte de suppression) ; réponse donnée rappelée après une erreur (#503) : revision.scss .rev-donnee strong et marque .rev-marque-ko, sprint.scss .sprint-correction .sprint-donnee strong',
+		ou: 'encadrant.scss (alerte de suppression) ; réponse donnée rappelée après une erreur (#503) : revision.scss .rev-donnee strong et marque .rev-marque-ko, sprint.scss .sprint-correction .sprint-donnee strong ; bilan-parcours.scss .bp-erreur-donnee strong (réponse donnée en fin de partie, #777)',
 	},
 	{
 		avant: '--ink',
 		arriere: '--track',
-		ou: 'surface neutre pleine : jauge, bouton « fantôme » ; recherche-lecon.scss .rech-classe (pastille de classe, #772)',
+		ou: 'surface neutre pleine : jauge, bouton « fantôme » ; recherche-lecon.scss .rech-classe (pastille de classe, #772) ; bilan-parcours.scss .bp-verdict--a-retravailler (verdict « À retravailler », #777)',
 	},
 	{ avant: '--grey', arriere: '--track', ou: 'idem, texte secondaire' },
 	// Espace encadrant : surface ADULTE, absente de la rampe #576 (qui ne connaît que
@@ -381,7 +397,7 @@ const PAIRES_TEXTE: Paire[] = [
 	{
 		avant: '--warn-text',
 		arriere: '--warn-bg',
-		ou: 'lessons.scss .lz-level ; lecon-mode.scss .lqcm-multi-choice.is-missed, .lqm-badge--revoir ; guide.scss .g-badge--renforcer ; vitrine.scss .v-enc-badge--encours',
+		ou: 'lessons.scss .lz-level ; lecon-mode.scss .lqcm-multi-choice.is-missed, .lqm-badge--revoir ; guide.scss .g-badge--renforcer ; vitrine.scss .v-enc-badge--encours ; bilan-parcours.scss .bp-verdict--presque (verdict « Presque ») et .bp-seuil (règle des 60 %), #777',
 	},
 ];
 
@@ -396,7 +412,7 @@ const PAIRES_NON_TEXTE: Paire[] = [
 	{
 		avant: '--field-line',
 		arriere: '--paper',
-		ou: 'sheets.scss .ans — la ligne qui dit OÙ écrire ; encadrant.scss .enc-input, .enc-select-niveau — le contour des champs de l’espace (#734)',
+		ou: 'sheets.scss .ans — la ligne qui dit OÙ écrire ; encadrant.scss .enc-input, .enc-select-niveau — le contour des champs de l’espace (#734) ; bilan-parcours.scss .bp-input (#777)',
 	},
 	{
 		avant: '--admin-accent',
@@ -411,12 +427,12 @@ const PAIRES_NON_TEXTE: Paire[] = [
 	{
 		avant: '--control-line',
 		arriere: '--paper',
-		ou: 'sprint.scss .sprint-choice, pave-signes.scss .pave-signe, lecon-mode.scss .etude-btn, .lqcm-multi-choice et .mode-btn[data-epuise="1"] (bordure au repos)',
+		ou: 'sprint.scss .sprint-choice, pave-signes.scss .pave-signe, lecon-mode.scss .etude-btn, .lqcm-multi-choice et .mode-btn[data-epuise="1"] (bordure au repos) ; bilan-parcours.scss .bp-choice (#777)',
 	},
 	{
 		avant: '--accent',
 		arriere: '--paper',
-		ou: 'bordure des mêmes boutons une fois survolés/pressés, remplissage de jauge ; partage.scss, choix de QCM sélectionné en séance partagée (#734)',
+		ou: 'bordure des mêmes boutons une fois survolés/pressés, remplissage de jauge ; partage.scss, choix de QCM sélectionné en séance partagée (#734) ; bilan-parcours.scss .bp-choice survolé ou choisi, .bp-trou (#777)',
 	},
 	// Curseur SUR sa piste, et non sur le papier : c'est le couple qu'on voit réellement dès
 	// qu'une jauge est partiellement remplie. Posé par #711 (jauge de défilement du tableau de

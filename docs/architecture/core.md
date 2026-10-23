@@ -1109,7 +1109,7 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   `buildLessonFiche` (calcul mental → rendu riche via `LESSONS.build()` ; maths
   modernes & autres matières → liste de questions, consigne « Complète. » pour les
   maths, « Écris la forme correcte. » pour le texte ; même discriminant
-  `isLegacyMathLesson`), `bilanBlocksForIds`, `buildFichesForIds` (bilans persos).
+  `isLegacyMathLesson`), `bilanBlocksForIds` (bilans persos imprimés).
   La consigne de fiche (`ExerciseType.consigne`) est celle de la **forme écrite** : pour
   les leçons « clique sur le mot », `consigneEcrite` de la variante (« Recopie le verbe
   conjugué de chaque phrase. »), l'exercice gardant la consigne du geste pour le runner.
@@ -1131,7 +1131,13 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   **`deleteBilanFor(uuid, id)`** (écrit la seule clé de ce profil + `touchProfile`, comme
   `enregistrerSeancesFor`).
 
-- **`bilan-parcours.ts`** (#777, pur, sans DOM ; écran : `ui/bilan-parcours.ts`) — tout ce
+- **`regles-justesse.ts`** (#777, pur) — **règle de justesse unique** de chaque widget :
+  `tuileJuste`, `ordreJuste`, `triJuste`, `appariementJuste`, `motsChoisisJustes`,
+  `chiffrePoseJuste`, `grillePoseeJuste`. Appelée par le `juste()` des widgets ET par
+  `corrigerQuestion` (correction différée du bilan), donc jamais deux copies ; parité tenue par
+  `tests/widgets-juste.test.ts`. **`aide.ts`** : `typeAideDuGeste` / `typeAideOrdre` donnent le
+  type d'aide d'un item (révision et parcours).
+- **`bilan-parcours.ts`** (#777, pur, sans DOM ; écrans : `ui/bilan-parcours*.ts`) — tout ce
   que le **bilan en parcours** décide sans écran : **`questionsDuBilan`** (tirage par
   `questionDeRevision`, donc même forme qu'en révision, sans doublon),
   **`construireParcours`** / **`planifierParties`** (catégories dans l'ordre de `CATEGORIES`,
@@ -1143,7 +1149,10 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   = « Réussi », sinon « À retravailler » ; dès 4 : réussi à ⌈0,8 N⌉, à retravailler sous la
   moitié, « Presque » entre les deux, en arithmétique entière), `syntheseParLecon` /
   `trierParVerdict`, la règle des 60 % (`minimumReponses`, `assezDeReponses`) et les
-  **phrases à compteur** (`libelleScoreLu` : un score nu dit ce qu'il compte). La reprise
+  **phrases à compteur** (`libelleScoreLu` : un score nu dit ce qu'il compte) ; tous les
+  textes de l'écran (`TEXTES_PARCOURS`, `libelleTitreRecap`, `libelleTitreParcours`, `PASSE`)
+  vivent ici, plus `figureDeQuestion` (`resultatsDe`, qui lit l'état de l'écran, reste dans
+  `ui/bilan-parcours.ts`). La reprise
   passe par la nature `runner` de `resume.ts` : **`ResumeParcours`** (`estResumeParcours`).
 
 ## Reprise & révision espacée

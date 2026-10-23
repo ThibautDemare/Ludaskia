@@ -604,7 +604,7 @@ résolution catalogue, la mémoire de page et le rendu :
   bloc vide) ; la seconde s'efface quand un programme du jour actif et non complet
   contient déjà une étape du même type (`recapAutonomeMasque`), pour ne pas se
   contredire sur la forme à deux écrans d'écart. Chaque écran porteur passe sa propre
-  classe (`rb-recap`, `sprint-recap`, `rev-recap`) : une prose continue, sans puce ni
+  classe (`sprint-recap`, `rev-recap` ; `rb-recap`, ancien bilan en page unique, n'est plus portée que par la feuille de style) : une prose continue, sans puce ni
   encadré — la structure en carte/ligne est ce qui fait « relevé pour les parents »,
   pas la couleur (avis `designer-ux-enfant`). Styles dans `styles/recap-seance.scss`,
   **fichier unique pour les trois classes** plutôt qu'un bloc recopié dans chacune des
@@ -715,7 +715,7 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   `prefers-reduced-motion`) et TTS à la demande.
   L'aide suit le **widget**, pas seulement le runner de leçon : la **révision espacée**
   (`revision.ts`), qui monte les mêmes widgets (#186/#345/#466), pose l'aide du geste de
-  l'item courant (`typeAideItem` : `tuiles`, `ordre`/`ordreNombres`, `tri`,
+  l'item courant (`typeAideDuGeste` / `typeAideOrdre`, `core/aide.ts` : `tuiles`, `ordre`/`ordreNombres`, `tri`,
   `appariement`/`appariementEtiquettes` #731, `clicMot`/`segmentMot` ; rien pour une saisie
   ou un QCM, qui n'ont pas de geste à apprendre — et, dans les trois cas à variante, le
   **même** critère qu'en leçon, sinon la révision sert le widget d'un geste avec la notice
@@ -1008,8 +1008,10 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   programme peut viser un favori. La CRÉATION (`renderBilanConfigScreen`, « Garder pour plus
   tard ») reste côté enfant. **`runBilanConfig` ne rend plus la page unique** : il délègue à
   `lancerParcours` (ci-dessous).
-- **`bilan-parcours.ts`** (#777, styles `src/styles/bilan-parcours.scss`, logique pure
-  `core/bilan-parcours.ts`) — **tout bilan joué à l'écran** (configurateur, favoris, programme
+- **`bilan-parcours.ts`, `bilan-parcours-question.ts`, `bilan-parcours-recap.ts`** (#777,
+  styles `src/styles/bilan-parcours.scss`, logique pure `core/bilan-parcours.ts`). Un écran =
+  un module : `bilan-parcours.ts` porte l'état, le lancement, la reprise, la correction, le
+  journal et le crédit ; `-question.ts` l'écran A ; `-recap.ts` les écrans B et C. — **tout bilan joué à l'écran** (configurateur, favoris, programme
   du jour, « Bilan express » / « Bilan complet » de catégorie, réglage « Tout ») est un
   **parcours guidé** dans `#sheets` : (A) **une question par écran**, le vrai exercice de la
   leçon (widgets de la révision, en mode **collecte** : « Valider » lit la réponse et passe à
@@ -2284,6 +2286,10 @@ faire.
   `role="radio"`/`aria-checked`, tabindex mobile, flèches via `radioVisee` de `segment.ts`),
   jamais `aria-pressed` : c'est la règle du composant segment, appliquée aux choix QCM du
   parcours (`.bp-choice`). Un temps écarté à la relecture de #777, puis aligné sur cette règle.
+- **Les phrases d'un écran de parcours vivent dans le noyau** (`TEXTES_PARCOURS`,
+  `libelleTitreRecap`…, `core/bilan-parcours.ts`, testables) ; l'écran les importe.
+- **Une règle de justesse partagée par un widget et une correction différée** vit dans
+  `core/regles-justesse.ts`, jamais recopiée (parité tenue par `tests/widgets-juste.test.ts`).
 
 **Rejets écrits (#777)**, à ne pas re-remonter :
 - **L'`aria-label` d'un choix à vue riche (fraction : « trois quarts ») diffère du texte visible (3/4 empilé)** : critère 2.5.3 (Label in Name) non tenu pour la commande vocale ; mesuré sur les seuls choix à vue riche (fractions, terminaisons surlignées), écarté : un libellé visible redondant coûterait plus qu'il n'apporte à ce public.

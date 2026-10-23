@@ -32,13 +32,11 @@
    - reprise : `uiConfirm` avant `#bcUpdate` si le contenu change ET qu'une reprise
      `bilan-favori-<id>` existe chez le propriétaire.
 
-   Choix de semis de la reprise (critère 9) : SEMIS DIRECT de `<uuid>/ludaskia_resume`,
-   pas une partie réellement jouée. #777 refait le déroulé du bilan : jouer une partie
-   dans ce test casserait à sa fusion pour une raison sans rapport avec #778. Le
-   contrat que #778 consomme est la clé `bilan-favori-<id>` + le format versionné
-   validé par `core/resume.ts` (grille minimale, `version: 1`) : si ce format évolue,
-   une reprise invalide serait purgée à la lecture et le test rougirait (visible).
-   Les assertions portent sur la PRÉSENCE de la clé, pas sur le contenu de l'instantané.
+   Reprise (critère 9) : produite par le JEU RÉEL (parcours guidé de #777, `commencerFavoriDeB`),
+   pas semée. Le premier jet semait une « grille » de bilan : #777 (critère N1) l'écarte à la
+   lecture, le test passait à vide. Le jeu écrit toujours le format courant. Les assertions
+   portent sur la PRÉSENCE de la clé `bilan-favori-<id>`, pas sur le contenu de l'instantané.
+   Seule une reprise de leçon étrangère est semée, comme témoin qui doit survivre.
    ============================================================ */
 import { test, expect, type Page } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
@@ -79,25 +77,27 @@ function favori(id: string, label: string, over: Partial<Favori> = {}): Favori {
 	return { id, label, lessonIds: [JOUABLE_2], questionsPerLesson: 3, mode: 'bilan', ...over };
 }
 
-/* Instantané de reprise minimal mais VALIDE (cf. `normaliser`, core/resume.ts). */
-function reprise(key: string, label: string): Record<string, unknown> {
+/* Reprise de LEÇON (runner) sans rapport avec le favori : sert de témoin « une reprise
+   étrangère survit ». Format minimal valide de `normaliser` (core/resume.ts). Ce n'est PAS
+   la reprise testée : celle-là est produite par le jeu réel (`commencerFavoriDeB`). */
+function repriseTemoin(): Record<string, unknown> {
 	return {
-		kind: 'grille',
+		kind: 'runner',
 		version: 1,
-		key,
+		key: 'lecon-math-doubles',
 		savedAt: Date.now(),
-		mode: 'custom',
-		label,
-		icon: 'bookmark',
+		mode: 'lecon',
+		label: 'Les doubles',
+		icon: 'calculator',
 		categoryId: null,
-		relaunch: { type: 'bilan', config: favori('x', label) },
+		relaunch: { type: 'lecon', lessonId: 'math-doubles' },
 		total: 3,
-		answered: 1,
-		sheetsHTML: '<div></div>',
-		items: {},
-		answers: { a: '1' },
-		activeId: null,
-		elapsedMs: 1000,
+		answered: 0,
+		runner: 'qcm',
+		exerciseMode: null,
+		questions: [],
+		idx: 0,
+		score: 0,
 	};
 }
 
@@ -408,13 +408,44 @@ test('critère 8 : l’étape de programme qui visait le favori le vise toujours
 /* ---------- Critère 9 : reprise du favori ---------- */
 
 const CLE_REPRISE = 'bilan-favori-fav-b1';
-const seedReprise = (): Record<string, unknown> => ({
-	[`${PROFIL_B}/ludaskia_bilans`]: [favori('fav-b1', 'Favori B1')],
-	[`${PROFIL_B}/ludaskia_resume`]: [
-		reprise(CLE_REPRISE, 'Favori B1'),
-		reprise('lecon-math-doubles', 'Les doubles'),
-	],
-});
+
+/* Produit la reprise par le JEU RÉEL (#777, parcours guidé) : B est le profil ACTIF, lance
+   son favori, répond à une question, quitte. Puis l'actif bascule sur A, et l'adulte consulte
+   B depuis l'espace encadrant (cas du critère 9 : le propriétaire n'est pas l'actif).
+   Un semis serait purgé dès que `normaliser` durcit son format (ça est déjà arrivé : une
+   « grille » de bilan est écartée depuis #777) ; le jeu écrit toujours le format courant. */
+async function commencerFavoriDeB(page: Page): Promise<void> {
+	await semer(page, {
+		ludaskia_profiles: { ...PROFILS, active: PROFIL_B },
+		[`${PROFIL_A}/ludaskia_tour_seen`]: true,
+		[`${PROFIL_A}/ludaskia_parents_seen`]: true,
+		[`${PROFIL_B}/ludaskia_bilans`]: [favori('fav-b1', 'Favori B1')],
+		[`${PROFIL_B}/ludaskia_resume`]: [repriseTemoin()],
+	});
+	await gotoHash(page, 'accueil');
+	await page.locator('.favori-btn-run').first().click();
+	await expect(page.locator('#sheets .bilan-parcours')).toBeVisible();
+
+	// Une question numérique répondue juste (math-complements) ; on attend la suivante.
+	const numero = page.locator('.bp-question-num');
+	const avant = (await numero.innerText()).trim();
+	const reponse = await page.locator('#bpInput').getAttribute('data-answer');
+	expect(reponse, 'réponse attendue lue sur #bpInput').toBeTruthy();
+	await page.locator('#bpInput').fill(reponse!);
+	await page.locator('#bpValider').click();
+	await expect(numero).not.toHaveText(avant);
+
+	// Quitter vers l'accueil (la barre vit dans le tiroir sur mobile).
+	const burger = page.locator('#toolbarBurger');
+	if (await burger.isVisible()) await burger.click();
+	await page.locator('#btnHome').click();
+	await expect(page.locator('#home')).toBeVisible();
+
+	// Garde anti-vide : la reprise du favori EXISTE bien, sous la clé `bilan-favori-<id>`.
+	expect(await clesReprises(page)).toContain(CLE_REPRISE);
+
+	await changerProfilActif(page, PROFIL_A);
+}
 const clesReprises = async (page: Page): Promise<string[]> =>
 	(JSON.parse((await lire(page, `${PROFIL_B}/ludaskia_resume`)) ?? '[]') as { key: string }[]).map(
 		(s) => s.key,
@@ -424,7 +455,7 @@ test('critère 9 : changer le contenu avec une reprise en cours confirme d’abo
 	page,
 }) => {
 	const errors = watchErrors(page);
-	await semerDeuxProfils(page, seedReprise());
+	await commencerFavoriDeB(page);
 	await ouvrirEdition(page, 'fav-b1', PROFIL_B);
 	expect(await clesReprises(page)).toContain(CLE_REPRISE);
 	const brutBilans = await lire(page, `${PROFIL_B}/ludaskia_bilans`);
@@ -466,7 +497,7 @@ test('critère 9 (négatif) : un simple renommage ne demande rien et garde la re
 	page,
 }) => {
 	const errors = watchErrors(page);
-	await semerDeuxProfils(page, seedReprise());
+	await commencerFavoriDeB(page);
 	await ouvrirEdition(page, 'fav-b1', PROFIL_B);
 
 	await page.locator('#bcLabel').fill('Nom changé');
@@ -953,7 +984,7 @@ test('Q1 : si le stockage refuse l’écriture du favori, l’éditeur reste ouv
 	page,
 }) => {
 	const errors = watchErrors(page);
-	await semerDeuxProfils(page, seedReprise());
+	await commencerFavoriDeB(page);
 	await ouvrirEdition(page, 'fav-b1', PROFIL_B);
 	const cleFavoris = `${PROFIL_B}/ludaskia_bilans`;
 	const avant = await lire(page, cleFavoris);

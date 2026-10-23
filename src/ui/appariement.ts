@@ -32,6 +32,7 @@
    réutilise le contrat `TuileController`/`TuileOptions` et la tuile `.tuile`.
    ============================================================ */
 import { sample } from '../core/utils';
+import { appariementJuste } from '../core/regles-justesse';
 import type { TuileController, TuileOptions, TuileReponse } from './tuile-interaction';
 import { html, type SafeHtml, joindre } from '../core/html';
 
@@ -81,7 +82,10 @@ export function bindAppariement(
 		return r;
 	};
 	const complete = (): boolean => gauches.every((g) => linkOf[g] !== undefined);
-	const juste = (): boolean => gauches.every((g) => linkOf[g] === bonneDroite.get(g));
+	// Liens posés, un par mot de gauche (`null` : pas encore relié) : ce que `reponse()` expose
+	// et ce que juge la règle partagée, la même que la correction différée du bilan.
+	const liens = () => gauches.map((g) => ({ gauche: g, droite: linkOf[g] ?? null }));
+	const juste = (): boolean => appariementJuste(spec.paires, liens());
 
 	const mount = root.querySelector('[data-tuile-mount]');
 	if (mount) {
@@ -308,10 +312,7 @@ export function bindAppariement(
 		   colonne de gauche (celui que l'enfant a sous les yeux) ; un mot laissé sans lien
 		   ressort en `null` plutôt que d'être omis (« non relié » est une erreur à montrer). */
 		reponse(): TuileReponse {
-			return {
-				kind: 'appariement',
-				liens: gauches.map((g) => ({ gauche: g, droite: linkOf[g] ?? null })),
-			};
+			return { kind: 'appariement', liens: liens() };
 		},
 	};
 }

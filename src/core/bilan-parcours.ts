@@ -14,9 +14,10 @@
      catégories dans l'ordre de `CATEGORIES`, leçons dans l'ordre de l'écran de leur
      catégorie, une leçon jamais coupée, le MOINS de parties possible, équilibrées ;
    - COMMENT corriger une réponse collectée (`corrigerQuestion`) : par les règles déjà en
-     place (`checkItemAnswer`, `ordreErreur`, `pairesErreur`, `motsMalClasses`,
-     `attendueItem`, `dispositionPosee`, `entreesEtapesPassees`…), jamais par une
-     seconde copie ; chaque erreur est déjà mise en forme pour l'écran de fin de partie
+     place — le verdict d'un widget par les prédicats que le widget appelle lui-même
+     (`core/regles-justesse.ts`), le reste par `checkItemAnswer`, `ordreErreur`,
+     `pairesErreur`, `motsMalClasses`, `attendueItem`, `dispositionPosee`,
+     `entreesEtapesPassees`…, jamais par une seconde copie ; chaque erreur est déjà mise en forme pour l'écran de fin de partie
      ET pour le journal du parent, qui disent la même chose ;
    - le VERDICT d'une leçon (`verdictLecon`) et les PHRASES à compteur du parcours
      (« 1 réussite », « Tu as réussi 6 leçons sur 9. »…), testables sur 0, 1, 2 et n.
@@ -51,7 +52,17 @@ import {
 	questionPourJournal,
 } from './erreur-representation';
 import { attenduEtapeTexte, entreesEtapesPassees } from './probleme-etapes';
+import {
+	appariementJuste,
+	chiffrePoseJuste,
+	grillePoseeJuste,
+	motsChoisisJustes,
+	ordreJuste,
+	triJuste,
+	tuileJuste,
+} from './regles-justesse';
 import { reponseLisible } from './signes';
+import type { SafeHtml } from './html';
 import { libelleCible } from '../data/francais/grammaire-clic-mot';
 
 /* ============================================================
@@ -393,6 +404,17 @@ export type ReponseQuestion =
 	| { kind: 'clicMot'; indices: number[] }
 	| { kind: 'passe' };
 
+/** « Je passe » : la question reste sans réponse. */
+export const PASSE: ReponseQuestion = { kind: 'passe' };
+
+/** Le dessin d'une question, s'il y en a un : l'écran de fin de partie le remontre à côté
+    de l'erreur, et le journal du parent signale qu'il y en avait un. */
+export function figureDeQuestion(q: QuestionRevision): SafeHtml | undefined {
+	if (q.kind === 'num' || q.kind === 'qcm') return q.item.figure;
+	if (q.kind === 'probleme') return q.figure;
+	return undefined;
+}
+
 /** Une erreur, mise en forme UNE fois pour l'écran de fin de partie et pour le journal du
     parent : l'énoncé lisible hors de l'exercice (sans `@` ni `**`), la réponse donnée et la
     bonne réponse. `sansTentative` : rien n'a été donné (question passée, case laissée
@@ -436,19 +458,21 @@ export function corrigerQuestion(q: QuestionRevision, r: ReponseQuestion): Corre
 				: fausse(q, libelleQcm(q, r.valeur), libelleQcm(q, String(q.item.answer)));
 		case 'tuile':
 			if (r.kind !== 'tuile' || r.posee === null) return passee(q);
-			return r.posee === q.answer ? JUSTE : fausse(q, reponseLisible(r.posee), attendueQuestion(q));
+			return tuileJuste(r.posee, q.answer)
+				? JUSTE
+				: fausse(q, reponseLisible(r.posee), attendueQuestion(q));
 		case 'ordre': {
 			if (r.kind !== 'ordre') return passee(q);
-			const juste =
-				r.propose.length === q.ordre.length && r.propose.every((m, i) => m === q.ordre[i]);
-			if (juste) return JUSTE;
+			if (ordreJuste(r.propose, q.ordre)) return JUSTE;
 			const { donnee, attendue } = ordreErreur(r.propose, q.ordre, q.nature);
 			return fausse(q, donnee, attendue);
 		}
 		case 'tri':
-			return r.kind === 'tri' ? corrigerTri(q, r.placement) : passee(q);
+			if (r.kind !== 'tri') return passee(q);
+			return triJuste(q.mots, r.placement) ? JUSTE : erreursTri(q, r.placement);
 		case 'appariement':
-			return r.kind === 'appariement' ? corrigerAppariement(q, r.liens) : passee(q);
+			if (r.kind !== 'appariement') return passee(q);
+			return appariementJuste(q.paires, r.liens) ? JUSTE : erreursAppariement(q, r.liens);
 		case 'probleme': {
 			if (r.kind !== 'probleme') return passee(q);
 			const erreurs = entreesEtapesPassees(q.etapes, r.saisies).map((e): ErreurCorrigee => ({
@@ -461,12 +485,11 @@ export function corrigerQuestion(q: QuestionRevision, r: ReponseQuestion): Corre
 		}
 		case 'clicMot': {
 			if (r.kind !== 'clicMot') return passee(q);
+			if (motsChoisisJustes(r.indices, q.cibleIndices, q.tokens.length)) return JUSTE;
 			const choisis = [...new Set(r.indices)]
 				.filter((i) => i >= 0 && i < q.tokens.length)
 				.sort((a, b) => a - b);
-			const cible = new Set(q.cibleIndices);
-			const juste = choisis.length === cible.size && choisis.every((i) => cible.has(i));
-			return juste ? JUSTE : fausse(q, libelleCible(q.tokens, choisis), attendueQuestion(q));
+			return fausse(q, libelleCible(q.tokens, choisis), attendueQuestion(q));
 		}
 	}
 }
@@ -597,7 +620,7 @@ function libelleQcm(q: Extract<QuestionRevision, { kind: 'qcm' }>, valeur: strin
 }
 
 /* Opération posée : TOUTES les cellules à trouver (produits partiels compris) doivent être
-   justes, comme en révision. Une seule erreur pour l'opération, jamais une par chiffre :
+   justes, comme en révision (`grillePoseeJuste`, la même règle). Une seule erreur pour l'opération, jamais une par chiffre :
    l'énoncé est l'opération, la bonne réponse son résultat, la réponse donnée le résultat
    écrit — ou, quand le résultat est juste mais une autre ligne fausse, ce même résultat
    avec la précision qui dit où est la faute, sans jargon (« produit partiel » n'est pas un
@@ -612,9 +635,14 @@ function corrigerPosee(
 		r.cellules.flatMap((c) => (c.role === 'saisie' ? [c] : [])),
 	);
 	const donne = (i: number): string => (chiffres[i] ?? '').trim();
-	const juste = (i: number): boolean =>
-		donne(i) !== '' && Number(donne(i)) === Number(cellules[i].chiffre);
-	if (chiffres.length === cellules.length && cellules.every((_, i) => juste(i))) return JUSTE;
+	const juste = (i: number): boolean => chiffrePoseJuste(donne(i), cellules[i].chiffre);
+	if (
+		grillePoseeJuste(
+			chiffres,
+			cellules.map((c) => c.chiffre),
+		)
+	)
+		return JUSTE;
 	const resultat = cellules.map((c, i) => ({ c, i })).filter(({ c }) => c.resultat !== undefined);
 	const attendue = attendueItem({ answer: String(dispositionPosee(spec).resultat) });
 	if (resultat.some(({ i }) => donne(i) === ''))
@@ -628,10 +656,10 @@ function corrigerPosee(
 	);
 }
 
-/* Tri par thème : une erreur par mot mal rangé (`motsMalClasses`) ou laissé hors des
-   thèmes, qui nomme le mot et son bon thème. Un mot laissé hors des thèmes n'a pas de
-   réponse : non-tentative. */
-function corrigerTri(
+/* Erreurs d'un tri jugé faux (`triJuste`) : une par mot mal rangé (`motsMalClasses`) ou
+   laissé hors des thèmes, qui nomme le mot et son bon thème. Un mot laissé hors des
+   thèmes n'a pas de réponse : non-tentative. */
+function erreursTri(
 	q: Extract<QuestionRevision, { kind: 'tri' }>,
 	placement: Readonly<Record<string, 0 | 1>>,
 ): Correction {
@@ -645,17 +673,16 @@ function corrigerTri(
 		else if (placement[m.mot] === undefined)
 			erreurs.push(erreurRienDonne(enonceTri(m.mot), q.categories[m.cat]));
 	}
-	return { reussi: erreurs.length === 0, erreurs };
+	return { reussi: false, erreurs };
 }
 
 /* Même énoncé que la révision et le runner de leçon pour un mot mal rangé. */
 const enonceTri = (mot: string): string => `Ranger le mot « ${mot} »`;
 
-/* Appariement : une erreur par mot de gauche mal relié, mise en forme par `pairesErreur`
-   sur ce seul lien ; un mot sans lien (ou absent des liens) est une non-tentative. Les
-   ÉTIQUETTES (#731) se relient plusieurs fois : la règle est « chaque mot a SA bonne
-   étiquette », jamais une bijection. */
-function corrigerAppariement(
+/* Erreurs d'un appariement jugé faux (`appariementJuste`, qui dit pourquoi la règle n'exige
+   pas de bijection) : une par mot de gauche mal relié, mise en forme par `pairesErreur`
+   sur ce seul lien ; un mot sans lien (ou absent des liens) est une non-tentative. */
+function erreursAppariement(
 	q: Extract<QuestionRevision, { kind: 'appariement' }>,
 	liens: readonly { gauche: string; droite: string | null }[],
 ): Correction {
@@ -670,7 +697,7 @@ function corrigerAppariement(
 			droite === null ? erreurRienDonne(enonce, attendue) : { enonce, donnee, attendue },
 		);
 	}
-	return { reussi: erreurs.length === 0, erreurs };
+	return { reussi: false, erreurs };
 }
 
 /* ============================================================
@@ -786,6 +813,29 @@ export function libelleSeuilNonAtteint(total: number): string {
 	const min = minimumReponses(total);
 	return `Pour que ton bilan compte, réponds à au moins ${min} question${min > 1 ? 's' : ''} sur ${total}.`;
 }
+
+/** Textes FIXES des écrans du parcours, avec les phrases à compteur : un seul endroit où
+    les relire (relecture langue) et les tester, l'écran ne fait que les poser. */
+export const TEXTES_PARCOURS = {
+	/** « Valider » touché avant d'avoir répondu (écran de question). */
+	reponseAttendue: "Réponds d'abord, ou touche « Je passe ».",
+	/** Fin de partie : titre de la liste des erreurs, ou phrase quand il n'y en a pas. */
+	aRevoir: 'À revoir',
+	aucuneErreur: 'Aucune erreur dans cette partie. Bravo !',
+	/** Une erreur sans tentative (question passée, partie laissée vide). */
+	pasDeReponse: 'Pas de réponse',
+	/** Amorces d'une erreur : la réponse donnée, puis la bonne, toujours dans cet ordre. */
+	taReponse: 'Ta réponse :',
+	bonneReponse: 'La bonne réponse :',
+} as const;
+
+/** Titre de l'écran de question : le nom du bilan, ou celui de la révision des erreurs. */
+export const libelleTitreParcours = (rejeu: boolean, nomBilan: string): string =>
+	rejeu ? 'Révision — tes erreurs' : nomBilan;
+
+/** Titre du récapitulatif : « Ton bilan », ou « Révision terminée » après le rejeu. */
+export const libelleTitreRecap = (rejeu: boolean): string =>
+	rejeu ? 'Révision terminée' : 'Ton bilan';
 
 /* ============================================================
    Navigation dans le parcours (écran, reprise).

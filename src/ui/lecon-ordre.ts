@@ -51,7 +51,7 @@ import { enregistrerRunner } from './runner-reprise';
 import { bindTuileInteraction } from './tuile-interaction';
 import type { TuileController } from './tuile-interaction';
 import { monterBoutonAide } from './aide-exercice';
-import type { TypeAide } from '../core/aide';
+import { typeAideOrdre, type TypeAide } from '../core/aide';
 import { capterErreur } from './erreur-capture';
 import {
 	capterPasse,
@@ -104,11 +104,9 @@ function sheets(): HTMLElement {
 	return partage?.scene ?? document.getElementById('sheets')!;
 }
 
-/* Type d'aide contextuelle (#272) accordé à ce qu'on range (#448) : le contenu de
-   l'aide « ordre » parle de mots, celui de « ordreNombres » de nombres. */
-function typeAide(q: OrdreQuestion): TypeAide {
-	return q.nature === 'nombres' ? 'ordreNombres' : 'ordre';
-}
+/* Type d'aide contextuelle (#272) accordé à ce qu'on range (#448), par la table partagée
+   avec la révision et le parcours de bilan (`typeAideOrdre`, core/aide.ts). */
+const typeAide = (q: OrdreQuestion): TypeAide => typeAideOrdre(q.nature);
 
 /* La suite posée est-elle l'EXACT inverse de la suite attendue ? Pur (aucun DOM),
    exporté pour être éprouvé seul. Une rangée incomplète ou une simple permutation

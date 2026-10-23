@@ -1,47 +1,32 @@
 /* ============================================================
-   Bilan en PARCOURS guidé (#777) — écran.
+   Bilan en PARCOURS guidé (#777) — état, correction, crédit.
    ------------------------------------------------------------
    Tout bilan joué à l'écran passe par ici (configurateur, favoris, « Bilan express » et
    « Bilan complet » de catégorie, programme du jour) ; la page unique ne sert plus qu'à
-   l'impression. Trois écrans, dans `#sheets` :
+   l'impression. Trois écrans, dans `#sheets`, chacun dans son module :
 
-   A. une QUESTION par écran, avec le vrai exercice de la leçon (mêmes widgets que la
-      révision espacée), en mode COLLECTE : « Valider » lit la réponse et passe à la
-      suite, sans aucun verdict ni marque juste/faux ; « Je passe » laisse la question
-      sans réponse ;
-   B. la FIN DE PARTIE : d'abord les réussites, puis chaque erreur (question, réponse
-      donnée, bonne réponse). C'est là, et seulement là, que la partie est corrigée et
-      que ses erreurs partent au journal du parent (#391) ;
-   C. le RÉCAPITULATIF : un verdict et un score brut par leçon, le nombre de leçons
-      réussies, « Réviser mes erreurs » ; PUIS les modales de récompense habituelles
-      (niveau, trophées, objectif du jour), comme après une leçon.
+   A. une QUESTION par écran (`bilan-parcours-question.ts`), en mode COLLECTE : aucune
+      marque juste/faux ; « Je passe » laisse la question sans réponse ;
+   B. la FIN DE PARTIE (`bilan-parcours-recap.ts`) : c'est là, et seulement là, que la
+      partie est corrigée et que ses erreurs partent au journal du parent (#391) ;
+   C. le RÉCAPITULATIF (`bilan-parcours-recap.ts`), puis les modales de récompense.
 
-   Toute la logique (tirage, découpage, correction, verdict, phrases) vit dans
-   `core/bilan-parcours.ts` ; ici, le rendu, la collecte, le journal, le crédit (UNE fois,
-   à la correction de la dernière partie) et la reprise (`runner-reprise.ts`).
+   Ce module tient ce qui ne s'affiche pas : l'état du parcours, le lancement, la reprise
+   (`runner-reprise.ts`), la correction de chaque partie, le journal et le crédit (UNE
+   fois, à la correction de la dernière partie). Toute la logique (tirage, découpage,
+   correction, verdict, phrases) vit dans `core/bilan-parcours.ts`.
    ============================================================ */
-import { CATEGORIES, getLessonById, type BilanConfig } from '../core/catalog';
-import { labelLecon } from '../core/levels';
-import { niveauLecon } from '../core/niveau-actif';
-import { consignePourNiveau } from '../core/exercise';
+import { CATEGORIES, type BilanConfig } from '../core/catalog';
 import type { QuestionRevision } from '../core/revision-question';
 import type { ResumeParcours } from '../core/resume';
-import type { TypeAide } from '../core/aide';
 import {
 	assezDeReponses,
 	construireParcours,
 	corrigerQuestion,
 	debutsDesParties,
-	libelleAvancee,
-	libellePartieSur,
-	libellePartieTerminee,
-	libelleQuestionSur,
-	libelleReussites,
-	libelleScore,
-	libelleScoreLu,
+	figureDeQuestion,
 	libelleSeuilNonAtteint,
-	libelleTotalRecap,
-	MOT_VERDICT,
+	PASSE,
 	positionDuRang,
 	premiereSansReponse,
 	repartirEnParties,
@@ -51,25 +36,9 @@ import {
 	type ErreurCorrigee,
 	type PartieBilan,
 	type ReponseQuestion,
-	type VerdictLecon,
 } from '../core/bilan-parcours';
-import {
-	ariaChamp,
-	createRenderContext,
-	enonceTexte,
-	figureBlock,
-	formatChampReponse,
-	legendeQcmTrou,
-	MARQUE_TROU,
-	poserAuTrou,
-	renderItem,
-	TEXT_ANSWER_INPUT_ATTRS,
-} from '../core/items';
-import { libelleChoix, PONCT_MOTS, questionPourJournal } from '../core/erreur-representation';
+import { questionPourJournal } from '../core/erreur-representation';
 import { recordLessonRun, type LessonRunOutcome } from '../core/lesson-run';
-import { texteParle, ttsAttr } from '../core/tts-text';
-import { html, type SafeHtml, VIDE, joindre, attribut } from '../core/html';
-import type { IconName } from '../core/icon-names';
 import {
 	goHome,
 	hideMenus,
@@ -87,19 +56,9 @@ import {
 } from './runner-reprise';
 import { capterErreur } from './erreur-capture';
 import { capterPasse } from './revelation-neutre';
-import { bindTuileInteraction, type TuileController } from './tuile-interaction';
-import { bindAppariement } from './appariement';
-import { bindClicMot } from './clic-mot-interaction';
-import { bindSegmentMot } from './segment-mot-interaction';
-import { renderProblemeBoardHTML } from './lecon-probleme';
-import { brouillonHTML, bindBrouillon } from './brouillon';
-import { bindConsigneTts } from './consigne-tts';
-import { focaliserChamp } from './anti-suggestion';
-import { monterBoutonAide } from './aide-exercice';
 import { resetChrono } from './chrono';
-import { announceRewards } from './effects';
-import { icon } from './icon';
-import { radioVisee } from './segment';
+import { afficherQuestion } from './bilan-parcours-question';
+import { afficherFinPartie, afficherRecap } from './bilan-parcours-recap';
 
 /** Nom stable du parcours dans le registre de reprise (`runner-reprise.ts`). */
 const RUNNER = 'bilan-parcours';
@@ -130,9 +89,6 @@ interface EtatParcours {
 
 let etat: EtatParcours | null = null;
 
-/* Ce que l'écran sait lire de la question affichée : la réponse collectée. */
-let lireReponse: (() => ReponseQuestion) | null = null;
-
 /* Questions de toutes les parties, à plat (le rang global de chacune est son index). */
 const toutesLesQuestions = (e: EtatParcours): QuestionRevision[] =>
 	e.parties.flatMap((p) => p.questions);
@@ -142,7 +98,18 @@ const toutesLesQuestions = (e: EtatParcours): QuestionRevision[] =>
 const modeBilan = (config: BilanConfig): 'complet' | 'express' =>
 	config.questionsPerLesson === 'all' ? 'complet' : 'express';
 
-const sheets = (): HTMLElement => document.getElementById('sheets')!;
+const corriger = (q: QuestionRevision, r: ReponseQuestion | null): Correction =>
+	corrigerQuestion(q, r ?? PASSE);
+
+/* Résultat de chaque question du parcours, au rang global : juste ou non, répondue ou
+   passée (une question pas encore traitée compte comme passée). Le SEUL calcul, pour la
+   reprise, le crédit et le récapitulatif. */
+function resultatsDe(e: EtatParcours): { reussi: boolean; repondue: boolean }[] {
+	return toutesLesQuestions(e).map((q, i) => ({
+		reussi: corriger(q, e.reponses[i]).reussi,
+		repondue: (e.reponses[i]?.kind ?? 'passe') !== 'passe',
+	}));
+}
 
 /* ---------- Lancement, reprise ---------- */
 
@@ -273,21 +240,16 @@ function etatPhotographie(e: EtatParcours) {
 		ecouleMs: e.ecouleMs + (Date.now() - e.debutMs),
 	};
 	const idx = premiereSansReponse(e.reponses);
-	const score = toutesLesQuestions(e)
-		.slice(0, idx)
-		.filter((q, i) => corriger(q, e.reponses[i]).reussi).length;
 	return {
 		parties: e.parties,
 		idx,
 		total: e.reponses.length,
-		score,
+		score: resultatsDe(e)
+			.slice(0, idx)
+			.filter((r) => r.reussi).length,
 		parcours: sauve,
 	};
 }
-
-const PASSE: ReponseQuestion = { kind: 'passe' };
-const corriger = (q: QuestionRevision, r: ReponseQuestion | null): Correction =>
-	corrigerQuestion(q, r ?? PASSE);
 
 /* Écran à montrer d'après l'état : la première question sans réponse, la fin d'une partie
    répondue mais pas encore corrigée, ou le récapitulatif. */
@@ -297,511 +259,66 @@ function afficherEcranCourant(): void {
 	const rang = premiereSansReponse(e.reponses);
 	const pos = positionDuRang(e.parties, rang);
 	if (pos && pos.partie <= e.partiesCorrigees) {
-		afficherQuestion(pos.partie, pos.question);
+		montrerQuestion(pos.partie, pos.question);
 		return;
 	}
 	const aCorriger = pos ? pos.partie - 1 : e.parties.length - 1;
 	if (aCorriger >= e.partiesCorrigees) {
 		corrigerPartie(aCorriger);
-		afficherFinPartie(aCorriger);
+		montrerFinPartie(aCorriger);
 		return;
 	}
-	afficherRecap();
+	montrerRecap();
 }
 
-/* ---------- Écran A : une question ---------- */
+/* ---------- Les trois écrans, alimentés par l'état ---------- */
 
-/* Squelette de l'écran de question, rendu à l'entrée d'une partie. La carte `#bpStage` est
-   un GROUPE nommé à chaque question (« Question 2 sur 5 ») : c'est elle qui reçoit le focus
-   quand la question n'a pas de champ, et un focus sans nom ne dit rien à qui ne voit pas
-   l'écran. Le numéro affiché n'est donc plus une région live (il serait lu deux fois).
-   « Valider » n'est jamais `disabled` : `aria-disabled` le garde dans l'ordre de
-   tabulation, et l'appuyer trop tôt DIT pourquoi rien ne se passe — à l'écran sous les
-   boutons (`#bpMessage`, tu aux technologies d'assistance pour n'être pas lu deux fois),
-   et à l'oreille dans `#bpStatut` (région insérée VIDE avec le squelette, remplie
-   ensuite : c'est ce qui la fait lire). */
-function rendreSquelette(): void {
+function montrerQuestion(k: number, i: number): void {
 	const e = etat!;
-	const titre = e.rejeu ? 'Révision — tes erreurs' : e.config.label;
-	sheets().innerHTML = html`<div class="bilan-parcours">
-    <h2 class="bilan-title bp-titre">${titre}</h2>
-    <div class="bp-entete">
-      <div class="bp-entete-ligne">
-        <span class="bp-partie-nom"></span>
-        <span class="bp-partie-num"></span>
-      </div>
-      <p class="bp-question-num" id="bpQuestionNum"></p>
-      <div class="bp-progression" role="progressbar" aria-label="Progression du bilan" aria-valuemin="0">
-        <div class="bp-progression-fill"></div>
-      </div>
-    </div>
-    <div class="bp-stage" id="bpStage" role="group" tabindex="-1"></div>
-    <div class="bp-decide">
-      <button type="button" class="bp-valider" id="bpValider" aria-disabled="true">Valider</button>
-      <button type="button" class="bp-passer" id="bpPasser">Je passe</button>
-    </div>
-    <p class="bp-message" id="bpMessage" aria-hidden="true" hidden></p>
-    <p class="sr-only" id="bpStatut" role="status"></p>
-  </div>`.balisage;
-	const racine = sheets().querySelector<HTMLElement>('.bilan-parcours')!;
-	document.getElementById('bpValider')!.addEventListener('click', valider);
-	document.getElementById('bpPasser')!.addEventListener('click', () => enregistrer(PASSE));
-	// Entrée dans un champ : valide si la réponse est complète, sinon le dit et mène au champ
-	// vide suivant. Arrêtée ICI : l'écouteur global de la fiche (`ui/session.ts`) corrigerait
-	// sinon la page entière sur Entrée dans une case d'opération posée (`.ans`).
-	racine.addEventListener('keydown', (ev) => {
-		const cible = ev.target;
-		if (ev.key !== 'Enter' || !(cible instanceof HTMLInputElement)) return;
-		ev.preventDefault();
-		ev.stopPropagation();
-		if (reponseComplete()) {
-			valider();
-			return;
-		}
-		direReponseAttendue();
-		champsAttendus()
-			.find((c) => c.value.trim() === '')
-			?.focus();
-	});
-	// Le champ qui prend le focus reste visible au-dessus du clavier de la tablette.
-	racine.addEventListener('focusin', (ev) => {
-		if (ev.target instanceof HTMLInputElement)
-			ev.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-	});
-}
-
-/* La réponse de la question affichée est-elle complète ? Lu sur « Valider », qui en porte
-   l'état (`aria-disabled`) : une seule source, tenue par le `pret` de chaque format. */
-function reponseComplete(): boolean {
-	return document.getElementById('bpValider')?.getAttribute('aria-disabled') !== 'true';
-}
-
-/* Ce que dit `#bpStatut` quand on valide une réponse incomplète. */
-const REPONSE_ATTENDUE = "Réponds d'abord, ou touche « Je passe ».";
-
-/* Jeton de la dernière annonce : une question qui change entre-temps l'annule. */
-let jetonStatut = 0;
-
-/* Dit le message : tout de suite à l'écran (`#bpMessage`), et dans `#bpStatut` vidé
-   d'abord — le même message redit (deuxième Entrée) doit être relu, et une région qui
-   garde son texte ne réannonce rien. */
-function direReponseAttendue(): void {
-	const region = document.getElementById('bpStatut');
-	const message = document.getElementById('bpMessage');
-	if (message) {
-		message.textContent = REPONSE_ATTENDUE;
-		message.hidden = false;
-	}
-	if (!region) return;
-	const jeton = ++jetonStatut;
-	region.textContent = '';
-	window.setTimeout(() => {
-		if (jeton === jetonStatut && region.isConnected) region.textContent = REPONSE_ATTENDUE;
-	}, 50);
-}
-
-/* Retire le message, à l'écran et dans `#bpStatut` (nouvelle question, réponse devenue
-   complète), et annule l'annonce en vol. Par `hidden` et texte vidé, pas par une classe :
-   rien ne dépend de la feuille de style. */
-function viderStatut(): void {
-	jetonStatut++;
-	const region = document.getElementById('bpStatut');
-	if (region) region.textContent = '';
-	const message = document.getElementById('bpMessage');
-	if (message) {
-		message.textContent = '';
-		message.hidden = true;
-	}
-}
-
-/* Champs à remplir de la question affichée (saisie, cases d'une posée, étapes). */
-function champsAttendus(): HTMLInputElement[] {
-	const stage = document.getElementById('bpStage');
-	if (!stage) return [];
-	return [...stage.querySelectorAll<HTMLInputElement>('#bpInput, .posee-input, .prob-input')];
-}
-
-function afficherQuestion(k: number, i: number): void {
-	const e = etat!;
-	if (!document.getElementById('bpStage')) rendreSquelette();
 	const partie = e.parties[k];
-	const q = partie.questions[i];
-	const total = e.reponses.length;
-	const faites = premiereSansReponse(e.reponses);
-	// En-tête : partie (sa catégorie), « Partie k sur n », « Question i sur m », progression.
-	const racine = sheets();
-	const categorie = CATEGORIES.find((c) => c.id === partie.categoryId)?.label ?? '';
-	const numero = libelleQuestionSur(i + 1, partie.questions.length);
-	racine.querySelector('.bp-partie-nom')!.textContent = categorie;
-	racine.querySelector('.bp-partie-num')!.textContent = libellePartieSur(k + 1, e.parties.length);
-	racine.querySelector('.bp-question-num')!.textContent = numero;
-	const barre = racine.querySelector<HTMLElement>('.bp-progression')!;
-	barre.setAttribute('aria-valuemax', String(total));
-	barre.setAttribute('aria-valuenow', String(faites));
-	barre.setAttribute('aria-valuetext', libelleAvancee(faites, total));
-	barre.querySelector<HTMLElement>('.bp-progression-fill')!.style.width =
-		`${Math.round((faites / total) * 100)}%`;
-
-	const stage = document.getElementById('bpStage')!;
-	// Nom du groupe : le numéro, précédé de la catégorie à la 1re question d'une partie (on
-	// vient de l'écran de fin de partie : c'est là que la catégorie change).
-	stage.setAttribute('aria-label', i === 0 && categorie ? `${categorie}. ${numero}` : numero);
-	viderStatut();
-	const boutonValider = document.getElementById('bpValider')!;
-	const pret = (ok: boolean): void => {
-		boutonValider.setAttribute('aria-disabled', String(!ok));
-		if (ok) viderStatut();
-	};
-	pret(false);
-	stage.className = 'bp-stage';
-	stage.dataset.kind = q.kind === 'num' && q.item.posed ? 'posee' : q.kind;
-	stage.dataset.lesson = q.lessonId;
-	if (q.kind === 'qcm') stage.dataset.answer = String(q.item.answer);
-	else if (q.kind === 'tuile') stage.dataset.answer = q.answer;
-	else delete stage.dataset.answer;
-	lireReponse = monterQuestion(stage, q, pret);
-	bindConsigneTts(stage); // bouton « Écouter » de la consigne (#42)
-	const aide = typeAide(q);
-	stage.classList.toggle('bp-stage--aide', !!aide);
-	// Le bouton d'aide au GESTE seulement : jamais ouvert d'office pendant un bilan.
-	if (aide) monterBoutonAide(stage, aide);
-	// Fondu d'entrée rejoué à chaque question (le nœud survit, la classe doit repartir).
-	stage.classList.remove('bp-entree');
-	void stage.offsetWidth;
-	stage.classList.add('bp-entree');
-	const champ = document.getElementById('bpInput');
-	if (champ) focaliserChamp(champ);
-	else stage.focus({ preventScroll: true });
-}
-
-/* Consigne de la question : le titre de la leçon (au niveau joué), puis l'action. Pour un
-   widget, l'action est celle de son GESTE (« Clique sur le verbe », « Range ces mots… ») —
-   jamais la consigne écrite d'une fiche, qui dirait « Recopie » ou « Écris » devant des
-   mots à toucher ; la tuile porte la sienne dans le widget. Sinon, la consigne renforcée du
-   QCM ou la consigne d'action du type. */
-function consigneHTML(q: QuestionRevision, enonceParle?: string): SafeHtml {
-	const lesson = getLessonById(q.lessonId);
-	const niveau = lesson ? niveauLecon(lesson) : undefined;
-	const titre = lesson ? labelLecon(lesson, niveau) : '';
-	let action: string | undefined;
-	switch (q.kind) {
-		case 'clicMot':
-			action = q.actionConsigne;
-			break;
-		case 'ordre':
-		case 'tri':
-		case 'appariement':
-			action = q.question;
-			break;
-		case 'tuile':
-			action = undefined;
-			break;
-		case 'qcm':
-			action =
-				q.consigneRenforcee ??
-				(lesson ? consignePourNiveau(lesson.exerciseType, niveau) : undefined);
-			break;
-		default:
-			action = lesson ? consignePourNiveau(lesson.exerciseType, niveau) : undefined;
-	}
-	// Lecture vocale : la consigne PUIS l'énoncé (même contrat qu'en révision) ; un énoncé
-	// volontairement muet (`parle: ''`) le reste, et un texte déjà lu ne l'est pas deux fois
-	// (homophones : `parle` y répète la consigne, pour taire la phrase).
-	const lus: string[] = [];
-	for (const t of [action, enonceParle])
-		if (t && texteParle(t) && !lus.some((u) => memeLecture(u, t))) lus.push(t);
-	const lu = lus.join(' ');
-	// Le texte de l'action a son propre nœud (`#bpConsigneAction`), qui décrit le champ de
-	// saisie (`aria-describedby`) sans emporter le bouton « Écouter » greffé à côté.
-	const actionHTML = action
-		? html`<span class="bp-consigne-action"${lu ? ttsAttr(lu) : VIDE}><span id="bpConsigneAction">${action}</span></span>`
-		: VIDE;
-	return html`<div class="bp-consigne"><span class="bp-consigne-titre" id="bpConsigneTitre">${titre}</span>${actionHTML}</div>`;
-}
-
-/* Deux textes se lisent-ils pareil ? Comparés après passage à l'oral, sans la casse ni la
-   ponctuation, qui ne s'entendent pas. */
-function memeLecture(a: string, b: string): boolean {
-	const oral = (t: string): string =>
-		texteParle(t)
-			.toLowerCase()
-			.replace(/[^\p{L}\p{N}]+/gu, ' ')
-			.trim();
-	return oral(a) === oral(b);
-}
-
-/* Ce qui décrit le champ de saisie : les nœuds de la consigne présents dans la carte. */
-function consigneDecrite(stage: HTMLElement): string {
-	return ['bpConsigneTitre', 'bpConsigneAction']
-		.filter((id) => stage.querySelector(`#${id}`)?.textContent?.trim())
-		.join(' ');
-}
-
-/* Monte la question dans la carte et renvoie de quoi lire sa réponse. `pret` (dés)active
-   « Valider » selon que la réponse est complète. */
-function monterQuestion(
-	stage: HTMLElement,
-	q: QuestionRevision,
-	pret: (ok: boolean) => void,
-): () => ReponseQuestion {
-	switch (q.kind) {
-		case 'num':
-			return q.item.posed ? monterPosee(stage, q, pret) : monterSaisie(stage, q, pret);
-		case 'qcm':
-			return monterQcm(stage, q, pret);
-		case 'tuile':
-		case 'ordre':
-		case 'tri':
-			return monterTuiles(stage, q, pret);
-		case 'appariement': {
-			stage.innerHTML = html`${consigneHTML(q)}<div data-tuile-mount></div>`.balisage;
-			const ctrl = bindAppariement(
-				stage,
-				{ question: q.question, paires: q.paires, intrus: q.intrus },
-				{ variant: 'revision', onState: pret },
-			);
-			return () => reponseWidget(ctrl, q);
-		}
-		case 'probleme': {
-			const board = renderProblemeBoardHTML(
-				{
-					enonce: q.enonce,
-					etapes: q.etapes,
-					parle: q.parle,
-					figure: q.figure,
-					explication: q.explication,
-				},
-				q.lex,
-			);
-			stage.innerHTML =
-				html`${consigneHTML(q)}<div class="bp-probleme">${board}</div>${brouillonHTML()}`.balisage;
-			bindBrouillon(stage);
-			const cases = [...stage.querySelectorAll<HTMLInputElement>('.prob-input')];
-			const maj = () => pret(cases.every((c) => c.value.trim() !== ''));
-			cases.forEach((c) => c.addEventListener('input', maj));
-			return () => ({ kind: 'probleme', saisies: cases.map((c) => c.value.trim()) });
-		}
-		case 'clicMot': {
-			stage.innerHTML = html`${consigneHTML(q)}<div data-tuile-mount></div>`.balisage;
-			const monter = q.segment ? bindSegmentMot : bindClicMot;
-			const ctrl = monter(
-				stage,
-				{
-					tokens: q.tokens,
-					cibleIndices: q.cibleIndices,
-					parle: q.parle,
-					cibleLabel: q.cibleLabel,
-				},
-				{ onState: pret },
-			);
-			return () => ({ kind: 'clicMot', indices: ctrl.selected() });
-		}
-	}
-}
-
-/* Valeur attendue telle que l'enfant la tape (virgule décimale) : sert de repère `data-answer`. */
-function valeurTapee(answer: number | string): string {
-	return typeof answer === 'number' ? String(answer).replace('.', ',') : answer;
-}
-
-function monterSaisie(
-	stage: HTMLElement,
-	q: Extract<QuestionRevision, { kind: 'num' }>,
-	pret: (ok: boolean) => void,
-): () => ReponseQuestion {
-	const it = q.item;
-	const texte = it.kind === 'text' || it.kind === 'heure';
-	const attendue = attribut('data-answer', valeurTapee(it.answer));
-	const nom = ariaChamp(it, formatChampReponse(it));
-	const decimal =
-		String(it.answer).includes(',') ||
-		(typeof it.answer === 'number' && !Number.isInteger(it.answer));
-	const champ = texte
-		? html`<input id="bpInput" class="bp-input bp-input-text"${nom}${attendue} ${TEXT_ANSWER_INPUT_ATTRS}>`
-		: html`<input id="bpInput" class="bp-input" inputmode="${decimal ? 'decimal' : 'numeric'}" autocomplete="off"${nom}${attendue}>`;
-	// Le `@` place le champ ; un énoncé sans trou (question à figure) le reçoit à sa suite.
-	const enonce = it.text.includes('@')
-		? poserAuTrou(enonceTexte(it.text), '@', champ)
-		: html`${enonceTexte(it.text)} ${champ}`;
-	stage.innerHTML =
-		html`${consigneHTML(q, it.parle ?? it.text)}${figureBlock(it.figure)}<div class="bp-enonce">${enonce}</div>`.balisage;
-	const inp = stage.querySelector<HTMLInputElement>('#bpInput')!;
-	// Le nom du champ est l'énoncé ; sa description dit d'abord où l'on en est (« Question 2
-	// sur 5 », l'en-tête, hors de la carte), puis la consigne (« Calcule », « Écris le mot… »).
-	const decrit = [
-		document.getElementById('bpQuestionNum')?.textContent?.trim() ? 'bpQuestionNum' : '',
-		consigneDecrite(stage),
-	]
-		.filter(Boolean)
-		.join(' ');
-	if (decrit) inp.setAttribute('aria-describedby', decrit);
-	inp.addEventListener('input', () => pret(inp.value.trim() !== ''));
-	return () => ({ kind: 'saisie', valeur: inp.value });
-}
-
-function monterPosee(
-	stage: HTMLElement,
-	q: Extract<QuestionRevision, { kind: 'num' }>,
-	pret: (ok: boolean) => void,
-): () => ReponseQuestion {
-	// Contexte de rendu jetable (#352) : les cellules se lisent dans le DOM (`.posee-input`).
-	// Seules les cellules à TROUVER comptent ; les retenues (`.posee-carry`) restent une aide.
-	stage.innerHTML =
-		html`${consigneHTML(q)}<div class="bp-posee">${renderItem(q.item, createRenderContext())}</div>`.balisage;
-	const cases = [...stage.querySelectorAll<HTMLInputElement>('.posee-input')];
-	const maj = () => pret(cases.every((c) => c.value.trim() !== ''));
-	cases.forEach((c) => c.addEventListener('input', maj));
-	return () => ({ kind: 'posee', chiffres: cases.map((c) => c.value.trim()) });
-}
-
-function monterQcm(
-	stage: HTMLElement,
-	q: Extract<QuestionRevision, { kind: 'qcm' }>,
-	pret: (ok: boolean) => void,
-): () => ReponseQuestion {
-	const ponct = q.variante === 'ponctuation';
-	// Libellé LU d'un choix (aria-label quand il diffère du choix brut) et contenu AFFICHÉ :
-	// le mot d'un signe de ponctuation, la vue riche d'une fraction, sinon le choix.
-	const label = (v: string): string =>
-		ponct ? (PONCT_MOTS[v] ?? v) : libelleChoix(q.choices, q.choicesView, v);
-	const vue = (i: number): SafeHtml => {
-		const riche = ponct ? undefined : q.choicesView?.[i];
-		return riche ? riche.html : html`${label(q.choices[i])}`;
-	};
-	/* Ce que le trou montre une fois rempli : le choix, tel que son bouton l'affiche. Une vue
-	   riche (fraction empilée) ou un signe de ponctuation est recopié TU à l'oreille, et son
-	   libellé lisible (« trois quarts », « point d'interrogation ») le dit à sa place. */
-	const dansLeTrou = (i: number, valeur: string): SafeHtml => {
-		const lu = label(valeur);
-		const riche = ponct ? undefined : q.choicesView?.[i];
-		if (riche)
-			return html`<span aria-hidden="true">${riche.html}</span><span class="sr-only">${lu}</span>`;
-		if (lu !== valeur)
-			return html`<span aria-hidden="true">${valeur}</span><span class="sr-only">${lu}</span>`;
-		return html`${valeur}`;
-	};
-	// Le trou reste LISIBLE aux technologies d'assistance (relecture accessibilité) :
-	// « (trou) » le marque pour l'oreille, HORS du nœud que le choix vient remplir.
-	const trou = html`<span class="bp-trou"><span class="sr-only">${MARQUE_TROU}</span><span class="bp-trou-mot"></span></span>`;
-	// Le groupe de choix se nomme par la phrase, trou marqué : « Le chat (trou) mangé. ».
-	const nomGroupe = legendeQcmTrou(q.item) || q.consigneRenforcee || 'Choix de réponse';
-	// Choix EXCLUSIF : patron APG « Radio Group », comme le segment (`ui/segment.ts`) —
-	// `role="radio"` + `aria-checked`, un seul arrêt de tabulation (tabindex mobile : le
-	// choix coché, sinon le premier), flèches et Home/End qui déplacent ET sélectionnent.
-	stage.innerHTML =
-		html`${consigneHTML(q, q.item.parle ?? q.item.text)}${figureBlock(q.item.figure)}
-    <div class="bp-enonce">${poserAuTrou(enonceTexte(q.item.text), '@', trou)}</div>
-    <div class="bp-choix" role="radiogroup"${attribut('aria-label', nomGroupe)}>${joindre(
-			q.choices.map((c, i) => {
-				const aria = label(c) === c ? VIDE : attribut('aria-label', label(c));
-				return html`<button type="button" class="bp-choice" role="radio" data-value="${c}" data-i="${i}" aria-checked="false" tabindex="${i === 0 ? '0' : '-1'}"${aria}>${vue(i)}</button>`;
-			}),
-		)}</div>`.balisage;
-	let choisi: string | null = null;
-	const boutons = [...stage.querySelectorAll<HTMLButtonElement>('.bp-choice')];
-	const caseTrou = stage.querySelector<HTMLElement>('.bp-trou');
-	const motTrou = stage.querySelector<HTMLElement>('.bp-trou-mot');
-	// Espace et Entrée cliquent le bouton nativement ; les flèches passent par la règle
-	// partagée du segment, puis le focus suit et le choix est retenu.
-	stage.querySelector<HTMLElement>('.bp-choix')?.addEventListener('keydown', (ev) => {
-		const visee = radioVisee(ev, '.bp-choice[role="radio"]');
-		if (!visee) return;
-		visee.focus();
-		visee.click();
+	afficherQuestion({
+		nomBilan: e.config.label,
+		rejeu: e.rejeu,
+		categorie: CATEGORIES.find((c) => c.id === partie.categoryId)?.label ?? '',
+		partie: { numero: k + 1, total: e.parties.length },
+		question: { numero: i + 1, total: partie.questions.length },
+		avancee: { faites: premiereSansReponse(e.reponses), total: e.reponses.length },
+		q: partie.questions[i],
+		repondre: enregistrer,
 	});
-	boutons.forEach((btn) =>
-		btn.addEventListener('click', () => {
-			const valeur = btn.dataset.value ?? null;
-			choisi = valeur;
-			for (const b of boutons) {
-				b.setAttribute('aria-checked', String(b === btn));
-				b.tabIndex = b === btn ? 0 : -1;
-			}
-			// Toucher un choix le place dans le trou (critère 1) : la phrase se relit entière.
-			if (caseTrou && motTrou && valeur !== null) {
-				motTrou.innerHTML = dansLeTrou(Number(btn.dataset.i), valeur).balisage;
-				caseTrou.classList.add('bp-trou--rempli');
-			}
-			pret(valeur !== null);
-		}),
-	);
-	return () => ({ kind: 'choix', valeur: choisi ?? '' });
 }
 
-function monterTuiles(
-	stage: HTMLElement,
-	q: Extract<QuestionRevision, { kind: 'tuile' | 'ordre' | 'tri' }>,
-	pret: (ok: boolean) => void,
-): () => ReponseQuestion {
-	stage.innerHTML = html`${consigneHTML(q)}<div data-tuile-mount></div>`.balisage;
-	const opts = { variant: 'revision' as const, onState: pret };
-	const ctrl =
-		q.kind === 'tuile'
-			? bindTuileInteraction(
-					stage,
-					{
-						kind: 'tuile',
-						question: q.question,
-						answer: q.answer,
-						tuiles: q.tuiles,
-						parle: q.parle,
-					},
-					opts,
-				)
-			: q.kind === 'ordre'
-				? bindTuileInteraction(
-						stage,
-						{
-							kind: 'ordre',
-							question: q.question,
-							ordre: q.ordre,
-							tuiles: q.tuiles,
-							nature: q.nature,
-						},
-						opts,
-					)
-				: bindTuileInteraction(
-						stage,
-						{ kind: 'tri', question: q.question, categories: q.categories, mots: q.mots },
-						opts,
-					);
-	return () => reponseWidget(ctrl, q);
+function montrerFinPartie(k: number): void {
+	const e = etat!;
+	const debut = debutsDesParties(e.parties)[k];
+	const derniere = k === e.parties.length - 1;
+	afficherFinPartie({
+		numero: k + 1,
+		derniere,
+		corrections: e.parties[k].questions.map((q, i) => ({
+			q,
+			c: corriger(q, e.reponses[debut + i]),
+		})),
+		continuer: () => (derniere ? montrerRecap() : montrerQuestion(k + 1, 0)),
+	});
 }
 
-/* Réponse posée dans un widget à tuiles, telle que le widget l'expose (`reponse()`), sans
-   jamais appeler `verify()` : aucune marque avant la fin de la partie (critère 10). */
-function reponseWidget(ctrl: TuileController, q: QuestionRevision): ReponseQuestion {
-	const r = ctrl.reponse?.();
-	if (r) return r;
-	return q.kind === 'tuile' ? { kind: 'tuile', posee: null } : PASSE;
-}
-
-/* Aide au geste (#272) du format affiché, comme en révision ; aucune pour une saisie. */
-function typeAide(q: QuestionRevision): TypeAide | undefined {
-	switch (q.kind) {
-		case 'tuile':
-			return 'tuiles';
-		case 'ordre':
-			return q.nature === 'nombres' ? 'ordreNombres' : 'ordre';
-		case 'tri':
-			return 'tri';
-		case 'appariement':
-			return q.colonneDroite === 'etiquettes' ? 'appariementEtiquettes' : 'appariement';
-		case 'clicMot':
-			return q.segment ? 'segmentMot' : 'clicMot';
-		default:
-			return undefined;
-	}
-}
-
-/* « Valider » : range la réponse si elle est complète, sinon dit pourquoi rien ne se passe. */
-function valider(): void {
-	if (!lireReponse) return;
-	if (!reponseComplete()) {
-		direReponseAttendue();
-		return;
-	}
-	enregistrer(lireReponse());
+function montrerRecap(): void {
+	const e = etat!;
+	quitterSessionRunner(); // plus rien à photographier (bilan clos, ou révision des erreurs)
+	const questions = toutesLesQuestions(e);
+	const resultats = resultatsDe(e);
+	const ratees = questions.filter((_, i) => !resultats[i].reussi);
+	// Gains consommés : un récapitulatif réaffiché ne rouvre pas la modale.
+	const gains = e.credit;
+	e.credit = null;
+	afficherRecap({
+		rejeu: e.rejeu,
+		lignes: trierParVerdict(syntheseParLecon(questions, resultats)),
+		seuil: !e.rejeu && e.compte === false ? libelleSeuilNonAtteint(questions.length) : null,
+		reviser: ratees.length ? () => revoirErreurs(ratees) : null,
+		gains,
+	});
 }
 
 /* Range la réponse de la question affichée, puis passe à la suivante, ou corrige la partie
@@ -813,13 +330,12 @@ function enregistrer(r: ReponseQuestion): void {
 	const pos = positionDuRang(e.parties, rang);
 	if (!pos) return;
 	e.reponses[rang] = r;
-	lireReponse = null;
 	if (pos.question + 1 < e.parties[pos.partie].questions.length) {
-		afficherQuestion(pos.partie, pos.question + 1);
+		montrerQuestion(pos.partie, pos.question + 1);
 		return;
 	}
 	corrigerPartie(pos.partie);
-	afficherFinPartie(pos.partie);
+	montrerFinPartie(pos.partie);
 }
 
 /* ---------- Correction d'une partie : journal, crédit ---------- */
@@ -844,7 +360,7 @@ function corrigerPartie(k: number): void {
    essayé » (`capterPasse`). Le dessin éventuel est signalé par le journal lui-même. */
 function journaliser(q: QuestionRevision, err: ErreurCorrigee): void {
 	const mode = modeBilan(etat!.config);
-	const figure = figureDe(q);
+	const figure = figureDeQuestion(q);
 	// Un énoncé qui n'est QUE « Exercice avec un dessin » le dit déjà : pas de double marque.
 	const avecFigure = figure && err.enonce !== questionPourJournal('', true) ? figure : undefined;
 	if (err.sansTentative && err.donnee === '') {
@@ -868,22 +384,13 @@ function journaliser(q: QuestionRevision, err: ErreurCorrigee): void {
 	});
 }
 
-function figureDe(q: QuestionRevision): SafeHtml | undefined {
-	if (q.kind === 'num' || q.kind === 'qcm') return q.item.figure;
-	if (q.kind === 'probleme') return q.figure;
-	return undefined;
-}
-
 /* Clôture du bilan, après la correction de sa dernière partie : crédité UNE fois (critère
    15, N4) s'il compte (règle des 60 %), avec les stats par leçon et l'id du favori ; la
    reprise est effacée. */
 function cloreBilan(): void {
 	const e = etat!;
 	const questions = toutesLesQuestions(e);
-	const resultats = questions.map((q, i) => ({
-		reussi: corriger(q, e.reponses[i]).reussi,
-		repondue: (e.reponses[i]?.kind ?? 'passe') !== 'passe',
-	}));
+	const resultats = resultatsDe(e);
 	const repondues = resultats.filter((r) => r.repondue).length;
 	e.compte = assezDeReponses(repondues, questions.length);
 	if (e.compte) {
@@ -903,133 +410,6 @@ function cloreBilan(): void {
 		});
 	}
 	finirSessionParcours();
-}
-
-/* ---------- Écran B : fin de partie ---------- */
-
-function afficherFinPartie(k: number): void {
-	const e = etat!;
-	const debut = debutsDesParties(e.parties)[k];
-	const corrections = e.parties[k].questions.map((q, i) => ({
-		q,
-		c: corriger(q, e.reponses[debut + i]),
-	}));
-	const reussites = corrections.filter(({ c }) => c.reussi).length;
-	const erreurs = corrections.flatMap(({ q, c }) => c.erreurs.map((err) => ({ q, err })));
-	const derniere = k === e.parties.length - 1;
-	const liste = erreurs.length
-		? html`<h3 class="bp-revoir-titre">À revoir</h3>
-      <ul class="bp-erreurs" role="list">${joindre(erreurs.map(({ q, err }, n) => erreurHTML(q, err, n)))}</ul>`
-		: html`<p class="bp-aucune-erreur">Aucune erreur dans cette partie. Bravo !</p>`;
-	const suite = derniere
-		? html`<button type="button" class="bp-valider" id="bpVoirBilan">Voir mon bilan</button>`
-		: html`<button type="button" class="bp-valider" id="bpPartieSuivante">Partie suivante</button>`;
-	// La carte reçoit le focus : un groupe NOMMÉ par son titre, pour qu'on l'entende.
-	sheets().innerHTML = html`<div class="bilan-parcours">
-    <div class="bp-fin-partie bp-carte" role="group" aria-labelledby="bpFinTitre" tabindex="-1">
-      <h2 class="bp-fin-titre" id="bpFinTitre">${libellePartieTerminee(k + 1)}</h2>
-      <p class="bp-reussites" data-nombre="${reussites}">${icon('check-circle')}<span>${libelleReussites(reussites)}</span></p>
-      ${liste}
-      <div class="bp-decide">${suite}</div>
-    </div>
-  </div>`.balisage;
-	(document.getElementById('bpVoirBilan') ??
-		document.getElementById('bpPartieSuivante'))!.addEventListener('click', () => {
-		if (derniere) afficherRecap();
-		else afficherQuestion(k + 1, 0);
-		window.scrollTo({ top: 0, behavior: 'smooth' });
-	});
-	sheets().querySelector<HTMLElement>('.bp-fin-partie')?.focus({ preventScroll: true });
-	window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-/* Une erreur : la question (avec son dessin), puis la réponse donnée — « Pas de réponse »
-   pour une question passée —, puis la bonne réponse, toujours dans cet ordre. Ce sont les
-   mots qui portent le sens ; la couleur ne fait que le doubler. */
-function erreurHTML(q: QuestionRevision, err: ErreurCorrigee, n: number): SafeHtml {
-	const donnee =
-		err.sansTentative && err.donnee === ''
-			? html`<p class="bp-erreur-donnee">Pas de réponse</p>`
-			: html`<p class="bp-erreur-donnee">Ta réponse : <strong>${err.donnee}</strong></p>`;
-	return html`<li class="bp-erreur" style="--bp-rang:${Math.min(n, 6)}">
-      ${figureBlock(figureDe(q))}
-      <p class="bp-erreur-enonce">${err.enonce}</p>
-      ${donnee}
-      <p class="bp-erreur-attendue">La bonne réponse : <strong>${err.attendue}</strong></p>
-    </li>`;
-}
-
-/* ---------- Écran C : récapitulatif ---------- */
-
-const ICONE_VERDICT: Record<VerdictLecon, IconName> = {
-	reussi: 'check-circle',
-	presque: 'quantity-2',
-	'a-retravailler': 'book-open',
-};
-
-function afficherRecap(): void {
-	const e = etat!;
-	quitterSessionRunner(); // plus rien à photographier (bilan clos, ou révision des erreurs)
-	const questions = toutesLesQuestions(e);
-	const resultats = questions.map((q, i) => ({
-		reussi: corriger(q, e.reponses[i]).reussi,
-		repondue: (e.reponses[i]?.kind ?? 'passe') !== 'passe',
-	}));
-	const lignes = trierParVerdict(syntheseParLecon(questions, resultats));
-	const reussies = lignes.filter((l) => l.verdict === 'reussi').length;
-	const ratees = questions.filter((_, i) => !resultats[i].reussi);
-	const lignesHTML = joindre(
-		lignes.map((l) => {
-			const lesson = getLessonById(l.lessonId);
-			const nom = lesson ? labelLecon(lesson, niveauLecon(lesson)) : l.lessonId;
-			return html`<li class="bp-lecon" data-lesson="${l.lessonId}" data-verdict="${l.verdict}">
-        <div class="bp-lecon-texte">
-          <span class="bp-lecon-nom">${nom}</span>
-          <span class="bp-verdict bp-verdict--${l.verdict}">${icon(ICONE_VERDICT[l.verdict])}<span>${MOT_VERDICT[l.verdict]}</span></span>
-        </div>
-        <span class="bp-score" aria-hidden="true">${libelleScore(l.reussies, l.posees)}</span>
-        <span class="sr-only">${libelleScoreLu(l.reussies, l.posees)}</span>
-      </li>`;
-		}),
-	);
-	const seuil =
-		!e.rejeu && e.compte === false
-			? html`<p class="bp-seuil">${libelleSeuilNonAtteint(questions.length)}</p>`
-			: VIDE;
-	const reviser = ratees.length
-		? html`<button type="button" class="bp-valider" id="bpReviserErreurs">Réviser mes erreurs</button>`
-		: VIDE;
-	sheets().innerHTML = html`<div class="bilan-parcours">
-    <div class="bp-recap bp-carte" role="group" aria-labelledby="bpRecapTitre" tabindex="-1">
-      <h2 class="bp-recap-titre" id="bpRecapTitre">${e.rejeu ? 'Révision terminée' : 'Ton bilan'}</h2>
-      <ul class="bp-lecons" role="list">${lignesHTML}</ul>
-      <p class="bp-recap-total">${icon('check-circle')}<span>${libelleTotalRecap(reussies, lignes.length)}</span></p>
-      ${seuil}
-      <div class="bp-decide">
-        ${reviser}
-        <button type="button" class="bp-passer" id="bpAccueil">${icon('house')}<span>Retour à l'accueil</span></button>
-      </div>
-    </div>
-  </div>`.balisage;
-	document
-		.getElementById('bpReviserErreurs')
-		?.addEventListener('click', () => revoirErreurs(ratees));
-	document.getElementById('bpAccueil')!.addEventListener('click', goHome);
-	sheets().querySelector<HTMLElement>('.bp-recap')?.focus({ preventScroll: true });
-	window.scrollTo({ top: 0, behavior: 'smooth' });
-	annoncerGains(e);
-}
-
-/* Ce que le bilan vient de rapporter (niveau, trophées, objectif du jour) : les modales
-   habituelles, comme après une leçon (`announceRewards`), ouvertes APRÈS le
-   récapitulatif (décision du mainteneur, #777) — jamais sur l'écran de correction d'une
-   partie, et jamais recopiées dans le récapitulatif. Le focus, posé d'abord sur la carte,
-   y revient à la fermeture. Les gains sont consommés : un récapitulatif réaffiché ne
-   rouvre pas la modale. */
-function annoncerGains(e: EtatParcours): void {
-	const gains = e.credit;
-	e.credit = null;
-	if (gains) announceRewards(gains.niveauGagne, gains.recompensesNiv, gains.celeb);
 }
 
 /* « Réviser mes erreurs » (critère 14) : les questions ratées du bilan, rejouées avec le

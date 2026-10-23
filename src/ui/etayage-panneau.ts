@@ -90,8 +90,8 @@ let ouvert = false; // un seul panneau à la fois (évite l'empilement automatiq
 /** Y a-t-il de quoi étayer cette leçon ? Sans entrée pour elle, il n'y a PAS de panneau —
     et surtout aucun repli sur un exemple générique de la famille de moteur, qui servirait
     à un enfant une notion voisine de la sienne (pire que rien, cf. core/etayage.ts).
-    Jamais sous chronomètre non plus : une explication y déconcentrerait et grignoterait
-    le temps, comme l'aide au geste (`maybeAutoAide`). */
+    Jamais pendant un bilan non plus (modes « complet » et « express »), où l'aide au geste
+    n'est pas davantage ouverte d'office (`maybeAutoAide`). */
 export function etayageDisponible(lesson: LessonDef, niveau: SchoolLevel, mode?: string): boolean {
 	const m = getCurrentMode();
 	if (m === 'complet' || m === 'express') return false;

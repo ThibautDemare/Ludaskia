@@ -78,17 +78,32 @@ export function afficherEditionFavori(el: HTMLElement): AffichageEdition {
 	}
 	if (rendu?.edition === edition && rendu.form.isConnected && el.contains(rendu.form))
 		return 'conserve';
-	renderBilanConfigScreen(el, undefined, {
-		favori,
-		proprietaire: proprietaire.name,
-		enregistrer: (config) => enregistrer(edition, config),
-		annuler: () => revenir(edition, null),
+	renderBilanConfigScreen(el, {
+		edition: {
+			favori,
+			proprietaire: proprietaire.name,
+			enregistrer: (config) => enregistrer(edition, config),
+			annuler: () => revenir(edition, null),
+		},
 	});
 	rendu = { edition, form: el.querySelector<HTMLElement>('#bilanConfigForm')! };
+	// Le crayon cliqué a disparu avec l'espace encadrant, le focus irait sur `<body>` : le
+	// titre, lui, dit au lecteur d'écran quel favori et quel enfant sont concernés. Au frame
+	// suivant, car la vue n'affiche son conteneur qu'après ce rendu. Seulement sur un rendu
+	// NEUF : un formulaire conservé garde le focus là où l'adulte l'avait laissé.
+	const titre = el.querySelector<HTMLElement>('.bc-edit-title');
+	requestAnimationFrame(() => {
+		if (titre?.isConnected) titre.focus({ preventScroll: true });
+	});
 	return 'rendu';
 }
 
 const FAVORI_DISPARU = "Ce bilan favori n'existe plus : il a été supprimé entre-temps.";
+/* L'écriture a été refusée par le navigateur (stockage plein, le plus souvent) : le favori
+   existe toujours, inchangé. Phrase sans pronom : la page est celle de l'enfant (tutoiement),
+   mais c'est l'adulte qui la lit ici. */
+const ECRITURE_REFUSEE =
+	"Le bilan n'a pas pu être enregistré : la mémoire de l'appareil est peut-être pleine.";
 
 /* Écrit la nouvelle version chez le PROPRIÉTAIRE. Si le contenu change alors que l'enfant a
    commencé ce bilan, on le dit d'abord : sa partie sera abandonnée, pour qu'il démarre la
@@ -112,7 +127,13 @@ async function enregistrer(edition: EditionEnCours, config: BilanConfig): Promis
 		// Refus, ou écran quitté pendant la question (Précédent) : rien n'est écrit.
 		if (!ok || enCours !== edition) return null;
 	}
-	if (!modifierBilanFor(edition.uuid, config)) return FAVORI_DISPARU;
+	// `false` : rien n'a été écrit. Soit le favori a disparu pendant la confirmation, soit le
+	// stockage a refusé l'écriture ; dans les deux cas on reste dans l'éditeur, sans annonce,
+	// et la partie de l'enfant n'est PAS abandonnée.
+	if (!modifierBilanFor(edition.uuid, config)) {
+		const existe = loadBilansFor(edition.uuid).some((b) => b.id === edition.id);
+		return existe ? ECRITURE_REFUSEE : FAVORI_DISPARU;
+	}
 	// Dans cet ordre : une reprise effacée pour un favori resté inchangé ferait perdre sa
 	// partie à l'enfant pour rien.
 	if (abandon) removeResumeFor(edition.uuid, cle);

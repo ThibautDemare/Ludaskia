@@ -340,47 +340,35 @@ function brancherEdition(
 	el.querySelector('#bcCancel')!.addEventListener('click', () => edition.annuler());
 }
 
-/* Écran de composition d'un bilan.
-   - global (categoryId absent) : leçons groupées par matière > catégorie ;
-   - scopé à une catégorie : liste à plat de ses leçons (entrée « Je choisis
-     mes leçons » depuis l'écran de catégorie).
-   Pensé tablette/mobile (cf. avis UX enfant) : grosses cibles tactiles, une
-   action principale « C'est parti », sauvegarde repliée pour le parent.
-   - en ÉDITION (`edition`, #778) : le même écran global, pré-rempli avec un favori, avec
-     « Enregistrer / Annuler / Imprimer » à la place de « C'est parti » et « Garder ». */
-export function renderBilanConfigScreen(
-	el: HTMLElement,
-	categoryId?: string,
-	edition?: EditionComposeur,
-): void {
-	const category = categoryId ? CATEGORIES.find((c) => c.id === categoryId) : null;
-	const scoped = !!category;
-
-	let lessonsMarkup: SafeHtml;
-	if (scoped) {
+/* Leçons proposées par le composeur.
+   - global (pas de catégorie) : leçons groupées par matière > catégorie ;
+   - scopé à une catégorie : ses leçons, regroupées par rubrique (entrée « Je choisis mes
+     leçons » depuis l'écran de catégorie). */
+function leconsComposeurHTML(category: Category | null): SafeHtml {
+	if (category) {
 		// Écran scopé : une seule catégorie, déjà nommée par `.bc-scope`. On
 		// regroupe simplement ses leçons par rubrique (#109) ; le « Tout choisir »
 		// global du haut couvre le niveau catégorie. Ouvert depuis une catégorie passée dans
 		// une autre classe (#772), il ne propose que les leçons de CETTE classe.
 		const choix = classeChoisie();
 		const lecons =
-			choix?.categoryId === category!.id
-				? getLessonsByCategory(category!.id, choix.niveau)
-				: getLessonsByCategory(category!.id);
-		lessonsMarkup = html`<div class="bc-scoped-lessons">${categoryBody(lecons)}</div>`;
-	} else {
-		// Écran global : Matière (volet repliable) → Catégorie → Rubrique. Volets
-		// repliés par défaut (109 leçons) — les compteurs « x/y » par matière disent
-		// l'état sans déplier (cf. avis UX enfant).
-		const lessons = getAllLessons();
-		lessonsMarkup = joindre(
-			SUBJECTS.map((subj) => {
-				const catBlocks = CATEGORIES.filter((c) => c.subject === subj.id).map((cat, i) => {
-					const catLessons = lessons.filter((l) => l.category === cat.id);
-					return catLessons.length ? categoryBlock(cat, catLessons, catTint(i)) : VIDE;
-				});
-				if (!catBlocks.length) return VIDE;
-				return html`<details class="bc-group bc-subject">
+			choix?.categoryId === category.id
+				? getLessonsByCategory(category.id, choix.niveau)
+				: getLessonsByCategory(category.id);
+		return html`<div class="bc-scoped-lessons">${categoryBody(lecons)}</div>`;
+	}
+	// Écran global : Matière (volet repliable) → Catégorie → Rubrique. Volets
+	// repliés par défaut (109 leçons) — les compteurs « x/y » par matière disent
+	// l'état sans déplier (cf. avis UX enfant).
+	const lessons = getAllLessons();
+	return joindre(
+		SUBJECTS.map((subj) => {
+			const catBlocks = CATEGORIES.filter((c) => c.subject === subj.id).map((cat, i) => {
+				const catLessons = lessons.filter((l) => l.category === cat.id);
+				return catLessons.length ? categoryBlock(cat, catLessons, catTint(i)) : VIDE;
+			});
+			if (!catBlocks.length) return VIDE;
+			return html`<details class="bc-group bc-subject">
         <summary class="bc-group-head bc-subject-head">
           <span class="bc-check-wrap"><input type="checkbox" class="bc-group-check" aria-label="Tout choisir : ${subj.label}"></span>
           <span class="cat-ico bc-subject-ico" style="background:${subjectTint(subj.id)}">${icon(subjectIcon(subj.id))}</span>
@@ -390,60 +378,87 @@ export function renderBilanConfigScreen(
         </summary>
         <div class="bc-subject-body">${catBlocks}</div>
       </details>`;
-			}),
-		);
-	}
+		}),
+	);
+}
 
-	// Défaut : « Moyen » sur un écran scopé (révision pour de vrai), « Un peu » sinon. En
-	// édition, le réglage du favori, s'il fait partie des quatre proposés : l'écran montre
-	// alors exactement ce qui sera enregistré.
-	const nbqFavori = edition ? String(edition.favori.questionsPerLesson) : '';
-	const defaultNbq = ['3', '5', '10', 'all'].includes(nbqFavori) ? nbqFavori : scoped ? '5' : '3';
-	const defaultMode = edition ? bilanMode(edition.favori) : 'bilan';
+/* Ce qui distingue la création de l'édition dans le balisage du composeur ; tout le reste
+   est commun. */
+interface PartiesComposeur {
+	marqueur: SafeHtml; // `data-edition` sur le formulaire (édition seulement)
+	enTete: SafeHtml;
+	actions: SafeHtml; // boutons posés avant « Imprimer »
+	sauvegarde: SafeHtml; // volet « Garder pour plus tard » (création seulement)
+	nbqDefaut: string;
+	modeDefaut: 'bilan' | 'sprint';
+}
+
+function partiesCreation(category: Category | null): PartiesComposeur {
+	const today = new Date();
+	const defaultName = category
+		? `${category.label} ${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}`
+		: '';
+	return {
+		marqueur: VIDE,
+		enTete: category
+			? html`<p class="bc-scope">Catégorie : <strong>${category.label}</strong></p>`
+			: VIDE,
+		actions: html`<button id="bcRun" class="bc-btn bc-btn-run">${icon('play')} C'est parti !</button>`,
+		sauvegarde: html`<details class="bc-save">
+        <summary>${icon('bookmark')} Garder pour plus tard</summary>
+        <div class="bc-save-row">
+          <input id="bcLabel" class="bc-label-input" type="text" placeholder="Nom du bilan" maxlength="60" value="${defaultName}">
+          <button id="bcSave" class="bc-btn bc-btn-save">${icon('bookmark')} Garder</button>
+        </div>
+        <div class="bc-saved" id="bcSaved" role="status"></div>
+      </details>`,
+		// Défaut : « Moyen » sur un écran scopé (révision pour de vrai), « Un peu » sinon.
+		nbqDefaut: category ? '5' : '3',
+		modeDefaut: 'bilan',
+	};
+}
+
+/* L'écran nomme le favori ET l'enfant à qui il appartient (#778, critère 4) : le profil
+   actif, celui de la barre, n'est pas forcément le sien. Le nom se modifie en tête, à
+   découvert, et non dans le volet replié « Garder pour plus tard ». Pas de lancement : il
+   jouerait sur le profil ACTIF (critère 5). */
+function partiesEdition(edition: EditionComposeur): PartiesComposeur {
+	const { favori } = edition;
+	// Le réglage du favori, s'il fait partie des quatre proposés : l'écran montre alors
+	// exactement ce qui sera enregistré.
+	const nbqFavori = String(favori.questionsPerLesson);
+	return {
+		marqueur: drapeau('data-edition'),
+		enTete: html`<h2 class="bc-edit-title" tabindex="-1">Modifier « ${favori.label} », bilan favori ${elisionDe(edition.proprietaire)}</h2>
+      <label class="bc-section-title bc-edit-name" for="bcLabel">Nom du bilan</label>
+      <input id="bcLabel" class="bc-label-input" type="text" maxlength="60" value="${favori.label}">`,
+		actions: html`<button id="bcUpdate" class="bc-btn bc-btn-run">${icon('check')} Enregistrer</button>
+        <button id="bcCancel" class="bc-btn bc-btn-cancel">${icon('x')} Annuler</button>`,
+		sauvegarde: VIDE,
+		nbqDefaut: ['3', '5', '10', 'all'].includes(nbqFavori) ? nbqFavori : '3',
+		modeDefaut: bilanMode(favori),
+	};
+}
+
+function composeurHTML(lecons: SafeHtml, parties: PartiesComposeur): SafeHtml {
 	// Carte verticale : icône (agrandie) au-dessus du libellé et du nombre, pour
 	// un picto lisible et tapable au doigt (cf. avis UX enfant). Le bouton radio
 	// est masqué visuellement (l'état coché est porté par la carte).
 	const nbqItem = (value: string, ico: SafeHtml, intent: string, num: string) =>
 		html`<label class="bc-nbq-item">
-      <input type="radio" name="bcNbq" class="bc-nbq-radio" value="${value}"${value === defaultNbq ? drapeau('checked') : ''}>
+      <input type="radio" name="bcNbq" class="bc-nbq-radio" value="${value}"${value === parties.nbqDefaut ? drapeau('checked') : ''}>
       <span class="bc-nbq-ico">${ico}</span>
       <span class="bc-nbq-label">${intent}</span>
       <span class="bc-nbq-num">${num || '&nbsp;'}</span>
     </label>`;
-
-	const today = new Date();
-	const defaultName = scoped
-		? `${category!.label} ${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}`
-		: '';
-	const runLabel = scoped ? `Bilan — ${category!.label}` : 'Bilan personnalisé';
-	const sprintLabel = scoped ? `Sprint — ${category!.label}` : 'Sprint personnalisé';
-
 	const modeItem = (value: string, ico: SafeHtml, title: string, sub: string) =>
 		html`<label class="bc-mode-item">
-      <input type="radio" name="bcMode" class="bc-mode-radio" value="${value}"${value === defaultMode ? drapeau('checked') : ''}>
+      <input type="radio" name="bcMode" class="bc-mode-radio" value="${value}"${value === parties.modeDefaut ? drapeau('checked') : ''}>
       <span>${ico} ${title} <span class="bc-mode-sub">${sub}</span></span>
     </label>`;
-
-	// En édition, l'écran nomme le favori ET l'enfant à qui il appartient (#778, critère 4) :
-	// le profil actif, celui de la barre, n'est pas forcément le sien. Le nom se modifie en
-	// tête, à découvert, et non dans le volet replié « Garder pour plus tard ».
-	const enTete = edition
-		? html`<h2 class="bc-edit-title" tabindex="-1">Modifier « ${edition.favori.label} », bilan favori ${elisionDe(edition.proprietaire)}</h2>
-      <label class="bc-section-title bc-edit-name" for="bcLabel">Nom du bilan</label>
-      <input id="bcLabel" class="bc-label-input" type="text" maxlength="60" value="${edition.favori.label}">`
-		: scoped
-			? html`<p class="bc-scope">Catégorie : <strong>${category!.label}</strong></p>`
-			: VIDE;
-	// Pas de lancement en édition : il jouerait sur le profil ACTIF, qui n'est pas forcément
-	// l'enfant concerné (#778, critère 5).
-	const actions = edition
-		? html`<button id="bcUpdate" class="bc-btn bc-btn-run">${icon('check')} Enregistrer</button>
-        <button id="bcCancel" class="bc-btn bc-btn-cancel">${icon('x')} Annuler</button>`
-		: html`<button id="bcRun" class="bc-btn bc-btn-run">${icon('play')} C'est parti !</button>`;
-
-	el.innerHTML = html`
-    <div class="bilan-config" id="bilanConfigForm"${edition ? drapeau('data-edition') : ''}>
-      ${enTete}
+	return html`
+    <div class="bilan-config" id="bilanConfigForm"${parties.marqueur}>
+      ${parties.enTete}
       <div class="bc-section-title">Que veux-tu faire ?</div>
       <div class="bc-mode">
         ${modeItem('bilan', icon('feather'), 'Tranquille', 'à ton rythme')}
@@ -454,7 +469,7 @@ export function renderBilanConfigScreen(
         <button class="bc-action-btn" id="bcSelectAll">${icon('check')} Tout choisir</button>
         <button class="bc-action-btn" id="bcSelectNone">${icon('x')} Tout enlever</button>
       </div>
-      ${lessonsMarkup}
+      ${lecons}
 
       <div id="bcNbqSection">
         <div class="bc-section-title">Questions par leçon</div>
@@ -467,7 +482,7 @@ export function renderBilanConfigScreen(
       </div>
 
       <div class="bc-run-row">
-        ${actions}
+        ${parties.actions}
         <button id="bcPrint" class="bc-btn bc-btn-print" title="Imprimer ce bilan à remplir au crayon">${icon('printer')} Imprimer</button>
         <span class="bc-count" id="bcCount"></span>
       </div>
@@ -476,30 +491,19 @@ export function renderBilanConfigScreen(
         <span>${icon('printer')} Imprimer aussi le corrigé pour le parent (avec les réponses)</span>
       </label>
 
-      ${
-				edition
-					? VIDE
-					: html`<details class="bc-save">
-        <summary>${icon('bookmark')} Garder pour plus tard</summary>
-        <div class="bc-save-row">
-          <input id="bcLabel" class="bc-label-input" type="text" placeholder="Nom du bilan" maxlength="60" value="${defaultName}">
-          <button id="bcSave" class="bc-btn bc-btn-save">${icon('bookmark')} Garder</button>
-        </div>
-        <div class="bc-saved" id="bcSaved" role="status"></div>
-      </details>`
-			}
+      ${parties.sauvegarde}
       <div class="bc-err" id="bcErr" role="alert"></div>
-    </div>`.balisage;
+    </div>`;
+}
 
-	const form = el.querySelector<HTMLElement>('#bilanConfigForm')!;
-	const erreur = zoneErreur(el.querySelector<HTMLElement>('#bcErr')!);
+/* Cases parentes, compteurs et « Tout choisir / Tout enlever ». Groupes (matière /
+   catégorie / rubrique) : chaque groupe porte une case parent (`.bc-group-check`) et un
+   compteur (`.bc-group-count`) dans son en-tête direct (`:scope > .bc-group-head`). On
+   collecte une fois les références ; le périmètre d'un groupe = toutes les leçons qu'il
+   contient (les groupes sont imbriqués matière ⊃ catégorie ⊃ rubrique). Les cases doivent
+   être cochées AVANT l'appel : l'état initial des compteurs est calculé ici. */
+function brancherSelection(el: HTMLElement, form: HTMLElement): void {
 	const countEl = el.querySelector<HTMLElement>('#bcCount')!;
-
-	// Groupes (matière / catégorie / rubrique) : chaque groupe porte une case
-	// parent (`.bc-group-check`) et un compteur (`.bc-group-count`) dans son
-	// en-tête direct (`:scope > .bc-group-head`). On collecte une fois les
-	// références ; le périmètre d'un groupe = toutes les leçons qu'il contient
-	// (les groupes sont imbriqués matière ⊃ catégorie ⊃ rubrique).
 	const groups = [...form.querySelectorAll<HTMLElement>('.bc-group')].map((group) => {
 		const head = group.querySelector<HTMLElement>(':scope > .bc-group-head')!;
 		return {
@@ -548,7 +552,6 @@ export function renderBilanConfigScreen(
 		if ((e.target as HTMLElement).classList.contains('bc-lesson-check')) refresh();
 	});
 
-	if (edition) cocherFavori(form, edition.favori);
 	refresh();
 
 	const setAll = (checked: boolean) => {
@@ -559,9 +562,11 @@ export function renderBilanConfigScreen(
 	};
 	el.querySelector('#bcSelectAll')!.addEventListener('click', () => setAll(true));
 	el.querySelector('#bcSelectNone')!.addEventListener('click', () => setAll(false));
+}
 
-	// Mode sprint (#64) : le sprint est borné par le temps, le réglage « questions
-	// par leçon » et l'impression d'un bilan papier n'ont pas de sens → masqués.
+/* Mode sprint (#64) : le sprint est borné par le temps, le réglage « questions par leçon »
+   et l'impression d'un bilan papier n'ont pas de sens → masqués. */
+function brancherMode(el: HTMLElement, form: HTMLElement): void {
 	const nbqSection = el.querySelector<HTMLElement>('#bcNbqSection')!;
 	const printBtn = el.querySelector<HTMLElement>('#bcPrint')!;
 	const corrigeWrap = el.querySelector<HTMLElement>('#bcCorrigeWrap')!;
@@ -579,9 +584,17 @@ export function renderBilanConfigScreen(
 	form
 		.querySelectorAll<HTMLInputElement>('.bc-mode-radio')
 		.forEach((r) => r.addEventListener('change', applyMode));
+}
 
-	// Chemin B (#40) : imprimer le bilan tel que configuré, sans le lancer.
-	// « Toutes » → fiches d'entraînement ; un nombre → bilan (grille de N questions).
+/* Chemin B (#40) : imprimer le bilan tel que configuré, sans le lancer.
+   « Toutes » → fiches d'entraînement ; un nombre → bilan (grille de N questions). `titre`
+   est lu au clic : en édition, c'est le nom saisi dans le champ. */
+function brancherImpression(
+	el: HTMLElement,
+	form: HTMLElement,
+	erreur: ZoneErreur,
+	titre: () => string,
+): void {
 	el.querySelector('#bcPrint')!.addEventListener('click', () => {
 		// Efface la confirmation « enregistré » de la création (absente en édition).
 		el.querySelector<HTMLElement>('#bcSaved')?.replaceChildren();
@@ -594,34 +607,44 @@ export function renderBilanConfigScreen(
 		const isAll = config.questionsPerLesson === 'all';
 		// #41 : si la case est cochée, on ajoute un corrigé (mêmes items, réponses révélées).
 		const corrige = el.querySelector<HTMLInputElement>('#bcCorrige')?.checked ?? false;
-		// En édition, la fiche porte le nom du favori (celui du champ, s'il est rempli).
-		const nom = edition
-			? el.querySelector<HTMLInputElement>('#bcLabel')!.value.trim() || edition.favori.label
-			: runLabel;
 		printScope({
-			title: nom,
+			title: titre(),
 			lessonIds: config.lessonIds,
 			kind: isAll ? 'fiches' : 'bilan',
 			nbQ: isAll ? undefined : (config.questionsPerLesson as number),
 			corrige,
 		});
 	});
+}
 
-	if (edition) {
-		brancherEdition(el, form, erreur, edition);
-		return;
-	}
+/* Libellés d'un bilan ou d'un sprint lancé depuis la création : le nom de la catégorie
+   quand l'écran lui est scopé. Aussi le titre de la fiche imprimée. */
+function libellesLancement(category: Category | null): { bilan: string; sprint: string } {
+	return category
+		? { bilan: `Bilan — ${category.label}`, sprint: `Sprint — ${category.label}` }
+		: { bilan: 'Bilan personnalisé', sprint: 'Sprint personnalisé' };
+}
 
+/* Boutons « C'est parti ! » et « Garder » de la création, pendant de `brancherEdition`.
+   `categoryId` est celui reçu par l'écran : il range la reprise d'un bilan scopé. */
+function brancherCreation(
+	el: HTMLElement,
+	form: HTMLElement,
+	erreur: ZoneErreur,
+	category: Category | null,
+	categoryId: string | undefined,
+): void {
+	const libelles = libellesLancement(category);
 	const savedEl = el.querySelector<HTMLElement>('#bcSaved')!;
 
 	el.querySelector('#bcRun')!.addEventListener('click', () => {
 		const config = lireSelection(form, erreur);
 		if (!config) return;
 		if (bilanMode(config) === 'sprint') {
-			config.label = sprintLabel;
+			config.label = libelles.sprint;
 			startCustomSprint(config);
 		} else {
-			config.label = runLabel;
+			config.label = libelles.bilan;
 			startBilan(config, customBilanCtx(config, categoryId ?? null));
 		}
 	});
@@ -640,6 +663,43 @@ export function renderBilanConfigScreen(
 		saveBilan(config);
 		savedEl.textContent = `✓ « ${label} » enregistré — tu le retrouveras dans tes favoris.`;
 	});
+}
+
+/** Options de l'écran de composition. */
+export interface OptionsComposeur {
+	/** Écran scopé à une catégorie (« Je choisis mes leçons » depuis la catégorie). */
+	categoryId?: string;
+	/** Édition d'un favori (#778) : écran global, pré-rempli. */
+	edition?: EditionComposeur;
+}
+
+/* Écran de composition d'un bilan : global, ou scopé à une catégorie (cf.
+   `leconsComposeurHTML`). Pensé tablette/mobile (cf. avis UX enfant) : grosses cibles
+   tactiles, une action principale « C'est parti », sauvegarde repliée pour le parent.
+   En ÉDITION (#778) : le même écran global, pré-rempli avec un favori, avec « Enregistrer /
+   Annuler / Imprimer » à la place de « C'est parti » et « Garder ». La fonction rend, puis
+   branche le commun et l'un des deux modes. */
+export function renderBilanConfigScreen(el: HTMLElement, options: OptionsComposeur = {}): void {
+	const { categoryId, edition } = options;
+	const category = (categoryId ? CATEGORIES.find((c) => c.id === categoryId) : null) ?? null;
+	const parties = edition ? partiesEdition(edition) : partiesCreation(category);
+	el.innerHTML = composeurHTML(leconsComposeurHTML(category), parties).balisage;
+
+	const form = el.querySelector<HTMLElement>('#bilanConfigForm')!;
+	const erreur = zoneErreur(el.querySelector<HTMLElement>('#bcErr')!);
+	if (edition) cocherFavori(form, edition.favori);
+	brancherSelection(el, form);
+	brancherMode(el, form);
+
+	if (edition) {
+		const champNom = el.querySelector<HTMLInputElement>('#bcLabel')!;
+		// En édition, la fiche porte le nom du favori (celui du champ, s'il est rempli).
+		brancherImpression(el, form, erreur, () => champNom.value.trim() || edition.favori.label);
+		brancherEdition(el, form, erreur, edition);
+	} else {
+		brancherImpression(el, form, erreur, () => libellesLancement(category).bilan);
+		brancherCreation(el, form, erreur, category, categoryId);
+	}
 }
 
 /* ---------- Section favoris (accueil et catégorie) ---------- */

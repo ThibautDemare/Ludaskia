@@ -1,7 +1,7 @@
 /* ============================================================
    Persistance des BilanConfig sauvegardés (« favoris »).
    ============================================================ */
-import { lsGet, lsSet, lsGetRaw, lsSetRaw } from './storage';
+import { lsGet, lsSet, lsGetRaw, lsGetItemRaw, lsSetRaw } from './storage';
 import { bilanMode, commonCategoryId } from './catalog';
 import { touchProfile } from './profiles';
 import type { BilanConfig } from './catalog';
@@ -72,7 +72,13 @@ export function deleteBilanFor(uuid: string, id: string): void {
 
     Ne crée jamais : un id absent chez ce profil (ou un profil inconnu) renvoie `false` sans
     rien écrire. Les AUTRES favoris sont recopiés tels qu'ils sont stockés (sans le
-    `backfillCategory` de la lecture) : modifier l'un ne réécrit pas les autres. */
+    `backfillCategory` de la lecture) : modifier l'un ne réécrit pas les autres.
+
+    `true` veut dire « la nouvelle version est stockée », et rien d'autre. `lsSetRaw` avale
+    l'erreur d'un stockage plein : on RELIT donc la clé, et une écriture qui n'a pas pris
+    renvoie `false`, sans marquer le profil. Sinon l'éditeur annoncerait un enregistrement
+    fictif et abandonnerait la partie de l'enfant pour un favori resté inchangé. Un contenu
+    identique à l'existant, relu tel quel, est bien un succès. */
 export function modifierBilanFor(uuid: string, config: BilanConfig): boolean {
 	const brut: unknown = lsGetRaw(uuid + '/' + BILANS_KEY, []);
 	if (!Array.isArray(brut)) return false;
@@ -84,7 +90,9 @@ export function modifierBilanFor(uuid: string, config: BilanConfig): boolean {
 	const categoryId = commonCategoryId(config.lessonIds);
 	if (categoryId) neuf.categoryId = categoryId;
 	stockes[idx] = neuf;
-	lsSetRaw(uuid + '/' + BILANS_KEY, JSON.stringify(stockes));
+	const attendu = JSON.stringify(stockes);
+	lsSetRaw(uuid + '/' + BILANS_KEY, attendu);
+	if (lsGetItemRaw(uuid + '/' + BILANS_KEY) !== attendu) return false;
 	touchProfile(uuid);
 	return true;
 }

@@ -698,8 +698,14 @@ test('critère 16 : « Garder pour plus tard » ajoute un nouveau favori sans é
 	const errors = watchErrors(page);
 	const existant = favori('fav-existant', 'Déjà là');
 	await semer(page, { 'e2e/ludaskia_bilans': [existant] });
-	await gotoHash(page, 'bilan-custom');
 
+	// L'éditeur du favori existant a été OUVERT puis abandonné : c'est ce qui rend le test
+	// capable de rougir si l'état d'édition fuit vers la création (cf. mutation ci-dessous).
+	await ouvrirEdition(page, 'fav-existant');
+	await page.locator('#bcCancel').click();
+	await expect(page).toHaveURL(/#encadrant/);
+
+	await gotoHash(page, 'bilan-custom');
 	await choisirLecons(page, [JOUABLE]);
 	await page.locator('.bc-save summary').click();
 	await page.locator('#bcLabel').fill('Tout neuf');
@@ -708,12 +714,20 @@ test('critère 16 : « Garder pour plus tard » ajoute un nouveau favori sans é
 
 	const l = await lireListe(page, 'e2e/ludaskia_bilans');
 	expect(l).toHaveLength(2);
-	expect(l.find((x) => x.id === 'fav-existant')?.label).toBe('Déjà là');
+	expect(new Set(l.map((x) => x.id)).size).toBe(2); // ids distincts
+	expect(l.find((x) => x.id === 'fav-existant')).toMatchObject({
+		label: 'Déjà là',
+		lessonIds: [JOUABLE_2],
+		mode: 'bilan',
+		questionsPerLesson: 3,
+	});
 	expect(l.find((x) => x.label === 'Tout neuf')?.id).not.toBe('fav-existant');
 
-	// VERT d'emblée. Ce qui le fait rougir : un `#bcSave` qui réutiliserait l'id du favori
-	// existant (ou d'un favori « en cours d'édition » resté en mémoire) au lieu d'en générer un.
-	// Mutation NON jouée (pas d'accès à `src/`).
+	// VERT d'emblée. Ce qui le fait rougir (non jouée : `src/` interdit) : dans `genId()` ou à
+	// l'appel `config.id = genId()` (src/ui/bilan.ts ~686), poser l'id du favori en cours
+	// d'édition (`edition.favori.id`, bilan.ts ~381, ou l'`enCours.id` de bilan-edition.ts)
+	// quand il reste en mémoire après Annuler. `saveBilan` fait alors un `bilans[idx] = config` :
+	// la liste n'a plus qu'UN favori, « Déjà là » écrasé, et `toHaveLength(2)` échoue.
 	expect(errors).toEqual([]);
 });
 
@@ -929,6 +943,63 @@ test('S2 : après un changement de profil sans nouveau rendu, le focus n’est p
 	).toBe(true);
 	// Le focus reporté sur le titre arracherait l'adulte à ce qu'il faisait (lecteur d'écran).
 	await expect(page.locator('.bc-edit-title')).not.toBeFocused();
+
+	expect(errors).toEqual([]);
+});
+
+/* ---------- Q1 : écriture refusée par le stockage (quota plein) ---------- */
+
+test('Q1 : si le stockage refuse l’écriture du favori, l’éditeur reste ouvert, signale l’échec, n’annonce rien et garde la reprise', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await semerDeuxProfils(page, seedReprise());
+	await ouvrirEdition(page, 'fav-b1', PROFIL_B);
+	const cleFavoris = `${PROFIL_B}/ludaskia_bilans`;
+	const avant = await lire(page, cleFavoris);
+	const repriseAvant = await lire(page, `${PROFIL_B}/ludaskia_resume`);
+
+	// Quota plein pour CETTE clé seulement, posé sur l'INSTANCE `localStorage` (un espion sur
+	// `Storage.prototype.setItem` ne prend pas sous tous les moteurs). Les autres clés (dont
+	// la reprise) restent écrivables : c'est ce qui rend l'effacement de la reprise observable.
+	await page.evaluate((cle) => {
+		const reel = Storage.prototype.setItem;
+		Object.defineProperty(localStorage, 'setItem', {
+			configurable: true,
+			value: (k: string, v: string) => {
+				if (k === cle) throw new DOMException('quota simulé', 'QuotaExceededError');
+				return reel.call(localStorage, k, v);
+			},
+		});
+	}, cleFavoris);
+	// Le refus prend vraiment : écrire la clé lève, la valeur stockée ne bouge pas.
+	const leve = await page.evaluate((cle) => {
+		try {
+			localStorage.setItem(cle, '[]');
+			return false;
+		} catch {
+			return true;
+		}
+	}, cleFavoris);
+	expect(leve).toBe(true);
+	expect(await lire(page, cleFavoris)).toBe(avant);
+
+	// Le contenu change ET une reprise existe : on traverse la confirmation, puis l'écriture échoue.
+	await choisirNbq(page, '10');
+	await page.locator('#bcUpdate').click();
+	await page.locator(`${uiModalOverlay} .modal-danger, ${uiModalOverlay} .modal-secondary`).click();
+
+	// On reste dans l'éditeur, avec un message (texte non figé : pas encore choisi).
+	await expect(page.locator(FORM)).toBeVisible();
+	await expect(page.locator('#bcErr')).not.toBeEmpty();
+	await expect(page).toHaveURL(/#bilan-edit$/);
+	await expect(annonceEnregistre(page)).toHaveCount(0);
+
+	// Rien n'a bougé : favori inchangé, reprise de l'enfant intacte (un échec ne doit pas lui
+	// coûter sa partie).
+	expect(await lire(page, cleFavoris)).toBe(avant);
+	expect(await clesReprises(page)).toContain(CLE_REPRISE);
+	expect(await lire(page, `${PROFIL_B}/ludaskia_resume`)).toBe(repriseAvant);
 
 	expect(errors).toEqual([]);
 });

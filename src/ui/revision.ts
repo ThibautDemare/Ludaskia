@@ -94,7 +94,7 @@ import {
 	ouvrirEtayage,
 	type EtayageDemande,
 } from './etayage-panneau';
-import type { TypeAide } from '../core/aide';
+import { typeAideDuGeste } from '../core/aide';
 import { capterErreur, libelleChoix } from './erreur-capture';
 /* « Je ne sais pas, montre-moi » (#467) : fond COMMUN avec le mode leçon
    (ui/lecon-passer.ts, mêmes fonctions) — libellé du lien, ton du verdict, désarmement du
@@ -127,6 +127,7 @@ import { joindrePhrase, libelleCible } from '../data/francais/grammaire-clic-mot
 import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
 import { formatReponseRevelee } from '../core/nombres';
 import { attenduEtapeTexte } from '../core/probleme-etapes';
+import { chiffrePoseJuste, grillePoseeJuste } from '../core/regles-justesse';
 
 // `consigne` (#186) : libellé de la leçon, affiché au-dessus de l'exercice pour
 // dire ce qu'on attend (le HUD ne montre que la catégorie). Absent pour les mots
@@ -365,34 +366,6 @@ function focaliserQuestion(): void {
 	stage.focus({ preventScroll: true });
 }
 
-/* Aide contextuelle du geste (#272) — type d'aide correspondant à l'item, ou `undefined`
-   quand la mécanique n'en demande pas (saisie, QCM, mot d'orthographe : on répond
-   comme on écrit ou on choisit, il n'y a pas de geste à apprendre). */
-function typeAideItem(it: RevItem): TypeAide | undefined {
-	switch (it.kind) {
-		case 'tuile':
-			return 'tuiles';
-		case 'ordre':
-			return it.nature === 'nombres' ? 'ordreNombres' : 'ordre'; // même choix qu'en leçon
-		case 'tri':
-			return 'tri';
-		case 'appariement':
-			// Même raison qu'au `clicMot` ci-dessous : le widget est le même, mais la colonne de
-			// droite ne l'est pas (#731). Lire « touche le mot qui va avec » devant trois
-			// étiquettes de classe grammaticale enverrait chercher une colonne qui n'existe pas.
-			return it.colonneDroite === 'etiquettes' ? 'appariementEtiquettes' : 'appariement';
-		case 'clicMot':
-			// Le rendu branche déjà sur `it.segment` (cf. renderClicMot) : l'aide doit suivre,
-			// sinon l'enfant voit le widget à deux bornes et lit la notice de l'autre geste.
-			// Ce qu'ils ne partagent surtout pas, c'est la RÉPARATION — retoucher un mot le
-			// désélectionne d'un côté, repart d'une nouvelle borne de l'autre —, et c'est
-			// justement ce que cette aide existe pour rappeler des semaines plus tard.
-			return it.segment ? 'segmentMot' : 'clicMot';
-		default:
-			return undefined;
-	}
-}
-
 /* Pose l'aide du geste sur la carte, comme les runners de leçon le font sur la leur.
    La révision monte les MÊMES widgets (#186/#345/#466), donc les mêmes gestes — mais
    elle les sert hors de leur leçon, souvent des semaines plus tard : sans ce rappel,
@@ -400,10 +373,12 @@ function typeAideItem(it: RevItem): TypeAide | undefined {
    toucher une tuile posée pour la reprendre…) n'a aucun moyen de le retrouver, et une
    fausse manœuvre devient une réponse fausse. Le bouton « ampoule » est reposé à chaque
    item (le rendu remplace tout `#revStage`) et suit donc le type de l'item courant ;
-   la bulle automatique ne s'ouvre qu'au 1er geste de ce type jamais vu par le profil. */
+   la bulle automatique ne s'ouvre qu'au 1er geste de ce type jamais vu par le profil.
+   Le type d'aide vient de la table partagée (`typeAideDuGeste`, core/aide.ts) : aucune
+   pour une saisie, un QCM ou un mot d'orthographe, où il n'y a pas de geste à apprendre. */
 function monterAide(it: RevItem): void {
 	const stage = document.getElementById('revStage')!;
-	const type = typeAideItem(it);
+	const type = typeAideDuGeste(it);
 	// Le couloir réservé au bouton n'a de sens que si le bouton est là (styles).
 	stage.classList.toggle('rev-stage--aide', !!type);
 	if (!type) return;
@@ -561,8 +536,14 @@ function renderPosed(it: Extract<RevItem, { kind: 'num' }>) {
 		const cells = [...stage.querySelectorAll<HTMLInputElement>('.posee-input')];
 		const vide = cells.find((c) => c.value.trim() === '');
 		if (vide) return vide.focus();
-		const juste = (c: HTMLInputElement) => Number(c.value.trim()) === Number(c.dataset.answer);
-		const reussi = cells.every(juste);
+		// Règle partagée avec la correction différée du bilan (`core/regles-justesse`).
+		// Une case sans `data-answer` (jamais rendue ainsi) ne peut pas être juste : NaN.
+		const attendu = (c: HTMLInputElement) => c.dataset.answer ?? Number.NaN;
+		const juste = (c: HTMLInputElement) => chiffrePoseJuste(c.value, attendu(c));
+		const reussi = grillePoseeJuste(
+			cells.map((c) => c.value),
+			cells.map(attendu),
+		);
 		if (reussi) return grade(true, String(it.item.answer));
 		const analyse = resultatPosee(it, cells);
 		journaliserPosee(it, analyse);

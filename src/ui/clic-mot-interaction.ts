@@ -21,6 +21,7 @@
    ============================================================ */
 
 import { ttsAttr } from '../core/tts-text';
+import { motsChoisisJustes } from '../core/regles-justesse';
 import { libelleCible } from '../data/francais/grammaire-clic-mot';
 import { marquerMot, phraseMotsHTML } from './phrase-mots';
 import { html } from '../core/html';
@@ -76,11 +77,9 @@ export function bindClicMot(
 	const selection = new Set<number>();
 	let fige = false;
 	let resultat = false;
-	// Égalité d'ensembles exacte : même cardinal ET tout sélectionné est cible.
-	const estJuste = (): boolean => {
-		const cible = new Set(cibleIndices);
-		return selection.size === cible.size && [...selection].every((i) => cible.has(i));
-	};
+	// Égalité d'ensembles exacte, règle partagée avec la correction différée du bilan
+	// (`core/regles-justesse`).
+	const estJuste = (): boolean => motsChoisisJustes([...selection], cibleIndices, tokens.length);
 
 	// Découpage de la phrase PARTAGÉ avec le widget à deux bornes (#716, ui/phrase-mots.ts) :
 	// les deux gestes diffèrent, le substrat non — et un substrat en double aurait dérivé sur

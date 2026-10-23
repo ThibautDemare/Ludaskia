@@ -284,11 +284,12 @@ export function monterBoutonAide(conteneur: HTMLElement | null, type: TypeAide):
 	conteneur.appendChild(btn);
 }
 
-/** Affiche l'aide AUTOMATIQUEMENT au 1er lancement (une fois par profil), sauf en
-    mode chronométré (Sprint) où une bulle déconcentrerait et grignoterait le temps. */
+/** Affiche l'aide AUTOMATIQUEMENT au 1er lancement (une fois par profil), sauf pendant un
+    bilan (modes « complet » et « express ») : une bulle qui s'ouvre d'elle-même y
+    interromprait l'évaluation. Le bouton d'aide, lui, reste là. */
 export function maybeAutoAide(type: TypeAide): void {
 	const m = getCurrentMode();
-	if (m === 'complet' || m === 'express') return; // jamais sous chrono
+	if (m === 'complet' || m === 'express') return; // jamais ouverte d'office pendant un bilan
 	if (aideVue(type)) return;
 	marquerAideVue(type);
 	// Ouverture sans déclencheur : à la fermeture, on rend le focus au bouton d'aide

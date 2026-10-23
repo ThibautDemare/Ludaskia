@@ -28,6 +28,7 @@
    tutoiement, verbes d'action concrets, une idée par phrase, ≤ 3 étapes.
    ============================================================ */
 import { lsGet, lsSet } from './storage';
+import type { ColonneDroiteAppariement, NatureOrdre } from './exercise';
 
 export type TypeAide =
 	| 'tuiles'
@@ -43,6 +44,48 @@ export type TypeAide =
 	| 'clicMot'
 	| 'segmentMot'
 	| 'droiteGraduee';
+
+/** Ce qui décide de l'aide au geste d'une question de widget : son format, et la variante
+    qui change la notice (ce qu'on range, ce que porte la colonne de droite, le geste à deux
+    bornes). Les questions de la révision et du parcours de bilan ont toutes cette forme. */
+export interface GesteAide {
+	kind: string;
+	nature?: NatureOrdre;
+	colonneDroite?: ColonneDroiteAppariement;
+	segment?: boolean;
+}
+
+/** Aide d'un rangement, accordée à ce qu'on range (#448) : la notice « ordre » parle de
+    mots, « ordreNombres » de nombres. */
+export const typeAideOrdre = (nature?: NatureOrdre): TypeAide =>
+	nature === 'nombres' ? 'ordreNombres' : 'ordre';
+
+/** Aide au geste d'une question de widget, la MÊME table pour la révision espacée, le
+    parcours de bilan et le runner de rangement : un même widget porte la même notice
+    partout. `undefined` pour un format sans geste à expliquer (saisie, QCM…). */
+export function typeAideDuGeste(g: GesteAide): TypeAide | undefined {
+	switch (g.kind) {
+		case 'tuile':
+			return 'tuiles';
+		case 'ordre':
+			return typeAideOrdre(g.nature);
+		case 'tri':
+			return 'tri';
+		case 'appariement':
+			// Le widget est le même, mais pas la colonne de droite (#731) : lire « touche le
+			// mot qui va avec » devant trois étiquettes de classe grammaticale enverrait
+			// chercher une colonne qui n'existe pas.
+			return g.colonneDroite === 'etiquettes' ? 'appariementEtiquettes' : 'appariement';
+		case 'clicMot':
+			// Le rendu branche sur `segment` : l'aide doit suivre, sinon l'enfant voit le widget
+			// à deux bornes et lit la notice de l'autre geste. Ce qu'ils ne partagent surtout
+			// pas, c'est la RÉPARATION — retoucher un mot le désélectionne d'un côté, repart
+			// d'une nouvelle borne de l'autre —, et c'est justement ce que l'aide rappelle.
+			return g.segment ? 'segmentMot' : 'clicMot';
+		default:
+			return undefined;
+	}
+}
 
 export interface AideContenu {
 	/** Titre de la bulle (ton « astuce », jamais « problème »). */

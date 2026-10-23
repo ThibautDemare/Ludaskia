@@ -44,6 +44,7 @@
    ============================================================ */
 
 import { ttsAttr } from '../core/tts-text';
+import { motsChoisisJustes } from '../core/regles-justesse';
 import { estPonctuation, libelleCible } from '../data/francais/grammaire-clic-mot';
 import { ecartBornes, intervalleDe } from '../core/segment-bornes';
 import { marquerMot, phraseMotsHTML } from './phrase-mots';
@@ -139,9 +140,7 @@ export function bindSegmentMot(
 
 	/** Les mots du bloc sont-ils exactement ceux du segment attendu ? */
 	function estJuste(): boolean {
-		const choisis = motsDuBloc();
-		const cible = new Set(cibleIndices);
-		return new Set(choisis).size === cible.size && choisis.every((i) => cible.has(i));
+		return motsChoisisJustes(motsDuBloc(), cibleIndices, tokens.length);
 	}
 
 	/* Repeint l'état courant. Une seule fonction, appelée après chaque frappe : deux

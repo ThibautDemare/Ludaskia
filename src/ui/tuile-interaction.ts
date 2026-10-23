@@ -34,6 +34,7 @@ import { ttsAttr } from '../core/tts-text';
 import type { NatureOrdre } from '../core/exercise';
 import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
 import { poserAuTrou } from '../core/items';
+import { ordreJuste, triJuste, tuileJuste } from '../core/regles-justesse';
 
 /* Données d'un widget, par nature. Reprend les champs des items générés par le
    moteur (ExerciseType.generate). */
@@ -157,7 +158,7 @@ function bindSlot(
 	let placed: string | null = null;
 	let verdict: boolean | null = null; // null tant que non validé
 	const frozen = () => verdict !== null;
-	const juste = () => placed === spec.answer; // libellés exacts (signe ou nombre)
+	const juste = () => tuileJuste(placed, spec.answer); // règle partagée (core/regles-justesse)
 
 	function redraw() {
 		slot.textContent = placed ?? '';
@@ -229,11 +230,10 @@ function bindOrdre(
 
 	const placed: string[] = [];
 	let frozen = false;
-	// Rangée COMPLÈTE et dans l'ordre : `every` seul rendrait juste une rangée vide ou un
-	// début juste. Les écrans n'appellent qu'une rangée pleine, mais `juste()` est un
-	// contrat public (séance partagée, #734) : il ne doit pas dépendre de ce filtre.
-	const juste = () =>
-		placed.length === spec.ordre.length && placed.every((mot, i) => mot === spec.ordre[i]);
+	// Rangée COMPLÈTE et dans l'ordre (`ordreJuste`) : un début juste ne suffit pas. Les
+	// écrans n'appellent qu'une rangée pleine, mais `juste()` est un contrat public (séance
+	// partagée, #734) : il ne doit pas dépendre de ce filtre.
+	const juste = () => ordreJuste(placed, spec.ordre);
 
 	// Restauration du focus après un redraw (#360, même correctif que `bindTri` plus bas) :
 	// `redraw()` reconstruit `seq` ET `bac` par innerHTML, donc l'élément focalisé est
@@ -400,7 +400,7 @@ function bindTri(
 	const placed: Record<string, 0 | 1> = {};
 	let selected: string | null = null;
 	let frozen = false;
-	const juste = () => spec.mots.every((m) => placed[m.mot] === m.cat);
+	const juste = () => triJuste(spec.mots, placed);
 
 	const motsDeColonne = (col: 0 | 1) =>
 		spec.mots.map((m) => m.mot).filter((mot) => placed[mot] === col);

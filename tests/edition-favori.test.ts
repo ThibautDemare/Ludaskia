@@ -34,10 +34,15 @@ import {
 	bilanFavoriKey,
 	hasResumeFor,
 	removeResumeFor,
-	RESUME_VERSION,
+	estResumeParcours,
 	RESUME_TTL_MS,
 } from '../src/core/resume';
-import type { ResumeGrille } from '../src/core/resume';
+import type { ResumeParcours } from '../src/core/resume';
+import {
+	declarerSessionParcours,
+	snapshotRunner,
+	quitterSessionRunner,
+} from '../src/ui/runner-reprise';
 import {
 	getAllLessons,
 	getLessonById,
@@ -384,32 +389,42 @@ describe('contenuFavoriChange : seul un changement de CONTENU abandonne la repri
    ====================================================================================== */
 const NOW = 1_800_000_000_000;
 
-function reprise(key: string, savedAt: number): ResumeGrille {
-	return {
-		key,
-		version: RESUME_VERSION,
-		savedAt,
-		mode: 'custom',
-		label: 'Bilan favori',
-		icon: 'star',
-		categoryId: null,
-		relaunch: { type: 'bilan', config: favori('f-1', 'Bilan favori') },
-		total: 6,
-		answered: 2,
-		kind: 'grille',
-		sheetsHTML: '<div></div>',
-		items: {},
-		answers: { a: '12' },
-		activeId: null,
-		elapsedMs: 4_000,
-	};
+/** Reprise d'un bilan favori telle que l'appli l'écrit depuis #777 : un PARCOURS (nature
+    « runner », relancé comme un bilan), produit par la fabrique réelle (`snapshotRunner`
+    sur une session de parcours déclarée), et non un objet écrit à la main. Un changement
+    de format suit donc tout seul ; un changement de contrat casse le typecheck.
+    Avant #777, ces semis étaient des grilles de bilan : `normaliser` les écarte désormais,
+    et plusieurs tests ci-dessous passaient alors À VIDE (deux `false` égaux). D'où la
+    vérification, au semis, que la reprise est bien vue par l'enfant. */
+function reprise(key: string, savedAt: number): ResumeParcours {
+	const config = favori('f-1', 'Bilan favori');
+	declarerSessionParcours({
+		runner: 'bilan-parcours', // nom du restaurateur : seul l'écran l'interprète
+		identite: { key, mode: 'custom', label: config.label, icon: 'star', categoryId: null, config },
+		// Deux parties de trois questions, la première répondue à moitié. `parties` et
+		// `parcours` sont opaques pour le stockage : seul l'écran de parcours sait les relire.
+		etat: () => ({
+			parties: [{ questions: [{}, {}, {}] }, { questions: [{}, {}, {}] }],
+			idx: 2,
+			total: 6,
+			score: 1,
+			parcours: { reponses: [], partiesCorrigees: [], ecouleMs: 4_000 },
+		}),
+	});
+	const snap = snapshotRunner(savedAt);
+	quitterSessionRunner(); // pas d'état de module qui fuirait d'un test à l'autre
+	if (!snap || !estResumeParcours(snap))
+		throw new Error('la fabrique n’a pas produit de reprise de parcours de bilan');
+	return snap;
 }
 /** Sème une reprise POUR un profil par le chemin réel (l'enfant a commencé le bilan en
-    étant le profil actif), puis rend la main au profil laissé actif. */
+    étant le profil actif), puis rend la main au profil laissé actif. Exige que l'enfant la
+    voie : un semis que la lecture écarterait rendrait les tests suivants vides. */
 function semerReprise(uuid: string, key: string, savedAt: number = NOW): void {
 	const avant = activeProfile().uuid;
 	setActiveProfile(uuid);
 	upsertResume(reprise(key, savedAt));
+	expect(hasResume(key, savedAt), `semis de reprise « ${key} » écarté à la lecture`).toBe(true);
 	setActiveProfile(avant);
 }
 /** Vérité de référence : la reprise telle que l'enfant la verrait en étant actif. */

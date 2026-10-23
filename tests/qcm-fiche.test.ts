@@ -511,5 +511,9 @@ describe('Catalogue — chaque QCM de fiche est jouable (#734)', () => {
 		}
 		// 39 couples × 8 questions × 5 graines attendus ; le plancher garde contre un vide.
 		expect(groupesVus).toBeGreaterThan(30 * 8 * GRAINES.length);
-	});
+		// Délai explicite : ~1 250 fiches construites (6 à 10 s seul, plus de 30 s sous charge,
+		// au-delà du délai par défaut de la config). Les graines restent cinq : chacune tire
+		// d'autres items des banques, et c'est sur un item précis que deux choix équivalents
+		// (« 3,4 » et « 3,40 ») apparaîtraient — en retirer réduirait ce qui est éprouvé.
+	}, 120_000);
 });

@@ -21,7 +21,8 @@
 		"forest:gen": "node tools/forest/generate-forest.mjs 15 14 public/foret-pied.svg",
 		"verbs:gen": "node tools/verbs/generate-verbs.mjs",
 		"og:gen": "node tools/og-image/generate.mjs",
-		"pwa:icons": "node tools/pwa-icons/generate.mjs"
+		"pwa:icons": "node tools/pwa-icons/generate.mjs",
+		"apercu:impression": "node tools/impression/apercu.mjs"
 	},
 	"engines": {
 		"node": ">=20"

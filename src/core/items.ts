@@ -295,6 +295,37 @@ export function nomChampReponse(it: Item): string {
 	return texteItemParle(it) || 'réponse';
 }
 
+/** Marqueur du trou dans le NOM d'un groupe de choix de QCM à trou (#777). */
+export const MARQUE_TROU = '(trou)';
+
+/** Nom du groupe de choix d'un QCM À TROU (#777, relecture accessibilité) : l'ÉNONCÉ, dont
+    chaque `@` devient « (trou) ». Qui n'entend que ce nom sait la phrase ET où va le mot.
+
+    On part de `text` et JAMAIS de `parle` : `parle` vide rend l'item muet à l'écoute
+    (accords, homophones — l'oral trahirait la réponse), et ailleurs il n'est qu'une
+    consigne (« Choisis le bon mot… ») qui ne dit pas la phrase. `nomChampReponse`, qui
+    s'en sert, donnait donc « réponse » ou la consigne seule, et taisait le trou.
+    Les marques visuelles partent : le gras `**`, la flèche « devient » et les séparateurs
+    (·, —, –), muets comme à l'écoute (`texteParle`). Le marqueur se détache d'un mot
+    qu'il coupe (« lo (trou) gue ») ; contre une ponctuation, il reste collé.
+    Sans `@`, rend l'énoncé ainsi nettoyé : le parcours de bilan nomme de même le groupe
+    de choix d'un QCM sans trou. Vide si l'énoncé l'est (question à figure seule). */
+export function legendeQcmTrou(it: Item): string {
+	const t = it.text
+		.replace(/\*\*/g, '')
+		.replace(/[·—–→]/g, ' ')
+		.replace(/\s+/g, ' ');
+	const lettre = (c: string | undefined): boolean => !!c && /[\p{L}\p{N}]/u.test(c);
+	return t
+		.replace(/@/g, (_m, i: number) => {
+			const avant = lettre(t[i - 1]) ? ' ' : '';
+			const apres = lettre(t[i + 1]) ? ' ' : '';
+			return `${avant}${MARQUE_TROU}${apres}`;
+		})
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
 /* Ce qu'un item DONNE À LIRE à voix haute, en un seul endroit (#630). `parle` prime
    sur `text` : il porte la version pour l'oreille d'un énoncé télégraphique, et sa
    valeur VIDE est un choix — les leçons d'homophones s'en servent pour rester muettes,
@@ -412,7 +443,7 @@ export function qcmChoixHTML(it: Item, ctx: RenderContext): SafeHtml {
 	const id = nextInputId(ctx);
 	ctx.items[id] = it;
 	return html`${figureBlock(it.figure)}<p class="fiche-question">${enonceTexte(it.text)}</p>
-    ${groupeChoixHTML(it, ctx, id)}`;
+    ${groupeChoixHTML(it, ctx, id, nomChampReponse(it))}`;
 }
 
 /** QCM À TROU rendu à l'écran hors runner (#777, critère 1) : la phrase, dont le `@` devient
@@ -430,14 +461,15 @@ export function qcmTrouHTML(it: Item, ctx: RenderContext): SafeHtml {
 	ctx.items[id] = it;
 	const trou = html`<span class="fiche-trou"${attribut('data-for', id)}></span>`;
 	return html`${figureBlock(it.figure)}<p class="fiche-question">${poserAuTrou(enonceTexte(it.text), '@', trou)}</p>
-    ${groupeChoixHTML(it, ctx, id)}`;
+    ${groupeChoixHTML(it, ctx, id, legendeQcmTrou(it))}`;
 }
 
 /* Les choix d'un QCM joué à l'écran hors runner (#734, #777), communs au QCM sans trou et au
-   QCM à trou : un groupe de boutons radio nommé par l'énoncé, le champ `.ans` CACHÉ qu'il
-   alimente (`id`, déjà enregistré dans `ctx.items` par l'appelant) et la marque ✓/✗.
+   QCM à trou : un groupe de boutons radio nommé `nom` (l'énoncé ; trou marqué « (trou) »
+   pour un QCM à trou, `legendeQcmTrou`), le champ `.ans` CACHÉ qu'il alimente (`id`, déjà
+   enregistré dans `ctx.items` par l'appelant) et la marque ✓/✗.
    `data-attendue` porte le LIBELLÉ de la bonne réponse quand les choix ont une vue riche. */
-function groupeChoixHTML(it: Item, ctx: RenderContext, id: string): SafeHtml {
+function groupeChoixHTML(it: Item, ctx: RenderContext, id: string, nom: string): SafeHtml {
 	const choices = it.choices ?? [];
 	const options = joindre(
 		choices.map((valeur, i) => {
@@ -448,7 +480,7 @@ function groupeChoixHTML(it: Item, ctx: RenderContext, id: string): SafeHtml {
 	const attendue = it.choicesView?.length
 		? attribut('data-attendue', libelleChoix(choices, it.choicesView, String(it.answer)))
 		: VIDE;
-	return html`<fieldset class="fiche-choix"${attribut('data-for', id)}><legend class="sr-only">${nomChampReponse(it)}</legend>${options}</fieldset>
+	return html`<fieldset class="fiche-choix"${attribut('data-for', id)}><legend class="sr-only">${nom}</legend>${options}</fieldset>
     <input type="hidden" class="ans"${attribut('id', id)}${attribut('data-answer', String(it.answer))}${attendue}${lessonAttr(ctx)}><span class="mark"${attribut('data-for', id)}></span>`;
 }
 

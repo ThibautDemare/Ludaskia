@@ -396,7 +396,9 @@ export type ReponseQuestion =
 /** Une erreur, mise en forme UNE fois pour l'écran de fin de partie et pour le journal du
     parent : l'énoncé lisible hors de l'exercice (sans `@` ni `**`), la réponse donnée et la
     bonne réponse. `sansTentative` : rien n'a été donné (question passée, case laissée
-    vide) — l'écran dit « Pas de réponse », le journal « n'a pas essayé ». */
+    vide, mot laissé sans thème ou sans lien, résultat d'une posée pas écrit), et `donnee`
+    est alors VIDE — l'écran dit « Pas de réponse », le journal « n'a pas essayé ». Jamais
+    un marqueur « (pas rangé) » ou « (incomplet) » affiché comme si c'était la réponse. */
 export interface ErreurCorrigee {
 	enonce: string;
 	donnee: string;
@@ -507,6 +509,12 @@ function fausse(q: QuestionRevision, donnee: string, attendue: string): Correcti
 	return { reussi: false, erreurs: [{ enonce: enonceQuestion(q), donnee, attendue }] };
 }
 
+/* Une partie de la question laissée sans réponse (mot sans thème, mot sans lien, résultat
+   pas écrit) : une non-tentative, comme une question passée, mais ciblée sur cette partie. */
+function erreurRienDonne(enonce: string, attendue: string): ErreurCorrigee {
+	return { enonce, donnee: '', attendue, sansTentative: true };
+}
+
 /* Énoncé lisible hors de l'exercice : sans le gras `**…**` (le mot reste, ses marques
    partent), le trou `@` devenu « … » (`questionPourJournal`). Le marqueur « exercice avec
    dessin » n'y est PAS : l'écran de fin de partie montre le dessin, et le journal l'ajoute
@@ -591,8 +599,10 @@ function libelleQcm(q: Extract<QuestionRevision, { kind: 'qcm' }>, valeur: strin
 /* Opération posée : TOUTES les cellules à trouver (produits partiels compris) doivent être
    justes, comme en révision. Une seule erreur pour l'opération, jamais une par chiffre :
    l'énoncé est l'opération, la bonne réponse son résultat, la réponse donnée le résultat
-   écrit — ou, quand le résultat est juste mais un produit partiel faux, ce même résultat
-   avec la précision qui dit où est la faute. */
+   écrit — ou, quand le résultat est juste mais une autre ligne fausse, ce même résultat
+   avec la précision qui dit où est la faute, sans jargon (« produit partiel » n'est pas un
+   mot de CE2). Un résultat pas écrit en entier est une non-tentative : l'enfant n'a pas
+   donné de résultat. */
 function corrigerPosee(
 	q: QuestionRevision,
 	spec: PosedSpec,
@@ -606,20 +616,21 @@ function corrigerPosee(
 		donne(i) !== '' && Number(donne(i)) === Number(cellules[i].chiffre);
 	if (chiffres.length === cellules.length && cellules.every((_, i) => juste(i))) return JUSTE;
 	const resultat = cellules.map((c, i) => ({ c, i })).filter(({ c }) => c.resultat !== undefined);
-	const resultatEcrit = resultat.some(({ i }) => donne(i) === '')
-		? '(incomplet)'
-		: resultat.map(({ i }) => donne(i)).join('');
+	const attendue = attendueItem({ answer: String(dispositionPosee(spec).resultat) });
+	if (resultat.some(({ i }) => donne(i) === ''))
+		return { reussi: false, erreurs: [erreurRienDonne(enonceQuestion(q), attendue)] };
+	const resultatEcrit = resultat.map(({ i }) => donne(i)).join('');
 	const resultatJuste = resultat.every(({ i }) => juste(i));
-	const attendue = String(dispositionPosee(spec).resultat);
 	return fausse(
 		q,
-		resultatJuste ? `${resultatEcrit} (erreur dans un produit partiel)` : resultatEcrit,
-		attendueItem({ answer: attendue }),
+		resultatJuste ? `${resultatEcrit} (une ligne du calcul est fausse)` : resultatEcrit,
+		attendue,
 	);
 }
 
 /* Tri par thème : une erreur par mot mal rangé (`motsMalClasses`) ou laissé hors des
-   thèmes, qui nomme le mot et son bon thème. */
+   thèmes, qui nomme le mot et son bon thème. Un mot laissé hors des thèmes n'a pas de
+   réponse : non-tentative. */
 function corrigerTri(
 	q: Extract<QuestionRevision, { kind: 'tri' }>,
 	placement: Readonly<Record<string, 0 | 1>>,
@@ -632,11 +643,7 @@ function corrigerTri(
 		const mal = malRanges.get(m.mot);
 		if (mal) erreurs.push({ enonce: enonceTri(m.mot), donnee: mal.donnee, attendue: mal.attendue });
 		else if (placement[m.mot] === undefined)
-			erreurs.push({
-				enonce: enonceTri(m.mot),
-				donnee: '(pas rangé)',
-				attendue: q.categories[m.cat],
-			});
+			erreurs.push(erreurRienDonne(enonceTri(m.mot), q.categories[m.cat]));
 	}
 	return { reussi: erreurs.length === 0, erreurs };
 }
@@ -644,9 +651,10 @@ function corrigerTri(
 /* Même énoncé que la révision et le runner de leçon pour un mot mal rangé. */
 const enonceTri = (mot: string): string => `Ranger le mot « ${mot} »`;
 
-/* Appariement : une erreur par mot de gauche mal relié (ou absent des liens), mise en
-   forme par `pairesErreur` sur ce seul lien. Les ÉTIQUETTES (#731) se relient plusieurs
-   fois : la règle est « chaque mot a SA bonne étiquette », jamais une bijection. */
+/* Appariement : une erreur par mot de gauche mal relié, mise en forme par `pairesErreur`
+   sur ce seul lien ; un mot sans lien (ou absent des liens) est une non-tentative. Les
+   ÉTIQUETTES (#731) se relient plusieurs fois : la règle est « chaque mot a SA bonne
+   étiquette », jamais une bijection. */
 function corrigerAppariement(
 	q: Extract<QuestionRevision, { kind: 'appariement' }>,
 	liens: readonly { gauche: string; droite: string | null }[],
@@ -656,8 +664,11 @@ function corrigerAppariement(
 	for (const p of q.paires) {
 		const droite = liens.find((l) => l.gauche === p.gauche)?.droite ?? null;
 		if (droite === p.droite) continue;
+		const enonce = `${question} « ${p.gauche} »`;
 		const { donnee, attendue } = pairesErreur([{ gauche: p.gauche, droite }], q.paires);
-		erreurs.push({ enonce: `${question} « ${p.gauche} »`, donnee, attendue });
+		erreurs.push(
+			droite === null ? erreurRienDonne(enonce, attendue) : { enonce, donnee, attendue },
+		);
 	}
 	return { reussi: erreurs.length === 0, erreurs };
 }
@@ -724,6 +735,14 @@ export const libellePartieSur = (k: number, n: number): string => `Partie ${k} s
 
 /** « Question 4 sur 12 ». */
 export const libelleQuestionSur = (i: number, m: number): string => `Question ${i} sur ${m}`;
+
+/** Jauge du bilan, pour l'oreille (`aria-valuetext`) : « 0 question faite sur 12 »,
+    « 1 question faite sur 12 », « 3 questions faites sur 12 ». Singulier à 0 et à 1. */
+export function libelleAvancee(faites: number, total: number): string {
+	return faites < 2
+		? `${faites} question faite sur ${total}`
+		: `${faites} questions faites sur ${total}`;
+}
 
 /** « Partie 2 terminée ». */
 export const libellePartieTerminee = (k: number): string => `Partie ${k} terminée`;

@@ -13,7 +13,8 @@
       donnée, bonne réponse). C'est là, et seulement là, que la partie est corrigée et
       que ses erreurs partent au journal du parent (#391) ;
    C. le RÉCAPITULATIF : un verdict et un score brut par leçon, le nombre de leçons
-      réussies, « Réviser mes erreurs ».
+      réussies, « Réviser mes erreurs » ; PUIS les modales de récompense habituelles
+      (niveau, trophées, objectif du jour), comme après une leçon.
 
    Toute la logique (tirage, découpage, correction, verdict, phrases) vit dans
    `core/bilan-parcours.ts` ; ici, le rendu, la collecte, le journal, le crédit (UNE fois,
@@ -31,6 +32,7 @@ import {
 	construireParcours,
 	corrigerQuestion,
 	debutsDesParties,
+	libelleAvancee,
 	libellePartieSur,
 	libellePartieTerminee,
 	libelleQuestionSur,
@@ -57,13 +59,15 @@ import {
 	enonceTexte,
 	figureBlock,
 	formatChampReponse,
+	legendeQcmTrou,
+	MARQUE_TROU,
 	poserAuTrou,
 	renderItem,
 	TEXT_ANSWER_INPUT_ATTRS,
 } from '../core/items';
 import { libelleChoix, PONCT_MOTS, questionPourJournal } from '../core/erreur-representation';
 import { recordLessonRun, type LessonRunOutcome } from '../core/lesson-run';
-import { ttsAttr } from '../core/tts-text';
+import { texteParle, ttsAttr } from '../core/tts-text';
 import { html, type SafeHtml, VIDE, joindre, attribut } from '../core/html';
 import type { IconName } from '../core/icon-names';
 import {
@@ -93,6 +97,7 @@ import { bindConsigneTts } from './consigne-tts';
 import { focaliserChamp } from './anti-suggestion';
 import { monterBoutonAide } from './aide-exercice';
 import { resetChrono } from './chrono';
+import { announceRewards } from './effects';
 import { icon } from './icon';
 
 /** Nom stable du parcours dans le registre de reprise (`runner-reprise.ts`). */
@@ -115,7 +120,8 @@ interface EtatParcours {
 	/** Temps passé avant la session courante (reprise), et début de celle-ci. */
 	ecouleMs: number;
 	debutMs: number;
-	/** Issue du crédit (bilan clos et compté), ou `null`. */
+	/** Gains du crédit (bilan clos et compté) À ANNONCER, ou `null` : consommés par
+	    l'annonce du récapitulatif, pour qu'une modale ne s'ouvre jamais deux fois. */
 	credit: LessonRunOutcome | null;
 	/** Le bilan est-il compté (règle des 60 %) ? `null` tant qu'il n'est pas clos. */
 	compte: boolean | null;
@@ -304,9 +310,13 @@ function afficherEcranCourant(): void {
 
 /* ---------- Écran A : une question ---------- */
 
-/* Squelette de l'écran de question, rendu à l'entrée d'une partie. Le NŒUD de l'en-tête
-   survit d'une question à l'autre : `.bp-question-num` est une région polie, qui n'annonce
-   que si son texte CHANGE dans un nœud déjà là. */
+/* Squelette de l'écran de question, rendu à l'entrée d'une partie. La carte `#bpStage` est
+   un GROUPE nommé à chaque question (« Question 2 sur 5 ») : c'est elle qui reçoit le focus
+   quand la question n'a pas de champ, et un focus sans nom ne dit rien à qui ne voit pas
+   l'écran. Le numéro affiché n'est donc plus une région live (il serait lu deux fois).
+   « Valider » n'est jamais `disabled` : `aria-disabled` le garde dans l'ordre de
+   tabulation, et l'appuyer trop tôt DIT pourquoi rien ne se passe, dans `#bpStatut`
+   (région insérée VIDE avec le squelette, remplie ensuite : c'est ce qui la fait lire). */
 function rendreSquelette(): void {
 	const e = etat!;
 	const titre = e.rejeu ? 'Révision — tes erreurs' : e.config.label;
@@ -317,33 +327,34 @@ function rendreSquelette(): void {
         <span class="bp-partie-nom"></span>
         <span class="bp-partie-num"></span>
       </div>
-      <p class="bp-question-num" aria-live="polite" aria-atomic="true"></p>
-      <div class="bp-progression" role="progressbar" aria-label="Avancée du bilan" aria-valuemin="0">
+      <p class="bp-question-num"></p>
+      <div class="bp-progression" role="progressbar" aria-label="Progression du bilan" aria-valuemin="0">
         <div class="bp-progression-fill"></div>
       </div>
     </div>
-    <div class="bp-stage" id="bpStage" tabindex="-1"></div>
+    <div class="bp-stage" id="bpStage" role="group" tabindex="-1"></div>
     <div class="bp-decide">
-      <button type="button" class="bp-valider" id="bpValider" disabled>Valider</button>
+      <button type="button" class="bp-valider" id="bpValider" aria-disabled="true">Valider</button>
       <button type="button" class="bp-passer" id="bpPasser">Je passe</button>
     </div>
+    <p class="sr-only" id="bpStatut" role="status"></p>
   </div>`.balisage;
 	const racine = sheets().querySelector<HTMLElement>('.bilan-parcours')!;
 	document.getElementById('bpValider')!.addEventListener('click', valider);
 	document.getElementById('bpPasser')!.addEventListener('click', () => enregistrer(PASSE));
-	// Entrée dans un champ : valide si la réponse est complète, sinon mène au champ vide
-	// suivant. Arrêtée ICI : l'écouteur global de la fiche (`ui/session.ts`) corrigerait
+	// Entrée dans un champ : valide si la réponse est complète, sinon le dit et mène au champ
+	// vide suivant. Arrêtée ICI : l'écouteur global de la fiche (`ui/session.ts`) corrigerait
 	// sinon la page entière sur Entrée dans une case d'opération posée (`.ans`).
 	racine.addEventListener('keydown', (ev) => {
 		const cible = ev.target;
 		if (ev.key !== 'Enter' || !(cible instanceof HTMLInputElement)) return;
 		ev.preventDefault();
 		ev.stopPropagation();
-		const bouton = document.getElementById('bpValider') as HTMLButtonElement | null;
-		if (bouton && !bouton.disabled) {
+		if (reponseComplete()) {
 			valider();
 			return;
 		}
+		direReponseAttendue();
 		champsAttendus()
 			.find((c) => c.value.trim() === '')
 			?.focus();
@@ -353,6 +364,37 @@ function rendreSquelette(): void {
 		if (ev.target instanceof HTMLInputElement)
 			ev.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 	});
+}
+
+/* La réponse de la question affichée est-elle complète ? Lu sur « Valider », qui en porte
+   l'état (`aria-disabled`) : une seule source, tenue par le `pret` de chaque format. */
+function reponseComplete(): boolean {
+	return document.getElementById('bpValider')?.getAttribute('aria-disabled') !== 'true';
+}
+
+/* Ce que dit `#bpStatut` quand on valide une réponse incomplète. */
+const REPONSE_ATTENDUE = "Réponds d'abord, ou touche « Je passe ».";
+
+/* Jeton de la dernière annonce : une question qui change entre-temps l'annule. */
+let jetonStatut = 0;
+
+/* Écrit dans `#bpStatut`, vidé d'abord : le même message redit (deuxième Entrée) doit être
+   relu, et une région qui garde son texte ne réannonce rien. */
+function direReponseAttendue(): void {
+	const region = document.getElementById('bpStatut');
+	if (!region) return;
+	const jeton = ++jetonStatut;
+	region.textContent = '';
+	window.setTimeout(() => {
+		if (jeton === jetonStatut && region.isConnected) region.textContent = REPONSE_ATTENDUE;
+	}, 50);
+}
+
+/* Vide `#bpStatut` (nouvelle question, réponse devenue complète) et annule l'annonce en vol. */
+function viderStatut(): void {
+	jetonStatut++;
+	const region = document.getElementById('bpStatut');
+	if (region) region.textContent = '';
 }
 
 /* Champs à remplir de la question affichée (saisie, cases d'une posée, étapes). */
@@ -371,24 +413,29 @@ function afficherQuestion(k: number, i: number): void {
 	const faites = premiereSansReponse(e.reponses);
 	// En-tête : partie (sa catégorie), « Partie k sur n », « Question i sur m », progression.
 	const racine = sheets();
-	racine.querySelector('.bp-partie-nom')!.textContent =
-		CATEGORIES.find((c) => c.id === partie.categoryId)?.label ?? '';
+	const categorie = CATEGORIES.find((c) => c.id === partie.categoryId)?.label ?? '';
+	const numero = libelleQuestionSur(i + 1, partie.questions.length);
+	racine.querySelector('.bp-partie-nom')!.textContent = categorie;
 	racine.querySelector('.bp-partie-num')!.textContent = libellePartieSur(k + 1, e.parties.length);
-	racine.querySelector('.bp-question-num')!.textContent = libelleQuestionSur(
-		i + 1,
-		partie.questions.length,
-	);
+	racine.querySelector('.bp-question-num')!.textContent = numero;
 	const barre = racine.querySelector<HTMLElement>('.bp-progression')!;
 	barre.setAttribute('aria-valuemax', String(total));
 	barre.setAttribute('aria-valuenow', String(faites));
-	barre.setAttribute('aria-valuetext', `${faites} sur ${total}`);
+	barre.setAttribute('aria-valuetext', libelleAvancee(faites, total));
 	barre.querySelector<HTMLElement>('.bp-progression-fill')!.style.width =
 		`${Math.round((faites / total) * 100)}%`;
 
 	const stage = document.getElementById('bpStage')!;
-	const boutonValider = document.getElementById('bpValider') as HTMLButtonElement;
-	boutonValider.disabled = true;
-	const pret = (ok: boolean) => (boutonValider.disabled = !ok);
+	// Nom du groupe : le numéro, précédé de la catégorie à la 1re question d'une partie (on
+	// vient de l'écran de fin de partie : c'est là que la catégorie change).
+	stage.setAttribute('aria-label', i === 0 && categorie ? `${categorie}. ${numero}` : numero);
+	viderStatut();
+	const boutonValider = document.getElementById('bpValider')!;
+	const pret = (ok: boolean): void => {
+		boutonValider.setAttribute('aria-disabled', String(!ok));
+		if (ok) viderStatut();
+	};
+	pret(false);
 	stage.className = 'bp-stage';
 	stage.dataset.kind = q.kind === 'num' && q.item.posed ? 'posee' : q.kind;
 	stage.dataset.lesson = q.lessonId;
@@ -441,12 +488,36 @@ function consigneHTML(q: QuestionRevision, enonceParle?: string): SafeHtml {
 			action = lesson ? consignePourNiveau(lesson.exerciseType, niveau) : undefined;
 	}
 	// Lecture vocale : la consigne PUIS l'énoncé (même contrat qu'en révision) ; un énoncé
-	// volontairement muet (`parle: ''`) le reste.
-	const lu = [action, enonceParle].filter((t) => !!t).join(' ');
+	// volontairement muet (`parle: ''`) le reste, et un texte déjà lu ne l'est pas deux fois
+	// (homophones : `parle` y répète la consigne, pour taire la phrase).
+	const lus: string[] = [];
+	for (const t of [action, enonceParle])
+		if (t && texteParle(t) && !lus.some((u) => memeLecture(u, t))) lus.push(t);
+	const lu = lus.join(' ');
+	// Le texte de l'action a son propre nœud (`#bpConsigneAction`), qui décrit le champ de
+	// saisie (`aria-describedby`) sans emporter le bouton « Écouter » greffé à côté.
 	const actionHTML = action
-		? html`<span class="bp-consigne-action"${lu ? ttsAttr(lu) : ''}>${action}</span>`
+		? html`<span class="bp-consigne-action"${lu ? ttsAttr(lu) : VIDE}><span id="bpConsigneAction">${action}</span></span>`
 		: VIDE;
-	return html`<div class="bp-consigne"><span class="bp-consigne-titre">${titre}</span>${actionHTML}</div>`;
+	return html`<div class="bp-consigne"><span class="bp-consigne-titre" id="bpConsigneTitre">${titre}</span>${actionHTML}</div>`;
+}
+
+/* Deux textes se lisent-ils pareil ? Comparés après passage à l'oral, sans la casse ni la
+   ponctuation, qui ne s'entendent pas. */
+function memeLecture(a: string, b: string): boolean {
+	const oral = (t: string): string =>
+		texteParle(t)
+			.toLowerCase()
+			.replace(/[^\p{L}\p{N}]+/gu, ' ')
+			.trim();
+	return oral(a) === oral(b);
+}
+
+/* Ce qui décrit le champ de saisie : les nœuds de la consigne présents dans la carte. */
+function consigneDecrite(stage: HTMLElement): string {
+	return ['bpConsigneTitre', 'bpConsigneAction']
+		.filter((id) => stage.querySelector(`#${id}`)?.textContent?.trim())
+		.join(' ');
 }
 
 /* Monte la question dans la carte et renvoie de quoi lire sa réponse. `pret` (dés)active
@@ -538,6 +609,9 @@ function monterSaisie(
 	stage.innerHTML =
 		html`${consigneHTML(q, it.parle ?? it.text)}${figureBlock(it.figure)}<div class="bp-enonce">${enonce}</div>`.balisage;
 	const inp = stage.querySelector<HTMLInputElement>('#bpInput')!;
+	// Le nom du champ est l'énoncé ; la consigne (« Calcule », « Écris le mot… ») le décrit.
+	const decrit = consigneDecrite(stage);
+	if (decrit) inp.setAttribute('aria-describedby', decrit);
 	inp.addEventListener('input', () => pret(inp.value.trim() !== ''));
 	return () => ({ kind: 'saisie', valeur: inp.value });
 }
@@ -571,11 +645,27 @@ function monterQcm(
 		const riche = ponct ? undefined : q.choicesView?.[i];
 		return riche ? riche.html : html`${label(q.choices[i])}`;
 	};
-	const trou = html`<span class="bp-trou" aria-hidden="true"></span>`;
+	/* Ce que le trou montre une fois rempli : le choix, tel que son bouton l'affiche. Une vue
+	   riche (fraction empilée) ou un signe de ponctuation est recopié TU à l'oreille, et son
+	   libellé lisible (« trois quarts », « point d'interrogation ») le dit à sa place. */
+	const dansLeTrou = (i: number, valeur: string): SafeHtml => {
+		const lu = label(valeur);
+		const riche = ponct ? undefined : q.choicesView?.[i];
+		if (riche)
+			return html`<span aria-hidden="true">${riche.html}</span><span class="sr-only">${lu}</span>`;
+		if (lu !== valeur)
+			return html`<span aria-hidden="true">${valeur}</span><span class="sr-only">${lu}</span>`;
+		return html`${valeur}`;
+	};
+	// Le trou reste LISIBLE aux technologies d'assistance (relecture accessibilité) :
+	// « (trou) » le marque pour l'oreille, HORS du nœud que le choix vient remplir.
+	const trou = html`<span class="bp-trou"><span class="sr-only">${MARQUE_TROU}</span><span class="bp-trou-mot"></span></span>`;
+	// Le groupe de choix se nomme par la phrase, trou marqué : « Le chat (trou) mangé. ».
+	const nomGroupe = legendeQcmTrou(q.item) || q.consigneRenforcee || 'Choix de réponse';
 	stage.innerHTML =
 		html`${consigneHTML(q, q.item.parle ?? q.item.text)}${figureBlock(q.item.figure)}
     <div class="bp-enonce">${poserAuTrou(enonceTexte(q.item.text), '@', trou)}</div>
-    <div class="bp-choix" role="group" aria-label="Choix de réponse">${joindre(
+    <div class="bp-choix" role="group"${attribut('aria-label', nomGroupe)}>${joindre(
 			q.choices.map((c, i) => {
 				const aria = label(c) === c ? VIDE : attribut('aria-label', label(c));
 				return html`<button type="button" class="bp-choice" data-value="${c}" data-i="${i}" aria-pressed="false"${aria}>${vue(i)}</button>`;
@@ -584,16 +674,18 @@ function monterQcm(
 	let choisi: string | null = null;
 	const boutons = [...stage.querySelectorAll<HTMLButtonElement>('.bp-choice')];
 	const caseTrou = stage.querySelector<HTMLElement>('.bp-trou');
+	const motTrou = stage.querySelector<HTMLElement>('.bp-trou-mot');
 	boutons.forEach((btn) =>
 		btn.addEventListener('click', () => {
-			choisi = btn.dataset.value ?? null;
+			const valeur = btn.dataset.value ?? null;
+			choisi = valeur;
 			for (const b of boutons) b.setAttribute('aria-pressed', String(b === btn));
 			// Toucher un choix le place dans le trou (critère 1) : la phrase se relit entière.
-			if (caseTrou) {
-				caseTrou.textContent = ponct ? (choisi ?? '') : label(choisi ?? '');
-				caseTrou.classList.toggle('bp-trou--rempli', choisi !== null);
+			if (caseTrou && motTrou && valeur !== null) {
+				motTrou.innerHTML = dansLeTrou(Number(btn.dataset.i), valeur).balisage;
+				caseTrou.classList.add('bp-trou--rempli');
 			}
-			pret(choisi !== null);
+			pret(valeur !== null);
 		}),
 	);
 	return () => ({ kind: 'choix', valeur: choisi ?? '' });
@@ -665,9 +757,13 @@ function typeAide(q: QuestionRevision): TypeAide | undefined {
 	}
 }
 
+/* « Valider » : range la réponse si elle est complète, sinon dit pourquoi rien ne se passe. */
 function valider(): void {
-	const bouton = document.getElementById('bpValider') as HTMLButtonElement | null;
-	if (!bouton || bouton.disabled || !lireReponse) return;
+	if (!lireReponse) return;
+	if (!reponseComplete()) {
+		direReponseAttendue();
+		return;
+	}
 	enregistrer(lireReponse());
 }
 
@@ -786,14 +882,15 @@ function afficherFinPartie(k: number): void {
 	const derniere = k === e.parties.length - 1;
 	const liste = erreurs.length
 		? html`<h3 class="bp-revoir-titre">À revoir</h3>
-      <ul class="bp-erreurs">${joindre(erreurs.map(({ q, err }, n) => erreurHTML(q, err, n)))}</ul>`
+      <ul class="bp-erreurs" role="list">${joindre(erreurs.map(({ q, err }, n) => erreurHTML(q, err, n)))}</ul>`
 		: html`<p class="bp-aucune-erreur">Aucune erreur dans cette partie. Bravo !</p>`;
 	const suite = derniere
 		? html`<button type="button" class="bp-valider" id="bpVoirBilan">Voir mon bilan</button>`
 		: html`<button type="button" class="bp-valider" id="bpPartieSuivante">Partie suivante</button>`;
+	// La carte reçoit le focus : un groupe NOMMÉ par son titre, pour qu'on l'entende.
 	sheets().innerHTML = html`<div class="bilan-parcours">
-    <div class="bp-fin-partie bp-carte" tabindex="-1">
-      <h2 class="bp-fin-titre">${libellePartieTerminee(k + 1)}</h2>
+    <div class="bp-fin-partie bp-carte" role="group" aria-labelledby="bpFinTitre" tabindex="-1">
+      <h2 class="bp-fin-titre" id="bpFinTitre">${libellePartieTerminee(k + 1)}</h2>
       <p class="bp-reussites" data-nombre="${reussites}">${icon('check-circle')}<span>${libelleReussites(reussites)}</span></p>
       ${liste}
       <div class="bp-decide">${suite}</div>
@@ -866,11 +963,10 @@ function afficherRecap(): void {
 		? html`<button type="button" class="bp-valider" id="bpReviserErreurs">Réviser mes erreurs</button>`
 		: VIDE;
 	sheets().innerHTML = html`<div class="bilan-parcours">
-    <div class="bp-recap bp-carte" tabindex="-1">
-      <h2 class="bp-recap-titre">${e.rejeu ? 'Révision terminée' : 'Ton bilan'}</h2>
-      <ul class="bp-lecons">${lignesHTML}</ul>
+    <div class="bp-recap bp-carte" role="group" aria-labelledby="bpRecapTitre" tabindex="-1">
+      <h2 class="bp-recap-titre" id="bpRecapTitre">${e.rejeu ? 'Révision terminée' : 'Ton bilan'}</h2>
+      <ul class="bp-lecons" role="list">${lignesHTML}</ul>
       <p class="bp-recap-total">${icon('check-circle')}<span>${libelleTotalRecap(reussies, lignes.length)}</span></p>
-      ${recompensesHTML(e.credit)}
       ${seuil}
       <div class="bp-decide">
         ${reviser}
@@ -884,24 +980,19 @@ function afficherRecap(): void {
 	document.getElementById('bpAccueil')!.addEventListener('click', goHome);
 	sheets().querySelector<HTMLElement>('.bp-recap')?.focus({ preventScroll: true });
 	window.scrollTo({ top: 0, behavior: 'smooth' });
+	annoncerGains(e);
 }
 
-/* Ce que le bilan vient de rapporter (niveau, trophées, objectif du jour), DANS le
-   récapitulatif plutôt qu'en modale : l'écran de fin du parcours est sans confettis
-   (spécification de rendu, §4), et une modale masquerait les verdicts qu'il vient
-   d'afficher. Rien quand il n'y a rien de neuf. */
-function recompensesHTML(credit: LessonRunOutcome | null): SafeHtml {
-	if (!credit) return VIDE;
-	const lignes: SafeHtml[] = [];
-	if (credit.niveauGagne)
-		lignes.push(
-			html`<li><span aria-hidden="true">⬆️</span> Tu passes au niveau ${credit.niveauGagne} !</li>`,
-		);
-	for (const r of credit.recompensesNiv)
-		lignes.push(html`<li><span aria-hidden="true">${r.icone}</span> ${r.texte}</li>`);
-	for (const c of credit.celeb)
-		lignes.push(html`<li><span aria-hidden="true">${c.icon}</span> ${c.text}</li>`);
-	return lignes.length ? html`<ul class="bp-recompenses">${joindre(lignes)}</ul>` : VIDE;
+/* Ce que le bilan vient de rapporter (niveau, trophées, objectif du jour) : les modales
+   habituelles, comme après une leçon (`announceRewards`), ouvertes APRÈS le
+   récapitulatif (décision du mainteneur, #777) — jamais sur l'écran de correction d'une
+   partie, et jamais recopiées dans le récapitulatif. Le focus, posé d'abord sur la carte,
+   y revient à la fermeture. Les gains sont consommés : un récapitulatif réaffiché ne
+   rouvre pas la modale. */
+function annoncerGains(e: EtatParcours): void {
+	const gains = e.credit;
+	e.credit = null;
+	if (gains) announceRewards(gains.niveauGagne, gains.recompensesNiv, gains.celeb);
 }
 
 /* « Réviser mes erreurs » (critère 14) : les questions ratées du bilan, rejouées avec le

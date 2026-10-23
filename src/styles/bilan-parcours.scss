@@ -34,11 +34,22 @@
 	flex-direction: column;
 	gap: 6px;
 }
-/* Repli GeckoView : un écran très bas (clavier ouvert sur la tablette) ne garde pas
-   l'en-tête collé, qui mangerait la place de la question. */
-@media (max-height: 480px) {
+/* Ce qui prend le focus sur l'écran de question (la carte, ses champs et ses choix, les
+   boutons d'action) ne se range jamais SOUS la barre d'outils et l'en-tête collés : la
+   marge réserve leur hauteur (barre mesurée, en-tête compté sur deux lignes). */
+.bp-entete ~ .bp-stage,
+.bp-entete ~ * :is(input, button, [tabindex]) {
+	scroll-margin-top: calc(var(--toolbar-h, 60px) + 140px);
+}
+/* Repli sur un écran bas (clavier ouvert sur la tablette, téléphone couché) : l'en-tête
+   n'est plus collé — il mangerait la place de la question —, seule la barre reste. */
+@media (max-height: 600px) {
 	.bp-entete {
 		position: static;
+	}
+	.bp-entete ~ .bp-stage,
+	.bp-entete ~ * :is(input, button, [tabindex]) {
+		scroll-margin-top: calc(var(--toolbar-h, 60px) + 8px);
 	}
 }
 .bp-entete-ligne {
@@ -265,10 +276,12 @@
 		box-shadow 0.15s ease,
 		transform 0.08s ease;
 }
-.bp-valider:hover:not(:disabled) {
+.bp-valider:hover:not([aria-disabled='true']) {
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
-.bp-valider:disabled {
+/* `aria-disabled` et non `disabled` : le bouton reste atteignable au clavier, et le
+   toucher trop tôt dit pourquoi rien ne se passe (`#bpStatut`). */
+.bp-valider[aria-disabled='true'] {
 	opacity: 0.5;
 	cursor: default;
 }
@@ -313,7 +326,7 @@
 	height: 20px;
 	flex: none;
 }
-.bp-valider:active:not(:disabled),
+.bp-valider:active:not([aria-disabled='true']),
 .bp-passer:active,
 .bp-choice:active {
 	transform: translateY(1px);
@@ -498,17 +511,6 @@
 	width: 24px;
 	height: 24px;
 	flex: none;
-}
-.bp-recompenses {
-	list-style: none;
-	margin: 12px 0 0;
-	padding: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-	font-size: 16px;
-	font-weight: 700;
-	color: var(--ink);
 }
 .bp-seuil {
 	margin: 12px 0 0;

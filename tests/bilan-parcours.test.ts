@@ -1372,6 +1372,194 @@ describe('Critère 10 : clique sur le mot (clicMot)', () => {
 });
 
 /* ============================================================
+   Correction différée : « rien donné » est une NON-TENTATIVE (relecture langue et
+   accessibilité, décision du 23 octobre 2026). Écrit AVANT la correction : rouge.
+
+   Un mot de tri laissé sans thème, un chiffre du résultat laissé vide, un mot laissé sans
+   lien : l'enfant n'a rien donné pour cette partie. L'erreur le dit comme une question
+   passée — `sansTentative`, réponse donnée VIDE (l'écran : « Pas de réponse » ; le journal :
+   « n'a pas essayé ») —, plus jamais par un marqueur « (pas rangé) », « (incomplet) » ou
+   « (non relié) » affiché comme si c'était sa réponse. Une opération posée fausse seulement
+   sur un produit partiel le dit sans jargon : « (une ligne du calcul est fausse) ».
+
+   Le lien manquant (relier) n'est pas cité par la décision : il en relève par sa règle
+   générale (« tout cas rien donné d'un format »).
+   ============================================================ */
+
+/** Défauts d'une erreur « rien donné » : bien formée, sans tentative, donnée vide. */
+function defautsNonTentative(e: ErreurCorrigee): string[] {
+	const d = defautsErreur(e);
+	if (e.sansTentative !== true) d.push(`sansTentative absent (donnée « ${e.donnee} »)`);
+	if (e.donnee !== '') d.push(`donnée « ${e.donnee} » au lieu de vide`);
+	return d;
+}
+
+/** Rangs, parmi les cellules à trouver (ordre de lecture), de celles du RÉSULTAT. */
+function rangsResultat(spec: PosedSpec): number[] {
+	return dispositionPosee(spec)
+		.rangees.flatMap((r) => r.cellules.filter((c) => c.role === 'saisie'))
+		.flatMap((c, i) => (c.resultat !== undefined ? [i] : []));
+}
+
+/** La bonne réponse amputée d'UNE partie, celle que l'enfant n'a pas donnée ; `null` pour un
+    format qui n'a pas de partie à laisser (saisie, choix, tuile, ordre, mots à toucher). */
+function reponseAmputee(q: QuestionRevision): { reponse: ReponseQuestion; manque: string } | null {
+	const r = bonneReponse(q);
+	if (r.kind === 'posee' && q.kind === 'num' && q.item.posed) {
+		const rangs = rangsResultat(q.item.posed);
+		const chiffres = [...r.chiffres];
+		chiffres[rangs[rangs.length - 1]] = '';
+		return { reponse: { kind: 'posee', chiffres }, manque: 'un chiffre du résultat' };
+	}
+	if (r.kind === 'tri' && q.kind === 'tri' && q.mots.length > 1) {
+		const placement = Object.fromEntries(
+			Object.entries(r.placement).filter(([mot]) => mot !== q.mots[0].mot),
+		);
+		return { reponse: { kind: 'tri', placement }, manque: `le mot « ${q.mots[0].mot} »` };
+	}
+	if (r.kind === 'appariement' && r.liens.length > 1) {
+		const liens = r.liens.map((l, i) => (i === 0 ? { ...l, droite: null } : l));
+		return { reponse: { kind: 'appariement', liens }, manque: `le lien de « ${liens[0].gauche} »` };
+	}
+	if (r.kind === 'probleme' && r.saisies.length > 1) {
+		return {
+			reponse: { kind: 'probleme', saisies: ['', ...r.saisies.slice(1)] },
+			manque: '1re étape',
+		};
+	}
+	return null;
+}
+
+describe('Correction différée : « rien donné » est une non-tentative', () => {
+	const TRI: QuestionRevision = {
+		kind: 'tri',
+		lessonId: 'fr-vocab-champs-tri',
+		question: 'Range chaque mot dans le bon thème.',
+		categories: ['les émotions', 'la montagne'],
+		mots: [
+			{ mot: 'glacier', cat: 1 },
+			{ mot: 'fierté', cat: 0 },
+			{ mot: 'pente', cat: 1 },
+			{ mot: 'déception', cat: 0 },
+		],
+	};
+	const trier = (placement: Record<string, 0 | 1>): Correction =>
+		corrigerQuestion(TRI, { kind: 'tri', placement });
+	const duMot = (c: Correction, mot: string): ErreurCorrigee | undefined =>
+		c.erreurs.find((e) => e.enonce.includes(mot));
+
+	it('tri : un mot laissé sans thème → non-tentative, donnée vide, bon thème attendu ; plus de « (pas rangé) »', () => {
+		const c = trier({ glacier: 1, fierté: 0, déception: 0 });
+		expect(c.reussi).toBe(false);
+		expect(c.erreurs).toHaveLength(1);
+		const e = duMot(c, 'pente');
+		expect(e, 'l’erreur nomme le mot laissé').toBeDefined();
+		expect(defautsNonTentative(e!)).toEqual([]);
+		expect(e!.attendue).toContain('la montagne');
+	});
+
+	it('tri : à côté d’un mot non rangé, un mot MAL rangé reste une tentative (le thème choisi)', () => {
+		const c = trier({ glacier: 0, fierté: 0, déception: 0 });
+		expect(c.erreurs).toHaveLength(2);
+		const mal = duMot(c, 'glacier');
+		expect(mal?.sansTentative).not.toBe(true);
+		expect(mal?.donnee).toContain('les émotions');
+		expect(defautsNonTentative(duMot(c, 'pente')!)).toEqual([]);
+	});
+
+	/* 12 × 24 : cellules à trouver 4 8 | 2 4 | 2 8 8 (cf. « Critère 10 : opération posée »). */
+	const qMult: QuestionRevision = {
+		kind: 'num',
+		lessonId: 'calc-multiplication-posee',
+		item: { text: '', answer: 288, kind: 'posed', posed: { op: 'x', a: 12, b: 24 } },
+	};
+	const poser = (chiffres: string[]): Correction =>
+		corrigerQuestion(qMult, { kind: 'posee', chiffres });
+
+	it('posée : un chiffre du résultat laissé vide → non-tentative, donnée vide ; plus de « (incomplet) »', () => {
+		for (const chiffres of [
+			['4', '8', '2', '4', '2', '8', ''],
+			['4', '8', '2', '4', '', '', ''], // produits partiels posés, résultat pas écrit
+		]) {
+			const c = poser(chiffres);
+			expect(c.reussi, JSON.stringify(chiffres)).toBe(false);
+			expect(c.erreurs, JSON.stringify(chiffres)).toHaveLength(1);
+			expect(defautsNonTentative(c.erreurs[0]), JSON.stringify(chiffres)).toEqual([]);
+			expect(c.erreurs[0].attendue.replace(/\D/g, '')).toBe('288');
+		}
+	});
+
+	it('posée : fausse seulement sur un produit partiel → « (une ligne du calcul est fausse) », jamais « produit partiel »', () => {
+		const c = poser(['4', '9', '2', '4', '2', '8', '8']);
+		expect(c.reussi).toBe(false);
+		expect(c.erreurs).toHaveLength(1);
+		const e = c.erreurs[0];
+		expect(e.sansTentative).not.toBe(true);
+		expect(e.donnee).toContain('(une ligne du calcul est fausse)');
+		expect(e.donnee).not.toMatch(/produit|partiel/);
+		// Et nulle part ailleurs dans une erreur de posée.
+		for (const chiffres of [
+			['4', '9', '2', '4', '2', '9', '9'],
+			['4', '8', '2', '4', '2', '8', '9'],
+		])
+			expect(poser(chiffres).erreurs[0].donnee, JSON.stringify(chiffres)).not.toMatch(
+				/produit|partiel/,
+			);
+	});
+
+	it('relier : un mot laissé sans lien (ou absent des liens) → non-tentative, donnée vide ; plus de « (non relié) »', () => {
+		const q: QuestionRevision = {
+			kind: 'appariement',
+			lessonId: 'fr-vocab-familles-relier',
+			question: 'Relie chaque mot à un mot de sa famille.',
+			paires: [
+				{ gauche: 'poisson', droite: 'poissonnerie' },
+				{ gauche: 'fromage', droite: 'fromagerie' },
+				{ gauche: 'ami', droite: 'amitié' },
+			],
+			intrus: ['poison'],
+		};
+		const autres = [
+			{ gauche: 'fromage', droite: 'fromagerie' },
+			{ gauche: 'ami', droite: 'amitié' },
+		];
+		for (const liens of [[{ gauche: 'poisson', droite: null }, ...autres], autres]) {
+			const c = corrigerQuestion(q, { kind: 'appariement', liens });
+			expect(c.erreurs, JSON.stringify(liens)).toHaveLength(1);
+			expect(defautsNonTentative(c.erreurs[0]), JSON.stringify(liens)).toEqual([]);
+			expect(c.erreurs[0].enonce).toContain('poisson');
+			expect(c.erreurs[0].attendue).toContain('poissonnerie');
+		}
+	});
+
+	it('catalogue : la bonne réponse amputée d’une partie → UNE erreur, et c’est une non-tentative', () => {
+		const vus: Record<string, number> = {};
+		const fautes = fautesInventaire((q) => {
+			const a = reponseAmputee(q);
+			if (a === null) return null;
+			vus[a.reponse.kind] = (vus[a.reponse.kind] ?? 0) + 1;
+			const c = corrigerQuestion(q, a.reponse);
+			if (c.reussi) return `${a.manque} manquant, jugée juste`;
+			if (c.erreurs.length !== 1) return `${a.manque} manquant : ${c.erreurs.length} erreurs`;
+			const d = defautsNonTentative(c.erreurs[0]);
+			return d.length ? `${a.manque} manquant : ${d.join(' ; ')}` : null;
+		});
+		// Chaque format à parties est bien éprouvé (planchers en leçons).
+		expect(Object.keys(vus).sort()).toEqual(['appariement', 'posee', 'probleme', 'tri']);
+		expect(fautes).toEqual([]);
+	});
+
+	it('témoins : defautsNonTentative accepte une question passée et refuse un marqueur', () => {
+		const passee = corrigerQuestion(TRI, { kind: 'passe' }).erreurs[0];
+		expect(defautsNonTentative(passee)).toEqual([]);
+		expect(defautsNonTentative({ ...passee, donnee: '(pas rangé)' })).not.toEqual([]);
+		expect(defautsNonTentative({ ...passee, sansTentative: undefined, donnee: 'x' })).not.toEqual(
+			[],
+		);
+	});
+});
+
+/* ============================================================
    Témoins : les prédicats maison mordent, et ne mordent pas à tort.
    ============================================================ */
 describe('Témoins des prédicats du fichier', () => {

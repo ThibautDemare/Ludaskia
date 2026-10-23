@@ -153,6 +153,8 @@ faut.**
   place. Un état posé par un écran (classe choisie #772, niveau imposé #573) doit donc AUSSI
   être validé à la lecture (profil qui l'a posé, réglage qui l'autorise), ou n'être posé
   qu'au lancement effectif. Exiger le test qui change de profil sans changer d'écran.
+- **Un nouveau fichier `ui/` créé directement au-dessus de ~1000 lignes est signalé :** un
+  écran = un module (cas d'origine : `bilan-parcours.ts`, #777, découpé en trois).
 - **Une règle de correction n'a qu'une source.** Un écran qui doit juger SANS marquer
   (séance partagée, aperçu) appelle la règle que `verify()` utilise lui-même
   (`juste()` d'un widget, `jugerTableau`, `etapeJuste`), jamais une copie. Deux

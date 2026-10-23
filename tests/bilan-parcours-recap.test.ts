@@ -24,6 +24,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
 	assezDeReponses,
 	leconsDuBilan,
+	// Pas encore écrite (décision sur la jauge) : l'import rouge est voulu.
+	libelleAvancee,
 	libellePartieSur,
 	libellePartieTerminee,
 	libelleQuestionSur,
@@ -204,6 +206,28 @@ describe('Phrases à compteur du parcours (spec de rendu §6)', () => {
 		expect(libelleQuestionSur(4, 12)).toBe('Question 4 sur 12');
 		expect(libelleQuestionSur(1, 1)).toBe('Question 1 sur 1');
 		expect(libellePartieTerminee(2)).toBe('Partie 2 terminée');
+	});
+
+	it('jauge : « 0 question faite sur 12 », « 1 question faite sur 12 », « 3 questions faites sur 12 »', () => {
+		expect(lu(libelleAvancee(0, 12))).toBe('0 question faite sur 12');
+		expect(lu(libelleAvancee(1, 12))).toBe('1 question faite sur 12');
+		expect(lu(libelleAvancee(3, 12))).toBe('3 questions faites sur 12');
+		expect(lu(libelleAvancee(2, 12))).toBe('2 questions faites sur 12');
+		// Toutes faites (n sur n), et un bilan d'une seule question.
+		expect(lu(libelleAvancee(12, 12))).toBe('12 questions faites sur 12');
+		expect(lu(libelleAvancee(1, 1))).toBe('1 question faite sur 1');
+		expect(lu(libelleAvancee(0, 1))).toBe('0 question faite sur 1');
+	});
+
+	it('jauge, 0 ≤ f ≤ N ≤ 200 : singulier à 0 et 1, pluriel dès 2', () => {
+		const fautes: string[] = [];
+		for (let total = 1; total <= 200; total++)
+			for (let f = 0; f <= total; f++) {
+				const attendu =
+					f < 2 ? `${f} question faite sur ${total}` : `${f} questions faites sur ${total}`;
+				if (lu(libelleAvancee(f, total)) !== attendu) fautes.push(`${f}/${total}`);
+			}
+		expect(fautes).toEqual([]);
 	});
 
 	it('seuil non atteint : le nombre de questions à donner (⌈60 % de N⌉), jamais un pourcentage, accordé', () => {

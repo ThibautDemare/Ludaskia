@@ -32,7 +32,7 @@ import {
 	type SeanceEtape,
 } from '../core/seance';
 import { uiConfirm } from './ui-modal';
-import { DELAI_ANNONCE } from './encadrant-seance-dictees';
+import { DELAI_ANNONCE } from './annonce';
 import { html, type SafeHtml, joindre, drapeau, VIDE } from '../core/html';
 
 /* Bilans favoris du profil CONSULTÉ (#636), dans l'ordre d'enregistrement. Lus par UUID :

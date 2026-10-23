@@ -37,13 +37,13 @@ import {
 } from './encadrant-commun';
 import { uiConfirm } from './ui-modal';
 import { html, type SafeHtml, VIDE, joindre } from '../core/html';
+// Délai avant l'annonce du résumé aux aides techniques (cf. `annoncer`).
+import { DELAI_ANNONCE } from './annonce';
 
 /* ---------- État de la section (module) ---------- */
 /* Mots listés d'un coup, et pas de « Afficher les suivants ». Assez pour couvrir une banque
    ordinaire sans clic, assez peu pour ne pas noyer l'ordre de tabulation (avis a11y). */
 const PAS_AFFICHAGE = 50;
-/* Délai avant l'annonce du résumé aux aides techniques (cf. `annoncer`). */
-const DELAI_ANNONCE = 350;
 
 let vue: 'listes' | 'mots' = 'listes'; // volet affiché du bloc « Dictées »
 let recherche = ''; // filtre texte libre (comparé sur forme normalisée)

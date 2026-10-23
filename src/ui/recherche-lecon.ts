@@ -45,9 +45,8 @@ import {
 import { catTint } from './cat-visuals';
 import { icon } from './icon';
 import { goCategorie, startLecon, startOrthoLecon } from './navigation';
-
-/* Délai avant l'annonce du compte aux aides techniques (cf. en-tête). */
-const DELAI_ANNONCE = 350;
+// Délai avant l'annonce du compte aux aides techniques (cf. en-tête).
+import { DELAI_ANNONCE } from './annonce';
 
 /* ---------- État de vue (module) ---------- */
 let requete = '';

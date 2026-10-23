@@ -27,6 +27,7 @@ import { listProfiles } from '../core/profiles';
 import { chargerSeancesFor, ciblesEtape } from '../core/seance';
 import { cleRecherche } from '../core/utils';
 import { consulteUuid, container, onChangementProfilConsulte } from './encadrant-commun';
+import { DELAI_ANNONCE } from './annonce';
 
 /* Un groupe = un titre + ses cibles {id, label}. Les LEÇONS, elles, ne passent plus par
    une liste : elles sont choisies dans le sélecteur tous niveaux (#556). */
@@ -106,9 +107,9 @@ export function nbVisibles(
 export const hintIdDictees = (defId: string, etapeId: string): string =>
 	`dictee-hint-${defId}-${etapeId}`;
 
-/* Délai avant une annonce aux aides techniques (même valeur que le sélecteur, #556) :
-   réécrite à chaque lettre, une synthèse vocale s'interromprait elle-même. */
-export const DELAI_ANNONCE = 350;
+/* Annonce aux aides techniques différée de `DELAI_ANNONCE` (ui/annonce.ts, même valeur que
+   le sélecteur, #556) : réécrite à chaque lettre, une synthèse vocale s'interromprait
+   elle-même. */
 let annonceTimer: number | undefined;
 
 /* ---------- Rendu ---------- */

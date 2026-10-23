@@ -51,6 +51,7 @@ import type { Profile } from '../core/profiles';
 import { onChangementProfilConsulte, container, renderEspace } from './encadrant-commun';
 import { segmentHTML } from './segment';
 import { html, type SafeHtml, joindre, drapeau, attribut } from '../core/html';
+import { DELAI_ANNONCE } from './annonce';
 
 /* ---------- État de vue, par instance de sélecteur (module) ---------- */
 interface EtatSelecteur {
@@ -68,10 +69,10 @@ const etats = new Map<string, EtatSelecteur>();
    les lignes portent un bouton et vivent dans un cadre à hauteur bornée. */
 const PAS_AFFICHAGE = 30;
 
-/* Délai avant l'annonce du résumé aux aides techniques : réécrire une région live à chaque
-   lettre fait qu'une synthèse vocale s'interrompt elle-même (même constat que la banque de
-   mots, #496/#527). Le texte est RECALCULÉ en retombant, jamais transporté depuis l'appel. */
-const DELAI_ANNONCE = 350;
+/* Annonce du résumé aux aides techniques, DIFFÉRÉE de `DELAI_ANNONCE` (ui/annonce.ts) :
+   réécrire une région live à chaque lettre fait qu'une synthèse vocale s'interrompt
+   elle-même (même constat que la banque de mots, #496/#527). Le texte est RECALCULÉ en
+   retombant, jamais transporté depuis l'appel. */
 let annonceTimer: number | undefined;
 
 function etat(id: string): EtatSelecteur {

@@ -71,8 +71,8 @@ import {
 } from './selecteur-lecon';
 import { segmentHTML } from './segment';
 import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
+import { DELAI_ANNONCE } from './annonce';
 import {
-	DELAI_ANNONCE,
 	champFiltreHTML,
 	corpsDicteesHTML,
 	filtreDictees,

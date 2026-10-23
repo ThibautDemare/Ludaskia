@@ -290,6 +290,20 @@
 	outline: 3px solid var(--accent);
 	outline-offset: 3px;
 }
+/* « Réponds d'abord… » : dit à l'écran pourquoi « Valider » n'a rien fait, juste sous les
+   boutons (la marge basse de `.bp-decide` est reprise). Discret : --grey sur le fond de
+   page, couple déjà tenu par la rampe de gris (tests/contraste-tokens.test.ts). Retiré par
+   `hidden`, que rien ici ne doit contredire. */
+.bp-message {
+	margin: -16px 0 24px;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--grey);
+	text-align: center;
+}
+.bp-message[hidden] {
+	display: none;
+}
 /* « Je passe », « Retour à l'accueil » : sorties assumées, discrètes par le style et
    jamais par la taille de cible (recette de « Je ne sais pas, montre-moi »). */
 .bp-passer {

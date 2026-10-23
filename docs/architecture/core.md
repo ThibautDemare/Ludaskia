@@ -1131,12 +1131,27 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   **`deleteBilanFor(uuid, id)`** (écrit la seule clé de ce profil + `touchProfile`, comme
   `enregistrerSeancesFor`).
 
+- **`bilan-parcours.ts`** (#777, pur, sans DOM ; écran : `ui/bilan-parcours.ts`) — tout ce
+  que le **bilan en parcours** décide sans écran : **`questionsDuBilan`** (tirage par
+  `questionDeRevision`, donc même forme qu'en révision, sans doublon),
+  **`construireParcours`** / **`planifierParties`** (catégories dans l'ordre de `CATEGORIES`,
+  leçons dans l'ordre de l'écran, une leçon jamais coupée, nombre de parties **minimal** puis
+  **équilibré** sous `PLAFOND_PARTIE` = 15 — une leçon seule plus grosse le dépasse),
+  **`corrigerQuestion`** (réutilise les règles en place : `checkItemAnswer`, `ordreErreur`,
+  `pairesErreur`, `motsMalClasses`… ; chaque `ErreurCorrigee` est déjà mise en forme pour
+  l'écran de fin de partie ET pour le journal), **`verdictLecon`** (≤ 3 questions : tout juste
+  = « Réussi », sinon « À retravailler » ; dès 4 : réussi à ⌈0,8 N⌉, à retravailler sous la
+  moitié, « Presque » entre les deux, en arithmétique entière), `syntheseParLecon` /
+  `trierParVerdict`, la règle des 60 % (`minimumReponses`, `assezDeReponses`) et les
+  **phrases à compteur** (`libelleScoreLu` : un score nu dit ce qu'il compte). La reprise
+  passe par la nature `runner` de `resume.ts` : **`ResumeParcours`** (`estResumeParcours`).
+
 ## Reprise & révision espacée
 
 - **`resume.ts`** — **reprise d'un exercice en cours** (#63, étendue aux runners
   #498), brique **pure** : stockage par profil (`ludaskia_resume`) d'instantanés
   **`ResumeSnapshot`**, union discriminée par `kind` — **`grille`** (leçon en
-  saisie, bilans express/complet/personnalisé : `sheetsHTML`/`items`/`answers`/
+  saisie, seule nature des fiches : les bilans, joués en parcours depuis #777, se reprennent par `runner` ; `sheetsHTML`/`items`/`answers`/
   `activeId`/`elapsedMs`, l'état tient dans le DOM qu'on rejoue tel quel) ou
   **`runner`** (#498 : `questions`/`idx`/`score`, l'état LOGIQUE des dix runners
   « une question à la fois », qui se re-rendent eux-mêmes — granularité : la

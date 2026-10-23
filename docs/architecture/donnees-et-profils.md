@@ -74,8 +74,9 @@ bascule** côté espace encadrant, `loadBilansFor`/`deleteBilanFor`, cf. [Logiqu
 pure](core.md) — seul l'encadrant y **supprime**, cf. [Espace
 encadrant](espace-encadrant.md)), `ludaskia_resume` (exercices **en
 cours**, repris ou abandonnés — #63 ; deux natures d'instantané depuis #498, une
-**grille** — leçon en saisie, bilans — ou un **runner** — l'état logique d'un des
-dix runners « une question à la fois », cf. `core/resume.ts`), `ludaskia_activity`
+**grille** — leçon en saisie — ou un **runner** — l'état logique d'un des
+dix runners « une question à la fois », ou d'un bilan en parcours (`ResumeParcours`, #777),
+cf. `core/resume.ts`), `ludaskia_activity`
 (#234 : journal borné des sessions finalisées — base du graphe d'activité de
 l'espace encadrant, plus complet que les `runs` car il couvre aussi les leçons
 jouées seules ; **entrées typées**

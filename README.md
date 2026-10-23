@@ -49,7 +49,8 @@ de progression.
 - **Révision** — un rappel régulier de ce qui a déjà été vu, **espacé dans le
   temps** (révision espacée).
 - **Bilan d'une catégorie** — **complet** (toutes les leçons) ou **express** (un
-  tour rapide et borné).
+  tour rapide et borné). Joué en **parcours guidé** : une question par écran, par
+  parties, correction à la fin de chaque partie, puis un récapitulatif par leçon.
 - **Bilan personnalisé** — choisir ses matières / catégories / leçons et le
   nombre de questions, puis **enregistrer ses bilans favoris**.
 - **Imprimer / PDF** — une version papier des fiches et bilans, avec corrigé.
@@ -65,7 +66,8 @@ de progression.
   réussie sans faute.
 - **Trophées à débloquer**, dont des séries **par matière** et **par catégorie**.
 - **Statistiques par leçon** pour repérer les thèmes à retravailler.
-- **Correction immédiate** : la bonne réponse est affichée en cas d'erreur.
+- **Correction** : la bonne réponse est affichée en cas d'erreur (tout de suite, ou
+  en fin de partie pour un bilan).
 
 ## Profils & espace encadrants
 Plusieurs enfants peuvent utiliser le même navigateur : chaque **profil** garde

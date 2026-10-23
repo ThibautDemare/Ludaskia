@@ -43,7 +43,9 @@ chose que tu **ne tranches pas seul**, c'est un **arbitrage produit majeur**
 (périmètre de la leçon, ce qu'on choisit de différer, un compromis UX sur lequel le
 mainteneur a un avis) : celui-là, **remonte-le** plutôt que de l'inventer. Tu peux
 mobiliser `redacteur-contenu-francais` pour relire tes énoncés et
-`relecteur-accessibilite` si tu ajoutes une figure / de l'audio.
+`relecteur-accessibilite` si tu ajoutes une figure / de l'audio, et
+`relecteur-impression` pour toute leçon créée ou modifiée (il lit les captures papier
+de `node tools/impression/apercu.mjs <id> --niveau <ce2|cm1>` : fiche, bilan, corrigé).
 
 Symétrie de « auteur ≠ testeur », et pour la même raison : **tu n'écris pas les
 critères d'acceptation de ta propre tranche de travail** (#584). Ils sont cadrés en
@@ -113,6 +115,9 @@ meilleur gabarit. Étapes typiques :
 Tu as `Bash`/`PowerShell` : fais réellement tourner
 `npm run typecheck` · `npm run lint` · `npm run format:check` · `npm test`
 (et `npm run test:e2e` si tu as touché au visuel). Cite tout échec et corrige-le.
+Leçon créée ou modifiée : lance `npm run apercu:impression -- <id> --niveau <niveau>` et
+**regarde** la fiche, le bilan et le corrigé papier (ou passe-les à `relecteur-impression`) ;
+les gates d'impression ne voient pas une mise en page cassée.
 Mets à jour `docs/ARCHITECTURE.md` si tu introduis un nouveau module/type/convention
 (ou confie la resynchronisation de la doc à **`expert-documentation`**).
 

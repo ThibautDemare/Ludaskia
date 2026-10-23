@@ -1006,7 +1006,25 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   (#636) : `renderFavoris` ne câble plus qu'un bouton « Lancer » — la corbeille est passée
   à l'espace encadrant (cf. [Espace encadrant](espace-encadrant.md)), dès qu'une étape de
   programme peut viser un favori. La CRÉATION (`renderBilanConfigScreen`, « Garder pour plus
-  tard ») reste côté enfant.
+  tard ») reste côté enfant. **`runBilanConfig` ne rend plus la page unique** : il délègue à
+  `lancerParcours` (ci-dessous).
+- **`bilan-parcours.ts`** (#777, styles `src/styles/bilan-parcours.scss`, logique pure
+  `core/bilan-parcours.ts`) — **tout bilan joué à l'écran** (configurateur, favoris, programme
+  du jour, « Bilan express » / « Bilan complet » de catégorie, réglage « Tout ») est un
+  **parcours guidé** dans `#sheets` : (A) **une question par écran**, le vrai exercice de la
+  leçon (widgets de la révision, en mode **collecte** : « Valider » lit la réponse et passe à
+  la suite sans verdict, « Je passe » laisse la question sans réponse, marquée non-tentative
+  par `sansTentative`) ; (B) **fin de partie** : réussites, puis chaque erreur (question,
+  réponse donnée, bonne réponse) — c'est là, et là seulement, que la partie est corrigée et
+  que ses erreurs partent au **journal du parent** (`capterErreur`, une fois par partie) ;
+  (C) **récapitulatif par leçon** (Réussi / Presque / À retravailler + score brut, leçons
+  réussies, « Réviser mes erreurs » = rejeu sans crédit, sans journal ni reprise), PUIS les
+  modales de récompense habituelles. Le **crédit** (`recordLessonRun`) est unique, à la
+  correction de la dernière partie, et soumis à la règle des 60 % (`assezDeReponses`).
+  Parties par catégorie, ≤ `PLAFOND_PARTIE` (15) questions, leçon jamais coupée. **Reprise**
+  par la nature `runner` (`ResumeParcours`, `core/resume.ts`, `estResumeParcours`) via le
+  registre de `runner-reprise.ts` (`enregistrerParcours`, `declarerSessionParcours`). La page
+  unique (`buildPrintableDOM`) ne sert plus qu'à **l'impression**.
 - **`navigation.ts`** — routing par hash (`route`), vues (`showHomeView`,
   `showMatieresView`/`showMatiereView`/`showCategorieView`,
   `showSprintConfigView`, `showBilanCustomView`, `showProfilesView`,
@@ -2251,6 +2269,25 @@ faire.
   la déclaration entière, et la coche disparaît), et **vérifier sur la tablette** (Firefox/GeckoView).
 - **Un `outline` posé sur un enfant d'un conteneur en `overflow: hidden` est rogné.** Le segment
   partagé l'est, et le sélecteur de classe le surcharge ; tenu par une garde e2e.
+
+### Checklist a11y issue de #777 (parcours de bilan, jugement)
+
+- **Tout élément `position: sticky`** (barre d'avancement du parcours,
+  `src/styles/bilan-parcours.scss`) a son **`scroll-margin-top`** sur les cibles de focus
+  (sinon le champ focalisé passe sous la barre) et **se désactive sous 600 px de hauteur**
+  (un clavier virtuel ouvert ne laisse plus de place au contenu).
+- **Un champ se nomme par l'énoncé** et est **décrit** (`aria-describedby`) par le **numéro de
+  question puis la consigne**, dans cet ordre.
+- **Une liste à `list-style: none` porte `role="list"`** (WebKit/VoiceOver perd sinon la
+  sémantique de liste).
+
+**Rejets écrits (#777)**, à ne pas re-remonter :
+- **Boutons de choix du bilan en `aria-pressed` (QCM à choix exclusif) : écarté en `radiogroup`.** La fiche garde ses vrais radios ; la divergence entre les deux rendus du même QCM est assumée. Divergence avec
+  les radios de la fiche assumée (`.bp-choice`, `ui/bilan-parcours.ts`).
+- **L'`aria-label` d'un choix à vue riche (fraction : « trois quarts ») diffère du texte visible (3/4 empilé)** : critère 2.5.3 (Label in Name) non tenu pour la commande vocale ; mesuré sur les seuls choix à vue riche (fractions, terminaisons surlignées), écarté : un libellé visible redondant coûterait plus qu'il n'apporte à ce public.
+- **`scrollTo({ behavior: 'smooth' })` ignore `prefers-reduced-motion` et `html.anim-reduced`** (critère 2.3.3, AAA seulement,
+  41 occurrences dans 15 fichiers) : écarté ici. Un helper commun `defilerEnHaut()` qui respecte la
+  préférence serait un **chantier à part**.
 
 ### Un geste à bornes discrètes n'appelle pas le motif `listbox` (#716)
 

@@ -58,6 +58,39 @@ permet de l'atteindre** (vocabulaire, homophones, mais aussi banques de phrases 
 grammaire et toute liste d'items rédigés à la main). Seules les leçons dont la
 notion borne elle-même le nombre d'items distincts y échappent.
 
+### Gates de l'impression et des consignes (#777)
+
+La version papier ne se voit presque jamais (personne n'imprime en développant), donc ses
+défauts durent : quatre gates la tiennent, avec l'agent `relecteur-impression` pour ce qui
+exige de regarder la feuille (`npm run apercu:impression`, cf. [Outillage](outillage.md)).
+
+- **`tests/impression-gate.test.ts`** — balayage de **chaque leçon × chaque niveau qu'elle
+  couvre × quelques graines**, sur de vrais documents (`buildPrintableDOM` : un bilan de 3
+  questions et une fiche, chacun avec corrigé) : (19) aucun **geste d'écran** (verbes de
+  `tests/gardes-gestes.ts`, partagés avec `impression-libelles.test.ts`) ni marqueur
+  technique dans le texte imprimé, hors contenu cité entre « » et libellés de choix ;
+  (20) chaque question a de **quoi répondre** ; (21) un titre « jusqu'à N » ne coiffe aucun
+  nombre supérieur à N ; (22) le **corrigé** reprend les mêmes questions, dans le même
+  ordre, chacune avec sa réponse. Une exception à (19) s'écrit par (leçon, radical, raison).
+  Chaque détecteur a ses **témoins** sur un rendu fabriqué (un cas à signaler, un voisin à
+  laisser passer).
+- **`tests/impression-libelles.test.ts`** — libellés et consignes **propres au papier**
+  (`labelImpressionLecon`, `consigneEcrite`), repli d'un « relier » (`repliAppariement`),
+  plages CM1 (`num-decompose-10000`), repli du groupe nominal (`ancre`).
+- **`tests/impression-couverture.test.ts`** — chaque format que le catalogue produit a une
+  entrée non vide dans `FORMES_IMPRIMEES` (`src/core/impression-couverture.ts` ; le
+  `Record` sur l'union `Exercise` fait déjà échouer `typecheck` pour un format sans entrée).
+- **`tests/consignes-gate.test.ts`** — **toute leçon déclare une consigne d'action à chaque
+  niveau** (lue par `consignePourNiveau` ; un repli générique « Complète. » ne compte pas).
+  Helpers de déclaration : `avecConsigne`, `consigneParNiveau`. Il ne juge pas la justesse
+  de la consigne (checklist de `conventions-redaction.md`).
+
+**Mémoire, mesuré (22/10/2026)** : sous happy-dom, `querySelectorAll` retient environ
+**2,5 Mo par document parsé**, jamais rendus ; sur ~2 000 documents le processus tombe à
+court de tas. Un gate qui balaie le catalogue **parcourt donc l'arbre à la main** (sur
+`classList`, sans sélecteur CSS) et fait **un seul balayage** qui ne garde que les fautes
+(des chaînes). À reproduire pour tout nouveau gate de ce type.
+
 ### Gate du texte parlé du sprint (#630)
 
 `tests/sprint-tts-gate.test.ts` garde l'invariant du bouton « Écouter » ajouté au
@@ -526,8 +559,15 @@ l'attendue). QCM sans trou d'une fiche ou d'un bilan en boutons radio : `tests/q
 (rendu écran / impression / QCM à trou, libellés lisibles, balayage du catalogue : la bonne
 réponse est le seul choix juste), `tests/qcm-fiche-session.test.ts` (radio → champ caché, marque
 rattachée au groupe), `tests/champs-libelles.test.ts` (un champ caché n'est exempté de nom que
-s'il a son groupe de choix nommé) et `e2e/bilan-qcm.spec.ts` (correction, révélation du libellé,
-journal, reprise, QCM à trou inchangé, défilement vers la première erreur).
+s'il a son groupe de choix nommé) et `e2e/bilan-qcm.spec.ts` (QCM sans trou rejoué dans la séance
+partagée : révélation du libellé, journal ; les gestes « changer de radio après correction »,
+reprise d'un radio coché et défilement vers l'erreur n'existent plus depuis #777, le parcours
+les porte). **Bilan en parcours (#777)** : `tests/bilan-parcours.test.ts` (tirage, découpage en
+parties, correction, verdict, phrases à compteur), `-recap`, `-reprise`, `-ecran` ;
+`e2e/bilan-parcours.spec.ts` (une question par écran, parties, correction en fin de partie,
+récapitulatif), `bilan-parcours-suivi.spec.ts` (crédit unique, journal par partie, reprise,
+programme du jour) et `bilan-parcours-a11y.spec.ts` (focus nommé, annonces, Entrée bloquée,
+modales de récompense après le récapitulatif).
 Dictées envoyées (PR 5) : `tests/partage-dictees.test.ts` (format avec `lecon` facultatif et
 borné, `preparerPassage` d'une dictée, `composerDictee`, libellé de repli
 `libelleOrthoIntrouvable`) et `tests/partage-dictees-sources.test.ts` (`motDicteeDepuis`,

@@ -137,6 +137,13 @@ rapprocher le PID du bon worktree, ou dans le doute couper ce serveur avant de r
   exception, centralisée dans `helpers.ts` : `leconsDuNiveau(matiere, niveau)`, pour
   les scénarios qui doivent amorcer le **programme entier** (ex. « toutes les leçons
   mises de côté », #485) — impossible à figer à la main sans pourrir à chaque ajout.
+- **Jouer un bilan en parcours (#777)** : amorcer un favori dans `localStorage`
+  (`e2e/ludaskia_bilans`, `mode: 'bilan'`) puis le lancer ; l'écran est `#sheets
+  .bilan-parcours`. Sélecteurs stables : `#bpStage` (question), `#bpInput` (saisie,
+  `data-answer`), `#bpValider` / `#bpPasser`, `#bpPartieSuivante` / `#bpVoirBilan`,
+  `.bp-fin-partie`, `.bp-recap`. Les libellés ne sont pas figés : lire les `data-*`. Chaque
+  spec recopie son jeu du parcours (`bilan-parcours*.spec.ts`), une spec ne partage pas
+  ses helpers de jeu.
 - **Sprint déterministe** : le tirage du sprint est aléatoire par nature. Pour tester le
   rendu d'un type de question précis sous sprint, passer par le **composeur de bilan
   personnalisé** scopé à une seule leçon plutôt que mocker l'aléatoire : `bilan-cat-<id>`

@@ -47,6 +47,10 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
 - Les trois premiers conseillers se recoupent sur la **gamification** : prendre celui
   dont c'est l'angle (sens pédagogique → pédagogue ; rendu → designer ;
   mécanique/équilibrage → gamification), quitte à en croiser deux.
+- **`relecteur-impression`** — rendu **papier** : produit les captures (fiche, bilan,
+  corrigé) d'une leçon avec `npm run apercu:impression -- <id> --niveau <ce2|cm1>`, les
+  lit, et repère ce qui n'a pas de sens sur une feuille (geste d'écran, choix absents,
+  corrigé décalé, mise en page). Avis seulement ; cité par `integrateur-lecon`.
 - **`relecteur-qualite`** — qualité technique & maintenabilité : relecture de
   code avant PR, respect de l'architecture (séparation `core`/`ui`, invariants
   du moteur), **et surtout vérification que tous les tests nécessaires existent**
@@ -108,6 +112,7 @@ côté client (`localStorage`). **TypeScript + Vite + SCSS**, tests **Vitest** +
   - rendu, **figure SVG**, **TTS / audio**, couleurs ou thème, cibles tactiles,
     focus/navigation clavier → **`relecteur-accessibilite`** ;
   - **nouveaux énoncés, consignes ou libellés** en français → **`redacteur-contenu-francais`** ;
+  - **leçon créée ou modifiée, ou rendu imprimé touché** → **`relecteur-impression`** ;
   - toute fonctionnalité **visuelle/navigable** → sa **spec Playwright** via
     **`auteur-tests-e2e`** (dans la même PR ; cf. règle e2e plus bas).
   - **logique pure** ajoutée ou modifiée (générateur, `check`, score/XP/niveau,

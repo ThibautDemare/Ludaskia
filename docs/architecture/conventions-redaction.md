@@ -737,6 +737,35 @@ report. Même vigilance pour une entrée A trop large, qui fermerait à tort une
 couvrable (« mesurer à la règle graduée, dont le périmètre » fermait le calcul du périmètre
 sur des longueurs données).
 
+## Consignes d'action : un verbe par tâche, vrai sur son support (#777)
+
+Checklist de **jugement** (la présence d'une consigne, elle, est tenue par
+`tests/consignes-gate.test.ts`, et l'absence de geste d'écran sur papier par
+`tests/impression-gate.test.ts`). Relue par `pedagogue-primaire` et
+`redacteur-contenu-francais` ; le rendu papier par `relecteur-impression`.
+
+- **Une tâche = un verbe.** « Indique » pour un oui/non, « Trouve » pour une réponse à
+  produire, « Calcule », « Complète ». « de tête » vient après « Calcule ».
+- **Rangs dans l'ordre décroissant** quand une consigne énumère des rangs (milliers,
+  centaines, dizaines, unités).
+- **Consigne vraie sur son support.** Aucun geste d'écran (clique, touche, glisse, relie…)
+  sur papier ; à l'écran, pas de « recopie » ni « écris » pour un exercice qui se fait au
+  toucher. Les libellés et consignes propres au papier sont portés par la leçon
+  (`labelImpression`, `labelImpressionLecon`, `consigneEcrite`).
+- **Une famille de leçons, un même verbe et un même nombre** dans ses consignes écrites.
+- **Pas de terme de métier** (« produit partiel »…) dans un texte affiché à l'enfant sans
+  l'avis du `pedagogue-primaire`.
+- **Un cas « sans réponse » passe par `sansTentative`**, jamais par un libellé entre
+  parenthèses qui se confondrait avec une réponse.
+- **Un score nu** (« 4 sur 5 ») a un texte accessible qui dit ce qu'on compte
+  (`libelleScoreLu`, `core/bilan-parcours.ts`).
+- **Une formule d'accompagnement** (« ensemble ») seulement si un adulte est présent.
+
+**Rejets écrits (#777)** : (1) le verbe de geste des boutons est « touche » (application
+pensée d'abord pour la tablette), pas « clique » ni « appuie » ; (2) « Je passe » (1re
+personne) à côté de « Valider » (infinitif) est assumé : le premier est la voix de l'enfant,
+le second l'action du bouton. Ne pas les re-remonter.
+
 ## Révéler la réponse attendue : le texte varie selon la forme de l'écran, c'est voulu (#503)
 
 Après une erreur, chaque écran enfant donne la réponse attendue dans la forme qui convient

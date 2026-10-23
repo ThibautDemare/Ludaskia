@@ -57,7 +57,11 @@ rejoue jamais tout seul. Le bouton **« ? »** de la barre d'accueil (`#btnGuide
 
 Modes d'exercice : **une leçon à la fois** (atteinte via Matière → Catégorie),
 **bilan express/complet** (au niveau d'une catégorie ; l'express est borné),
-**bilan personnalisé** (sélection libre, ou scopé à une catégorie, + favoris),
+**bilan personnalisé** (sélection libre, ou scopé à une catégorie, + favoris) — tous
+joués à l'écran en **parcours guidé** (#777 : une question par écran, parties par
+catégorie, correction en fin de partie, récapitulatif par leçon, crédit unique en fin de
+bilan ; cf. [Rendu & interactions](ui.md), `ui/bilan-parcours.ts`) ; la page unique ne
+sert plus qu'à l'impression,
 **sprint 5 min** (filtrable, multi-matières), **révision des erreurs** (rejoue les
 erreurs d'une session, n'enregistre rien). L'accueil ne propose plus de cartes
 express/complet : on y accède par Matière → Catégorie. Le **mode Révision**
@@ -226,10 +230,11 @@ Deux **natures** d'exercice sont **sauvegardées automatiquement** quand on les
 quitte (navigation, onglet masqué/fermé, saisie débouncée) et reproposées sur
 l'**accueil** (sous la progression) et l'**écran de catégorie** dans une section
 **« À continuer »** :
-- la **fiche en saisie** et les **bilans** (express/complet/personnalisé) —
-  reprise historique (#63) : l'état tient dans le DOM (champs remplis), on
-  restaure le rendu **exact** (calculs posés, réponses, temps actif) sans
-  régénérer ;
+- la **fiche en saisie** — reprise historique (#63) : l'état tient dans le DOM (champs
+  remplis), on restaure le rendu **exact** (calculs posés, réponses, temps actif) sans
+  régénérer. Depuis #777, **les bilans n'en relèvent plus** : joués en **parcours guidé**
+  (`ui/bilan-parcours.ts`), ils se reprennent par la nature `runner`
+  (`ResumeParcours` : questions, réponses, parties déjà corrigées, temps écoulé) ;
 - depuis #498, les **dix runners « une question à la fois »** (QCM, QCM multi,
   tri, ordre, tuiles, tableau de conversion, appariement, clic-mot, droite
   graduée, problème), qui n'avaient jusque-là **aucune** reprise (leur état vit

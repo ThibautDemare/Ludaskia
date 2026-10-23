@@ -43,6 +43,16 @@ En complément, des **scripts de génération** d'assets/données (hors cycle de
 `tools/pwa-icons/generate.mjs`, à relancer après un changement de logo ou de
 couleur d'accent).
 
+**`npm run apercu:impression -- <id-leçon>… [--niveau ce2|cm1]`** (#777,
+`tools/impression/apercu.mjs`) : captures **papier** d'une liste de leçons, pour juger ce
+qu'imprime vraiment l'application sans imprimer. Trois PNG pleine page par leçon, en média
+`print`, produits par le chemin réel de l'impression (`printScope` → `beforeprint` →
+`buildPrintableDOM`) : `<id>-<niveau>-fiche`, `-bilan` (3 questions) et `-corrige` (mêmes
+questions que ce bilan, réponses révélées). Serveur Vite à lui sur un port isolé (≥ 4190),
+sortie dans un dossier temporaire du système (un dossier DANS le dépôt est refusé) ; code de
+sortie non nul pour un id inconnu à ce niveau ou une erreur de page. Outil de l'agent
+`relecteur-impression`, cité dans la checklist d'`integrateur-lecon`.
+
 ## Intégration continue (CI)
 
 La CI (`.github/workflows/ci.yml`) enchaîne deux vérifications, sur chaque PR et push

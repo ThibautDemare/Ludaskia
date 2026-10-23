@@ -61,6 +61,14 @@ défaut et le préfixe actif. Le **rendu** n'a plus d'état de module à réinit
   état visité, avec un pas d'un jour justifié en commentaire (tous les intervalles de
   l'escalier de révision sont des multiples entiers de `JOUR`) plutôt que posé sans
   raison.
+- **Gate qui balaie tout le catalogue sous happy-dom** (impression, #777) : mesuré,
+  `querySelectorAll` y retient ~2,5 Mo par document parsé, jamais rendus ; sur ~2 000
+  documents, le tas est épuisé. Parcourir l'arbre à la main (sur `classList`, sans sélecteur
+  CSS) et faire **un seul balayage** qui ne garde que des chaînes, comme
+  `impression-gate.test.ts`. Gates d'impression : `impression-gate`, `impression-libelles`,
+  `impression-couverture` (table `FORMES_IMPRIMEES`), plus `consignes-gate` (consigne
+  d'action obligatoire) ; le détecteur de gestes d'écran, partagé, est `gardes-gestes.ts`
+  (non collecté, éprouvé par `gardes-gestes.test.ts`). Voir `docs/architecture/tests.md`.
 - **Garde de contenu partagée entre plusieurs banques** : l'extraire dans un module
   `tests/*.ts` **non collecté** (l'`include` de Vitest est `tests/**/*.{test,spec}.ts`),
   importé par les specs qui l'appliquent — même forme que `e2e/helpers.ts` côté

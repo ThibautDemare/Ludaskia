@@ -58,6 +58,12 @@ Modules de **rendu et d'interactions DOM**. Regroupés ici par thème.
   (appelé depuis `main.ts`, **avant** ses trois consommateurs) pose les
   écouteurs d'interaction/visibilité ; `onRetourSurOnglet(fn)` abonne un
   callback au retour sur l'onglet (le moment où l'enfant revient jouer).
+- **`annonce.ts`** — module feuille, sans import : **`DELAI_ANNONCE`** (350 ms), constante
+  unique du délai avant d'écrire dans une région live (créée vide puis remplie, ou résumé
+  recalculé à chaque frappe). Utilisée par l'espace encadrant (`encadrant-*`), les sélecteurs
+  de leçons et de dictées, et `recherche-lecon.ts`. **Une copie locale subsiste dans
+  `ui/session.ts`**, laissée hors de #778 parce que #777 modifie ce fichier : à rattacher à
+  `annonce.ts` après la fusion de #777.
 - **`pwa.ts`** — enregistrement du service worker (`src/sw.ts`, via
   `virtual:pwa-register`/`workbox-window`) et **réchauffement de fond** du
   cache hors-ligne. `initPwa()` enregistre le worker, relance
@@ -394,7 +400,7 @@ ci-dessous.
   Il appelle `ouvrirEditionFavori(uuid, id)` de **`ui/bilan-edition.ts`**, qui capture
   l'uuid du propriétaire et l'id **en mémoire** (jamais dans l'URL) puis mène à `#bilan-edit`
   (cf. [Modes & navigation](modes-et-navigation.md)). `navigation.ts:showBilanEditView` rend
-  alors `renderBilanConfigScreen(el, undefined, edition)` — le composeur de l'enfant en **mode
+  alors `renderBilanConfigScreen(el, { edition })` — le composeur de l'enfant en **mode
   édition** (`EditionComposeur`), pré-rempli (nom, mode Tranquille/Sprint, leçons cochées et
   volets dépliés, questions par leçon), avec Enregistrer / Annuler / Imprimer et sans
   lancement. Le composeur ne fait que pré-remplir et valider (mêmes refus qu'à la création) ;
@@ -412,7 +418,13 @@ ci-dessous.
     annoncé dans une région `status` (`.enc-favoris-statut`) ; « Annuler » n'annonce rien.
     Le dépôt se fait par `preparerRetourEdition`, la consommation par `appliquerRetourEdition`
     (`encadrant-favoris.ts`), même modèle que `consulterALaProchaineEntree` ;
-  - un favori supprimé entre-temps → message d'erreur dans l'éditeur, rien n'est écrit ;
+  - un favori supprimé entre-temps, ou une écriture que le stockage a refusée (quota :
+    « Le bilan n'a pas pu être enregistré : la mémoire de l'appareil est peut-être pleine. ») →
+    message d'erreur dans l'éditeur, qui reste ouvert ; rien n'est écrit et la reprise de
+    l'enfant n'est pas supprimée ;
+  - **focus à l'arrivée** : c'est `bilan-edition.ts` qui pose le focus sur le titre
+    `.bc-edit-title`, au frame suivant et sur un rendu NEUF seulement (un formulaire conservé
+    garde le focus où l'adulte l'avait laissé) ; `showBilanEditView` ne le fait plus ;
   - `app-calme.ts:ecranCalme()` tient l'éditeur pour **non calme** (saisie d'adulte non
     enregistrée, qu'un rechargement de mise à jour perdrait).
 
@@ -427,6 +439,12 @@ ci-dessous.
   - le nom accessible d'une leçon (libellé + repère) repose sur l'insertion d'une espace entre
     les enfants d'un `label` en `display:flex` (Chrome, Firefox, WebKit). **Non mesuré sur
     TalkBack** : à vérifier si un retour d'usage l'y signale.
+
+  **Rejet écrit (#778, 23/10/2026)** : la mémoire du retour d'édition (`preparerRetourEdition`)
+  n'est consommée que par `renderEspace`, et resterait en attente si le verrou PIN s'affichait
+  au retour. **Remontée écartée** : le verrou reste levé pour toute la session de la page
+  (`encadrant-pin.ts`, `deverrouille` n'est jamais remis à `false`), et un rechargement efface
+  la mémoire du retour en même temps que le déverrouillage.
 - **`encadrant-reglages.ts`** — **réglages** sur le profil consulté (onglet
   **Réglages**, #459) : classe de référence + niveau par matière, longueur d'une
   séance de Révision (#439, menu à paliers fixes `REVISION_PLAFOND_CHOIX`),
@@ -1015,8 +1033,12 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   ouvert (iOS Safari, Android Chrome) sous un titre de barre long qui force deux
   lignes ; retour sur l'écran des matières avec une recherche active sous NVDA/
   VoiceOver — l'annonce initiale ne doit ni rester muette ni doubler.
-- **`bilan.ts`** — **bilan personnalisé** : `renderBilanConfigScreen(el, categoryId?, edition?)` (le 3e paramètre
-  active le **mode édition** d'un favori, #778, cf. `encadrant-favoris.ts` plus haut).
+- **`bilan.ts`** — **bilan personnalisé** : `renderBilanConfigScreen(el, options = {})`, `options = { categoryId?, edition? }`
+  (`edition` active le **mode édition** d'un favori, #778, cf. `encadrant-favoris.ts` plus
+  haut). La fonction ne fait qu'assembler : `partiesCreation` / `partiesEdition` fournissent
+  le gabarit propre à chaque cas (titre, boutons), `brancherCreation` / `brancherEdition`
+  câblent leurs boutons, et `brancherSelection`, `brancherMode`, `brancherImpression` câblent
+  ce que les deux cas partagent.
   En **global**, les leçons sont organisées **Matière → Catégorie → Rubrique** (#195) :
   matières en **volets repliables** (`<details>`), catégories à pastille/gouttière
   colorée, rubriques reprenant le registre de l'écran de catégorie ; chaque niveau

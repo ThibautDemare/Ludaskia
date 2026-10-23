@@ -1137,7 +1137,9 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   EXISTANT à la même place et sous le même id (une étape de programme qui le visait le vise
   toujours), chez ce seul profil ; ne crée jamais (id ou profil inconnu → `false`) ; recalcule
   le `categoryId` depuis les leçons (`commonCategoryId`) au lieu de reprendre l'ancien ; recopie
-  les autres favoris tels que stockés. **`contenuFavoriChange(avant, après)`** dit si le
+  les autres favoris tels que stockés ; **relit la clé après écriture** (`lsSetRaw` avale
+  l'erreur d'un stockage plein) et renvoie `false` si elle n'a pas pris, sans `touchProfile`.
+  **`contenuFavoriChange(avant, après)`** dit si le
   CONTENU a changé (ensemble de leçons sans l'ordre, mode effectif, questions par leçon — ni
   nom ni catégorie) : c'est ce qui décide d'abandonner une reprise.
 

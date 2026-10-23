@@ -239,7 +239,8 @@ inventées quand la source n'en porte aucune. Base de la frise de COMPOSITION d'
   jour), `toggleRevoirFor` (épingler/désépingler une leçon ou une dictée),
   `declarerVuAilleursFor` (déclarer « vu en classe »), `supprimerMotFor` (supprimer un
   mot de la banque, #496, cf. [Espace encadrant](espace-encadrant.md)), `deleteBilanFor`
-  (#636, supprimer un bilan favori), `modifierBilanFor` (#778, modifier un favori ;
+  (#636, supprimer un bilan favori), `modifierBilanFor` (#778, modifier un favori ; seulement si la relecture confirme l'écriture,
+  un stockage plein renvoie `false` sans bumper ;
   `removeResumeFor`, qui l'accompagne, ne bumpe pas : l'écriture du favori l'a déjà fait) ; un effet
   **automatique** reste
   silencieux — `purgeRevoirSolides` (désépinglage auto #465) tourne à chaque ouverture

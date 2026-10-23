@@ -99,6 +99,7 @@ import { monterBoutonAide } from './aide-exercice';
 import { resetChrono } from './chrono';
 import { announceRewards } from './effects';
 import { icon } from './icon';
+import { radioVisee } from './segment';
 
 /** Nom stable du parcours dans le registre de reprise (`runner-reprise.ts`). */
 const RUNNER = 'bilan-parcours';
@@ -684,24 +685,38 @@ function monterQcm(
 	const trou = html`<span class="bp-trou"><span class="sr-only">${MARQUE_TROU}</span><span class="bp-trou-mot"></span></span>`;
 	// Le groupe de choix se nomme par la phrase, trou marqué : « Le chat (trou) mangé. ».
 	const nomGroupe = legendeQcmTrou(q.item) || q.consigneRenforcee || 'Choix de réponse';
+	// Choix EXCLUSIF : patron APG « Radio Group », comme le segment (`ui/segment.ts`) —
+	// `role="radio"` + `aria-checked`, un seul arrêt de tabulation (tabindex mobile : le
+	// choix coché, sinon le premier), flèches et Home/End qui déplacent ET sélectionnent.
 	stage.innerHTML =
 		html`${consigneHTML(q, q.item.parle ?? q.item.text)}${figureBlock(q.item.figure)}
     <div class="bp-enonce">${poserAuTrou(enonceTexte(q.item.text), '@', trou)}</div>
-    <div class="bp-choix" role="group"${attribut('aria-label', nomGroupe)}>${joindre(
+    <div class="bp-choix" role="radiogroup"${attribut('aria-label', nomGroupe)}>${joindre(
 			q.choices.map((c, i) => {
 				const aria = label(c) === c ? VIDE : attribut('aria-label', label(c));
-				return html`<button type="button" class="bp-choice" data-value="${c}" data-i="${i}" aria-pressed="false"${aria}>${vue(i)}</button>`;
+				return html`<button type="button" class="bp-choice" role="radio" data-value="${c}" data-i="${i}" aria-checked="false" tabindex="${i === 0 ? '0' : '-1'}"${aria}>${vue(i)}</button>`;
 			}),
 		)}</div>`.balisage;
 	let choisi: string | null = null;
 	const boutons = [...stage.querySelectorAll<HTMLButtonElement>('.bp-choice')];
 	const caseTrou = stage.querySelector<HTMLElement>('.bp-trou');
 	const motTrou = stage.querySelector<HTMLElement>('.bp-trou-mot');
+	// Espace et Entrée cliquent le bouton nativement ; les flèches passent par la règle
+	// partagée du segment, puis le focus suit et le choix est retenu.
+	stage.querySelector<HTMLElement>('.bp-choix')?.addEventListener('keydown', (ev) => {
+		const visee = radioVisee(ev, '.bp-choice[role="radio"]');
+		if (!visee) return;
+		visee.focus();
+		visee.click();
+	});
 	boutons.forEach((btn) =>
 		btn.addEventListener('click', () => {
 			const valeur = btn.dataset.value ?? null;
 			choisi = valeur;
-			for (const b of boutons) b.setAttribute('aria-pressed', String(b === btn));
+			for (const b of boutons) {
+				b.setAttribute('aria-checked', String(b === btn));
+				b.tabIndex = b === btn ? 0 : -1;
+			}
 			// Toucher un choix le place dans le trou (critère 1) : la phrase se relit entière.
 			if (caseTrou && motTrou && valeur !== null) {
 				motTrou.innerHTML = dansLeTrou(Number(btn.dataset.i), valeur).balisage;

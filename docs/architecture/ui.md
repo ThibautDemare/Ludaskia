@@ -2280,10 +2280,12 @@ faire.
   question puis la consigne**, dans cet ordre.
 - **Une liste à `list-style: none` porte `role="list"`** (WebKit/VoiceOver perd sinon la
   sémantique de liste).
+- **Un choix exclusif persistant suit le patron « Radio Group »** (`role="radiogroup"` +
+  `role="radio"`/`aria-checked`, tabindex mobile, flèches via `radioVisee` de `segment.ts`),
+  jamais `aria-pressed` : c'est la règle du composant segment, appliquée aux choix QCM du
+  parcours (`.bp-choice`). Un temps écarté à la relecture de #777, puis aligné sur cette règle.
 
 **Rejets écrits (#777)**, à ne pas re-remonter :
-- **Boutons de choix du bilan en `aria-pressed` (QCM à choix exclusif) : écarté en `radiogroup`.** La fiche garde ses vrais radios ; la divergence entre les deux rendus du même QCM est assumée. Divergence avec
-  les radios de la fiche assumée (`.bp-choice`, `ui/bilan-parcours.ts`).
 - **L'`aria-label` d'un choix à vue riche (fraction : « trois quarts ») diffère du texte visible (3/4 empilé)** : critère 2.5.3 (Label in Name) non tenu pour la commande vocale ; mesuré sur les seuls choix à vue riche (fractions, terminaisons surlignées), écarté : un libellé visible redondant coûterait plus qu'il n'apporte à ce public.
 - **`scrollTo({ behavior: 'smooth' })` ignore `prefers-reduced-motion` et `html.anim-reduced`** (critère 2.3.3, AAA seulement,
   41 occurrences dans 15 fichiers) : écarté ici. Un helper commun `defilerEnHaut()` qui respecte la

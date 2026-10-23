@@ -213,9 +213,9 @@
 .bp-choice:hover {
 	border-color: var(--accent);
 }
-/* Choix retenu : bordure épaissie (le padding compense, rien ne bouge) et `aria-pressed`
-   — jamais un état juste/faux pendant la partie. */
-.bp-choice[aria-pressed='true'],
+/* Choix retenu (`aria-checked`, groupe radio) : bordure épaissie (le padding compense,
+   rien ne bouge) — jamais un état juste/faux pendant la partie. */
+.bp-choice[aria-checked='true'],
 .bp-choice:active {
 	border: 3px solid var(--accent);
 	padding: 11px 21px;

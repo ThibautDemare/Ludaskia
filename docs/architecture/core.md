@@ -691,7 +691,10 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   correction), **une seule fois** par référence, et seulement dans les
   **`DELAI_DOUBLE_APPUI_MS`** (1000 ms) qui suivent l'essai compté. Au-delà, ou à la
   deuxième revalidation, la réponse compte : sans cette borne, un enfant sûr de lui
-  tournerait sur « Presque ! » sans jamais atteindre la correction guidée.
+  tournerait sur « Presque ! » sans jamais atteindre la correction guidée. **Effet de bord
+  assumé** : quand elle rend `false`, la fonction enregistre la réponse comme l'essai
+  compté. Elle s'appelle donc **une seule fois** par réponse fausse, juste avant de la
+  compter, et jamais pour « simplement vérifier ».
 - **`compteur-etoiles.ts`** (#559, pur) — texte du compteur `#recLecon` (carte accueil
   « Une leçon à la fois ») : **`compteurEtoilesHTML(état)`** choisit entre deux
   formulations selon que le cumul **tous niveaux** (`starsCumul`) dépasse ou non les

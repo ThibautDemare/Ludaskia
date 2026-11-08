@@ -1958,12 +1958,32 @@ pas en fiche.
   sous 1 s. `brancherEntree` ignore en outre les répétitions d'une touche Entrée maintenue
   (`e.repeat`). Couvert par `e2e/ortho-deuxieme-essai.spec.ts` et
   `tests/double-appui.test.ts`.
+  Les deux tâches à saisie passent par **un seul** chemin de correction,
+  `brancherVerification` (`ortho-taches.ts`) : champ déjà validé, réponse vide, double appui
+  et suite de l'échec n'y sont câblés qu'une fois. Ce qui diffère (message, réénoncé de la
+  dictée, dictée muette) passe en options. Une réponse **réussie** est définitive : le champ
+  passe en `readOnly`, `verifier` ne fait plus rien (avant, une Entrée dans le champ rappelait
+  `onReussite` et recomptait l'XP), et le clavier d'accents n'y écrit plus (`insertAtCursor`).
   **Rejet écrit (relecture accessibilité)** : forcer un `blur()` puis `focus()` au premier
   échec, pour que NVDA/JAWS relisent « Presque ! » quand l'enfant valide par Entrée, est
   **écarté**. Sur la tablette (Firefox Android, clavier logiciel), le `blur` ferme le clavier
-  qu'un `focus()` scripté ne rouvre pas toujours, et ce à **chaque** premier échec ; la
-  dictée réénonce de toute façon le mot. Même raison pour la garde, qui rend le focus **sans**
-  `blur`. Le raisonnement est aussi en commentaire de `rendreSaisieACorriger`.
+  qu'un `focus()` scripté ne rouvre pas toujours, et ce à **chaque** premier échec. Coût
+  assumé : en dictée, l'énoncé rejoué relaie l'échec ; en « affiche/masque », rien ne
+  l'annonce à NVDA/JAWS après Entrée. C'était déjà le cas quand le champ était vidé (même
+  `focus()` sans effet sur un champ focalisé) : le changement ne retire rien. Même raison
+  pour la garde, qui rend le focus **sans** `blur`. Le raisonnement est aussi en commentaire
+  de `rendreSaisieACorriger`.
+  **Rejets écrits (revue de code)** :
+  - *Triple appui.* La garde n'ignore qu'**une** revalidation : un triple appui accidentel
+    en moins d'une seconde compte au troisième et brûle le deuxième essai. Ignorer toute la
+    fenêtre l'aurait évité. Le mainteneur garde « une fois + fenêtre », le triple appui
+    accidentel étant jugé marginal.
+  - *Horodatage de l'événement.* La fenêtre est mesurée à l'exécution du gestionnaire
+    (`performance.now()`), pas à `event.timeStamp`. Un premier gestionnaire lent pourrait
+    faire compter un vrai double appui. Écarté : le gestionnaire ne fait qu'une écriture de
+    journal et du DOM (l'énoncé TTS est asynchrone), loin des ~700 ms nécessaires ; et
+    `event.timeStamp` échappe à l'horloge de `page.clock`, ce qui rendrait les tests de
+    fenêtre dépendants du temps réel.
 
 ## Étayage de la notion (#490)
 

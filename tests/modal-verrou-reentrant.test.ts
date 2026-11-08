@@ -438,3 +438,27 @@ describe('showLevelUp rouvert sans fermeture : rien de ce qui est annoncé ne di
 		expect.soft(document.getElementById('levelupNum')!.textContent, 'niveau affiché').toBe('3');
 	});
 });
+
+/* ============================================================
+   Restauration du focus à la fermeture, quand un repli `restoreFocusTo` est fourni.
+
+   CE QUI N'EST PAS TESTÉ ICI, ET POURQUOI. Le défaut relevé en relecture (déclencheur
+   MASQUÉ, `display:none` sur lui ou un ancêtre : `focus()` y échoue sans bruit, le repli
+   n'est jamais tenté, le focus tombe sur <body>) ne se reproduit pas sous happy-dom :
+   mesuré (happy-dom 21), `focus()` y RÉUSSIT sur un élément masqué, avec ou sans émulation
+   d'`offsetParent` ; seul `inert` est refusé. Un test « le focus finit sur le repli »
+   serait donc rouge aujourd'hui pour une raison qui n'est pas celle du navigateur, et son
+   verdict après correction dépendrait du MÉCANISME choisi : vert avec `checkVisibility()`
+   (implémenté par happy-dom), rouge à tort avec « focaliser puis vérifier
+   `document.activeElement` », pourtant la parade la plus sûre en navigateur. Ce cas
+   relève d'une spec Playwright, en vrai navigateur.
+   ============================================================ */
+describe('restauration du focus avec repli fourni', () => {
+	it('témoin : déclencheur visible et focalisable, le focus y revient, pas sur le repli', () => {
+		focaliser('btnFiche');
+		const fermer = ouvrir('modaleA', { restoreFocusTo: () => document.getElementById('btnOutil') });
+		expect(actif(), 'prémisse : la modale a pris le focus').toMatch(/^a/);
+		fermer();
+		expect(actif()).toBe('btnFiche');
+	});
+});

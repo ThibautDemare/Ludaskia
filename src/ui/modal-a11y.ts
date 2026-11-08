@@ -144,7 +144,13 @@ function trapTab(e: KeyboardEvent, root: HTMLElement): void {
 function restoreFocus(trigger: HTMLElement | null, fallback?: () => HTMLElement | null): void {
 	if (trigger && document.contains(trigger) && typeof trigger.focus === 'function') {
 		trigger.focus();
-		return;
+		// « Encore dans le DOM » ne veut pas dire « focalisable » : un déclencheur MASQUÉ
+		// (display:none, ancêtre masqué) refuse le focus sans bruit, et l'on finissait sur
+		// <body> sans jamais tenter le repli (relectures qualité et a11y, nov. 2026). On juge
+		// donc au RÉSULTAT. Cas d'origine : une modale ouverte depuis un bouton d'une autre
+		// modale, fermée entre-temps. Spec : e2e/modale-repli-focus.spec.ts (vrai navigateur ;
+		// happy-dom accepte le focus sur un élément masqué).
+		if (document.activeElement === trigger) return;
 	}
 	fallback?.()?.focus?.();
 }
@@ -213,7 +219,9 @@ export function activateModal(overlay: HTMLElement, opts: ModalA11yOptions = {})
 		released = true;
 		document.removeEventListener('keydown', onKeydown, true);
 		const auDessus = pileModales[pileModales.length - 1] === jeton;
-		pileModales.splice(pileModales.indexOf(jeton), 1);
+		const rang = pileModales.indexOf(jeton);
+		// `splice(-1, 1)` retirerait la modale du DESSUS : jamais sans le jeton trouvé.
+		if (rang >= 0) pileModales.splice(rang, 1);
 		unlock();
 		// Recouverte par une autre modale encore ouverte : le focus est dans celle-ci et doit
 		// y rester. Le déclencheur est de toute façon inerte tant qu'elle est ouverte.

@@ -61,24 +61,33 @@ export function confetti() {
 	setTimeout(() => layer.remove(), 4200);
 }
 
-/* Modale de récompense : annonce explicitement ce qui vient d'être gagné. */
+/* Modale de récompense : annonce explicitement ce qui vient d'être gagné.
+   DÉJÀ OUVERTE (retour terrain, nov. 2026 : une navigation sous la modale, le geste
+   « retour » d'Android, rejoue le rendu de l'accueil ou du programme, qui peut célébrer à
+   son tour) : on AJOUTE les gains à la liste, sans réactiver la modale. Réactiver
+   écrasait la libération de la 1re ouverture, et la page restait inerte après « Super ! ». */
 let celebrateRelease: (() => void) | null = null;
 export function showCelebration(items: { icon: string; text: string }[]) {
 	if (!items || !items.length) return;
+	const dejaOuverte = celebrateRelease !== null;
 	const list = document.getElementById('celebrateList');
-	if (list)
-		list.innerHTML = joindre(
-			items.map((i) => html`<li><span class="modal-li-ico">${i.icon}</span> ${i.text}</li>`),
-		).balisage;
+	const lignes = joindre(
+		items.map((i) => html`<li><span class="modal-li-ico">${i.icon}</span> ${i.text}</li>`),
+	);
+	if (list) {
+		if (dejaOuverte) list.insertAdjacentHTML('beforeend', lignes.balisage);
+		else list.innerHTML = lignes.balisage;
+	}
 	const ov = document.getElementById('celebrate');
 	if (ov) {
 		ov.style.display = '';
 		// Focus-trap + arrière-plan inerte + ESC = fermer + restauration du focus (#235).
 		// Focus initial sur l'action principale (« Super ! »), pas sur la croix.
-		celebrateRelease = activateModal(ov, {
-			onEscape: hideCelebration,
-			initialFocus: document.getElementById('celebrateOk'),
-		});
+		if (!dejaOuverte)
+			celebrateRelease = activateModal(ov, {
+				onEscape: hideCelebration,
+				initialFocus: document.getElementById('celebrateOk'),
+			});
 	}
 	confetti();
 }
@@ -100,8 +109,16 @@ export function showLevelUp(niveau: number, recompenses: Recompense[] = [], then
 		if (then) then(); // pas de modale dans le DOM : on n'avale pas les autres récompenses
 		return;
 	}
+	// Déjà ouverte (même cas que `showCelebration`) : on garde le verrou en place, le niveau
+	// affiché reste le PLUS HAUT, les déblocages s'AJOUTENT et les deux suites s'enchaînent,
+	// pour ne rien perdre de ce que la 1re ouverture annonçait.
+	const dejaOuverte = levelupRelease !== null;
 	const num = document.getElementById('levelupNum');
-	if (num) num.textContent = String(niveau);
+	if (num) {
+		const affiche = dejaOuverte ? Number(num.textContent) || 0 : 0;
+		niveau = Math.max(niveau, affiche);
+		num.textContent = String(niveau);
+	}
 	const sub = document.getElementById('levelupNext');
 	if (sub) {
 		const pr = progressionNiveau(getXP());
@@ -113,22 +130,32 @@ export function showLevelUp(niveau: number, recompenses: Recompense[] = [], then
 	// Déblocages du palier (rang, et plus tard mascotte/avatar/thème).
 	const unlocks = document.getElementById('levelupUnlocks');
 	if (unlocks) {
-		unlocks.innerHTML = joindre(
+		const lignes = joindre(
 			recompenses.map(
 				(r) =>
 					html`<li class="levelup-unlock levelup-unlock--${r.type}"><span class="levelup-unlock-ico">${r.icone}</span> ${r.texte}</li>`,
 			),
-		).balisage;
-		unlocks.style.display = recompenses.length ? '' : 'none';
+		);
+		if (dejaOuverte) unlocks.insertAdjacentHTML('beforeend', lignes.balisage);
+		else unlocks.innerHTML = lignes.balisage;
+		unlocks.style.display = unlocks.children.length ? '' : 'none';
 	}
-	levelUpThen = then ?? null;
+	const suitePrecedente = dejaOuverte ? levelUpThen : null;
+	levelUpThen =
+		suitePrecedente && then
+			? () => {
+					suitePrecedente();
+					then();
+				}
+			: (then ?? suitePrecedente);
 	ov.style.display = '';
 	// Focus-trap + arrière-plan inerte + ESC = fermer + restauration du focus (#235).
 	// Focus initial sur l'action principale (« Continuer »), pas sur la croix.
-	levelupRelease = activateModal(ov, {
-		onEscape: hideLevelUp,
-		initialFocus: document.getElementById('levelupOk'),
-	});
+	if (!dejaOuverte)
+		levelupRelease = activateModal(ov, {
+			onEscape: hideLevelUp,
+			initialFocus: document.getElementById('levelupOk'),
+		});
 	confetti();
 }
 export function hideLevelUp() {

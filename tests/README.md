@@ -69,6 +69,10 @@ défaut et le préfixe actif. Le **rendu** n'a plus d'état de module à réinit
   `impression-couverture` (table `FORMES_IMPRIMEES`), plus `consignes-gate` (consigne
   d'action obligatoire) ; le détecteur de gestes d'écran, partagé, est `gardes-gestes.ts`
   (non collecté, éprouvé par `gardes-gestes.test.ts`). Voir `docs/architecture/tests.md`.
+- **happy-dom ne calcule pas la mise en page** : `offsetParent` n'y existe pas (`undefined`),
+  donc un code qui teste `offsetParent !== null` (focus-trap de `ui/modal-a11y.ts`) voit
+  TOUT élément comme visible, masqué ou non. `tests/modal-verrou-reentrant.test.ts` l'émule
+  (`null` sous un `display:none`) ; faire de même pour tout test de focus/visibilité.
 - **Garde de contenu partagée entre plusieurs banques** : l'extraire dans un module
   `tests/*.ts` **non collecté** (l'`include` de Vitest est `tests/**/*.{test,spec}.ts`),
   importé par les specs qui l'appliquent — même forme que `e2e/helpers.ts` côté

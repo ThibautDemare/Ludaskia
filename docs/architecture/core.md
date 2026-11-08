@@ -683,6 +683,15 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   n'ont ni le même cycle de vie ni le même type d'élément ; les mutualiser créerait un
   couplage entre deux boucles indépendantes pour économiser un `some(…)`. Écarté
   sciemment, pour que la remontée ne revienne pas à chaque relecture.
+- **`orthographe/double-appui.ts`** (pur, horloge injectable) — garde du **deuxième essai**
+  de la dictée et du mot caché, puisque la saisie fausse y reste dans le champ (cf.
+  [Rendu & interactions](ui.md)). **`creerGardeDoubleAppui(maintenant?)`** rend, pour UN mot
+  affiché, une fonction qui reçoit chaque réponse FAUSSE avant comptage et dit `true` s'il
+  faut l'ignorer : même réponse (égalité après `normalizeText`, la normalisation de la
+  correction), **une seule fois** par référence, et seulement dans les
+  **`DELAI_DOUBLE_APPUI_MS`** (1000 ms) qui suivent l'essai compté. Au-delà, ou à la
+  deuxième revalidation, la réponse compte : sans cette borne, un enfant sûr de lui
+  tournerait sur « Presque ! » sans jamais atteindre la correction guidée.
 - **`compteur-etoiles.ts`** (#559, pur) — texte du compteur `#recLecon` (carte accueil
   « Une leçon à la fois ») : **`compteurEtoilesHTML(état)`** choisit entre deux
   formulations selon que le cumul **tous niveaux** (`starsCumul`) dépasse ou non les

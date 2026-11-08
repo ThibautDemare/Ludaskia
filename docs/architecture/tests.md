@@ -1032,6 +1032,19 @@ l'un à l'autre, si bien qu'un jour où les trois phrases changent les tests res
 disponibilité des voix est stubée (jamais celles de la machine de test, qui peut voir apparaître
 des voix SAPI en cours de session).
 
+**`tests/double-appui.test.ts`** — la garde pure `creerGardeDoubleAppui`
+(`core/orthographe/double-appui.ts`), horloge injectée : doublon ignoré une seule fois, plus
+compté au-delà de `DELAI_DOUBLE_APPUI_MS` ou à la deuxième revalidation, égalité après
+`normalizeText`. **`e2e/ortho-deuxieme-essai.spec.ts`** joue le geste pour de vrai : la saisie
+reste dans `#orthoInput` après le premier échec (dictée, affiche/masque), le doublon ne brûle
+pas le second essai (une fois, sous 1 s ; compté à la deuxième revalidation ou après 1 s), la
+répétition d'Entrée maintenue est ignorée, et un remasquage `password` → `text` (UA Firefox
+Android) conserve la saisie.
+
+**Checklist issue de relecture** (jugement, pas gate) : tout garde-fou qui ignore un geste
+(doublon, réponse vide, répétition de touche) est testé dans **chaque** mode qui le branche,
+pas seulement dans le premier.
+
 **`tests/revision-marche-due.test.ts`** amendé : la réparation à la lecture change ce qu'un
 mot « à escalier troué » présente une fois relu par l'appli (le mot caché validé sans les
 tuiles arrive déjà avec les tuiles prouvées) — la marche qui manque le plus bas n'est donc plus

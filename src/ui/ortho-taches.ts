@@ -28,6 +28,7 @@ import { insertAt, moveAt, removeAt } from '../core/utils';
 import { rendreLaMainApresEcoute } from './consigne-tts';
 import { focaliserChamp } from './anti-suggestion';
 import { genExerciseOrtho, messageRienDePose } from '../core/orthographe/exercise';
+import { creerGardeDoubleAppui } from '../core/orthographe/double-appui';
 import { checkAnswer } from '../core/exercise';
 import { TEXT_ANSWER_INPUT_ATTRS } from '../core/items';
 import type { MotOrtho, ModeOrtho } from '../core/orthographe/types';
@@ -161,6 +162,7 @@ export function renderMotCache(word: MotOrtho, o: OptionsTache): void {
 	const ex = genExerciseOrtho(word, 'motCache');
 	const hote = o.hote;
 	let essais = 0;
+	const doubleAppui = creerGardeDoubleAppui();
 	hote.innerHTML = html`
     <div class="${cadreDe(o)}">
       <p class="ortho-run-consigne">${word.contexte ? 'Regarde bien le verbe, puis cache-le et écris-le.' : 'Regarde bien ce mot, puis cache-le et écris-le.'}</p>
@@ -233,13 +235,13 @@ export function renderMotCache(word: MotOrtho, o: OptionsTache): void {
 			input.readOnly = true;
 			o.onReussite('motCache', fb);
 		} else {
+			if (doubleAppui(input.value)) return focaliserChamp(input); // ignoré, cf. core/orthographe/double-appui.ts
 			essais++;
 			o.onEchec(input.value, essais);
 			if (essais < o.essaisAvantCorrection) {
 				fb.innerHTML =
 					html`<span class="fb-ko">Presque ! Regarde bien et réessaie.</span>`.balisage;
-				input.value = '';
-				focaliserChamp(input);
+				rendreSaisieACorriger(input);
 			} else {
 				// Dernier essai : on bascule sur la correction guidée (diff sur le mot). Le
 				// retrace du mot affiché a déjà été coupé au clic « Cacher » (on n'arrive
@@ -264,6 +266,7 @@ export function renderDictee(word: MotOrtho, o: OptionsTache): void {
 	const ex = genExerciseOrtho(word, 'dictee');
 	const hote = o.hote;
 	let essais = 0;
+	const doubleAppui = creerGardeDoubleAppui();
 	hote.innerHTML = html`
     <div class="${cadreDe(o)}">
       <p class="ortho-run-consigne">${word.contexte ? 'Écoute la phrase, puis écris seulement le verbe.' : 'Écoute le mot, puis écris-le.'}</p>
@@ -308,12 +311,12 @@ export function renderDictee(word: MotOrtho, o: OptionsTache): void {
 			input.readOnly = true;
 			o.onReussite('dictee', fb);
 		} else {
+			if (doubleAppui(input.value)) return focaliserChamp(input); // ignoré, cf. core/orthographe/double-appui.ts
 			essais++;
 			o.onEchec(input.value, essais);
 			if (essais < o.essaisAvantCorrection) {
 				fb.innerHTML = html`<span class="fb-ko">Presque ! Réécoute et réessaie.</span>`.balisage;
-				input.value = '';
-				focaliserChamp(input);
+				rendreSaisieACorriger(input);
 				ecouter();
 			} else {
 				o.onCorrection(input.value);
@@ -634,6 +637,20 @@ function rienDePose(
 	focaliserChamp(cible);
 }
 
+/* Premier essai raté (dictée, mot caché) : la saisie RESTE, curseur en fin de mot, pour que
+   l'enfant corrige au lieu de tout retaper. Le curseur est posé AVANT le focus : sur Firefox
+   tactile, `focaliserChamp` remasque le champ et reporte la sélection qu'il y trouve. Le double
+   appui qui renverrait la même réponse est tenu par `creerGardeDoubleAppui`.
+   Pas de `blur()` forcé, contrairement à `rienDePose` : un échec validé par la touche Entrée du
+   clavier logiciel fermerait ce clavier, qu'un `focus()` scripté ne rouvre pas toujours. Ce
+   serait à CHAQUE premier échec sur la tablette, pour une relecture de « Presque ! » par
+   NVDA/JAWS dont la dictée se passe (elle réénonce le mot). */
+function rendreSaisieACorriger(input: HTMLInputElement): void {
+	const fin = input.value.length;
+	input.setSelectionRange(fin, fin);
+	focaliserChamp(input);
+}
+
 /* Entrée valide la saisie. `stopPropagation` : la carte de révision détourne Entrée vers
    son bouton principal (cf. `bindEnter`, ui/revision.ts). Sans cette coupure, l'Entrée
    qui vient de valider remonterait jusqu'à elle et cliquerait le « Continuer ▶ » que le
@@ -643,6 +660,10 @@ function brancherEntree(e: KeyboardEvent, verifier: () => void): void {
 	if (e.key !== 'Enter') return;
 	e.preventDefault();
 	e.stopPropagation();
+	// Entrée MAINTENUE : seul le premier appui valide. Les répétitions de la touche (~500 ms puis
+	// toutes les ~30 ms) déjouaient la garde du double appui, qui n'en ignore qu'une, et
+	// brûlaient le deuxième essai sur la réponse que l'enfant venait de voir refusée.
+	if (e.repeat) return;
 	verifier();
 }
 

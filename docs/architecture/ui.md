@@ -1947,6 +1947,23 @@ pas en fiche.
     `rendreLaMainApresEcoute` (`ui/consigne-tts.ts`, voir ci-dessous) — **aucune**
     condition propre à l'orthographe : ce que le mot caché doit NE PAS faire tant que le
     mot est affiché découle de la règle générale.
+- **Deuxième essai : la saisie reste dans le champ.** Dans la dictée et l'« affiche/masque »
+  (`essaisAvantCorrection` à 2, avant la correction guidée), un premier essai raté **garde**
+  la saisie dans `#orthoInput`, curseur en fin de mot (`rendreSaisieACorriger`,
+  `ortho-taches.ts`) : l'enfant corrige sa faute de frappe au lieu de tout retaper. Libellés
+  « Presque ! … » inchangés. La révision espacée (un seul essai) et les tuiles ne sont pas
+  concernées. Le champ n'étant plus vidé, le doublon (double appui sur « Vérifier », double
+  Entrée) n'est plus neutralisé par `ignorerReponseVide` : c'est
+  `core/orthographe/double-appui.ts` (cf. [Logique pure](core.md)) qui l'ignore, une fois et
+  sous 1 s. `brancherEntree` ignore en outre les répétitions d'une touche Entrée maintenue
+  (`e.repeat`). Couvert par `e2e/ortho-deuxieme-essai.spec.ts` et
+  `tests/double-appui.test.ts`.
+  **Rejet écrit (relecture accessibilité)** : forcer un `blur()` puis `focus()` au premier
+  échec, pour que NVDA/JAWS relisent « Presque ! » quand l'enfant valide par Entrée, est
+  **écarté**. Sur la tablette (Firefox Android, clavier logiciel), le `blur` ferme le clavier
+  qu'un `focus()` scripté ne rouvre pas toujours, et ce à **chaque** premier échec ; la
+  dictée réénonce de toute façon le mot. Même raison pour la garde, qui rend le focus **sans**
+  `blur`. Le raisonnement est aussi en commentaire de `rendreSaisieACorriger`.
 
 ## Étayage de la notion (#490)
 

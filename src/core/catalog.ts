@@ -1598,6 +1598,10 @@ export function itemDepuisExercice(lesson: LessonDef, ex: Exercise): Item {
 	// enfreinte ; le perdre en route ne casserait rien de visible, il ferait juste compter
 	// faux un « xlvii » juste, en silence.
 	const saisieRomaine = ex.type === 'text' ? ex.champRomain : undefined;
+	// Présentation en termes insécables (décomposition) : même règle de propagation dans
+	// les DEUX retours. La perdre ne casserait rien de visible en test, l'énoncé
+	// retomberait juste dans le rendu d'un bloc qui coupait les termes en fin de ligne.
+	const decomposition = ex.type === 'text' ? ex.decomposition : undefined;
 	if (lesson.subject === 'math') {
 		// Saisie de l'heure en 2 champs (#88) ; sinon numérique (calcul) ou texte (signe).
 		const kind =
@@ -1620,6 +1624,7 @@ export function itemDepuisExercice(lesson: LessonDef, ex: Exercise): Item {
 			choicesView,
 			intervalle,
 			saisieRomaine,
+			decomposition,
 			_lesson: lesson.id,
 		};
 	}
@@ -1634,6 +1639,7 @@ export function itemDepuisExercice(lesson: LessonDef, ex: Exercise): Item {
 		choicesView,
 		intervalle,
 		saisieRomaine,
+		decomposition,
 		_lesson: lesson.id,
 	};
 }

@@ -117,6 +117,7 @@ export const SCHEMAS_EXERCICE: SchemasExercice = {
 			figure: facultatif(fragment),
 			champHeure: facultatif(booleen),
 			champRomain: facultatif(booleen),
+			decomposition: facultatif(booleen),
 			parle: facultatif(parle),
 			intervalle: facultatif(intervalle),
 		},

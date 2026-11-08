@@ -52,6 +52,9 @@ export interface Item {
 	// dans le champ atteignent la même réponse par d'autres chemins), `renderItem` rend un
 	// champ `.ans-romain`, et `ui/session.ts` nomme la règle enfreinte après une erreur.
 	saisieRomaine?: boolean;
+	// Énoncé de DÉCOMPOSITION (« N = t1 + t2 + … »), propagé depuis `decomposition` de
+	// l'exercice : `renderItem` le rend en termes insécables (`decompositionHTML`).
+	decomposition?: boolean;
 	// QCM (#289) : choix proposés. Sur PAPIER, des cases à cocher ; à l'ÉCRAN, hors runner
 	// (fiche, bilan, séance partagée, révision d'erreurs), des boutons radio — sous la
 	// question pour un QCM sans trou (#734), sous la phrase dont le trou affiche le choix
@@ -435,6 +438,58 @@ function qcmCheckboxHTML(it: Item, ctx: RenderContext): SafeHtml {
 export const poserAuTrou = (texte: SafeHtml, motif: string | RegExp, champ: SafeHtml): SafeHtml =>
 	brut(texte.balisage.replace(motif, () => champ.balisage));
 
+/** Le champ de cet item attend-il un GRAND NOMBRE (≥ 10 000), à saisir groupé ?
+ *
+ *  Règle unique des trois écrans qui font taper une réponse numérique : la fiche (champ
+ *  `.ans-grand`), la révision (`#revInput`) et le bilan guidé (`#bpInput`), ces deux-là
+ *  par la classe `.saisie-groupee`. Les deux classes branchent l'écho groupé à la frappe
+ *  (`ui/grand-nombre-echo.ts`, #327) et un champ assez large pour « 9 999 999 ». Retour
+ *  terrain (nov. 2026) : seule la fiche en profitait, et un « 1400000 » tapé en révision
+ *  débordait d'un champ de 130 px, sans séparateur pour se relire.
+ *
+ *  Pas de champ TEXTE (signe, heure…), donc pas de `kind: 'text'` ; `parseNombreFr` (et non
+ *  `Number` brut) pour lire une réponse stockée en virgule (« 12345,67 »). */
+export function saisieGroupee(it: Item): boolean {
+	if (it.kind === 'text' || it.kind === 'heure') return false;
+	const valeur = parseNombreFr(String(it.answer));
+	return Number.isFinite(valeur) && Math.abs(valeur) >= 10000;
+}
+
+/** Énoncé de DÉCOMPOSITION rendu terme par terme (retour terrain, novembre 2026).
+ *
+ *  Rendu d'un bloc, « 60 677 = 6 × 10 000 + 0 × 1000 + @ × 100 + … » tombait dans la
+ *  ligne flex de l'item (`.conj-op`, `flex-wrap`) : chaque morceau de texte, chaque
+ *  `.bignum` et le champ y devenaient des éléments flex distincts, qui passaient à la
+ *  ligne chacun pour soi. On lisait « + 6 × » en fin de ligne et « 10 000 » au début de
+ *  la suivante, soit exactement la structure « chiffre × valeur » que l'exercice
+ *  enseigne, coupée en deux.
+ *
+ *  Ici, UN seul bloc `.decompo` : le nombre à décomposer sur sa ligne, puis les termes,
+ *  chacun insécable (`.decompo-terme`, le « + » qui l'ouvre compris). La ligne ne se
+ *  coupe qu'ENTRE deux termes. Sens « composer » (« t1 + … = @ ») : les termes, puis
+ *  « = champ » comme dernier terme.
+ *
+ *  Renvoie `null` si l'énoncé n'a pas la forme attendue (exactement un « = », champ
+ *  absent ou placé dans le nombre) : l'appelant garde alors le rendu d'un bloc, plutôt
+ *  qu'un rendu deviné. */
+export function decompositionHTML(texte: string, champ: SafeHtml): SafeHtml | null {
+	const cotes = texte.split(' = ');
+	if (cotes.length !== 2) return null;
+	const [gauche, droite] = cotes;
+	const termes = (somme: string): SafeHtml =>
+		joindre(
+			somme.split(' + ').map((t, i) => {
+				const contenu = enonceTexte(i > 0 ? `+ ${t}` : t);
+				return html`<span class="decompo-terme">${t.includes('@') ? poserAuTrou(contenu, '@', champ) : contenu}</span>`;
+			}),
+			html` `,
+		);
+	if (droite === '@' && !gauche.includes('@'))
+		return html`<span class="decompo decompo--composer"><span class="decompo-termes">${termes(gauche)} <span class="decompo-terme">= ${champ}</span></span></span>`;
+	if (gauche.includes('@') || !droite.includes('@')) return null;
+	return html`<span class="decompo"><span class="decompo-cible">${enonceTexte(gauche)} =</span> <span class="decompo-termes">${termes(droite)}</span></span>`;
+}
+
 /** QCM SANS TROU rendu à l'écran dans une fiche, un bilan ou une révision d'erreurs
  *  (#734) : les choix deviennent des boutons radio, dont la valeur alimente un champ
  *  `.ans` CACHÉ, corrigé, marqué et révélé exactement comme les autres champs (même
@@ -560,15 +615,8 @@ export function renderItem(it: Item, ctx: RenderContext, extra = ''): SafeHtml {
 	// utilise `.ans-corrige`, visible. Pas de `mark` (le corrigé n'est pas corrigé).
 	// Champ « grand nombre » : une réponse numérique à ≥ 5 chiffres (encadrement au
 	// million, « combien en tout », décomposition #240) déborde du champ standard (58px)
-	// → variante `.ans-grand` plus large, à chiffres tabulaires.
-	// `parseNombreFr` (et non `Number` brut) pour rester cohérent avec une réponse stockée en
-	// virgule : « 12345,67 » → 12345.67 (et non NaN), donc correctement classé « grand ». Sans
-	// effet sur les leçons actuelles (aucun décimal ≥ 10 000), mais évite un piège futur.
-	const valeurNum = parseNombreFr(String(it.answer));
-	const grand =
-		it.kind !== 'text' && Number.isFinite(valeurNum) && Math.abs(valeurNum) >= 10000
-			? drapeau('ans-grand')
-			: '';
+	// → variante `.ans-grand` plus large, à chiffres tabulaires (règle : `saisieGroupee`).
+	const grand = saisieGroupee(it) ? drapeau('ans-grand') : '';
 	// Réponse = signe de comparaison (#380) : champ dédié `.ans-signe`, SANS clavier
 	// virtuel (`inputmode="none"` — le pavé de boutons le remplace au doigt ; la frappe
 	// au clavier PHYSIQUE reste possible, inputmode n'affecte pas le desktop). Pas
@@ -609,6 +657,8 @@ export function renderItem(it: Item, ctx: RenderContext, extra = ''): SafeHtml {
 					: html`<input class="ans${grand} ${extra}" id="${id}"${ansAttr}${attendueAttr}${lessonAttr(ctx)}${nom} inputmode="${inputMode}" autocomplete="off"><span class="mark" data-for="${id}"></span>`;
 	// Zone-réponse garantie à l'impression (#289) : un item sans `@` (ni posé, ni QCM)
 	// ne doit jamais s'imprimer « en l'air » → on ajoute une ligne d'écriture finale.
+	const decompo = it.decomposition ? decompositionHTML(it.text, field) : null;
+	if (decompo) return html`${figureBlock(it.figure)}${decompo}`;
 	const place = texte.balisage.includes('@') ? texte : ctx.printMode ? html`${texte} @` : texte;
 	const pave = signe && !ctx.printMode && !ctx.corrigeMode ? paveSignesHTML(id) : VIDE;
 	return html`${figureBlock(it.figure)}${poserAuTrou(place, '@', field)}${pave}`;

@@ -807,3 +807,23 @@ ailleurs ; l'état dit pourquoi la question se pose, ici et maintenant (cas pos�
   libellé par libellé : une correction isolée créerait deux typographies côte à côte.
 - **« pas en sprint »** (repère d'une leçon qui ne se joue pas en sprint) : compris tel quel,
   puisque le mode s'appelle « Sprint » à l'écran. Pas de périphrase.
+
+## Une consigne de fiche couvre TOUS les sens des items qu'elle chapeaute
+
+Une consigne unique s'affiche au-dessus de tous les items d'une fiche, et sert aussi sur papier,
+au bilan et à la lecture vocale. Si la leçon mélange deux sens (décomposer, où l'on complète un
+rang, et composer, où l'on écrit le nombre entier), la consigne doit dire vrai pour les deux. Une
+consigne qui ne décrit que le sens dominant fait mal lire les autres items (cas d'origine : les
+cinq leçons de décomposition, « Complète la décomposition… » au-dessus de « 4 centaines + 7
+dizaines + 6 unités = ___ », relecture impression de novembre 2026).
+
+À vérifier à chaque leçon dont le générateur tire plusieurs formes d'item. La consigne nomme
+**ce qu'on écrit** (« le chiffre ou le nombre qui manque »), pas ce avec quoi on complète :
+« complète chaque égalité avec les dizaines » se lit comme « ajoute des dizaines ». Pas
+d'énumération de rangs que les items montrent déjà.
+
+**Rejet écrit (novembre 2026)**, à ne pas re-remonter : un gate « ni parenthèse, ni
+deux-points, ni × dans une consigne, 90 caractères au plus ». Le deux-points se lit comme une
+pause en TTS et reste admis (consigne CM1 des décompositions) ; une règle mécanique sur la
+ponctuation ne dirait rien de la seule chose qui compte ici, que la consigne soit vraie pour
+chaque item.

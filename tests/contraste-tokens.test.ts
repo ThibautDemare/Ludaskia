@@ -412,7 +412,7 @@ const PAIRES_NON_TEXTE: Paire[] = [
 	{
 		avant: '--field-line',
 		arriere: '--paper',
-		ou: 'sheets.scss .ans — la ligne qui dit OÙ écrire ; encadrant.scss .enc-input, .enc-select-niveau — le contour des champs de l’espace (#734) ; bilan-parcours.scss .bp-input (#777)',
+		ou: 'sheets.scss .ans — la ligne qui dit OÙ écrire ; encadrant.scss .enc-input, .enc-select-niveau — le contour des champs de l’espace (#734) ; bilan-parcours.scss .bp-input (#777) ; lessons.scss .decompo .ans — la case du chiffre manquant d’une décomposition',
 	},
 	{
 		avant: '--admin-accent',
@@ -447,7 +447,7 @@ const PAIRES_NON_TEXTE: Paire[] = [
 	{
 		avant: '--warn',
 		arriere: '--paper',
-		ou: 'encadrant.scss .enc-revoir-signal (liseré « ça bloque »)',
+		ou: 'encadrant.scss .enc-revoir-signal (liseré « ça bloque ») ; lessons.scss .decompo .ans.a-corriger (contour de la case à corriger)',
 	},
 	// Anneau de focus du champ de recherche enfant (#718) : il se dessine HORS du cadre du
 	// champ, donc sur le fond de page, pas sur le papier. Posé en `--accent-dark` après que

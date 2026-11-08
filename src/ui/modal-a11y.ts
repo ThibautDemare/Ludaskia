@@ -34,28 +34,78 @@ export const FOCUSABLE =
    voir la modale lui sauter dessus (constat : `e2e/etayage.spec.ts` est tombé dessus).
    On lève donc l'inertage plutôt que de décaler l'interface. Aucun risque de fuite du
    piège à focus : ce qu'on exempte est un texte `sr-only` non focusable — à n'accorder
-   qu'à ça, jamais à un conteneur qui porte des contrôles. */
+   qu'à ça, jamais à un conteneur qui porte des contrôles.
+
+   RÉENTRANT (retour terrain, nov. 2026) : deux modales peuvent être ouvertes à la fois
+   (une célébration rouverte par une navigation sous la première, une célébration par-dessus
+   le passage de niveau). L'ancienne règle, « déjà inerte = pas à moi, je n'y touche pas »,
+   faisait que la 2e ouverture ne tenait RIEN. Si la 1re libération se perdait, toute la page
+   restait inerte jusqu'au rechargement : plus un bouton ne répondait, Accueil compris. Et
+   la 2e modale, frère de la 1re, restait elle-même inerte, donc incliquable. D'où :
+   - un COMPTE de verrous par élément, tenu par les modales seules : l'élément redevient
+     actif quand le dernier verrou tombe, quel que soit l'ordre de fermeture. Un élément
+     inerte AVANT toute modale (posé par un tiers) n'est jamais compté, donc jamais libéré ;
+   - la modale qu'on ouvre est libérée le temps de sa vie, même si une modale déjà ouverte
+     la tenait ; elle lui est rendue à la fermeture ;
+   - le verrou de défilement est compté de même : la valeur d'origine revient quand la
+     DERNIÈRE modale qui le demandait se ferme. Un tiers qui modifierait
+     `body.style.overflow` pendant qu'une modale est ouverte serait écrasé à la dernière
+     fermeture : aucun ne le fait aujourd'hui.
+   ÉCARTÉ (relecture qualité) : rendre la fonction rendue par `lockBackground` idempotente.
+   Elle n'est pas exportée, et son seul appelant, `release()` d'`activateModal`, l'est déjà
+   (`released`) : un double décompte est impossible par construction. */
+const verrous = new WeakMap<Element, number>();
+let verrousDefilement = 0;
+let overflowOrigine = '';
+
 function lockBackground(overlay: HTMLElement, lockScroll: boolean): () => void {
-	const inerted: HTMLElement[] = [];
+	const tenus: HTMLElement[] = [];
 	for (const child of Array.from(document.body.children)) {
 		if (child === overlay) continue;
 		const el = child as HTMLElement;
-		if (el.hasAttribute('inert')) continue; // ne pas « libérer » plus tard ce qui l'était déjà
 		if (el.hasAttribute('data-annonce-persistante')) continue; // cf. en-tête
+		const n = verrous.get(el) ?? 0;
+		if (n === 0 && el.hasAttribute('inert')) continue; // inerte hors de nos verrous : pas à nous
+		verrous.set(el, n + 1);
 		el.setAttribute('inert', '');
-		inerted.push(el);
+		tenus.push(el);
 	}
+	if ((verrous.get(overlay) ?? 0) > 0) overlay.removeAttribute('inert');
 	// Le verrou de défilement est OPTIONNEL : le guide de première visite (ui/tour)
 	// doit pouvoir amener chaque bloc à l'écran (scrollIntoView) tout en gardant le
 	// focus-trap + l'arrière-plan inerte. `inert` n'empêche pas le défilement
 	// programmatique, seul `overflow:hidden` le ferait — d'où ce drapeau.
-	const prevOverflow = document.body.style.overflow;
-	if (lockScroll) document.body.style.overflow = 'hidden';
+	if (lockScroll) {
+		if (verrousDefilement === 0) {
+			overflowOrigine = document.body.style.overflow;
+			document.body.style.overflow = 'hidden';
+		}
+		verrousDefilement++;
+	}
 	return () => {
-		inerted.forEach((el) => el.removeAttribute('inert'));
-		if (lockScroll) document.body.style.overflow = prevOverflow;
+		for (const el of tenus) {
+			const n = (verrous.get(el) ?? 1) - 1;
+			if (n > 0) verrous.set(el, n);
+			else {
+				verrous.delete(el);
+				el.removeAttribute('inert');
+			}
+		}
+		// Encore tenue par une autre modale ouverte : on la lui rend.
+		if ((verrous.get(overlay) ?? 0) > 0) overlay.setAttribute('inert', '');
+		if (lockScroll && verrousDefilement > 0) {
+			verrousDefilement--;
+			if (verrousDefilement === 0) document.body.style.overflow = overflowOrigine;
+		}
 	};
 }
+
+/* Pile des modales ouvertes, la dernière au DESSUS. Chaque modale garde son écouteur
+   `keydown` en capture sur `document` : sans arbitrage, deux modales ouvertes réagissaient
+   toutes deux. Le piège Tab de celle du dessous annulait un Tab au milieu de celle du
+   dessus (focus figé), et un seul Échap fermait les deux (`stopPropagation` n'arrête pas
+   les autres écouteurs du même nœud). Relecture a11y, retour terrain nov. 2026. */
+const pileModales: object[] = [];
 
 /* ---------- Focus ---------- */
 /* Focusables réellement visibles. `offsetParent !== null` écarte ce qui est
@@ -124,8 +174,12 @@ export interface ModalA11yOptions {
 export function activateModal(overlay: HTMLElement, opts: ModalA11yOptions = {}): () => void {
 	const trigger = opts.trigger ?? (document.activeElement as HTMLElement | null);
 	const unlock = lockBackground(overlay, opts.lockScroll !== false);
+	const jeton = {};
+	pileModales.push(jeton);
 
 	function onKeydown(e: KeyboardEvent): void {
+		// Seule la modale du DESSUS pilote le clavier (cf. `pileModales`).
+		if (pileModales[pileModales.length - 1] !== jeton) return;
 		if (e.key === 'Escape') {
 			if (!opts.onEscape) return; // choix forcé : on n'intercepte pas Échap
 			// On consomme l'événement : sinon le handler ESC global (main.ts) se
@@ -158,7 +212,11 @@ export function activateModal(overlay: HTMLElement, opts: ModalA11yOptions = {})
 		if (released) return;
 		released = true;
 		document.removeEventListener('keydown', onKeydown, true);
+		const auDessus = pileModales[pileModales.length - 1] === jeton;
+		pileModales.splice(pileModales.indexOf(jeton), 1);
 		unlock();
-		restoreFocus(trigger, opts.restoreFocusTo);
+		// Recouverte par une autre modale encore ouverte : le focus est dans celle-ci et doit
+		// y rester. Le déclencheur est de toute façon inerte tant qu'elle est ouverte.
+		if (auDessus) restoreFocus(trigger, opts.restoreFocusTo);
 	};
 }

@@ -61,6 +61,11 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
   - **Un message d'erreur identique répété est ré-annoncé** : vider la région, puis
     réécrire au frame suivant. Réaffecter le même `textContent` n'est pas relu partout
     (VoiceOver). Cas d'origine : les refus du composeur de bilan (#778).
+  - **Du contenu AJOUTÉ à une modale déjà ouverte est-il annoncé ?** Le focus est déjà
+    dans la modale : rien ne signale la nouvelle ligne si son conteneur n'est pas une
+    région live. Juger au cas par cas : passer le conteneur en `aria-live` peut faire
+    relire tout le premier remplissage. Cas d'origine : une 2e célébration fusionnée dans
+    la 1re (`showCelebration` sur `#celebrate` déjà ouverte, retour terrain nov. 2026).
   - **Quand le focus va sur un conteneur** (la carte d'une question qui vient de
     s'afficher), ce conteneur est NOMMÉ (`role="group"` + `aria-label` qui dit où
     l'on est : « Question 2 sur 5 »). Un `div` sans rôle ni nom est muet ou relu en

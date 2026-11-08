@@ -449,6 +449,14 @@ const PAIRES_NON_TEXTE: Paire[] = [
 		arriere: '--paper',
 		ou: 'encadrant.scss .enc-revoir-signal (liseré « ça bloque ») ; lessons.scss .decompo .ans.a-corriger (contour de la case à corriger)',
 	},
+	// Le même contour d'attention, côté INTÉRIEUR : la case à corriger prend le fond
+	// `--warn-bg`, et sa bordure `--warn` y est adjacente (relecture a11y, nov. 2026). Le
+	// soulignement de `.ans.a-corriger` (sheets.scss) sur ce même fond était déjà hors table.
+	{
+		avant: '--warn',
+		arriere: '--warn-bg',
+		ou: 'lessons.scss .decompo .ans.a-corriger (case pleine) ; sheets.scss .ans.a-corriger (soulignement sur fond d’attention)',
+	},
 	// Anneau de focus du champ de recherche enfant (#718) : il se dessine HORS du cadre du
 	// champ, donc sur le fond de page, pas sur le papier. Posé en `--accent-dark` après que
 	// la relecture a11y a mesuré `--accent-soft` à 1,04:1 au même endroit — la variante

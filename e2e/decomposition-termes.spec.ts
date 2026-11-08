@@ -121,3 +121,45 @@ test('(e) sens « composer » : la valeur complète tient dans le champ', async 
 	expect(tient, `« ${await champ.inputValue()} » déborde du champ`).toBe(true);
 	expect(errors).toEqual([]);
 });
+
+test('saisie illisible dans une case : seule elle est marquée, contour entier et fond d’alerte', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await ouvrir(page, 820);
+	const champs = page.locator('.decompo input.ans');
+	await champs.first().waitFor();
+	const n = await champs.count();
+	test.skip(n < 2, 'il faut deux cases pour distinguer la case refusée des autres');
+
+	await champs.nth(0).fill('3-');
+	await champs.nth(1).fill((await champs.nth(1).getAttribute('data-answer')) ?? '');
+	await page.locator('#btnVerify').click();
+
+	// Seule la case illisible est marquée.
+	await expect(page.locator('.ans.a-corriger')).toHaveCount(1);
+	await expect(champs.nth(0)).toHaveClass(/a-corriger/);
+
+	const couleurs = (i: number) =>
+		champs.nth(i).evaluate((el) => {
+			const s = getComputedStyle(el);
+			return {
+				haut: s.borderTopColor,
+				gauche: s.borderLeftColor,
+				bas: s.borderBottomColor,
+				largeurs: [s.borderTopWidth, s.borderLeftWidth, s.borderBottomWidth],
+				fond: s.backgroundColor,
+			};
+		});
+	const marquee = await couleurs(0);
+	// Contour ENTIER : haut et gauche visibles, de la couleur du soulignement.
+	expect(marquee.largeurs.every((w) => parseFloat(w) > 0)).toBe(true);
+	expect(marquee.haut).toBe(marquee.bas);
+	expect(marquee.gauche).toBe(marquee.bas);
+	// Fond distinct de celui d'une case neutre (une case qui n'a pas été validée en erreur).
+	const neutre = n > 2 ? await couleurs(2) : null;
+	if (neutre) expect(marquee.fond).not.toBe(neutre.fond);
+	else expect(marquee.fond).not.toBe('rgba(0, 0, 0, 0)');
+
+	expect(errors).toEqual([]);
+});

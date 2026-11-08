@@ -69,7 +69,10 @@
 		   une lettre est un vrai piège. Georgia porte les chiffres alignés (`lnum`, mesuré).
 		   `font-feature-settings` et non `font-variant-numeric` : ce dernier est redéfini plus
 		   bas en `tabular-nums` (.bignum, .decompo, .ans-grand) et y REMPLACERAIT la valeur
-		   héritée, alors que les deux propriétés se cumulent. */
+		   héritée, alors que les deux propriétés se cumulent.
+		   ÉCARTÉ (relecture a11y) : « sans Georgia, `lnum` ne fait rien ». Vrai, mais sans
+		   objet : les polices de repli (Times New Roman, Noto Serif d'Android) ont déjà des
+		   chiffres alignés par défaut. Seule Georgia avait le défaut. */
 		font-feature-settings: 'lnum' 1;
 	}
 	.page {

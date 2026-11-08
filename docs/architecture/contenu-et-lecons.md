@@ -827,8 +827,9 @@ un **pavé de 3 boutons** dédié (`.ans-signe`, sans clavier virtuel) plutôt q
 libre — #380, `core/signes.ts` ; même mécanisme, transverse, pour `num-dec-comparer`
 (ci-dessous). Tous les grands nombres affichés sont
 groupés via `core/nombres.ts` (`formatNombre`, classe `.bignum`) ; le champ de réponse
-« grand nombre » (`.ans-grand`, ≥ 10 000) **regroupe aussi sa saisie à la frappe** (écho U+202F,
-`ui/grand-nombre-echo.ts`, #327).
+« grand nombre » (`.ans-grand` en fiche, `.saisie-groupee` en révision et bilan guidé ; règle
+`saisieGroupee`, réponse numérique ≥ 10 000) **regroupe aussi sa saisie à la frappe** (écho
+U+202F, `ui/grand-nombre-echo.ts`, #327).
 
 #### `maths/ranger-entiers.ts` (#448, CE2) — « Je range les nombres »
 
@@ -892,7 +893,10 @@ sans jamais tirer le rang des millions. La **décomposition multiplicative** (fo
 « chiffre × valeur de rang » : `4 × 1000000 + 5 × 100000 + …`, sens décomposer troué
 dominant → réponse = 1 chiffre) est une leçon distincte de la décompo « en rangs » CE2 ;
 son `levels: ['cm1']` est porté par le descripteur (le catalogue prend
-`exerciseType.levels ?? d.levels ?? ['ce2']`).
+`exerciseType.levels ?? d.levels ?? ['ce2']`). Elle tire **4 à 6 chiffres** (40/35/25 %).
+Les trois leçons de décomposition portent le drapeau de présentation **`decomposition`**
+(bloc `.decompo` terme par terme, cf. [Core](core.md)). Convention conservée : « 1000 »
+s'écrit sans espace.
 
 #### `maths/decimaux.ts` (#246, CM1) — rubrique « Nombres décimaux »
 

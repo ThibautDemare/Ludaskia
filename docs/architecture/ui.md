@@ -746,6 +746,14 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   `ui-modal.ts` (uiAlert/Confirm/Prompt) **et** par toutes les modales statiques à contenu
   sur-mesure (`effects.ts`, `unlocks-view.ts`, `onboarding.ts`, `tour.ts`, voile de
   `mise-a-jour.ts`).
+  **Le verrou est réentrant** : `lockBackground` tient un **compte de verrous par élément**
+  (`WeakMap`) et un verrou de défilement compté ; un élément redevient actif quand le
+  **dernier** verrou tombe, quel que soit l'ordre de fermeture, et un `inert` posé hors de
+  ces verrous n'est jamais levé. La modale qu'on ouvre est libérée de l'`inert` posé par une
+  modale déjà ouverte. Une pile (`pileModales`) désigne la modale **du dessus** : elle seule
+  pilote le clavier (Tab, Échap) et restaure le focus. Piège évité : une navigation (geste
+  retour) sous la modale de fin de leçon, puis une 2e célébration par-dessus, perdait la
+  libération et laissait la page inerte (bouton « Accueil » mort).
 - **`ui-modal.ts`** (#230) — modales **custom accessibles** qui remplacent les dialogues
   natifs du navigateur : `uiAlert` → `Promise<void>`, `uiConfirm` → `Promise<boolean>`,
   `uiPrompt` → `Promise<string|null>` (remplacent **1:1** les appels bloquants
@@ -757,7 +765,9 @@ pure](core.md)) ; ce module-ci ne fait que le rendu et le câblage :
   modale dédiée **passage de niveau** `showLevelUp`/`hideLevelUp` (médaillon doré
   animé ; un `then` optionnel enchaîne sur `showCelebration` s'il y a d'autres
   gains). `announceRewards(niveauGagne, recompensesNiv, celeb)` factorise ce
-  gate (niveau → sa modale, puis la générique ; sinon la générique seule) : il
+  gate (niveau → sa modale, puis la générique ; sinon la générique seule). Appelés sur une
+  modale **déjà ouverte**, `showCelebration`/`showLevelUp` **ajoutent** (récompenses à la
+  liste, déblocages, niveau le plus haut, suites enchaînées) au lieu de la réactiver. Il
   est la porte d'entrée commune des écrans de fin (leçon, bilan, sprint,
   parcours/révision ortho, **révision espacée**, #659) — cf.
   [Gamification](gamification.md) pour le calcul en amont (`recompensesFin` ou
@@ -1877,7 +1887,9 @@ pas en fiche.
   (#42) ») ; le rejet « Tab n'est pas une troisième porte » est documenté dans l'en-tête du
   module.
 - **`grand-nombre-echo.ts`** (#327) — **écho groupé des grands nombres à la frappe** sur les
-  champs **`.ans-grand`** (réponses numériques ≥ 10 000 des leçons « millions » CM1, #240).
+  champs **`.ans-grand`** (fiche) et **`.saisie-groupee`** (`#revInput` de la révision,
+  `#bpInput` du bilan guidé) : réponses numériques ≥ 10 000 (leçons « millions » CM1, #240),
+  règle unique `saisieGroupee(item)` de `core/items.ts`.
   `installGroupedNumberEcho()` (appelé une fois dans `wireDOM`, modèle de
   `installVisiblePasswordReveal`) pose **deux écouteurs délégués** : `input` regroupe la valeur
   par classes de 3 (U+202F, via `grouperChiffresSaisis` de `core/nombres.ts`), **curseur préservé**

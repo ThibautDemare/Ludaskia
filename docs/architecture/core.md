@@ -413,6 +413,14 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   par le runner (`ui/lecon-appariement.ts:genManches` l'emprunte en priorité — voir
   `data/francais/familles.ts:tirerSessionAppariement` dans [Contenu &
   leçons](contenu-et-lecons.md)).
+  Le type `text` porte aussi un drapeau de **présentation** **`decomposition`** (énoncé
+  « N = t1 + … », propagé à l'`Item` par `genLessonItem`/`catalog.ts`, accepté par le schéma de
+  partage `core/partage/exercices.ts`) : **`decompositionHTML`** (`items.ts`) rend un bloc
+  `.decompo` (cible sur sa ligne, termes insécables, coupure seulement entre deux termes) ;
+  appelé par `renderItem`, `ui/revision.ts` et `ui/bilan-parcours-question.ts`. Renvoie `null`
+  si la forme n'est pas « un `=`, un champ » : l'appelant garde alors le rendu simple.
+  **`saisieGroupee(item)`** : règle unique « réponse numérique ≥ 10 000 » (champ large +
+  écho groupé), cf. [UI](ui.md).
   Le type `text` porte un champ optionnel **`intervalle`**
   (intercalation par intervalle OUVERT — #240 au CM1, #446 au CE2) : quand il est présent, la
   correction accepte **toute valeur strictement comprise** entre les deux bornes (et non plus

@@ -156,3 +156,32 @@ test(".angle-aide.screen-only : visible à l'écran, display:none à l'impressio
 
 	expect(errors).toEqual([]);
 });
+
+/* --- Chiffres alignés (relecture papier, nov. 2026) ------------------- */
+
+/* Georgia (`--serif`, police d'impression) a des chiffres elzéviriens : son « 0 » a la
+   hauteur d'un « o », piège sur une décomposition. Exigence : `lnum` actif sur tout ce que
+   porte la fiche, y compris les éléments qui redéfinissent `font-variant-numeric`
+   (`.bignum`, `.decompo`), d'où `font-feature-settings` côté source. On lit la valeur
+   CALCULÉE, indépendante de la police réellement installée sur la machine. */
+test('impression : les chiffres sont alignés (lnum) sur le texte, les .bignum et les .decompo-terme', async ({
+	page,
+}) => {
+	const errors = watchErrors(page);
+	await page.addInitScript(
+		`localStorage.setItem('ludaskia_profiles', JSON.stringify({ list: [{ uuid: 'e2e', name: 'E2E', emoji: 'x', updatedAt: 1, niveauReference: 'cm1' }], active: 'e2e' }));`,
+	);
+	await gotoHash(page, 'lecon-num-decompose-multiplicative');
+	await expect(page.locator('.decompo-terme .bignum').first()).toBeVisible();
+
+	await page.emulateMedia({ media: 'print' });
+
+	for (const sel of ['.consigne-line', '.bignum', '.decompo-terme']) {
+		const valeur = await page
+			.locator(sel)
+			.first()
+			.evaluate((el) => getComputedStyle(el).fontFeatureSettings);
+		expect(valeur, `${sel} : font-feature-settings`).toContain('lnum');
+	}
+	expect(errors).toEqual([]);
+});

@@ -34,7 +34,7 @@
 import type { ConsigneFiche, Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
 import type { LessonInput } from '../_shared';
 import type { SchoolLevel } from '../../core/catalog';
-import { calibrated, consigneParNiveau } from '../../core/level-combinators';
+import { calibrated } from '../../core/level-combinators';
 import { rnd } from '../../core/utils';
 import { formatNombre } from '../../core/nombres';
 import { checkNumerique } from '../../core/check-helpers';
@@ -171,16 +171,18 @@ function decomposeMultiplicativeFact(): Exercise {
    chiffre manque) et « composer » (le nombre manque). L'ancien « Complète la décomposition… »
    était faux pour le second (relecture impression, nov. 2026 ; convention « Une consigne de
    fiche couvre TOUS les sens », docs/architecture/conventions-redaction.md).
-   - CE2 : on nomme ce qu'on écrit, pas les rangs. « Complète avec les dizaines… » se lisait
-     comme « ajoute des dizaines » (redacteur-contenu-francais), et les rangs se voient déjà
-     dans les items. « Égalité » est au programme du cycle 2 et vaut pour les deux sens
-     (pedagogue-primaire).
-   - CM1 : « décomposer, composer » est le vocabulaire du programme de CM1 (pedagogue-primaire).
-     Le multiplicatif n'est pas redit : le titre de la leçon le porte, et « complète avec des
+   UNE consigne pour les cinq leçons, CE2 comme CM1 :
+   - on nomme ce qu'on écrit, pas les rangs. « Complète avec les dizaines… » se lisait comme
+     « ajoute des dizaines » (redacteur-contenu-francais), et les rangs se voient dans les
+     items. « Égalité » est au programme du cycle 2 et vaut pour les deux sens
+     (pedagogue-primaire) ;
+   - UN seul verbe d'action. Une version CM1 « Décompose ou compose chaque nombre : écris… »
+     a été écartée : deux verbes presque homophones, à départager avant d'agir, alors que la
+     forme de l'item montre déjà le sens (specialiste-troubles-apprentissage, relecture a11y).
+     Le vocabulaire « décomposer » du programme de CM1 reste porté par le titre des leçons ;
+   - le multiplicatif n'est pas redit : le titre le porte, et « complète avec des
      multiplications » laissait croire qu'il fallait en ajouter. */
-const CONSIGNE_DECOMPO_CE2 = 'Écris le chiffre ou le nombre qui manque dans chaque égalité.';
-const CONSIGNE_DECOMPO_CM1 =
-	'Décompose ou compose chaque nombre : écris le chiffre ou le nombre qui manque.';
+const CONSIGNE_DECOMPO = 'Écris le chiffre ou le nombre qui manque dans chaque égalité.';
 
 /* ExerciseType mono-mode (rendu fiche/bilan/sprint via le chemin saisie). Le check
    tolère les espaces de groupement de la saisie (« 1 002 050 », #240). `consigne` : consigne
@@ -252,7 +254,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		id: 'num-decompose-100',
 		label: "Je décompose jusqu'à 100",
 		motsCles: ['décomposer', 'dizaines et unités'],
-		exerciseType: positionType(() => decomposeFact(1), CONSIGNE_DECOMPO_CE2),
+		exerciseType: positionType(() => decomposeFact(1), CONSIGNE_DECOMPO),
 		etayage: [
 			etayagePosition('Décomposer un nombre à deux chiffres', REGLE_RANGS, {
 				genre: 'rangs',
@@ -265,7 +267,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		id: 'num-decompose-1000',
 		label: "Je décompose jusqu'à 1 000",
 		motsCles: ['décomposer', 'centaines', 'dizaines et unités'],
-		exerciseType: positionType(() => decomposeFact(2), CONSIGNE_DECOMPO_CE2),
+		exerciseType: positionType(() => decomposeFact(2), CONSIGNE_DECOMPO),
 		// 305 : le zéro intercalaire, point dur de la décomposition (« il n'y a rien » n'est
 		// pas « il n'y a pas de rang »).
 		etayage: [
@@ -290,10 +292,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		// le rang des millions n'y est jamais tiré (#777, critère 26).
 		levels: ['ce2', 'cm1'],
 		exerciseType: calibrated<number>({ ce2: 3, cm1: 5 }, (maxIdx) =>
-			positionType(
-				() => decomposeFact(maxIdx),
-				consigneParNiveau({ ce2: CONSIGNE_DECOMPO_CE2, cm1: CONSIGNE_DECOMPO_CM1 }),
-			),
+			positionType(() => decomposeFact(maxIdx), CONSIGNE_DECOMPO),
 		),
 		// Deux entrées : la leçon change de plage selon la classe (4 chiffres au CE2, 6 au
 		// CM1), et un exemple à 4 chiffres n'apprendrait rien à un CM1 qui bute sur les
@@ -319,7 +318,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		label: 'Je décompose avec les multiplications',
 		motsCles: ['décomposer', 'fois', 'milliers', 'centaines'],
 		levels: ['cm1'],
-		exerciseType: positionType(decomposeMultiplicativeFact, CONSIGNE_DECOMPO_CM1),
+		exerciseType: positionType(decomposeMultiplicativeFact, CONSIGNE_DECOMPO),
 		etayage: [
 			etayagePosition(
 				'Décomposer avec des multiplications',

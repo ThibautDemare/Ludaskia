@@ -826,4 +826,6 @@ d'énumération de rangs que les items montrent déjà.
 deux-points, ni × dans une consigne, 90 caractères au plus ». Le deux-points se lit comme une
 pause en TTS et reste admis (consigne CM1 des décompositions) ; une règle mécanique sur la
 ponctuation ne dirait rien de la seule chose qui compte ici, que la consigne soit vraie pour
-chaque item.
+chaque item. Écarté aussi (relecture qualité) : un test qui fige le texte des consignes de
+décomposition. Il ne verrouillerait que leur factorisation en constantes, pas leur justesse,
+qui relève de cette règle et des relectures pédagogue et rédacteur.

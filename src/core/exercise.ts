@@ -144,6 +144,10 @@ export type Exercise =
 	// commande trois choses, toutes propagées jusqu'à l'`Item` : la mise en MAJUSCULES
 	// de la saisie à la frappe, la correction insensible à la casse (arbitrage
 	// mainteneur), et le feedback qui NOMME la règle enfreinte après une erreur.
+	// `decomposition` : indice de PRÉSENTATION seul (ni la correction ni le champ n'en
+	// dépendent). L'énoncé est une somme « N = t1 + t2 + … » (ou « t1 + … = @ »), que la
+	// fiche rend terme par terme sans jamais couper un terme en fin de ligne
+	// (`decompositionHTML`, core/items.ts). Absent ⇒ énoncé rendu d'un bloc, comme avant.
 	| {
 			type: 'text';
 			question: string;
@@ -152,6 +156,7 @@ export type Exercise =
 			figure?: SafeHtml;
 			champHeure?: boolean;
 			champRomain?: boolean;
+			decomposition?: boolean;
 			parle?: string;
 			intervalle?: [number, number];
 	  }

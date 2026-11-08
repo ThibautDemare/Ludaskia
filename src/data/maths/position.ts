@@ -26,7 +26,10 @@
      plafonnée à 999 999 : le programme de CM1 s'arrête aux nombres à six
      chiffres (#777, critère 26).
    - décomposition MULTIPLICATIVE = NOUVELLE leçon CM1, distincte (forme
-     « chiffre × valeur de rang », sens « décomposer » dominant).
+     « chiffre × valeur de rang », sens « décomposer » dominant), sur 4 à 6 chiffres
+     (retour terrain de novembre 2026 : elle tirait encore des millions).
+   - les deux décompositions portent `decomposition: true` : l'écran les rend terme par
+     terme, sans couper un terme en fin de ligne (core/items.ts → decompositionHTML).
    ============================================================ */
 import type { ConsigneFiche, Exercise, ExerciseType, GenerateOpts } from '../../core/exercise';
 import type { LessonInput } from '../_shared';
@@ -61,6 +64,12 @@ const pluriel = (mot: string, k: number) => {
 
 function ex(question: string, answer: number): Exercise {
 	return { type: 'text', question, answer: String(answer) };
+}
+
+/* Item de DÉCOMPOSITION (« N = t1 + t2 + … » ou « t1 + t2 + … = @ ») : même exercice,
+   plus le drapeau de présentation qui fait rendre l'énoncé en termes insécables. */
+function exDecompo(question: string, answer: number): Exercise {
+	return { type: 'text', question, answer: String(answer), decomposition: true };
 }
 
 /* ---------- Leçon 1 : « La valeur des chiffres » ----------
@@ -108,7 +117,7 @@ function decomposeFact(maxIdx: number): Exercise {
 		// formé reste ≤ 6 chiffres saisis (contrainte UX #240).
 		const termes = [];
 		for (let i = maxIdx; i >= 0; i--) termes.push(terme(i));
-		return ex(`${termes.join(' + ')} = @`, n);
+		return exDecompo(`${termes.join(' + ')} = @`, n);
 	}
 	// Décomposer (dominant) : un rang troué (varié), réponse = son chiffre (1 caractère).
 	const blank = rnd(0, maxIdx);
@@ -116,7 +125,7 @@ function decomposeFact(maxIdx: number): Exercise {
 	for (let i = maxIdx; i >= 0; i--) {
 		termes.push(i === blank ? `@ ${pluriel(RANGS[i].mot, 2)}` : terme(i));
 	}
-	return ex(`${formatNombre(n)} = ${termes.join(' + ')}`, digitAt(n, RANGS[blank].place));
+	return exDecompo(`${formatNombre(n)} = ${termes.join(' + ')}`, digitAt(n, RANGS[blank].place));
 }
 
 /* ---------- Décomposition MULTIPLICATIVE (nouvelle leçon CM1, #240) ----------
@@ -125,21 +134,29 @@ function decomposeFact(maxIdx: number): Exercise {
      4 × 1000000 + 5 × 100000 + 3 × 10000 + 8 × 1000 + …
    Sens « décomposer » dominant : un FACTEUR/chiffre troué → réponse = le chiffre
    du rang (1 caractère, conforme à la contrainte de saisie). Sens « composer »
-   seulement quand le nombre à taper reste ≤ 6 chiffres. */
+   minoritaire, le nombre à taper restant ≤ 6 chiffres.
+   Plage 4 à 6 chiffres (retour terrain, nov. 2026 ; avis pedagogue-primaire) : la leçon
+   tirait 5 à 7 chiffres. Plafond 999 999 comme la décomposition « en rangs » (#777,
+   critère 26), le programme de CM1 s'arrêtant aux nombres à six chiffres. Plancher à
+   4 chiffres parce que le programme s'y limite pendant les deux premières périodes, et
+   qu'une plage unique sert toute l'année : la structure « chiffre × valeur » se
+   comprend d'abord sur quatre termes. D'où la répartition 40 / 35 / 25 %.
+   `formatNombre` garde « 1000 » sans espace à côté de « 10 000 » : convention globale de
+   l'application, que le pédagogue préfère ne pas rompre pour une seule leçon. */
 function decomposeMultiplicativeFact(): Exercise {
-	// 5 à 7 chiffres (rangs jusqu'au million, idx 4..6).
-	const maxIdx = rnd(4, 6);
+	const tirage = rnd(1, 20);
+	const maxIdx = tirage <= 8 ? 3 : tirage <= 15 ? 4 : 5; // 4, 5 ou 6 chiffres
 	const min = RANGS[maxIdx].place;
-	const n = rnd(min, Math.min(9_999_999, min * 10 - 1));
+	const n = rnd(min, min * 10 - 1);
 	const terme = (idx: number) => {
 		const d = digitAt(n, RANGS[idx].place);
 		return `${d} × ${formatNombre(RANGS[idx].place)}`;
 	};
-	if (rnd(1, 10) <= 2 && n <= 999999) {
-		// Composer (minoritaire) : produit-somme → nombre, seulement si ≤ 6 chiffres.
+	if (rnd(1, 10) <= 2) {
+		// Composer (minoritaire) : produit-somme → nombre.
 		const termes = [];
 		for (let i = maxIdx; i >= 0; i--) termes.push(terme(i));
-		return ex(`${termes.join(' + ')} = @`, n);
+		return exDecompo(`${termes.join(' + ')} = @`, n);
 	}
 	// Décomposer (dominant) : un facteur troué, réponse = le chiffre du rang.
 	const blank = rnd(0, maxIdx);
@@ -147,8 +164,23 @@ function decomposeMultiplicativeFact(): Exercise {
 	for (let i = maxIdx; i >= 0; i--) {
 		termes.push(i === blank ? `@ × ${formatNombre(RANGS[i].place)}` : terme(i));
 	}
-	return ex(`${formatNombre(n)} = ${termes.join(' + ')}`, digitAt(n, RANGS[blank].place));
+	return exDecompo(`${formatNombre(n)} = ${termes.join(' + ')}`, digitAt(n, RANGS[blank].place));
 }
+
+/* Consignes des décompositions : elles chapeautent DEUX sens d'item, « décomposer » (un
+   chiffre manque) et « composer » (le nombre manque). L'ancien « Complète la décomposition… »
+   était faux pour le second (relecture impression, nov. 2026 ; convention « Une consigne de
+   fiche couvre TOUS les sens », docs/architecture/conventions-redaction.md).
+   - CE2 : on nomme ce qu'on écrit, pas les rangs. « Complète avec les dizaines… » se lisait
+     comme « ajoute des dizaines » (redacteur-contenu-francais), et les rangs se voient déjà
+     dans les items. « Égalité » est au programme du cycle 2 et vaut pour les deux sens
+     (pedagogue-primaire).
+   - CM1 : « décomposer, composer » est le vocabulaire du programme de CM1 (pedagogue-primaire).
+     Le multiplicatif n'est pas redit : le titre de la leçon le porte, et « complète avec des
+     multiplications » laissait croire qu'il fallait en ajouter. */
+const CONSIGNE_DECOMPO_CE2 = 'Écris le chiffre ou le nombre qui manque dans chaque égalité.';
+const CONSIGNE_DECOMPO_CM1 =
+	'Décompose ou compose chaque nombre : écris le chiffre ou le nombre qui manque.';
 
 /* ExerciseType mono-mode (rendu fiche/bilan/sprint via le chemin saisie). Le check
    tolère les espaces de groupement de la saisie (« 1 002 050 », #240). `consigne` : consigne
@@ -220,10 +252,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		id: 'num-decompose-100',
 		label: "Je décompose jusqu'à 100",
 		motsCles: ['décomposer', 'dizaines et unités'],
-		exerciseType: positionType(
-			() => decomposeFact(1),
-			'Complète la décomposition du nombre en dizaines et en unités.',
-		),
+		exerciseType: positionType(() => decomposeFact(1), CONSIGNE_DECOMPO_CE2),
 		etayage: [
 			etayagePosition('Décomposer un nombre à deux chiffres', REGLE_RANGS, {
 				genre: 'rangs',
@@ -236,10 +265,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		id: 'num-decompose-1000',
 		label: "Je décompose jusqu'à 1 000",
 		motsCles: ['décomposer', 'centaines', 'dizaines et unités'],
-		exerciseType: positionType(
-			() => decomposeFact(2),
-			'Complète la décomposition du nombre en centaines, dizaines et unités.',
-		),
+		exerciseType: positionType(() => decomposeFact(2), CONSIGNE_DECOMPO_CE2),
 		// 305 : le zéro intercalaire, point dur de la décomposition (« il n'y a rien » n'est
 		// pas « il n'y a pas de rang »).
 		etayage: [
@@ -266,10 +292,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		exerciseType: calibrated<number>({ ce2: 3, cm1: 5 }, (maxIdx) =>
 			positionType(
 				() => decomposeFact(maxIdx),
-				consigneParNiveau({
-					ce2: 'Complète la décomposition du nombre en milliers, centaines, dizaines et unités.',
-					cm1: 'Complète la décomposition du grand nombre, rang par rang.',
-				}),
+				consigneParNiveau({ ce2: CONSIGNE_DECOMPO_CE2, cm1: CONSIGNE_DECOMPO_CM1 }),
 			),
 		),
 		// Deux entrées : la leçon change de plage selon la classe (4 chiffres au CE2, 6 au
@@ -296,10 +319,7 @@ export const POSITION_LESSONS: PositionLessonDef[] = [
 		label: 'Je décompose avec les multiplications',
 		motsCles: ['décomposer', 'fois', 'milliers', 'centaines'],
 		levels: ['cm1'],
-		exerciseType: positionType(
-			decomposeMultiplicativeFact,
-			'Complète la décomposition du nombre avec des multiplications : chiffre × valeur du rang.',
-		),
+		exerciseType: positionType(decomposeMultiplicativeFact, CONSIGNE_DECOMPO_CM1),
 		etayage: [
 			etayagePosition(
 				'Décomposer avec des multiplications',

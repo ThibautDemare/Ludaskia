@@ -2,7 +2,8 @@
    Écho groupé des grands nombres à la frappe (#327).
 
    Les champs `.ans-grand` (réponses numériques ≥ 5 chiffres des leçons « millions »
-   CM1, #240) reformatent leur contenu EN TEMPS RÉEL : à chaque frappe, les chiffres
+   CM1, #240), et leurs pendants `.saisie-groupee` de la révision et du bilan guidé
+   (retour terrain, nov. 2026), reformatent leur contenu EN TEMPS RÉEL : à chaque frappe, les chiffres
    sont regroupés par classes de 3 séparées par une espace fine insécable U+202F
    (« 1 400 000 ») — la graphie française des grands nombres. Lisibilité accrue, et
    l'enfant relit sa réponse comme l'énoncé l'affiche.
@@ -63,9 +64,13 @@ function reformater(el: HTMLInputElement): void {
 	poser(el, chiffres, compterChiffres(valeur.slice(0, el.selectionStart ?? valeur.length)));
 }
 
-/** Cible-t-on un champ `.ans-grand` ? */
+/** Cible-t-on un champ à grand nombre ? `.ans-grand` sur la fiche, `.saisie-groupee` en
+ *  révision et dans le bilan guidé (même règle, `saisieGroupee` dans core/items.ts). */
 function estChampGrand(el: EventTarget | null): el is HTMLInputElement {
-	return el instanceof HTMLInputElement && el.classList.contains('ans-grand');
+	return (
+		el instanceof HTMLInputElement &&
+		(el.classList.contains('ans-grand') || el.classList.contains('saisie-groupee'))
+	);
 }
 
 /** Supprime un caractère qui « tombe » sur un séparateur (Retour arrière / Suppr), en

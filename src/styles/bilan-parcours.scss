@@ -170,6 +170,12 @@
 	border: 2px solid var(--field-line);
 	border-radius: 10px;
 }
+/* Réponse ≥ 10 000 (`saisieGroupee`, core/items.ts) : écho groupé à la frappe ; la largeur
+   tient « 9 999 999 » plus le rembourrage (box-sizing: border-box). */
+.bp-input.saisie-groupee {
+	width: calc(12ch + 24px);
+	font-variant-numeric: tabular-nums;
+}
 .bp-input-text {
 	width: 100%;
 }

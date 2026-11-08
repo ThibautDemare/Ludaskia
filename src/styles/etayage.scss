@@ -468,10 +468,19 @@
 .a-etayage {
 	position: relative;
 }
-/* Couloir réservé (le titre de fiche est centré : on décale des DEUX côtés). */
+/* Fiche : le bouton se cale sur la rangée du TITRE, qui lui réserve sa largeur ET sa
+   hauteur. Retour terrain (nov. 2026) : décalé de 10 px vers le bas, le bouton de 44 px
+   débordait sous le titre (17 px) et recouvrait la fin de la 1re ligne de consigne
+   (« chiffre × vale… ») ; et le couloir posé aussi à GAUCHE, pour un titre réputé centré
+   qui ne l'est pas, décalait le titre de 52 px par rapport à la consigne. */
+.fiche.a-etayage > .etayage-btn {
+	top: 0;
+	right: 0;
+}
 .a-etayage .fiche-head {
-	padding-left: 52px;
-	padding-right: 52px;
+	min-height: 44px;
+	align-items: center;
+	padding-right: 56px;
 }
 /* Sur un runner, le titre est `.sprint-theme`, dont le couloir (40 px, cf.
    aide-exercice.scss) ne suffit plus dès que les DEUX boutons ronds cohabitent : le

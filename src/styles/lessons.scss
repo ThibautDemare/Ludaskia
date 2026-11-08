@@ -183,6 +183,101 @@
 	   chiffres tabulaires ; l'emphase d'un nombre focal, si besoin, passe par `**…**`. */
 }
 
+/* ---- Décompositions rendues terme par terme (retour terrain, nov. 2026) ----
+   Markup : `decompositionHTML` (core/items.ts). Avis designer-ux-enfant :
+   - UN bloc sur toute la largeur de la ligne d'item (`.conj-op` est un flex-wrap : sans
+     `flex-basis: 100%`, le bloc se rangerait à côté de l'icône d'écoute) ;
+   - le nombre à décomposer sur sa propre ligne, puis les termes ;
+   - chaque terme INSÉCABLE, « + » d'ouverture compris : la ligne ne se coupe qu'entre deux
+     termes, jamais entre « 6 × » et « 10 000 » ;
+   - UNE seule taille pour tout l'item : `.bignum` grossissait « 10 000 » mais pas « 1000 »
+     ni les chiffres, et le regard sautait d'une taille à l'autre dans la même somme ;
+   - le trou en CASE pleine plutôt qu'en soulignement, focus en anneau (pas de saut de
+     taille). Contour `--field-line` sur `--paper` : couple tenu sur les six thèmes par
+     tests/contraste-tokens.test.ts. Écran seulement : l'impression garde le soulignement
+     commun des champs (print.scss).
+   ÉCARTÉ (relecture impression) : souder « = champ » au dernier terme pour qu'il ne passe
+   pas seul à la ligne. En sens « composer », « = champ » EST un terme : il ouvre la ligne
+   comme le fait un « + », et c'est la règle de coupure que l'item enseigne. */
+.decompo {
+	flex-basis: 100%;
+	line-height: 2.2;
+	font-variant-numeric: tabular-nums;
+}
+.decompo .bignum {
+	font-size: inherit;
+}
+.decompo-cible {
+	display: block;
+	font-weight: 700;
+	line-height: 1.6;
+}
+.decompo-termes {
+	display: block;
+	padding-left: 0.75em;
+}
+.decompo-terme {
+	display: inline-block;
+	white-space: nowrap;
+	margin-right: 0.4em;
+}
+/* Bilan guidé et révision : une question par écran, déjà en grand et centrée ; le bloc
+   garde la taille de l'écran et se centre comme lui. */
+.bp-enonce .decompo,
+.rev-q .decompo {
+	text-align: center;
+}
+.bp-enonce .decompo-termes,
+.rev-q .decompo-termes {
+	padding-left: 0;
+}
+@media screen {
+	.conj-op > .decompo {
+		font-size: clamp(1.1rem, 3.4vw, 1.4rem);
+	}
+	.decompo-cible {
+		font-size: 1.15em;
+	}
+	.decompo .ans {
+		font-size: inherit;
+		min-height: 44px;
+		min-width: 44px; /* cible tactile : à 360 px, 2.2em ne fait que 39 px (relecture a11y) */
+		margin: 0 0.15em;
+		border: 2px solid var(--field-line);
+		border-radius: 8px;
+		background: var(--paper);
+	}
+	/* Case d'UN chiffre (sens « décomposer ») : jamais plus large que ce qu'elle attend. */
+	.decompo:not(.decompo--composer) .ans {
+		width: 2.2em;
+	}
+	/* Sens « composer » : le nombre entier à taper. Jusqu'à 9 999, la largeur d'un nombre
+	   à 4 chiffres (la case d'un chiffre tronquait « 1245 » en « 124 ») ; au-delà, le champ
+	   est un `.ans-grand` (11ch, écho groupé à la frappe), qui garde sa largeur. */
+	.decompo--composer .ans:not(.ans-grand) {
+		width: 5.5ch;
+	}
+	/* Verdicts APRÈS le focus (même règle que sheets.scss, #312) : le contour prend la
+	   couleur de l'état, sur les quatre côtés puisque le champ est une case. */
+	.decompo .ans:focus {
+		border-color: var(--accent);
+	}
+	.decompo .ans.correct {
+		border-color: var(--ok);
+	}
+	.decompo .ans.wrong {
+		border-color: var(--ko);
+		background: var(--ko-soft);
+	}
+	/* Saisie illisible (état d'attention de sheets.scss, jamais un verdict) : même logique,
+	   le contour entier dit l'état ; et le fond d'attention, que `background: --paper`
+	   ci-dessus masquerait sinon. */
+	.decompo .ans.a-corriger {
+		border-color: var(--warn);
+		background: var(--warn-bg);
+	}
+}
+
 /* ---- Opérations posées (#97) : grille en colonnes ---- */
 .posee {
 	display: inline-grid;

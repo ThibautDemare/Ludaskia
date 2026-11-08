@@ -25,6 +25,7 @@ import {
 import {
 	ariaChamp,
 	createRenderContext,
+	decompositionHTML,
 	enonceTexte,
 	figureBlock,
 	formatChampReponse,
@@ -32,6 +33,7 @@ import {
 	MARQUE_TROU,
 	poserAuTrou,
 	renderItem,
+	saisieGroupee,
 	TEXT_ANSWER_INPUT_ATTRS,
 } from '../core/items';
 import { libelleChoix, PONCT_MOTS } from '../core/erreur-representation';
@@ -397,11 +399,15 @@ function monterSaisie(
 		(typeof it.answer === 'number' && !Number.isInteger(it.answer));
 	const champ = texte
 		? html`<input id="bpInput" class="bp-input bp-input-text"${nom}${attendue} ${TEXT_ANSWER_INPUT_ATTRS}>`
-		: html`<input id="bpInput" class="bp-input" inputmode="${decimal ? 'decimal' : 'numeric'}" autocomplete="off"${nom}${attendue}>`;
+		: html`<input id="bpInput" class="bp-input${saisieGroupee(it) ? ' saisie-groupee' : ''}" inputmode="${decimal ? 'decimal' : 'numeric'}" autocomplete="off"${nom}${attendue}>`;
 	// Le `@` place le champ ; un énoncé sans trou (question à figure) le reçoit à sa suite.
-	const enonce = it.text.includes('@')
-		? poserAuTrou(enonceTexte(it.text), '@', champ)
-		: html`${enonceTexte(it.text)} ${champ}`;
+	// Une décomposition se rend terme par terme : `.bp-enonce` est un flex-wrap, qui
+	// couperait sinon « 6 × » et « 10 000 » sur deux lignes (cf. `decompositionHTML`).
+	const enonce =
+		(it.decomposition ? decompositionHTML(it.text, champ) : null) ??
+		(it.text.includes('@')
+			? poserAuTrou(enonceTexte(it.text), '@', champ)
+			: html`${enonceTexte(it.text)} ${champ}`);
 	stage.innerHTML =
 		html`${consigneHTML(q, it.parle ?? it.text)}${figureBlock(it.figure)}<div class="bp-enonce">${enonce}</div>`.balisage;
 	const inp = stage.querySelector<HTMLInputElement>('#bpInput')!;

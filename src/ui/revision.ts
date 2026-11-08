@@ -30,7 +30,9 @@ import {
 	ariaChamp,
 	checkItemAnswer,
 	createRenderContext,
+	decompositionHTML,
 	formatChampReponse,
+	saisieGroupee,
 	enonceTexte,
 	figureBlock,
 	renderItem,
@@ -591,8 +593,12 @@ function renderNum(it: Extract<RevItem, { kind: 'num' }>) {
 	const nom = ariaChamp(it.item, formatChampReponse(it.item));
 	const champ = texte
 		? html`<input id="revInput" class="rev-input rev-input-text"${nom} ${TEXT_ANSWER_INPUT_ATTRS}>`
-		: html`<input id="revInput" class="rev-input" inputmode="numeric" autocomplete="off"${nom}>`;
-	const q = poserAuTrou(enonceTexte(it.item.text), '@', champ);
+		: html`<input id="revInput" class="rev-input${saisieGroupee(it.item) ? ' saisie-groupee' : ''}" inputmode="numeric" autocomplete="off"${nom}>`;
+	// Décomposition : rendue terme par terme, `.rev-q` étant un flex-wrap qui couperait
+	// sinon un terme en deux (cf. `decompositionHTML`).
+	const q =
+		(it.item.decomposition ? decompositionHTML(it.item.text, champ) : null) ??
+		poserAuTrou(enonceTexte(it.item.text), '@', champ);
 	// Consigne d'action (#265) : si le type en fournit une, elle s'affiche au-dessus de
 	// l'énoncé et porte la lecture vocale GLOBALE, consigne PUIS énoncé (contrat de
 	// `consigneRenforceeHTML`) ; l'énoncé garde la sienne sinon. Depuis que toute leçon déclare

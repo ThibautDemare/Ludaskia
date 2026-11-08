@@ -77,6 +77,13 @@
 	padding: 2px 6px;
 	color: var(--ink);
 }
+/* Réponse ≥ 10 000 (`saisieGroupee`, core/items.ts) : écho groupé à la frappe, donc la
+   place de « 9 999 999 » (7 chiffres + 2 espaces fines). À 130 px, un nombre à 7 chiffres
+   débordait déjà sans séparateur (retour terrain, nov. 2026). */
+.rev-input.saisie-groupee {
+	width: 12ch;
+	font-variant-numeric: tabular-nums;
+}
 /* Champ rendu en `type="password"` (anti-suggestion clavier) puis démasqué en
    `type="text"` par ui/anti-suggestion.ts — voir #67/#123/#139. */
 .rev-input-text {

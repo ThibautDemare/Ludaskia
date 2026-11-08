@@ -92,7 +92,9 @@ async function echouerMotCache(page: Page, saisieFausse: string): Promise<string
 	await input.fill(saisieFausse);
 	await page.locator('#btnVerifMot').click();
 	await expect(page.locator('.fb-ko')).toBeVisible();
-	await input.fill(saisieFausse);
+	// 2ᵉ saisie DIFFÉRENTE : la même, revalidée dans la seconde, serait prise pour un double
+	// appui et ignorée (`creerGardeDoubleAppui`, core/orthographe/double-appui.ts).
+	await input.fill(saisieFausse + 'x');
 	await page.locator('#btnVerifMot').click();
 	// 2ᵉ échec : l'atelier de correction prend la main (diff sur le mot).
 	await expect(page.locator('#btnAtelierDone')).toBeVisible();

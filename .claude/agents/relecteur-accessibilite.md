@@ -39,6 +39,9 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
   indice de réponse).
 - **Cibles tactiles** : assez grandes et espacées pour un doigt d'enfant
   (repère ~44 px) — tuiles, boutons de mode, options QCM, navigation.
+  - **Un champ de saisie interactif (`.ans` et dérivés) tient 44 px dans les DEUX sens**
+    (`min-height` ET `min-width`). Une largeur en `em` pour un seul chiffre passe sous le
+    repère sur petit écran (case de décomposition : 39 px à 360 px, novembre 2026).
 - **SVG accessibles** : les figures de `core/figures.ts` exposent `role="img"` +
   `<title>`/`<desc>` + `aria-label` ; vérifie que toute nouvelle figure porte un
   libellé **utile** (et qu'il ne divulgue pas la réponse quand c'est l'énoncé).
@@ -61,6 +64,10 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
   - **Un message d'erreur identique répété est ré-annoncé** : vider la région, puis
     réécrire au frame suivant. Réaffecter le même `textContent` n'est pas relu partout
     (VoiceOver). Cas d'origine : les refus du composeur de bilan (#778).
+  - **Toute nouvelle modale passe par `activateModal`** (ou `ui-modal.ts`, qui l'appelle).
+    Une modale maison n'entre pas dans la pile `pileModales` (`ui/modal-a11y.ts`) : ouverte
+    par-dessus une autre, elle laisse le piège Tab et l'Échap de celle du dessous actifs,
+    soit exactement la panne corrigée en novembre 2026.
   - **Du contenu AJOUTÉ à une modale déjà ouverte est-il annoncé ?** Le focus est déjà
     dans la modale : rien ne signale la nouvelle ligne si son conteneur n'est pas une
     région live. Juger au cas par cas : passer le conteneur en `aria-live` peut faire

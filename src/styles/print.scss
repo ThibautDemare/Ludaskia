@@ -63,6 +63,14 @@
 		/* Effet « cahier » réservé à l'impression (#137) : les fiches passent en serif
        sur le papier ; les sous-éléments « chrome » gardent var(--ui). */
 		font-family: var(--serif);
+		/* Chiffres ALIGNÉS (relecture impression, nov. 2026) : les chiffres par défaut de
+		   Georgia sont elzéviriens, le « 0 » y a la hauteur d'un « o » (« o dizaine »,
+		   « o × 1000 ») et le « 1 » celle d'un « ı ». Sur une décomposition, un zéro lu comme
+		   une lettre est un vrai piège. Georgia porte les chiffres alignés (`lnum`, mesuré).
+		   `font-feature-settings` et non `font-variant-numeric` : ce dernier est redéfini plus
+		   bas en `tabular-nums` (.bignum, .decompo, .ans-grand) et y REMPLACERAIT la valeur
+		   héritée, alors que les deux propriétés se cumulent. */
+		font-feature-settings: 'lnum' 1;
 	}
 	.page {
 		box-shadow: none;

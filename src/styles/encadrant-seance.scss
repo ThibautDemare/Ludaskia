@@ -291,8 +291,11 @@
 	width: 100%;
 }
 
+/* Le bouton s'intercale entre les cartes de programme et le bloc des bilans favoris :
+   `.enc-block` ne porte qu'un `margin-bottom`, donc sans marge basse ici le bouton
+   collait au bloc suivant. Marge basse = écart total au-dessus (0.7 + 0.4 rem). */
 .enc-seance-add {
-	margin-top: 0.4rem;
+	margin: 0.4rem 0 1.1rem;
 }
 
 /* Gestion des bilans favoris (#636) : la liste que l'adulte peut élaguer, sous les

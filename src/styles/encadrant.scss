@@ -639,6 +639,11 @@ details[open] > summary .enc-repli-moins {
 	gap: 0.5rem;
 	margin: 0.5rem 0;
 }
+/* Un intertitre qui suit une rangée de boutons (« Où vivent les données », onglet
+   Profils) : `.enc-h3` n'a pas de marge haute, il collait aux boutons. */
+.enc-actions + .enc-h3 {
+	margin-top: 1.25rem;
+}
 .enc-check {
 	display: flex;
 	align-items: center;

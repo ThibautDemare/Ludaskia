@@ -1038,8 +1038,10 @@ compté au-delà de `DELAI_DOUBLE_APPUI_MS` ou à la deuxième revalidation, ég
 `normalizeText`. **`e2e/ortho-deuxieme-essai.spec.ts`** joue le geste pour de vrai : la saisie
 reste dans `#orthoInput` après le premier échec (dictée, affiche/masque), le doublon ne brûle
 pas le second essai (une fois, sous 1 s ; compté à la deuxième revalidation ou après 1 s), la
-répétition d'Entrée maintenue est ignorée, et un remasquage `password` → `text` (UA Firefox
-Android) conserve la saisie.
+répétition d'Entrée maintenue est ignorée, un remasquage `password` → `text` (UA Firefox
+Android) conserve la saisie, et une réponse réussie reste acquise (Entrée dans le champ en
+lecture seule : XP stable, pas de « Presque » ; touche d'accent : champ inchangé). Chaque
+critère qui touche un garde-fou est paramétré sur les **deux** modes.
 
 **Checklist issue de relecture** (jugement, pas gate) : tout garde-fou qui ignore un geste
 (doublon, réponse vide, répétition de touche) est testé dans **chaque** mode qui le branche,

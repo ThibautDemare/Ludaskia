@@ -105,6 +105,10 @@ async function verifierSaisieConservee(page: Page): Promise<void> {
 	await expect(input).toHaveValue(FAUX_1);
 }
 
+async function lireXP(page: Page): Promise<number> {
+	return JSON.parse((await page.evaluate(() => localStorage.getItem('e2e/ludaskia_xp'))) ?? '0');
+}
+
 async function journal(page: Page): Promise<unknown[]> {
 	return JSON.parse(
 		(await page.evaluate(() => localStorage.getItem('e2e/ludaskia_erreurs'))) ?? '[]',
@@ -181,21 +185,22 @@ test.describe('voix disponible (STUB_VOIX_FR)', () => {
 		});
 	}
 
-	test('critère 3c : revalidation inchangée après 1 s, comptée', async ({ page }) => {
-		const errors = watchErrors(page);
-		await figerHorloge(page);
-		await ouvrir(page, 'dictee');
-		await premierEchec(page);
+	for (const { mode, nom } of MODES)
+		test(`critère 3c (${nom}) : revalidation inchangée après 1 s, comptée`, async ({ page }) => {
+			const errors = watchErrors(page);
+			await figerHorloge(page);
+			await ouvrir(page, mode);
+			await premierEchec(page);
 
-		const input = page.locator('#orthoInput');
-		await expect(input).toHaveValue(FAUX_1);
-		await avancer(page, 1000);
-		await page.locator('#btnVerifMot').click();
-		await avancer(page, 100);
-		await expect(page.locator('#atelierMot')).toBeVisible();
+			const input = page.locator('#orthoInput');
+			await expect(input).toHaveValue(FAUX_1);
+			await avancer(page, 1000);
+			await page.locator('#btnVerifMot').click();
+			await avancer(page, 100);
+			await expect(page.locator('#atelierMot')).toBeVisible();
 
-		expect(errors).toEqual([]);
-	});
+			expect(errors).toEqual([]);
+		});
 
 	test('critère 3d : saisie modifiée mais fausse, correction guidée', async ({ page }) => {
 		const errors = watchErrors(page);
@@ -211,29 +216,30 @@ test.describe('voix disponible (STUB_VOIX_FR)', () => {
 		expect(errors).toEqual([]);
 	});
 
-	test('critère 4 (négatif) : le journal ne compte qu’une entrée pour le mot après 1er échec + revalidation inchangée ignorée + 2e essai modifié faux', async ({
-		page,
-	}) => {
-		const errors = watchErrors(page);
-		await figerHorloge(page);
-		await ouvrir(page, 'dictee');
-		await premierEchec(page);
+	for (const { mode, nom } of MODES)
+		test(`critère 4 (${nom}) (négatif) : le journal ne compte qu’une entrée pour le mot après 1er échec + revalidation inchangée ignorée + 2e essai modifié faux`, async ({
+			page,
+		}) => {
+			const errors = watchErrors(page);
+			await figerHorloge(page);
+			await ouvrir(page, mode);
+			await premierEchec(page);
 
-		const input = page.locator('#orthoInput');
-		// Pas d'assertion sur la saisie ici (critères 1/3) : ce test ne garde que le journal.
-		await page.locator('#btnVerifMot').click();
-		await avancer(page, 100);
-		await input.fill(FAUX_2);
-		await page.locator('#btnVerifMot').click();
-		await avancer(page, 100);
-		await expect(page.locator('#atelierMot')).toBeVisible();
+			const input = page.locator('#orthoInput');
+			// Pas d'assertion sur la saisie ici (critères 1/3) : ce test ne garde que le journal.
+			await page.locator('#btnVerifMot').click();
+			await avancer(page, 100);
+			await input.fill(FAUX_2);
+			await page.locator('#btnVerifMot').click();
+			await avancer(page, 100);
+			await expect(page.locator('#atelierMot')).toBeVisible();
 
-		const entrees = await journal(page);
-		expect(entrees, 'une seule erreur ciblable pour ce mot').toHaveLength(1);
-		expect(JSON.stringify(entrees[0])).toContain(MOT);
+			const entrees = await journal(page);
+			expect(entrees, 'une seule erreur ciblable pour ce mot').toHaveLength(1);
+			expect(JSON.stringify(entrees[0])).toContain(MOT);
 
-		expect(errors).toEqual([]);
-	});
+			expect(errors).toEqual([]);
+		});
 
 	/* Critère 6 : Entrée MAINTENUE. Le 1er appui valide ; les répétitions (keydown repeat:true)
 	   ne valident rien. Le 1er `down` est un vrai nouvel appui (ignoré une fois par la garde du
@@ -287,24 +293,82 @@ test.describe('voix disponible (STUB_VOIX_FR)', () => {
 			expect(errors).toEqual([]);
 		});
 
-	test.describe('UA Firefox Android tactile', () => {
-		test.use({ userAgent: UA_FIREFOX_ANDROID_TABLETTE });
-
-		test('critère 5 (négatif) : sous remasquage password → text, saisie conservée, type text, curseur en fin', async ({
+	/* Critères 7 et 8 (bug préexistant) : APRÈS une réussite le champ est en lecture seule et
+	   « Vérifier » masqué, mais Entrée dans le champ (réfocalisé au clic) revalidait encore, et
+	   le clavier d'accents modifiait le champ. Exigence : rien ne bouge après la réussite
+	   (ni XP, ni journal, ni champ), et la suite (#fb .btn-primary) reste proposée. */
+	for (const { mode, nom } of MODES) {
+		test(`critère 7 (${nom}) : après une réussite, Entrée répétée dans le champ ne revalide rien (XP stable, pas de « Presque », suite présente, journal vide)`, async ({
 			page,
 		}) => {
 			const errors = watchErrors(page);
-			expect(
-				await page.evaluate(() => navigator.maxTouchPoints),
-				'témoin : profil tactile requis pour engager le remasquage',
-			).toBeGreaterThan(0);
-			await ouvrir(page, 'dictee');
-			await premierEchec(page);
-			await expect(page.locator('#orthoInput')).toHaveAttribute('type', 'text');
-			await verifierSaisieConservee(page);
-			await expect(page.locator('#orthoInput')).toHaveAttribute('type', 'text');
+			await ouvrir(page, mode);
+			const input = page.locator('#orthoInput');
+			await input.fill(MOT);
+			await page.locator('#btnVerifMot').click();
+			const suite = page.locator('#fb .btn-primary');
+			await expect(suite).toBeVisible();
+			await expect(page.locator('#btnVerifMot')).toBeHidden();
+			await expect(input).toHaveJSProperty('readOnly', true);
+			const xpApres = await lireXP(page);
+
+			await input.click();
+			for (let i = 0; i < 3; i++) await page.keyboard.press('Enter');
+
+			// L'Entrée d'un champ en lecture seule ne doit rien produire, ni XP, ni message d'échec.
+			expect(await lireXP(page), 'XP inchangée depuis la réussite').toBe(xpApres);
+			await expect(page.locator('body')).not.toContainText('Presque');
+			await expect(page.locator('#atelierMot')).toHaveCount(0);
+			await expect(suite).toHaveCount(1);
+			expect(await journal(page)).toEqual([]);
+
 			expect(errors).toEqual([]);
 		});
+
+		test(`critère 8 (${nom}) : après une réussite, une touche d'accent ne modifie pas le champ, et Entrée ne produit ni « Presque » ni entrée de journal`, async ({
+			page,
+		}) => {
+			const errors = watchErrors(page);
+			await ouvrir(page, mode);
+			const input = page.locator('#orthoInput');
+			await input.fill(MOT);
+			await page.locator('#btnVerifMot').click();
+			await expect(page.locator('#fb .btn-primary')).toBeVisible();
+			const xpApres = await lireXP(page);
+
+			await page.locator('#accentKb .accent-key').first().click();
+			await expect(input).toHaveValue(MOT);
+
+			await input.click();
+			await page.keyboard.press('Enter');
+			await expect(input).toHaveValue(MOT);
+			await expect(page.locator('body')).not.toContainText('Presque');
+			expect(await journal(page)).toEqual([]);
+			expect(await lireXP(page)).toBe(xpApres);
+
+			expect(errors).toEqual([]);
+		});
+	}
+
+	test.describe('UA Firefox Android tactile', () => {
+		test.use({ userAgent: UA_FIREFOX_ANDROID_TABLETTE });
+
+		for (const { mode, nom } of MODES)
+			test(`critère 5 (${nom}) (négatif) : sous remasquage password → text, saisie conservée, type text, curseur en fin`, async ({
+				page,
+			}) => {
+				const errors = watchErrors(page);
+				expect(
+					await page.evaluate(() => navigator.maxTouchPoints),
+					'témoin : profil tactile requis pour engager le remasquage',
+				).toBeGreaterThan(0);
+				await ouvrir(page, mode);
+				await premierEchec(page);
+				await expect(page.locator('#orthoInput')).toHaveAttribute('type', 'text');
+				await verifierSaisieConservee(page);
+				await expect(page.locator('#orthoInput')).toHaveAttribute('type', 'text');
+				expect(errors).toEqual([]);
+			});
 	});
 });
 

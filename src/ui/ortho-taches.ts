@@ -58,9 +58,9 @@ export interface OptionsTache {
 	    les tuiles (`Infinity`, les lettres y étant fournies) ; la révision n'en laisse
 	    qu'un, tous formats confondus. */
 	essaisAvantCorrection: number;
-	/** Une réponse VIDE vaut-elle « je n'ai pas répondu » plutôt qu'un essai raté ? La
-	    révision ne laissant qu'un essai, un clic malheureux sur « Vérifier » y brûlerait
-	    l'item ; le parcours, lui, compte l'essai comme aujourd'hui. */
+	/** Une réponse VIDE vaut-elle « je n'ai pas répondu » plutôt qu'un essai raté ? Un clic
+	    malheureux sur « Vérifier » brûlerait sinon un essai. Le parcours et la révision
+	    l'activent tous deux (#640). */
 	ignorerReponseVide?: boolean;
 	/** Bloc glissé sous le bouton de validation : le lien « Je ne sais pas, montre-moi »
 	    (#467) de la révision. Rendu AVEC la zone de saisie du mot caché, donc invisible
@@ -159,10 +159,7 @@ export function monterTacheOrtho(mode: ModeOrtho, word: MotOrtho, o: OptionsTach
 
 /* ---------- Affiche / masque ---------- */
 export function renderMotCache(word: MotOrtho, o: OptionsTache): void {
-	const ex = genExerciseOrtho(word, 'motCache');
 	const hote = o.hote;
-	let essais = 0;
-	const doubleAppui = creerGardeDoubleAppui();
 	hote.innerHTML = html`
     <div class="${cadreDe(o)}">
       <p class="ortho-run-consigne">${word.contexte ? 'Regarde bien le verbe, puis cache-le et écris-le.' : 'Regarde bien ce mot, puis cache-le et écris-le.'}</p>
@@ -189,7 +186,6 @@ export function renderMotCache(word: MotOrtho, o: OptionsTache): void {
 	const btnCacher = hote.querySelector('#btnCacher') as HTMLButtonElement;
 	const zone = hote.querySelector('#zoneSaisie') as HTMLElement;
 	const input = hote.querySelector('#orthoInput') as HTMLInputElement;
-	const fb = hote.querySelector('#fb') as HTMLElement;
 
 	renderAccentKb(hote.querySelector('#accentKb') as HTMLElement, input);
 
@@ -227,31 +223,12 @@ export function renderMotCache(word: MotOrtho, o: OptionsTache): void {
 		focaliserChamp(input);
 	});
 
-	const verifier = () => {
-		if (o.ignorerReponseVide && input.value.trim() === '') return rienDePose(fb, input, word);
-		if (checkAnswer(ex, input.value)) {
-			// Réussite : « Vérifier » s'efface, seul « Continuer → » reste (pas deux boutons, #153).
-			(hote.querySelector('#btnVerifMot') as HTMLButtonElement).hidden = true;
-			input.readOnly = true;
-			o.onReussite('motCache', fb);
-		} else {
-			if (doubleAppui(input.value)) return focaliserChamp(input); // ignoré, cf. core/orthographe/double-appui.ts
-			essais++;
-			o.onEchec(input.value, essais);
-			if (essais < o.essaisAvantCorrection) {
-				fb.innerHTML =
-					html`<span class="fb-ko">Presque ! Regarde bien et réessaie.</span>`.balisage;
-				rendreSaisieACorriger(input);
-			} else {
-				// Dernier essai : on bascule sur la correction guidée (diff sur le mot). Le
-				// retrace du mot affiché a déjà été coupé au clic « Cacher » (on n'arrive
-				// ici qu'après), donc `motCacheResize` est déjà nul — rien à nettoyer.
-				o.onCorrection(input.value);
-			}
-		}
-	};
-	hote.querySelector('#btnVerifMot')!.addEventListener('click', verifier);
-	input.addEventListener('keydown', (e) => brancherEntree(e, verifier));
+	// Au dernier essai, la correction guidée n'a rien à nettoyer : le retrace du mot affiché a
+	// été coupé au clic « Cacher » (on ne vérifie qu'après), `motCacheResize` est déjà nul.
+	brancherVerification(word, o, {
+		mode: 'motCache',
+		presque: 'Presque ! Regarde bien et réessaie.',
+	});
 	o.onMonte?.();
 	// Le bouton prend le focus à l'arrivée, donc Entrée cache le mot (#702) : l'enfant qui va
 	// écrire au clavier n'a plus à lâcher le clavier pour un clic. Même patron que le
@@ -263,10 +240,7 @@ export function renderMotCache(word: MotOrtho, o: OptionsTache): void {
 
 /* ---------- Dictée (TTS) ---------- */
 export function renderDictee(word: MotOrtho, o: OptionsTache): void {
-	const ex = genExerciseOrtho(word, 'dictee');
 	const hote = o.hote;
-	let essais = 0;
-	const doubleAppui = creerGardeDoubleAppui();
 	hote.innerHTML = html`
     <div class="${cadreDe(o)}">
       <p class="ortho-run-consigne">${word.contexte ? 'Écoute la phrase, puis écris seulement le verbe.' : 'Écoute le mot, puis écris-le.'}</p>
@@ -283,7 +257,6 @@ export function renderDictee(word: MotOrtho, o: OptionsTache): void {
       <div class="ortho-feedback" id="fb"></div>
     </div>`.balisage;
 	const input = hote.querySelector('#orthoInput') as HTMLInputElement;
-	const fb = hote.querySelector('#fb') as HTMLElement;
 	renderAccentKb(hote.querySelector('#accentKb') as HTMLElement, input);
 
 	// Filet de sécurité (#306 §5) : l'énoncé peut échouer alors que la voix semblait
@@ -302,29 +275,12 @@ export function renderDictee(word: MotOrtho, o: OptionsTache): void {
 	btnEcouter.addEventListener('click', ecouter);
 	rendreLaMainApresEcoute(btnEcouter); // #702, comme partout ailleurs
 
-	const verifier = () => {
-		if (muette) return; // dictée silencieuse : on ne corrige ni ne journalise
-		if (o.ignorerReponseVide && input.value.trim() === '') return rienDePose(fb, input, word);
-		if (checkAnswer(ex, input.value)) {
-			// Réussite : « Vérifier » s'efface, seul « Continuer → » reste (pas deux boutons, #153).
-			(hote.querySelector('#btnVerifMot') as HTMLButtonElement).hidden = true;
-			input.readOnly = true;
-			o.onReussite('dictee', fb);
-		} else {
-			if (doubleAppui(input.value)) return focaliserChamp(input); // ignoré, cf. core/orthographe/double-appui.ts
-			essais++;
-			o.onEchec(input.value, essais);
-			if (essais < o.essaisAvantCorrection) {
-				fb.innerHTML = html`<span class="fb-ko">Presque ! Réécoute et réessaie.</span>`.balisage;
-				rendreSaisieACorriger(input);
-				ecouter();
-			} else {
-				o.onCorrection(input.value);
-			}
-		}
-	};
-	hote.querySelector('#btnVerifMot')!.addEventListener('click', verifier);
-	input.addEventListener('keydown', (e) => brancherEntree(e, verifier));
+	brancherVerification(word, o, {
+		mode: 'dictee',
+		presque: 'Presque ! Réécoute et réessaie.',
+		suspendue: () => muette, // dictée silencieuse : on ne corrige ni ne journalise
+		apresEchec: ecouter,
+	});
 	o.onMonte?.();
 	// Lecture auto EN DERNIER (peut être bloquée tant qu'il n'y a pas eu de geste).
 	// Après le câblage, et pas avant : en cas d'échec, `onSilence` peut remplacer tout le
@@ -608,6 +564,55 @@ export function renderTuiles(word: MotOrtho, o: OptionsTache): void {
 	maybeAutoAide('lettres'); // bulle d'aide au 1er lancement (une fois par profil)
 }
 
+/* ---------- Vérification d'une saisie de mot (mot caché, dictée) ----------
+   Les deux tâches à saisie corrigent de la MÊME façon : un seul chemin, pour qu'un garde-fou
+   (champ déjà validé, réponse vide #640, double appui) ne s'y câble qu'une fois et ne puisse
+   pas manquer à l'une des deux. Ce qui diffère tient dans `VerificationSaisie`. */
+interface VerificationSaisie {
+	mode: Exclude<ModeOrtho, 'tuiles'>;
+	/** Message du premier essai raté. */
+	presque: string;
+	/** Vrai : on ne corrige ni ne journalise plus rien (dictée dont la voix s'est tue). */
+	suspendue?: () => boolean;
+	/** Après le message du premier essai raté (dictée : réénoncer). */
+	apresEchec?: () => void;
+}
+
+/** Câble « Vérifier » et la touche Entrée sur `#orthoInput` / `#btnVerifMot` / `#fb`, déjà
+    rendus dans `o.hote`. */
+function brancherVerification(word: MotOrtho, o: OptionsTache, v: VerificationSaisie): void {
+	const ex = genExerciseOrtho(word, v.mode);
+	const input = o.hote.querySelector('#orthoInput') as HTMLInputElement;
+	const fb = o.hote.querySelector('#fb') as HTMLElement;
+	const btnVerif = o.hote.querySelector('#btnVerifMot') as HTMLButtonElement;
+	const doubleAppui = creerGardeDoubleAppui();
+	let essais = 0;
+	const verifier = (): void => {
+		// Déjà réussi : le champ en lecture seule reste focalisable et Entrée y arrive encore.
+		// Sans cette garde, chaque Entrée rappelait `onReussite`, qui recompte l'XP.
+		if (input.readOnly) return;
+		if (v.suspendue?.()) return;
+		if (o.ignorerReponseVide && input.value.trim() === '') return rienDePose(fb, input, word);
+		if (checkAnswer(ex, input.value)) {
+			// Réussite : « Vérifier » s'efface, seul « Continuer → » reste (pas deux boutons, #153).
+			btnVerif.hidden = true;
+			input.readOnly = true;
+			o.onReussite(v.mode, fb);
+			return;
+		}
+		if (doubleAppui(input.value)) return focaliserChamp(input); // ignoré, cf. core/orthographe/double-appui.ts
+		essais++;
+		o.onEchec(input.value, essais);
+		if (essais < o.essaisAvantCorrection) {
+			fb.innerHTML = html`<span class="fb-ko">${v.presque}</span>`.balisage;
+			rendreSaisieACorriger(input);
+			v.apresEchec?.();
+		} else o.onCorrection(input.value);
+	};
+	btnVerif.addEventListener('click', verifier);
+	input.addEventListener('keydown', (e) => brancherEntree(e, verifier));
+}
+
 /* ---------- Helpers ---------- */
 /* « Vérifier » cliqué sans rien avoir posé : on le DIT, sans consommer l'essai. Le silence
    d'avant (`input.focus()` seul) laissait l'enfant sans explication — et un lecteur d'écran
@@ -642,9 +647,10 @@ function rienDePose(
    tactile, `focaliserChamp` remasque le champ et reporte la sélection qu'il y trouve. Le double
    appui qui renverrait la même réponse est tenu par `creerGardeDoubleAppui`.
    Pas de `blur()` forcé, contrairement à `rienDePose` : un échec validé par la touche Entrée du
-   clavier logiciel fermerait ce clavier, qu'un `focus()` scripté ne rouvre pas toujours. Ce
-   serait à CHAQUE premier échec sur la tablette, pour une relecture de « Presque ! » par
-   NVDA/JAWS dont la dictée se passe (elle réénonce le mot). */
+   clavier logiciel fermerait ce clavier, qu'un `focus()` scripté ne rouvre pas toujours, et
+   ce à CHAQUE premier échec sur la tablette. Coût assumé : après Entrée, NVDA/JAWS ne relisent
+   pas « Presque ! » (la dictée relaie l'échec en réénonçant, le mot caché non). C'était déjà
+   le cas quand le champ était vidé : rejet écrit dans docs/architecture/ui.md. */
 function rendreSaisieACorriger(input: HTMLInputElement): void {
 	const fin = input.value.length;
 	input.setSelectionRange(fin, fin);
@@ -682,6 +688,9 @@ export function renderAccentKb(container: HTMLElement, input: HTMLInputElement):
 }
 
 function insertAtCursor(input: HTMLInputElement, text: string): void {
+	// Une écriture par programme ignore `readOnly` : sans ce garde, une touche d'accent
+	// modifiait la réponse déjà validée (mot réussi devenu faux à l'écran).
+	if (input.readOnly) return;
 	const start = input.selectionStart ?? input.value.length;
 	const end = input.selectionEnd ?? input.value.length;
 	input.value = input.value.slice(0, start) + text + input.value.slice(end);

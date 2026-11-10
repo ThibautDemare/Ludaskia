@@ -17,7 +17,7 @@
    suivie de rien passerait tous les tests d'existence et ne dirait rien au parent.
    ============================================================ */
 import { test, expect } from '@playwright/test';
-import { gotoHash, watchErrors } from './helpers';
+import { gotoHash, horsDecembre, watchErrors } from './helpers';
 import { COUVERTURE_JOURNAL, CLEAR_PIN } from './journal-couverture';
 
 for (const [format, couverture] of Object.entries(COUVERTURE_JOURNAL)) {
@@ -27,6 +27,7 @@ for (const [format, couverture] of Object.entries(COUVERTURE_JOURNAL)) {
 			page,
 		}) => {
 			const errors = watchErrors(page);
+			await horsDecembre(page); // la modale d'un trophée de décembre intercepterait le geste (#785)
 
 			await page.addInitScript(CLEAR_PIN);
 			await entree.amorce?.(page);

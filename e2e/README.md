@@ -65,6 +65,16 @@ rapprocher le PID du bon worktree, ou dans le doute couper ce serveur avant de r
   prétendait tenir, alors qu'il avait été écrit avant le code et par un auteur
   distinct : ni l'antériorité ni l'indépendance ne protègent de ce défaut-là. Écrire
   la mutation en commentaire du test est le minimum ; l'avoir jouée est la règle.
+- **Aucun test ne dépend de la date du jour (#785).** Depuis le décor de Noël, décembre change
+  ce que voit l'accueil (une bande de flocons le décale) et la 1re partie du mois peut annoncer
+  un trophée dans `#celebrate`, dont la modale intercepte les clics. Une spec dont le propos
+  n'est **pas** la saison pose donc **`horsDecembre(page)`** (`helpers.ts` : `setSystemTime` au
+  14/07/2026, l'horloge continue de s'écouler pour les gardes de double appui et les minuteurs),
+  **avant** `addInitScript` pour que les seeds lisant `Date.now()` voient la même date. Une spec
+  qui a besoin de décembre fixe **sa** date avec `e2e/decor-aide.ts` (pas une spec : `DATES`
+  avec décalage Paris explicite + `timezoneId: 'Europe/Paris'` ; `setFixedTime`, qui fige
+  `Date` mais laisse tourner timers et animations CSS). Un échec qui n'apparaît qu'en décembre
+  (ou en novembre) est donc un défaut de spec : lui ajouter `horsDecembre`.
 - **Une fabrique de seed recopiée une troisième fois part dans un module partagé.**
   Recopier un seed d'un fichier à l'autre est normal tant que ça reste anecdotique ;
   au troisième exemplaire, ce n'est plus un emprunt, c'est une source de vérité

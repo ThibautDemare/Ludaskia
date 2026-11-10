@@ -481,12 +481,14 @@ export function setToolbar({
 	profile,
 	print = false,
 	guide = false,
+	accueil = false,
 }: {
 	verify: boolean;
 	home: boolean;
 	profile: boolean;
 	print?: boolean; // 🖨 « imprimer l'écran courant » : seulement en exercice (#40)
 	guide?: boolean; // « ? » rejeu du guide de 1re visite (#330) : accueil seulement
+	accueil?: boolean; // l'écran est l'accueil : seul à montrer « Arrêter le décor » (#785)
 }) {
 	const v = document.getElementById('btnVerify') as HTMLButtonElement;
 	const h = document.getElementById('btnHome')!;
@@ -517,6 +519,10 @@ export function setToolbar({
 	// EXCEPTION : le runner d'orthographe (showOrthoRunView) est un écran d'effort
 	// qui ne pose PAS currentMode → il rajoute la classe lui-même, après setToolbar.
 	document.body.classList.toggle('session-active', currentMode !== null);
+	// Bouton « Arrêter le décor » du pied de page (#785, critère 27) : l'accueil est le seul
+	// écran décoré, donc le seul où il s'affiche (footer.scss). Comme ci-dessus, tout écran
+	// passe par ici, et l'accueil le demande explicitement.
+	document.body.classList.toggle('accueil-actif', accueil);
 }
 
 // Remet l'UI dans l'état « hors session » (commun à l'accueil et au sélecteur)
@@ -568,7 +574,7 @@ export function hideMenus() {
 // Rendus des vues (sans toucher à l'historique)
 export function showHomeView() {
 	resetSessionUI();
-	setToolbar({ verify: false, home: false, profile: true, guide: true }); // accueil : profil + « ? » guide ; ni Vérifier ni Accueil
+	setToolbar({ verify: false, home: false, profile: true, guide: true, accueil: true }); // accueil : profil + « ? » guide ; ni Vérifier ni Accueil
 	hideMenus();
 	document.getElementById('home')!.style.display = '';
 	// Programme du jour (#440) : consomme une étape éventuellement terminée AVANT de

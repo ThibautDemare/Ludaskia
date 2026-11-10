@@ -23,6 +23,8 @@ import {
 	sansPressionTemporelle,
 } from '../core/profiles';
 import { icon } from './icon';
+import { mouvementReduitSysteme, rafraichirDecor } from './footer';
+import { decorFigeEffectif, decorFigeProfil } from '../core/decor';
 import { html, type SafeHtml, VIDE, joindre, drapeau, attribut } from '../core/html';
 
 export const THEME_KEY = 'ludaskia_theme';
@@ -59,6 +61,38 @@ export function applyPreferences() {
 	root.dataset.theme = getTheme();
 	root.classList.toggle('anim-reduced', animationsReduites());
 	root.classList.toggle('confort-lecture', confortLecture());
+	// « Figer le décor » (#785) : classe `decor-fige` et bouton du pied de page, puis la case
+	// des Préférences, qui dépend aussi de « Réduire les animations » (critère 7).
+	rafraichirDecor();
+	majCaseDecor();
+}
+
+/* Deux sources réduisent les animations : la case du profil et le réglage de l'appareil
+   (`prefers-reduced-motion`). Les deux figent le décor, et la phrase dit laquelle agit :
+   la case du profil d'abord, puisque l'enfant peut la décocher. */
+const DECOR_INCLUS_PROFIL = 'Déjà inclus dans « Réduire les animations ».';
+const DECOR_INCLUS_APPAREIL = "Déjà inclus : ton appareil demande moins d'animations.";
+
+/* Case « Figer le décor » (#785) : COCHÉE quand le décor est figé pour de bon, c'est-à-dire
+   aussi quand les animations sont réduites, qui l'incluent ; elle est alors verrouillée et
+   le dit (critère 7). Le réglage mémorisé, lui, n'est pas touché : décocher « Réduire les
+   animations » rend la case à son état d'avant. Mise à jour SUR PLACE plutôt qu'en
+   re-rendant le bloc : le focus clavier reste sur la case qu'on vient de toucher. */
+export function majCaseDecor(): void {
+	const caseDecor = document.getElementById('prefDecor') as HTMLInputElement | null;
+	if (!caseDecor) return;
+	const reduitProfil = animationsReduites();
+	const reduitAppareil = mouvementReduitSysteme();
+	const reduit = reduitProfil || reduitAppareil;
+	caseDecor.checked = decorFigeEffectif(decorFigeProfil(), reduit);
+	caseDecor.disabled = reduit;
+	const inclus = document.getElementById('prefDecorInclus');
+	if (inclus)
+		inclus.textContent = reduitProfil
+			? DECOR_INCLUS_PROFIL
+			: reduitAppareil
+				? DECOR_INCLUS_APPAREIL
+				: '';
 }
 
 // Id de la ligne d'aide reliée (aria-describedby) au thème automatique.
@@ -120,12 +154,18 @@ export function renderPreferences() {
           <span>Réduire les animations</span>
         </label>
         <label class="pref-toggle">
+          <input type="checkbox" id="prefDecor" />
+          <span>Figer le décor <small class="pref-hint">(la forêt et le décor de saison ne bougent plus)</small>
+            <small class="pref-hint" id="prefDecorInclus"></small></span>
+        </label>
+        <label class="pref-toggle">
           <input type="checkbox" id="prefConfort"${confortLecture() ? drapeau('checked') : ''} />
           <span>Confort de lecture <small class="pref-hint">(texte plus grand et plus aéré)</small></span>
         </label>
       </div>
       ${amenagementsInfoHTML()}
     </div>`.balisage;
+	majCaseDecor(); // état de la case « Figer le décor » : un seul endroit pour le calculer
 }
 
 /* Aménagements posés par l'adulte dans l'espace encadrants (#234) : masquer le

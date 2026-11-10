@@ -1,0 +1,129 @@
+/* ============================================================
+   Décor de saison (#785) : la bande de flocons de décembre (accueil de l'appli, vitrine).
+   Rendu par `ui/decor-saison.ts`, qui pose chaque réglage de flocon en variable CSS.
+
+   Une BANDE dans le flux, de hauteur réservée : elle repousse le contenu au lieu de le
+   recouvrir (même principe que la forêt : empilement, jamais superposition), et s'en va
+   avec le haut de la page quand on la fait défiler (critères 13, 14). Le dessin de chaque
+   flocon reste DANS la bande, du haut au bas de sa chute.
+   Animée en `transform` et `opacity` seulement : rien qui force la tablette à recalculer
+   la page à chaque image (critère 17).
+   ============================================================ */
+
+.decor-saison {
+	/* Hauteur de chute. La même durée sur une bande plus courte donne une chute plus lente,
+	   jamais plus rapide : les 15 s minimum du critère 12 tiennent à toutes les tailles. */
+	--decor-h: clamp(72px, 16vh, 150px);
+	position: relative;
+	height: var(--decor-h);
+	overflow: hidden;
+	pointer-events: none; /* un appui traverse le décor (critère 30) */
+	color: var(--flocon);
+}
+/* Smartphone en paysage : peu de hauteur, la bande se fait plus fine au lieu de disparaître. */
+@media (max-height: 500px) {
+	.decor-saison {
+		--decor-h: 64px;
+	}
+}
+/* Accueil de l'appli sur grand écran : la bande occupe la rangée du logo (`.big`), qui
+   ne porte aucun texte, au lieu d'ajouter une rangée au-dessus. Le logo passe devant les
+   flocons. Sous 920 px, `.big` est masqué (home.scss) et la bande prend sa place. */
+@media (min-width: 921px) {
+	.home-wide > .decor-saison {
+		--decor-h: 96px; /* hauteur du logo (.brand-logo) */
+		margin-bottom: -96px;
+	}
+	.home-wide > .decor-saison + .big {
+		position: relative;
+		z-index: 1;
+	}
+}
+
+.decor-flocon {
+	/* Trajet vertical : du haut de la bande à son bas, dessin compris. */
+	--chute: calc(var(--decor-h) - var(--taille));
+	position: absolute;
+	top: 0;
+	left: var(--x);
+	width: var(--taille);
+	height: var(--taille);
+	margin-left: calc(var(--taille) / -2);
+	/* État de REPOS, celui qu'on voit quand les animations sont réduites : chaque flocon à
+	   sa hauteur, réparti dans le haut de la bande, à son opacité de pic. Sans lui, ils
+	   seraient tous empilés en haut. */
+	transform: translate3d(0, calc(var(--chute) * var(--repos) * 0.6), 0);
+	opacity: var(--opacite);
+	animation: decor-chute var(--duree) linear var(--delai) infinite;
+	will-change: transform, opacity;
+}
+.decor-flocon-glyphe {
+	display: block;
+	width: 100%;
+	height: 100%;
+	transform: rotate(var(--rotation)); /* une rotation fixe par flocon, jamais animée */
+}
+
+/* Chute avec une légère dérive de côté (sinusoïde approchée sur huit pas, en `linear` :
+   la descente reste régulière). Apparition rapide en haut, pleine visibilité jusqu'au
+   milieu de la bande, puis effacement en descendant (critère 13). L'opacité n'est nulle
+   qu'aux deux bouts du cycle : 6 à 10 flocons se voient à la fois (critère 12). */
+@keyframes decor-chute {
+	0% {
+		transform: translate3d(0, 0, 0);
+		opacity: 0;
+	}
+	8% {
+		opacity: var(--opacite);
+	}
+	12.5% {
+		transform: translate3d(calc(var(--derive) * 0.71), calc(var(--chute) * 0.125), 0);
+	}
+	25% {
+		transform: translate3d(var(--derive), calc(var(--chute) * 0.25), 0);
+	}
+	37.5% {
+		transform: translate3d(calc(var(--derive) * 0.71), calc(var(--chute) * 0.375), 0);
+	}
+	50% {
+		transform: translate3d(0, calc(var(--chute) * 0.5), 0);
+	}
+	55% {
+		opacity: var(--opacite);
+	}
+	62.5% {
+		transform: translate3d(calc(var(--derive) * -0.71), calc(var(--chute) * 0.625), 0);
+	}
+	75% {
+		transform: translate3d(calc(var(--derive) * -1), calc(var(--chute) * 0.75), 0);
+	}
+	87.5% {
+		transform: translate3d(calc(var(--derive) * -0.71), calc(var(--chute) * 0.875), 0);
+	}
+	100% {
+		transform: translate3d(0, var(--chute), 0);
+		opacity: 0;
+	}
+}
+
+/* « Figer le décor » : les flocons s'arrêtent SUR PLACE, sans disparaître (critère 16). */
+html.decor-fige .decor-flocon {
+	animation-play-state: paused;
+}
+/* Animations réduites (profil OU système) : aucun mouvement, les flocons restent posés à
+   leur état de repos. */
+html.anim-reduced .decor-flocon {
+	animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.decor-flocon {
+		animation: none;
+	}
+}
+
+/* Jamais sur papier (critère 29). */
+@media print {
+	.decor-saison {
+		display: none;
+	}
+}

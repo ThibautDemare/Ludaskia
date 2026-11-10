@@ -435,6 +435,13 @@
 					🍪
 				</button>
 			</p>
+			<!-- « Arrêter le décor » (#785) : fige la forêt et le décor de saison, pour le profil
+			     actif. Accueil seulement (footer.scss). Livré `hidden`, révélé par ui/footer.ts
+			     (initFooterDecor), qui pose aussi le libellé et l'icône selon l'état. -->
+			<button type="button" class="footer-decor" id="footerDecor" hidden>
+				<span class="footer-decor-icone" aria-hidden="true"></span>
+				<span class="footer-decor-texte">Arrêter le décor</span>
+			</button>
 			<p class="site-footer-info">
 				<a class="site-footer-gh" href="https://github.com/ThibautDemare/Ludaskia">
 					<svg

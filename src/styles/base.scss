@@ -44,6 +44,12 @@
 	--muted: #5c6470;
 	--paper: #ffffff;
 	--page-bg: #eef3ee; /* fond de page (réécrit par les thèmes ; jamais --paper, gardé blanc) */
+	/* Flocon du décor de Noël (#785), posé sur --page-bg seulement. DÉCORATIF : ni texte ni
+	   composant, donc hors WCAG 1.4.11 ; tenu dans une fourchette 1,5-3:1 sur les six thèmes
+	   (il se voit, sans passer pour une pastille à toucher), par tests/contraste-tokens.test.ts.
+	   Un flocon blanc serait invisible sur les fonds clairs (~1,1:1) : d'où ce bleu-gris.
+	   Nuit a sa propre valeur (themes.scss). */
+	--flocon: #8fa8c4;
 	/* Vert « réussite ». Assombri (#601) : à #2e7d32 il plafonnait à 4,41:1 sur --ok-soft,
 	   juste sous AA, alors que ce couple porte le retour positif lui-même (pastille de mode,
 	   bon choix révélé après correction) — donc du texte lu vite, au moment qui compte.

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { contraste, melange, SEUIL_NON_TEXTE_AA, SEUIL_TEXTE_AA } from '../tools/contrast/wcag.js';
+import { FLOCONS } from '../src/core/decor-saison';
+import { resoudreImbrication, sansCommentairesScss } from './aide-scss';
 
 /* ============================================================
    Contraste WCAG AA des tokens de couleur, thème par thème (#576 puis #582).
@@ -314,7 +316,11 @@ const PAIRES_TEXTE: Paire[] = [
 		arriere: '--accent',
 		ou: 'bilan.scss .bilan-cta, aide-exercice.scss ; catalog.scss .classe-choix .enc-act-mode.on (classe cochée, #772) ; bilan-parcours.scss .bp-valider (#777)',
 	},
-	{ avant: '--on-accent', arriere: '--accent-dark', ou: 'survol des mêmes boutons (bilan.scss)' },
+	{
+		avant: '--on-accent',
+		arriere: '--accent-dark',
+		ou: 'survol des mêmes boutons (bilan.scss) ; footer.scss .site-footer (texte, lien GitHub, bouton « Arrêter le décor » #785)',
+	},
 	{
 		avant: '--on-accent',
 		arriere: '--ok',
@@ -339,6 +345,17 @@ const PAIRES_TEXTE: Paire[] = [
 		avant: '--accent',
 		arriere: '--page-bg',
 		ou: 'sprint-config (#scFilterTitle), boutons de retour, titres de rubrique du catalogue',
+	},
+	// Pied de page de la vitrine et du guide : les deux pages posent leur fond en `--page-bg`
+	// (vitrine.scss body.vitrine) et n'ont pas de thème, donc seule la palette « defaut » y
+	// est rendue. Le couple n'était tenu qu'en NON-TEXTE (anneau de focus, plus bas) alors
+	// qu'il porte du texte depuis longtemps ; #785 (critère 3) y ajoute le bouton « Arrêter le
+	// décor ». Mesuré sur les six thèmes comme toute la table : plus strict que nécessaire,
+	// et tenu partout (5,79:1 au plus serré, en Nuit, au 09/11/2026).
+	{
+		avant: '--accent-dark',
+		arriere: '--page-bg',
+		ou: 'vitrine.scss .v-footer a (liens du pied de page de index.html et guide.html) ; bouton « Arrêter le décor » de .v-footer (#785, critère 3)',
 	},
 	{
 		avant: '--accent',
@@ -702,72 +719,9 @@ type Declaration = {
 	valeur: string;
 };
 
-/** Retire les commentaires `/* … *\/` et `// …` sans toucher aux chaînes, et en gardant
- *  les sauts de ligne : les numéros de ligne des messages d'échec restent justes. */
-function sansCommentaires(scss: string): string {
-	let sortie = '';
-	let guillemet = '';
-	for (let i = 0; i < scss.length; i++) {
-		const c = scss[i];
-		if (guillemet) {
-			sortie += c;
-			if (c === '\\') {
-				sortie += scss.charAt(i + 1);
-				i++;
-			} else if (c === guillemet) guillemet = '';
-		} else if (c === '"' || c === "'") {
-			guillemet = c;
-			sortie += c;
-		} else if (c === '/' && scss[i + 1] === '*') {
-			const fin = scss.indexOf('*/', i + 2);
-			const bout = fin === -1 ? scss.length : fin + 2;
-			sortie += scss.slice(i, bout).replace(/[^\n]/g, ' ');
-			i = bout - 1;
-		} else if (c === '/' && scss[i + 1] === '/' && scss[i - 1] !== ':') {
-			// `scss[i - 1] !== ':'` : épargne le `//` d'une URL (`https://…`).
-			const fin = scss.indexOf('\n', i);
-			const bout = fin === -1 ? scss.length : fin;
-			sortie += ' '.repeat(bout - i);
-			i = bout - 1;
-		} else sortie += c;
-	}
-	return sortie;
-}
-
-/** Liste de sélecteurs coupée aux virgules de premier niveau (pas celles d'un `:is(…)`). */
-function listeSelecteurs(brut: string): string[] {
-	const parts: string[] = [];
-	let profondeur = 0;
-	let courant = '';
-	for (const c of brut) {
-		if (c === '(' || c === '[') profondeur++;
-		else if (c === ')' || c === ']') profondeur--;
-		if (c === ',' && profondeur === 0) {
-			parts.push(courant);
-			courant = '';
-		} else courant += c;
-	}
-	parts.push(courant);
-	return parts.map((s) => s.trim().replace(/\s+/g, ' ')).filter(Boolean);
-}
-
-function resoudre(pile: string[]): string[] {
-	let courants = [''];
-	for (const brut of pile) {
-		if (brut.startsWith('@')) continue; // @media, @mixin, @supports… : pas un sélecteur
-		const enfants = listeSelecteurs(brut);
-		courants = courants.flatMap((parent) =>
-			enfants.map((e) =>
-				e.includes('&') ? e.split('&').join(parent) : parent ? `${parent} ${e}` : e,
-			),
-		);
-	}
-	return courants;
-}
-
 /** Déclarations `propriété: valeur` d'une feuille, avec la règle qui les porte. */
 function declarations(fichier: string, scss: string): Declaration[] {
-	const src = sansCommentaires(scss);
+	const src = sansCommentairesScss(scss);
 	const pile: string[] = [];
 	const trouvees: Declaration[] = [];
 	let tampon = '';
@@ -798,7 +752,7 @@ function declarations(fichier: string, scss: string): Declaration[] {
 				trouvees.push({
 					fichier,
 					ligne: ligneTampon,
-					selecteurs: resoudre(pile),
+					selecteurs: resoudreImbrication(pile),
 					propriete: m[1].toLowerCase(),
 					valeur: m[2].trim(),
 				});
@@ -836,7 +790,7 @@ const DEFINISSENT_WARN_TEXT = ['base.scss', 'print.scss'];
 /** Détecteur (a) : #8a5200 hors commentaires (toute forme, alpha `#8a5200cc` compris),
  *  sauf la déclaration `--warn-text: #8a5200` dans les feuilles qui définissent le token. */
 function ambreEcritALaMain(fichier: string, scss: string): { ligne: number; texte: string }[] {
-	return sansCommentaires(scss)
+	return sansCommentairesScss(scss)
 		.split('\n')
 		.flatMap((l, i) => {
 			const reste = DEFINISSENT_WARN_TEXT.includes(fichier)
@@ -1260,6 +1214,79 @@ describe('Texte sur les sections vertes de la vitrine (index.html)', () => {
 				`section par section.`,
 		).toBeGreaterThanOrEqual(SEUIL_TEXTE_AA);
 	});
+});
+
+/* ============================================================
+   #785 — le flocon du décor de Noël (critère 15)
+   ============================================================ */
+
+/* Le flocon est DÉCORATIF : WCAG 1.4.11 ne le vise pas (cf. l'en-tête), et ces bornes ne
+   sont pas des seuils WCAG. Elles viennent de l'avis `designer-ux-enfant` du 09/11/2026 :
+   - PLANCHER, au pic le plus PÂLE des flocons : il doit se voir sur une tablette, sinon
+     le décor n'existe pas ;
+   - PLAFOND, au pic le plus MARQUÉ : il ne doit jamais être pris pour un bouton. 3:1 est
+     le seuil d'un composant d'interface (1.4.11) ; au-delà, un rond net sur le fond se
+     lit comme une pastille à toucher.
+   Mesuré sur `--page-bg` et nulle part ailleurs : aucun flocon ne passe sur une carte.
+   Le flocon est composé sur le fond à l'opacité de pic de CHAQUE flocon (`opacite`,
+   lue dans `FLOCONS`) : c'est la couleur que le navigateur rend, pas celle du token.
+   Comme le contraste croît avec l'opacité, le pic le plus pâle tient le plancher pour
+   tous, et le plus marqué tient le plafond pour tous.
+   Ordres de grandeur, pour qui choisit la couleur : un flocon BLANC sur les fonds clairs
+   reste vers 1,1:1 (invisible) ; un flocon clair sur le fond de Nuit dépasse 3:1 dès la
+   demi-opacité. D'où un token par palette, `:root` et `nuit-palette`. */
+const PLANCHER_FLOCON = 1.5;
+const PLAFOND_FLOCON = 3;
+
+describe('Flocon du décor de Noël sur le fond de page, tous thèmes (#785, critère 15)', () => {
+	const opacites = FLOCONS.map((f) => f.opacite);
+
+	it('garde contre un test à vide : --flocon lu sur les six thèmes, au moins 6 flocons', () => {
+		expect(THEMES_NOMS.length).toBeGreaterThanOrEqual(6);
+		expect(
+			FLOCONS.length,
+			'FLOCONS est vide : aucune opacité de pic à mesurer',
+		).toBeGreaterThanOrEqual(6);
+		for (const theme of THEMES_NOMS)
+			expect(
+				PALETTES[theme]['--flocon'],
+				`Thème « ${theme} » : --flocon n'a pas été lu. Le déclarer en hexadécimal écrit en ` +
+					`dur dans :root (base.scss) et dans @mixin nuit-palette (themes.scss).`,
+			).toMatch(/^#[0-9a-f]{6}$/);
+	});
+
+	it.each(THEMES_NOMS)('%s : le flocon le plus pâle se voit encore (≥ 1,5:1)', (theme) => {
+		const p = PALETTES[theme];
+		expect(p['--flocon'], `--flocon absent du thème « ${theme} »`).toMatch(/^#[0-9a-f]{6}$/);
+		expect(FLOCONS.length).toBeGreaterThanOrEqual(6);
+		const alpha = Math.min(...opacites);
+		const compose = melange(p['--flocon'], p['--page-bg'], alpha);
+		const r = contraste(compose, p['--page-bg']);
+		expect(
+			r,
+			`Thème « ${theme} » : --flocon (${p['--flocon']}) à l'opacité ${alpha} se compose en ` +
+				`${compose} sur --page-bg (${p['--page-bg']}), soit ${r.toFixed(2)}:1 — sous le ` +
+				`plancher de ${PLANCHER_FLOCON}:1 : le flocon disparaît sur une tablette.`,
+		).toBeGreaterThanOrEqual(PLANCHER_FLOCON);
+	});
+
+	it.each(THEMES_NOMS)(
+		'%s : le flocon le plus marqué ne passe pas pour un bouton (≤ 3:1)',
+		(theme) => {
+			const p = PALETTES[theme];
+			expect(p['--flocon'], `--flocon absent du thème « ${theme} »`).toMatch(/^#[0-9a-f]{6}$/);
+			expect(FLOCONS.length).toBeGreaterThanOrEqual(6);
+			const alpha = Math.max(...opacites);
+			const compose = melange(p['--flocon'], p['--page-bg'], alpha);
+			const r = contraste(compose, p['--page-bg']);
+			expect(
+				r,
+				`Thème « ${theme} » : --flocon (${p['--flocon']}) à l'opacité ${alpha} se compose en ` +
+					`${compose} sur --page-bg (${p['--page-bg']}), soit ${r.toFixed(2)}:1 — au-dessus du ` +
+					`plafond de ${PLAFOND_FLOCON}:1 : un rond aussi net se lit comme une pastille à toucher.`,
+			).toBeLessThanOrEqual(PLAFOND_FLOCON);
+		},
+	);
 });
 
 /* ============================================================

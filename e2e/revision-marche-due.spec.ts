@@ -33,7 +33,13 @@
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { watchErrors, gotoHash, seedAideVue } from './helpers';
+import { watchErrors, gotoHash, seedAideVue, horsDecembre, DATE_HORS_DECEMBRE } from './helpers';
+
+/* Pas de dépendance à la saison (#785, critère 33) : cf. `horsDecembre` dans helpers.ts. */
+test.beforeEach(async ({ page }) => {
+	await horsDecembre(page);
+});
+
 import { STUB_SANS_VOIX, STUB_VOIX_FR } from './journal-couverture';
 
 /* ---------- Seed banque d'orthographe (pattern repris de revision-ortho.spec.ts / ortho-liste-acquise.spec.ts) ---------- */
@@ -72,7 +78,7 @@ function motSeed(id: string, mot: string, validation: ValidationSeed, due: boole
 					palier: 6,
 					prochaineRevision: null,
 					reussites: 6,
-					dernierTest: Date.now() - 14 * 86_400_000,
+					dernierTest: DATE_HORS_DECEMBRE.getTime() - 14 * 86_400_000, // horloge ÉPINGLÉE de la page, pas celle de Node
 				},
 		origine: 'liste',
 	};

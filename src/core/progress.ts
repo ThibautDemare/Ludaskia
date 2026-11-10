@@ -28,6 +28,8 @@ import {
 	REVISION_ATTENTE_MAX,
 } from './revision';
 import { journaliserRetard } from './retard-journal';
+import { noterJourDecembre } from './jours-decembre';
+import { jourLocal } from './date-locale';
 import { ORTHO_KEY } from './orthographe/store';
 import { countDue } from './revision-select';
 import type { LeconBasNiveau } from './revision-select';
@@ -199,14 +201,7 @@ export function recordRun(mode: string, ok: number, count: number, ms: number): 
 /* ---------- Série de jours consécutifs ---------- */
 export const STREAK_KEY = 'ludaskia_streak';
 export function todayStr() {
-	const d = new Date();
-	return (
-		d.getFullYear() +
-		'-' +
-		String(d.getMonth() + 1).padStart(2, '0') +
-		'-' +
-		String(d.getDate()).padStart(2, '0')
-	);
+	return jourLocal(new Date());
 }
 export function daysBetween(a: string, b: string) {
 	return Math.round(
@@ -513,6 +508,10 @@ function recordActivity(now: number, kind: ActivityKind, ref?: string, progressi
 	// entre une telle borne et la première session de leçon, aucun état ne peut avoir bougé.
 	marquerDebutSuivi(now);
 	ajouterActivite(now, kind, ref, progressive);
+	// Jours de travail de décembre (#785) : base des trophées de Noël. Filtré par TYPE, pas
+	// par chemin d'appel : une séance partagée ne fait bouger aucun trophée (#734), même si
+	// elle passait un jour par cette porte-ci.
+	if (kind !== 'partage') noterJourDecembre(now);
 }
 function ajouterActivite(now: number, kind: ActivityKind, ref?: string, progressive = true) {
 	const a = loadActivity(); // normalisé : réécrit aussi l'éventuel héritage au format objet

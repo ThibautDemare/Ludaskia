@@ -1432,6 +1432,20 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
 
 ## Progression, gamification & déblocages
 
+- **`decor.ts`, `decor-saison.ts`, `jours-decembre.ts`** (#785, purs ou stockage seul) —
+  **`decor.ts`** : réglage « Figer le décor », une clé **par profil** (`decorFigeProfil`) et une
+  clé **brute par appareil** pour la vitrine et le guide (`decorFigeSite`), `decorFigeEffectif`
+  (figé si le réglage le demande **ou** si les animations sont réduites) ; module léger, importé
+  par la vitrine. **`decor-saison.ts`** : `saisonDu(date)` (`'noel'` du 1er au 31 décembre, heure
+  locale) et `FLOCONS` (positions fixes, sans tirage), sans autre dépendance que
+  **`date-locale.ts`** (pur : `jourLocal(d)`, format `AAAA-MM-JJ` partagé avec
+  `progress.ts:todayStr`, et `DECEMBRE`). **`jours-decembre.ts`** :
+  jours de travail distincts du dernier mois de décembre (`noterJourDecembre`,
+  `compterJoursDecembre`), alimentés par `progress.ts:recordActivity` (tout type sauf
+  `partage`), base de la métrique `joursDecembre` de `rewards.ts:gSnapshot` (trophées
+  `noel1/5/10`). Détails : [Rendu](ui.md), [Gamification](gamification.md),
+  [Données & profils](donnees-et-profils.md).
+
 - **`maitrise.ts`** (#397, fenêtre recomptée en QUESTIONS par #541) — socle **pur** (sans
   stockage) de l'échelle de maîtrise d'une notion (type LSU) : forme `LessonStat`,
   `lessonAvgPct` (moyenne cumulée) / `recentAvgPct` (perf **récente** `Σok/Σtotal`, fenêtre

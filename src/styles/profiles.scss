@@ -372,6 +372,12 @@
 	height: 18px;
 	cursor: pointer;
 }
+/* Case verrouillée (« Figer le décor » quand les animations sont réduites, #785) : pas de
+   main, qui promettrait un clic sans effet. */
+.pref-toggle:has(input:disabled),
+.pref-toggle input:disabled {
+	cursor: default;
+}
 .profile-add {
 	font: inherit;
 	font-family: var(--ui);

@@ -20,7 +20,12 @@
    révision espacée, qui journalise sous un mode distinct.
    ============================================================ */
 import { test, expect } from '@playwright/test';
-import { watchErrors, gotoHash, seedAideVue } from './helpers';
+import { watchErrors, gotoHash, seedAideVue, horsDecembre } from './helpers';
+
+/* Pas de dépendance à la saison (#785, critère 33) : cf. `horsDecembre` dans helpers.ts. */
+test.beforeEach(async ({ page }) => {
+	await horsDecembre(page);
+});
 
 /* Pas de verrou PIN hérité d'un test précédent. */
 const CLEAR_PIN = `localStorage.removeItem('ludaskia_encadrant_lock');`;

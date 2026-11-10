@@ -1280,6 +1280,10 @@ raté de chaque mot, que le rappel soit affiché ou non côté enfant. Le **« M
 animations, confort de lecture) reste côté enfant (auto-régulation immédiate, coût
 d'erreur nul) ; un aménagement actif est rappelé en lecture seule sur « Mon espace »
 (« réglé par un adulte »). L'écoute TTS **à la demande** reste toujours dispo côté enfant.
+Le **décor** (« Figer le décor », #785) suit la même règle : le réglage reste dans les
+Préférences de l'enfant, et l'onglet Réglages n'en porte qu'un **renvoi** en texte
+(`enc-hint`, juste sous « Désactiver les apparitions surprises », sans case ni lien entre les
+deux : chaque réglage garde un seul rôle). Cf. [Rendu & interactions](ui.md).
 
 **Accès aux autres classes (#772)** : dans le bloc « Classe de … » (`classeHTML`,
 `ui/encadrant-reglages.ts`), la case **« Autoriser les autres classes »**, **cochée par

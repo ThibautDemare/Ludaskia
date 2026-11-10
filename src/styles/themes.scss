@@ -111,6 +111,9 @@
 	--muted: #969eac; /* relevé vs #8c94a2 pour garder ≥ 4,5:1 sur --paper avec marge */
 	--paper: #222a36; /* surface de carte (sur-élevée par rapport au fond) */
 	--page-bg: #161b23; /* fond de page (plus sombre que les cartes) */
+	/* Flocon (#785) : un flocon clair dépasserait 3:1 sur ce fond dès la demi-opacité, et
+	   se lirait comme une pastille à toucher. Bleu-gris sombre, 2,1 à 2,8:1. */
+	--flocon: #50627a;
 	--accent: #52c98a; /* vert vif : lisible comme texte/icône sur fond sombre */
 	--accent-dark: #3fa86d; /* survol des boutons accent */
 	--accent-soft: #22382c; /* surface teintée vert sombre (ex-#e4f0e8 clair) */

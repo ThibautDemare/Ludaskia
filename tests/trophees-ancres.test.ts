@@ -534,9 +534,14 @@ describe('critère 5 — seuils des deux familles', () => {
    `redacteur-contenu-francais` et au `pedagogue-primaire`.
 
    NB : « jour(s) » n'est VOLONTAIREMENT pas un marqueur de durée — « du jour » est
-   précisément la formulation d'effort immédiat que le critère refuse. */
+   précisément la formulation d'effort immédiat que le critère refuse.
+
+   Le motif (a) accepte un pronom réfléchi en tête (« S'entraîner », « Se réviser ») : sans
+   lui, il ne lisait que le premier mot et laissait passer l'infinitif pronominal (trou
+   relevé sur les trophées de Noël, #785). `VERBE_INJONCTION` est COPIÉ dans
+   `tests/trophees-noel.test.ts` : les deux copies évoluent ensemble. */
 const VERBE_INJONCTION =
-	/^(r[ée]ussis|r[ée]ussir|termine|terminer|fais|faire|d[ée]croche|d[ée]crocher|cumule|cumuler|travaille|travailler|gagne|gagner|atteins|atteindre|obtiens|obtenir|continue|continuer|refais|refaire|recommence|recommencer|entra[îi]ne|entra[îi]ner|r[ée]vise|r[ée]viser|bats|battre|ajoute|ajouter|rejoue|rejouer|compl[èe]te|compl[ée]ter)\b/i;
+	/^(?:s['’]|se\s+)?(r[ée]ussis|r[ée]ussir|termine|terminer|fais|faire|d[ée]croche|d[ée]crocher|cumule|cumuler|travaille|travailler|gagne|gagner|atteins|atteindre|obtiens|obtenir|continue|continuer|refais|refaire|recommence|recommencer|entra[îi]ne|entra[îi]ner|r[ée]vise|r[ée]viser|bats|battre|ajoute|ajouter|rejoue|rejouer|compl[èe]te|compl[ée]ter)\b/i;
 const ANCRAGE_INSTANT =
 	/(aujourd[’']hui|du jour|cette s[ée]ance|cette session|maintenant|tout de suite)/i;
 const MARQUEUR_DUREE =
@@ -562,6 +567,9 @@ describe('critère 8 — les libellés disent la durée, pas l’effort du jour'
 		expect(situeDansLaDuree('Collection de mots', '150 mots maîtrisés.')).toBe(false);
 		expect(situeDansLaDuree('Suivi régulier', 'Terminer 7 programmes du jour.')).toBe(false);
 		expect(situeDansLaDuree('Mémoire vive', 'Encore sus, tout de suite après.')).toBe(false);
+		// Infinitif pronominal (#785) : refusé par (a) seul, la phrase porte une durée.
+		expect(situeDansLaDuree('Mots ancrés', "S'entraîner sur un mot pendant des mois.")).toBe(false);
+		expect(situeDansLaDuree('Mots ancrés', 'Se réviser encore, des mois plus tard.')).toBe(false);
 		// Acceptés : l'accomplissement est daté dans la durée, sans rien à faire aujourd'hui.
 		expect(situeDansLaDuree('Mots ancrés', '150 mots encore sus des mois plus tard.')).toBe(true);
 		expect(situeDansLaDuree('La mémoire longue', 'Une notion retenue plusieurs mois.')).toBe(true);

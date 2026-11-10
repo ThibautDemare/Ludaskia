@@ -162,6 +162,16 @@ l'export dont il dépend (il couvre TOUS les profils), donc lui aussi non
 exporté et survivant à la suppression d'un profil ; horodaté par `exportProfiles`
 à chaque export réussi qui couvre l'intégralité des profils, cf. `core/rappel-sauvegarde.ts`
 et [Logique pure](core.md)).
+**Décor (#785)**, trois clés `ludaskia_…` : `ludaskia_decorFige` (booléen, **par profil** via
+`lsGet/lsSet` — réglage « Figer le décor » de l'appli, donc **exporté** avec le profil),
+`ludaskia_joursDecembre` (`{annee, jours: 'AAAA-MM-JJ'[]}`, **par profil**, exporté aussi —
+base des trophées de Noël, 31 dates au plus, repart de zéro à un décembre d'une autre année,
+cf. [Gamification](gamification.md)) et `ludaskia_decorFigeSite` (booléen **brut**, sans
+préfixe de profil, via `lsGetRaw/lsSetRaw` : réglage de l'**appareil** pour la vitrine et le
+guide, qui ne chargent aucun profil ; il n'appartient à aucun profil, n'est donc **pas**
+exporté et ne marque aucun profil modifié). Les deux mémoires ne se voient jamais : son nom
+diffère exprès de celui du profil. Cf. [Rendu](ui.md) (décor de saison) et `core/decor.ts`.
+
 L'état SR des **mots**
 d'orthographe vit dans `ludaskia_ortho` (`MotOrtho.revision`). Un `MotOrtho`
 porte aussi des **formes fléchies** optionnelles (`formes?: FormesAccord` — masc/fém

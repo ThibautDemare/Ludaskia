@@ -40,7 +40,12 @@
    élément `.focus()`-able mais absent du parcours Tab naturel).
    ============================================================ */
 import { test, expect } from '@playwright/test';
-import { watchErrors, gotoHash } from './helpers';
+import { watchErrors, gotoHash, horsDecembre } from './helpers';
+
+/* Pas de dépendance à la saison (#785, critère 33) : cf. `horsDecembre` dans helpers.ts. */
+test.beforeEach(async ({ page }) => {
+	await horsDecembre(page);
+});
 
 test('carte dynamique « Ta prochaine leçon » : pastille focusable, activable à l’Entrée, aria-label présent', async ({
 	page,

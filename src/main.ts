@@ -31,6 +31,7 @@ import './styles/orthographe.scss';
 import './styles/version-update.scss';
 import './styles/rappel-sauvegarde.scss';
 import './styles/foret.scss';
+import './styles/decor-saison.scss'; // flocons de décembre (#785)
 import './styles/accessibility.scss';
 import './styles/aide-exercice.scss';
 import './styles/etayage.scss';
@@ -65,7 +66,9 @@ import {
 	renderPreferences,
 	setTheme,
 	setAnimationsReduites,
+	majCaseDecor,
 } from './ui/preferences';
+import { decorFigeProfil, setDecorFigeProfil } from './core/decor';
 import {
 	route,
 	goHome,
@@ -103,7 +106,13 @@ import { installVisiblePasswordReveal } from './ui/anti-suggestion';
 import { installGroupedNumberEcho } from './ui/grand-nombre-echo';
 import { installPaveSignes } from './ui/pave-signes';
 import { initEggs, mountForestEgg, recordCookieEgg } from './ui/eggs';
-import { fillFooterYear, initFooterCookie } from './ui/footer';
+import {
+	fillFooterYear,
+	initFooterCookie,
+	initFooterDecor,
+	rafraichirDecor,
+	surMouvementReduitChange,
+} from './ui/footer';
 import { brut } from './core/html';
 import { lireFragment } from './core/partage/liens';
 
@@ -144,6 +153,12 @@ function wireDOM() {
 	// cookies ». Le 1er déclenchement range le souvenir dans l'album (recordCookieEgg).
 	fillFooterYear();
 	initFooterCookie(recordCookieEgg);
+	// « Arrêter le décor » (#785) : réglage du PROFIL ACTIF (critère 4), le même que la
+	// case « Figer le décor » des Préférences (critère 6).
+	initFooterDecor({ lire: decorFigeProfil, ecrire: setDecorFigeProfil });
+	// Le réglage de l'appareil peut changer pendant que les Préférences sont ouvertes : la
+	// case « Figer le décor » suit (le bouton, lui, est suivi par initFooterDecor).
+	surMouvementReduitChange(majCaseDecor);
 	// Session : écouteurs délégués de saisie / navigation clavier / impression (#349).
 	// Posés ici (et non à l'import de session.ts) pour un module sans effet de bord.
 	initSession();
@@ -276,7 +291,12 @@ function wireDOM() {
 		// « Mon confort » : réglages que l'enfant ajuste lui-même (auto-régulation).
 		if (e.target.id === 'prefAnim') {
 			setAnimationsReduites(e.target.checked);
-			applyPreferences();
+			applyPreferences(); // met aussi à jour la case « Figer le décor » (« déjà inclus »)
+		} else if (e.target.id === 'prefDecor') {
+			// Même réglage que le bouton du pied de page (#785, critère 6).
+			setDecorFigeProfil(e.target.checked);
+			rafraichirDecor();
+			majCaseDecor();
 		} else if (e.target.id === 'prefConfort') {
 			setPref('confortLecture', e.target.checked);
 			applyPreferences();

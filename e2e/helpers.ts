@@ -14,6 +14,22 @@ export function leconsDuNiveau(subject: SubjectId, niveau: SchoolLevel): string[
 	return getLessonsBySubject(subject, niveau).map((l) => l.id);
 }
 
+/* Date de référence des specs qui ne doivent PAS dépendre de la saison (#785, critère 33).
+   Le décor de Noël et les trophées de décembre changent ce que voit l'écran en décembre : la bande
+   de flocons décale l'accueil de ~126 px, et la première session du mois annonce un trophée dans
+   `#celebrate`, dont la modale intercepte les clics d'une spec qui n'en attendait aucune. Une spec
+   dont le propos n'est PAS la saison pose donc cette date (14 juillet 2026, 10 h, heure de Paris),
+   que le test tourne le 30 novembre ou le 15 décembre.
+   `setSystemTime` (et non `setFixedTime`) : l'horloge continue de s'écouler, ce qui compte pour les
+   gardes de double appui, les minuteurs et les animations. Posé AVANT `addInitScript` : les seeds
+   qui lisent `Date.now()` voient alors la même date que l'appli.
+   Une spec qui a besoin de décembre fixe SA date (cf. `decor-aide.ts`). */
+export const DATE_HORS_DECEMBRE = new Date('2026-07-14T10:00:00+02:00');
+
+export async function horsDecembre(page: Page): Promise<void> {
+	await page.clock.setSystemTime(DATE_HORS_DECEMBRE);
+}
+
 /* Messages de console à ignorer (bruits navigateur sans rapport avec l'app :
    favicon manquant, ressources annexes…). Le 4ᵉ (beforeunload) est un artefact
    Chromium propre aux specs qui forcent un `page.reload()` pendant un sprint/une

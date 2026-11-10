@@ -168,6 +168,14 @@ faut.**
 - **Un `catch` n'entoure que l'appel qui peut échouer pour la raison qu'il annonce.** Un
   `try` qui englobe aussi le rendu ou l'écriture attrape un bug sous le message d'un
   échec attendu (« lexique injoignable »). Cas d'origine : l'envoi d'une dictée (#734).
+- **Une requête média suivie à plusieurs endroits passe par un seul abonnement.** Deux
+  `matchMedia(...).addEventListener('change')` sur la même requête dupliquent la chaîne
+  et l'écoute ; passer par l'abonnement exporté (`surMouvementReduitChange` dans
+  `src/ui/footer.ts` pour `prefers-reduced-motion`). Cas d'origine : #785.
+- **Un motif de décor de saison ajouté est comparé à la liste fermée de son issue.**
+  Noël (#785) : flocons, sapin, cadeaux, guirlandes, bonnet, aucun motif religieux
+  (rappel en tête de `src/core/decor-saison.ts`). Tout autre motif passe par le
+  mainteneur, même s'il « va de soi ».
 - **TypeScript strict, vraiment.** Repère les `any`, les `as` qui masquent un
   vrai problème, les `!` non-null hasardeux, les types trop larges. Le code doit
   passer `tsc --noEmit` sans contournement.

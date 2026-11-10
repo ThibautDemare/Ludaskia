@@ -41,6 +41,11 @@
 	animation-iteration-count: infinite;
 	will-change: transform;
 }
+/* « Figer le décor » (#785) : les arbres s'arrêtent où ils sont, sans revenir d'un coup à
+   la verticale. Seul le décor s'arrête : le reste des animations continue (critère 25). */
+html.decor-fige .home-foret .sway {
+	animation-play-state: paused;
+}
 /* Pas de mouvement si l'utilisateur réduit les animations (profil OU système). */
 html.anim-reduced .home-foret .sway {
 	animation: none;

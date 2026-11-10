@@ -618,7 +618,7 @@ function renderRevisionFin(): void {
 }
 
 /* Annonce les récompenses obtenues sur un écran de fin — bilan, révision terminée, ou pause
-   d'une séance qui n'aura pas de bilan (mode ciblé, révision) : trophées
+   de séance (cf. `renderPause`) : trophées
    nouvellement débloqués + éventuelle montée de niveau (modale + confettis). `celebBase`
    = entrées de célébration toujours montrées (l'étoile « Liste prête » du parcours
    complet) ; vide en révision, où l'on ne célèbre que ce qui a réellement été gagné. */
@@ -667,12 +667,15 @@ function renderPause(): void {
 	sheets().querySelector('#btnStopSeance')!.addEventListener('click', retour.aller);
 	bindMotsDifficiles(sheets(), () => relireMotsDifficiles(difficiles));
 	b.focus();
-	// Hors parcours de première complétion (mode ciblé ou révision), il n'y a pas de bilan
-	// d'étoile → la pause EST l'écran de fin, et doit donc annoncer ce qui a été gagné.
-	// Depuis #641 cela inclut les TROPHÉES : un mode ciblé fait monter les mots, donc décroche
-	// « Première liste » comme le parcours complet ; les laisser à l'accueil, c'est ne rien
-	// annoncer au moment où l'enfant l'a mérité. Sans étoile ajoutée : elle appartient au bilan.
-	if (seanceMode || revisionRun) annoncerRecompensesFin([]);
+	// La pause annonce ce qui a été gagné, dans TOUS les modes. Hors parcours de première
+	// complétion (mode ciblé, révision), elle EST l'écran de fin : il n'y a pas de bilan
+	// d'étoile. Depuis #641 cela inclut les TROPHÉES : un mode ciblé fait monter les mots, donc
+	// décroche « Première liste » comme le parcours complet. Depuis #785, le parcours complet
+	// aussi : la pause vient d'écrire le point d'activité de la séance, qui peut débloquer un
+	// trophée de Noël, et un enfant qui s'arrête ici n'atteindra jamais le bilan (décision du
+	// mainteneur du 09/11/2026). Ce qui est annoncé ici ne l'est plus au bilan (trophées
+	// mémorisés, `niveauAvant` avancé). Jamais d'étoile à la pause : elle appartient au bilan.
+	annoncerRecompensesFin([]);
 }
 
 /* Message de fin (#641, critère 12) : un mode d'entraînement dont le DERNIER mot vient d'être

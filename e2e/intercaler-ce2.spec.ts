@@ -29,7 +29,12 @@
    tirage précis.
    ============================================================ */
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { watchErrors, gotoHash, seedAideVue, seedAideVueScript } from './helpers';
+import { watchErrors, gotoHash, seedAideVue, seedAideVueScript, horsDecembre } from './helpers';
+
+/* Pas de dépendance à la saison (#785, critère 33) : cf. `horsDecembre` dans helpers.ts. */
+test.beforeEach(async ({ page }) => {
+	await horsDecembre(page);
+});
 
 const NB_QUESTIONS_TUILES = 8;
 

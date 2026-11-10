@@ -12,8 +12,15 @@ import './styles/base.scss'; // tokens (:root), police Nunito, reset
 import './styles/foret.scss'; // bande forêt full-bleed + animation « vent » (prefers-reduced-motion)
 import './styles/vitrine.scss';
 import './styles/footer.scss'; // pied de page partagé + pluie de cookies (#336)
-import { fillFooterYear, initFooterCookie } from './ui/footer';
+import './styles/decor-saison.scss'; // flocons de décembre (#785)
+import { fillFooterYear, initFooterCookie, initFooterDecor } from './ui/footer';
+import { majDecorSaison } from './ui/decor-saison';
+import { decorFigeSite, setDecorFigeSite } from './core/decor';
 import { brut } from './core/html';
+
+// Décor de saison (#785) : en décembre, une bande de flocons juste au-dessus du titre.
+// Le reste de l'année, rien n'est ajouté à la page.
+majDecorSaison(document.querySelector('.v-hero'));
 
 // Bande décorative « forêt » : même SVG pré-généré que l'accueil de l'app,
 // inséré dans le DOM (pour que l'oscillation respecte « animations réduites »).
@@ -54,3 +61,6 @@ if (aUnProfil()) {
 // Sur la vitrine, c'est un pur jouet (pas de couche eggs / d'album à charger).
 fillFooterYear();
 initFooterCookie();
+// « Arrêter le décor » (#785) : réglage de l'APPAREIL, partagé avec le guide, distinct de
+// celui des profils de l'appli (critères 5 et 28).
+initFooterDecor({ lire: decorFigeSite, ecrire: setDecorFigeSite });

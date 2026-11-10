@@ -46,7 +46,7 @@
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { watchErrors, gotoHash, seedAideVue } from './helpers';
+import { watchErrors, gotoHash, seedAideVue, horsDecembre } from './helpers';
 import { STUB_SANS_VOIX } from './journal-couverture';
 
 async function seedOrtho(page: Page, seed: unknown): Promise<void> {
@@ -119,6 +119,7 @@ async function reussirMotCache(page: Page): Promise<string> {
 }
 
 test.beforeEach(async ({ page }) => {
+	await horsDecembre(page);
 	// Le mode ciblé « mot caché » ne monte pas l'atelier au 1er lancement, mais la
 	// correction guidée si : neutralise l'aide contextuelle pour ne pas la bloquer.
 	await seedAideVue(page);

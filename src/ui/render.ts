@@ -10,6 +10,7 @@ import {
 	getRevisionPlafond,
 } from '../core/profiles';
 import { getAllLessons } from '../core/catalog';
+import { majDecorSaison } from './decor-saison';
 import {
 	loadRuns,
 	cmpRun,
@@ -329,6 +330,10 @@ export function rafraichirAccueilSiJourChange(): void {
 
 export function renderHomeStats() {
 	jourAccueil = todayStr();
+	// Décor de saison (#785) : posé au-dessus du logo en décembre, retiré le reste de l'année.
+	// Ici plutôt qu'au chargement : l'accueil se re-rend au changement de jour, donc une
+	// tablette restée ouverte le 30 novembre au soir voit le décor arriver le 1er décembre.
+	majDecorSaison(document.querySelector('#home > .big'));
 	// Le badge XP vit dans la barre d'outils ; la carte progression sur l'accueil.
 	renderProgression();
 	renderProgrammeCard(document.getElementById('cardProgramme')); // carte « programme du jour » (#440)

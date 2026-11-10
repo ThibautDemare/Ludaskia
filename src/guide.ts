@@ -14,7 +14,8 @@ import './styles/foret.scss'; // bande forêt full-bleed + animation « vent » 
 import './styles/vitrine.scss'; // chrome partagé avec index.html
 import './styles/guide.scss';
 import './styles/footer.scss'; // pied de page partagé + pluie de cookies (#336)
-import { fillFooterYear, initFooterCookie } from './ui/footer';
+import { fillFooterYear, initFooterCookie, initFooterDecor } from './ui/footer';
+import { decorFigeSite, setDecorFigeSite } from './core/decor';
 import { brut } from './core/html';
 
 // Bande décorative « forêt », comme sur la vitrine (décoration non critique).
@@ -32,3 +33,6 @@ if (foretEl) {
 
 fillFooterYear();
 initFooterCookie();
+// « Arrêter le décor » (#785) : fige la forêt. Réglage de l'APPAREIL, partagé avec la
+// vitrine. Pas de décor de saison sur le guide (hors périmètre de #785).
+initFooterDecor({ lire: decorFigeSite, ecrire: setDecorFigeSite });

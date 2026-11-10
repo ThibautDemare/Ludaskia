@@ -190,6 +190,38 @@ métriques `orthoMotsAncres`/`notionsAncrees` qui en dépendent peuvent désorma
 libellés) et `e2e/revision-trophees-ancres.spec.ts` (annonce en fin de session de
 révision, apparition dans la galerie — cf. [Tests](tests.md)).
 
+## Trophées de Noël (#785)
+
+Trois trophées dans `TROPHIES` (`core/rewards.ts`) : `noel1` « Premier flocon », `noel5`
+« Paquet cadeau », `noel10` « Grand sapin », métrique **`joursDecembre`** (1 / 5 / 10), **sans
+XP** comme tout trophée. Visibles **toute l'année** dans la galerie, verrouillés compris
+(paliers chiffrés et visibilité retenus par le mainteneur contre l'avis de
+`gamification-enfant` : risque accepté, **à ne pas rouvrir en relecture**). Aucun rappel,
+compte à rebours ni message de saison nulle part en dehors de la galerie.
+
+- **Un « jour de travail »** = une date locale de l'appareil où une partie qui **compte** s'est
+  terminée : leçon, bilan, sprint (règle des 60 % déjà appliquée en amont), révision espacée,
+  **et séance de dictée**. Plusieurs parties le même jour = un jour. Une **séance partagée**
+  (#734) ne compte jamais.
+- **Alimentation à un seul endroit** : `recordActivity` (`core/progress.ts`), la porte du
+  journal d'activité, appelle `noterJourDecembre(now)` pour tout `kind !== 'partage'`.
+  Filtre par **type**, pas par chemin d'appel.
+- **État dédié** `ludaskia_joursDecembre` (`core/jours-decembre.ts`, `{annee, jours[]}`), pas
+  une relecture de `ludaskia_activity` : ce journal est borné à 200 entrées, le compte
+  baisserait en cours de mois. Un décembre d'une **autre année** repart de zéro ; une partie
+  compte pour le jour où elle **se termine** (une partie finie le 1er janvier ne compte pas).
+  `gSnapshot` lit `compterJoursDecembre` **sans regarder la date du jour** : entre deux
+  décembres, le compte du dernier, déjà évalué, ne débloque plus rien.
+- **Acquis pour toujours, manqué rattrapable** : un trophée obtenu ne se reverrouille pas ; un
+  trophée manqué se gagne à un décembre suivant (le compte repart, les paliers restent).
+- **Annonce** : comme tout trophée, à la fin de la partie qui le débloque. La **pause de
+  dictée** (« Bonne séance ! », `renderPause`, `ui/ortho-runner.ts`) annonce désormais
+  trophées et niveau **dans tous les modes**, parcours de première complétion compris :
+  sans cela, un trophée gagné par une dictée arrêtée à la pause se débloquait en silence. Ce
+  qui y est annoncé ne l'est plus au bilan ; l'**étoile** reste réservée au bilan.
+- Tenu par `tests/jours-decembre.test.ts` et `tests/trophees-noel.test.ts` ; côté e2e,
+  `e2e/decor-noel-trophees.spec.ts` (cf. [Tests](tests.md)).
+
 ## XP & niveaux
 
 **XP & niveaux** : 1 point d'XP par bonne réponse, tous modes confondus

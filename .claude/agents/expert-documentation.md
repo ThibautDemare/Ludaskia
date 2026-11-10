@@ -211,6 +211,11 @@ travail :
    **concis**, et dans le **style existant** de la page (voix « tu / je »,
    titres sémantiques — cf. `conventions-redaction.md`). Pas de changelog : tu
    décris l'état courant.
+   **Une entrée ajoutée à une liste relit la phrase qui l'introduit** : un chapeau
+   qui généralise (« Tout ce qui suit se règle dans *Réglages* ») devient faux dès
+   qu'on y glisse une entrée qui ne s'y range pas. Si l'entrée n'appartient pas à la
+   section, place-la ailleurs plutôt que d'affaiblir le chapeau (#785 : décor et
+   trophées de Noël ajoutés à « Adapter à votre enfant »).
 4. **Ne sur-documente pas** : ce que le code, les tests ou l'historique git
    disent déjà n'a pas à être recopié. Documente le **non-évident** (un
    invariant, un pourquoi structurel, un point d'entrée).

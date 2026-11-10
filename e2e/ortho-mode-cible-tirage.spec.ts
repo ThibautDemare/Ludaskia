@@ -33,7 +33,7 @@
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { watchErrors, gotoHash, seedAideVue } from './helpers';
+import { watchErrors, gotoHash, seedAideVue, horsDecembre } from './helpers';
 import { STUB_VOIX_FR } from './journal-couverture';
 import { MOTS_MAITRISES as MOTS } from './ortho-liste-maitrisee';
 
@@ -42,6 +42,7 @@ const NEUVIEME = MOTS[8]; // 'cheval'
 const DIXIEME = MOTS[9]; // 'pinceau'
 
 test.beforeEach(async ({ page }) => {
+	await horsDecembre(page);
 	await page.addInitScript(STUB_VOIX_FR);
 });
 

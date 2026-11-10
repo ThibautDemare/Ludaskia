@@ -47,6 +47,74 @@
 	border-radius: 4px;
 }
 
+/* ============================================================
+   Bouton « Arrêter le décor » (#785) : appli, vitrine, guide
+   ============================================================ */
+/* Style LIEN, comme le lien GitHub du pied de page : texte souligné et icône, ni pilule,
+   ni fond, ni bordure. La discrétion vient de sa place (dernière ligne, petit corps), pas
+   d'un contraste affaibli. C'est le TEXTE qui porte l'état (critère 2) ; l'icône suit.
+   Zone tactile de 44 × 44 px au moins (critère 3), même si le texte est plus petit. */
+.footer-decor {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 44px;
+	min-width: 44px;
+	padding: 0 12px;
+	border: 0;
+	border-radius: 4px;
+	background: none;
+	font: inherit;
+	font-weight: 700;
+	text-decoration: underline;
+	cursor: pointer;
+}
+/* `display` ci-dessus l'emporterait sur l'attribut `hidden` (animations réduites,
+   critère 7) : on le rétablit explicitement. */
+.footer-decor[hidden] {
+	display: none;
+}
+.footer-decor .ph-icon {
+	width: 1.2em;
+	height: 1.2em;
+}
+/* Message d'état « Décor arrêté. » (role="status", posé par initFooterDecor) : pour le
+   lecteur d'écran seulement. Copie du motif `.sr-only` d'accessibility.scss, que la
+   vitrine et le guide ne chargent pas. */
+.footer-decor-etat {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+/* Appli : clair sur la « terre » du pied de page (couple --on-accent / --accent-dark). */
+.site-footer .footer-decor {
+	color: var(--on-accent);
+}
+.site-footer .footer-decor:focus-visible {
+	outline: 3px solid var(--on-accent);
+	outline-offset: 2px;
+}
+/* Vitrine et guide : la couleur des liens de leur pied de page (--accent-dark / --page-bg). */
+.v-footer .footer-decor {
+	color: var(--accent-dark);
+}
+.v-footer .footer-decor:focus-visible {
+	outline: 3px solid var(--accent-dark);
+	outline-offset: 2px;
+}
+/* Dans l'appli, l'accueil est le seul écran décoré, et le seul où le bouton a un sens
+   (critère 27). `accueil-actif` est posé par setToolbar (navigation.ts). */
+body:not(.accueil-actif) .site-footer .footer-decor {
+	display: none;
+}
+
 /* Pendant une session (exercice, sprint, révision : body.session-active, posé
    par setToolbar) : on retire le pied de page ET une éventuelle pluie résiduelle,
    pour ne rien offrir de distrayant au pire moment (cohérent avec le contrat

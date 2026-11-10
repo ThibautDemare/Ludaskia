@@ -20,10 +20,11 @@
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { watchErrors, gotoHash, seedAideVue } from './helpers';
+import { watchErrors, gotoHash, seedAideVue, horsDecembre } from './helpers';
 import { seedListeMaitrisee, MOTS_MAITRISES as MOTS } from './ortho-liste-maitrisee';
 
 test.beforeEach(async ({ page }) => {
+	await horsDecembre(page);
 	await seedAideVue(page);
 });
 

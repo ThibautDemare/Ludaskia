@@ -41,6 +41,7 @@ import type { SchoolLevel } from './catalog';
 import { loadOrtho } from './orthographe/store';
 import type { MotOrtho } from './orthographe/types';
 import { seancesCompletees } from './seance';
+import { compterJoursDecembre, loadJoursDecembre } from './jours-decembre';
 
 /* ---------- Défi du jour ----------
    Recentré « qualité / dépassement » : la cadence (sprints/express/complet)
@@ -475,6 +476,38 @@ export const TROPHIES: Trophy[] = [
 			desc: "200 notions qu'on sait encore, des mois plus tard.",
 		},
 	]),
+	/* Trophées de Noël (#785) : 1, 5 et 10 JOURS de travail au cours d'un même mois de
+	   décembre (cf. `jours-decembre.ts`). Des jours plutôt que des parties : enchaîner dix
+	   leçons le même jour ne débloque que le premier. Visibles toute l'année, verrouillés
+	   compris, comme les autres : paliers chiffrés et visibilité retenus par le mainteneur le
+	   09/11/2026, contre l'avis de `gamification-enfant` (risque accepté, à ne pas rouvrir).
+	   Aucun XP, comme tout trophée. Motifs dans la liste fermée de l'issue (flocon, cadeau,
+	   sapin). Descriptions en CONSTAT, pas à l'infinitif : on ne peut pas les gagner onze
+	   mois sur douze (convention #660, tenue par `tests/trophees-noel.test.ts`). */
+	{
+		id: 'noel1',
+		icon: '❄️',
+		title: 'Premier flocon',
+		desc: "Un jour d'entraînement en décembre.",
+		metric: 'joursDecembre',
+		n: 1,
+	},
+	{
+		id: 'noel5',
+		icon: '🎁',
+		title: 'Paquet cadeau',
+		desc: "5 jours d'entraînement différents, tous dans le même décembre.",
+		metric: 'joursDecembre',
+		n: 5,
+	},
+	{
+		id: 'noel10',
+		icon: '🎄',
+		title: 'Grand sapin',
+		desc: "10 jours d'entraînement différents, tous dans le même décembre.",
+		metric: 'joursDecembre',
+		n: 10,
+	},
 ];
 /* ---------- Trophées par matière et par catégorie ----------
    Générés depuis le catalogue : chaque matière a des paliers de
@@ -689,6 +722,10 @@ export function gSnapshot() {
 		// Notions au sommet de la répétition espacée (#660), en paires leçon × niveau et sur
 		// l'état BRUT — cf. `notionsAncrees` (progress.ts) pour le pourquoi du non-scopage.
 		notionsAncrees: notionsAncrees(),
+		// Jours de travail du dernier mois de décembre décompté (#785), base des trophées de
+		// Noël. Hors décembre, le compte du dernier décembre : déjà évalué à chaque partie, il
+		// ne peut plus rien débloquer.
+		joursDecembre: compterJoursDecembre(loadJoursDecembre()),
 	};
 }
 /* Débloque les trophées nouvellement atteints ; renvoie les nouveaux. */

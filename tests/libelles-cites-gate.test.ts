@@ -75,6 +75,11 @@ const LIBELLES: Record<string, string> = {
 	Écouter: 'bouton de lecture vocale de la consigne',
 	'à renforcer': 'état d’une notion, affiché dans le suivi',
 	'à revoir': 'état d’une leçon épinglée, affiché à l’enfant',
+	'Arrêter le décor': 'bouton du pied de page de l’accueil, de la vitrine et du guide (#785)',
+	'Figer le décor': 'case des Préférences de l’enfant, écran Profils (#785)',
+	'Réduire les animations':
+		'case des Préférences de l’enfant, juste au-dessus de « Figer le décor »',
+	'Mes trophées': 'bouton de la barre des récompenses, sur l’accueil de l’enfant',
 };
 
 /** Citations qui ne sont PAS des libellés : elles n'ont donc rien à vérifier dans le

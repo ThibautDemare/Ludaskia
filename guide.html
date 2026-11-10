@@ -109,6 +109,14 @@
 							"@type": "Answer",
 							"text": "Non. C'est un complément d'entraînement, sur des automatismes qui gagnent à être répétés : tables, conjugaison, orthographe des mots courants. La leçon, la compréhension et le travail de fond restent du côté de l'école."
 						}
+					},
+					{
+						"@type": "Question",
+						"name": "Que sont les trophées de Noël ?",
+						"acceptedAnswer": {
+							"@type": "Answer",
+							"text": "Trois trophées de la galerie « Mes trophées », visibles toute l'année, qui récompensent 1, 5 et 10 jours d'entraînement différents au cours d'un même décembre. Un jour compte dès que votre enfant termine une leçon, une révision, un bilan ou un sprint en ayant répondu à au moins 60 % des questions, ou une séance de dictée ; plusieurs parties le même jour ne comptent que pour un jour. Ces trophées ne rapportent pas d'XP, et un trophée manqué peut s'obtenir un autre décembre."
+						}
 					}
 				]
 			}
@@ -537,7 +545,10 @@
 			>
 				<div class="v-wrap">
 					<h2 id="gAdapterTitle">6. Adapter à votre enfant</h2>
-					<p>Tout ce qui suit se règle dans l'onglet <em>Réglages</em>, enfant par enfant.</p>
+					<p>
+						Tout ce qui suit se règle dans l'onglet <em>Réglages</em>, enfant par enfant, sauf le
+						décor de l'accueil (dernier point).
+					</p>
 					<ul class="g-list">
 						<li>
 							<strong>La classe</strong> se règle globalement, et si besoin différemment par
@@ -583,6 +594,17 @@
 							dès leur première vraie rencontre dans l'application (ou au bout de quelques semaines
 							si l'enfant ne la recroise pas), sans jamais faire grimper d'un coup ce qu'il y a à
 							réviser.
+						</li>
+						<li>
+							<strong>Le décor de l'accueil</strong>&nbsp;: la forêt en bas de l'écran bouge en
+							continu, et du 1er au 31 décembre des flocons tombent en haut de l'accueil. Le bouton
+							«&nbsp;Arrêter le décor&nbsp;», dans le pied de page de l'accueil (de la vitrine et de
+							ce guide aussi), fige la forêt et les flocons&nbsp;; un nouvel appui les relance. Le
+							choix est mémorisé pour chaque enfant, et sur l'appareil pour la vitrine et ce guide.
+							Dans les préférences de l'enfant (écran <em>Profils</em>), la case «&nbsp;Figer le
+							décor&nbsp;» règle la même chose&nbsp;; elle se trouve juste sous «&nbsp;Réduire les
+							animations&nbsp;», qui l'inclut déjà. Figer le décor n'arrête que le décor&nbsp;: les
+							démonstrations de l'aide restent animées.
 						</li>
 					</ul>
 					<div class="g-note">
@@ -750,6 +772,18 @@
 								compréhension et le travail de fond restent du côté de l'école.
 							</p>
 						</div>
+						<div class="v-faq-item">
+							<h3>Que sont les trophées de Noël&nbsp;?</h3>
+							<p>
+								Trois trophées de la galerie «&nbsp;Mes trophées&nbsp;», visibles toute l'année, qui
+								récompensent 1, 5 et 10 jours d'entraînement différents au cours d'un même décembre.
+								Un jour compte dès que votre enfant termine une leçon, une révision, un bilan ou un
+								sprint en ayant répondu à au moins 60&nbsp;% des questions, ou une séance de
+								dictée&nbsp;; plusieurs parties le même jour ne comptent que pour un jour. Ces
+								trophées ne rapportent pas d'XP, et un trophée manqué peut s'obtenir un autre
+								décembre.
+							</p>
+						</div>
 					</div>
 				</div>
 			</section>
@@ -782,6 +816,13 @@
 					🍪
 				</button>
 			</p>
+			<!-- « Arrêter le décor » (#785) : fige la forêt. Réglage de l'appareil, partagé
+			     avec la vitrine. Livré `hidden`, révélé par ui/footer.ts (initFooterDecor),
+			     qui pose aussi le libellé et l'icône selon l'état. -->
+			<button type="button" class="footer-decor" id="footerDecor" hidden>
+				<span class="footer-decor-icone" aria-hidden="true"></span>
+				<span class="footer-decor-texte">Arrêter le décor</span>
+			</button>
 		</footer>
 
 		<script type="module" src="/src/guide.ts"></script>

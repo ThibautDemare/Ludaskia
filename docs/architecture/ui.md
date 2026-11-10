@@ -2371,6 +2371,70 @@ moteurs de rendu n'y coupent pas de ligne, et aucun nombre ne débordait au view
 constat de l'auteur des tests e2e) — une cohérence de style (`tabular-nums`, taille) restée à
 faire.
 
+### Décor animé : figer, et décor de saison (#785)
+
+**Figer le décor** arrête la forêt animée et les flocons, **et seulement eux** : l'aide
+animée, les effets de réussite, la luciole et la pluie de cookies continuent
+(« Réduire les animations », qui coupe tout cela aussi, garde son fonctionnement et **inclut**
+« Figer le décor »). Logique pure et stockage dans `core/decor.ts` (trois clés, cf.
+[Données & profils](donnees-et-profils.md)) : `decorFigeEffectif(fige, animationsReduites)`.
+
+- **Un seul effet visuel** : la classe **`html.decor-fige`**, posée par `rafraichirDecor`
+  (`ui/footer.ts`) et lue par les feuilles (`foret.scss` : `.home-foret .sway` ;
+  `decor-saison.scss` : `animation-play-state: paused`, flocons immobilisés sur place, jamais
+  cachés).
+- **Bouton `#footerDecor` « Arrêter le décor » / « Relancer le décor »** : module **partagé**
+  `ui/footer.ts` (`initFooterDecor(reglage)`) dans l'appli, la vitrine et le guide. Il ignore
+  **où** le réglage vit : l'appelant fournit `{lire, ecrire}` (profil actif dans `main.ts` ;
+  appareil dans `vitrine.ts` et `guide.ts`). C'est le **texte** qui porte l'état (pas
+  d'`aria-pressed`) ; une région `role="status"` posée **vide** à l'init annonce
+  « Décor arrêté. » / « Décor relancé. » au seul clic (vidée puis réécrite au frame suivant,
+  pour que deux clics de suite soient annoncés). Livré `hidden` dans le balisage ; masqué par
+  `mouvementReduit()` (case du profil **ou** `prefers-reduced-motion` de l'appareil, écouté
+  par `surMouvementReduitChange` : un seul écouteur sur la requête média, qui prévient ses
+  abonnés, le bouton ici et la case des Préférences dans `main.ts`).
+- **Accueil seulement dans l'appli** : `setToolbar` (`navigation.ts`) pose `body.accueil-actif`,
+  et `footer.scss` masque le bouton partout ailleurs (`body:not(.accueil-actif)`).
+- **Case `#prefDecor` « Figer le décor »** (`ui/preferences.ts`, juste sous « Réduire les
+  animations »), mise à jour **sur place** par `majCaseDecor` (le focus reste sur la case) :
+  cochée **et désactivée** quand les animations sont réduites, avec la phrase « Déjà inclus… »
+  (profil, sinon appareil, via `mouvementReduitSysteme`). Le réglage mémorisé n'est pas touché :
+  décocher « Réduire les animations » rend la case à son état d'avant.
+- **Décor de saison** : `core/decor-saison.ts` (`saisonDu(date)` → `'noel'` du 1er au 31
+  décembre à l'heure **locale**, `FLOCONS` : 10 flocons à positions/durées fixes, 16 à 24 s) ;
+  `ui/decor-saison.ts` (`majDecorSaison(repere, date)`) pose une **bande dans le flux**
+  (`.decor-saison`, `aria-hidden`, `pointer-events: none`, jamais un calque sur le contenu) juste
+  avant le repère : `#home > .big` à `render.ts`, `.v-hero` sur la vitrine. **Jamais** sur le
+  guide, un autre écran ou à l'impression ; idempotent, et hors saison rien dans le DOM. Animée en
+  `transform`/`opacity` seulement ; couleur par le token `--flocon` (`base.scss`, `themes.scss`),
+  tenu en contraste par `tests/contraste-tokens.test.ts`. Liste de motifs **fermée** : flocons,
+  sapin, cadeaux, guirlandes, bonnet, aucun motif religieux ; tout autre passe par le mainteneur.
+  La forêt continue de bouger en décembre.
+- **Renvoi côté encadrant** : cf. [Espace encadrant](espace-encadrant.md).
+- Trophées de Noël : cf. [Gamification](gamification.md).
+
+**Destins de relecture (#585) :**
+
+- *Rejet écrit :* la case « Figer le décor » change d'état (cochée, désactivée) **sans annonce
+  vocale** quand « Réduire les animations » est cochée. C'est un état **dérivé**, porté par la
+  case elle-même et par la phrase « Déjà inclus… » lue avec son libellé ; l'annoncer doublerait
+  l'annonce de la case qu'on vient de toucher.
+- *Rejet écrit :* **pas de repli `MediaQueryList.addListener`** pour l'écoute de
+  `prefers-reduced-motion`. Les cibles de build Vite (baseline) excluent Safari < 14, seul
+  navigateur à ne connaître que `addListener`.
+- *Checklist :* **une case `disabled` ne garde pas `cursor: pointer`** (ni sur l'`input` ni sur
+  son `label`) : motif `.pref-toggle:has(input:disabled)` dans `src/styles/profiles.scss`.
+- *Rejet écrit (relecture de langue) :* la mention reste « Déjà inclus… », sans sujet
+  explicite, alors que « C'est déjà le cas avec… » était proposé comme plus concret pour un
+  CE2. Le critère 7 de #785 fixe la mention « déjà inclus », et `e2e/decor-figer.spec.ts` la
+  tient. La reformuler demande de rouvrir le critère, pas de corriger le libellé.
+- *Rejet écrit (relecture qualité) :* `body.accueil-actif` est posé par `setToolbar`, au
+  moyen d'un indicateur `accueil`, plutôt que par un `data-ecran` générique posé par
+  `route()`. Accepté tant qu'un seul écran en dépend ; au deuxième, passer au `data-ecran`.
+- *Rejet écrit (relecture qualité) :* `.footer-decor-etat` recopie le motif `.sr-only`
+  d'`accessibility.scss`, que la vitrine et le guide ne chargent pas. Accepté pour un seul
+  besoin ; au troisième, extraire le motif dans `base.scss`, que les trois pages chargent.
+
 ### Checklist a11y issue de #772 (jugement, pas de gate)
 
 - **Un libellé visible en `aria-hidden` voisin d'un groupe** : le nom accessible du groupe

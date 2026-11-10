@@ -273,6 +273,11 @@ refuse. Remontée `redacteur-contenu-francais` ; le versant mécanisable est ten
 (`tests/trophees-ancres.test.ts`, critère 8), qui refuse l'impératif et l'infinitif de
 consigne en tête de phrase — le reste (registre, justesse) reste du ressort de la relecture.
 
+La règle vaut aussi pour un trophée **saisonnier** : les trophées de Noël (#785) sont visibles
+toute l'année et ne se gagnent qu'en décembre. Leur description dit donc un état (« Un jour
+d'entraînement en décembre. »), pas une consigne (« S'entraîner un jour de décembre. »,
+première version, relevée en relecture).
+
 ## Une description répétée sur plusieurs paliers reste courte (#660)
 
 Une famille de trophées répète sa description à l'identique, seul le nombre changeant
@@ -609,6 +614,14 @@ qu'une partie des cas. Modèle : la case « Autoriser les autres classes », don
 deux phrases ce que l'enfant peut faire, puis où l'adulte le voit. L'aide reste entre
 parenthèses dans le `<small>` du libellé, comme les autres cases du bloc (cf. le rejet écrit
 de [Niveaux scolaires](niveaux-scolaires.md)).
+
+## Un renvoi vers un réglage de l'enfant dit que l'enfant peut le changer (#785)
+
+Dans l'espace encadrant, les aménagements voisins sont posés par l'adulte, et l'enfant ne
+les voit pas. Un renvoi vers un réglage que l'enfant règle lui-même (case « Figer le
+décor », dans ses Préférences) doit le dire : sinon le parent croit l'avoir verrouillé
+comme le reste du bloc. Le renvoi garde aussi un verbe d'action (« cochez… »), plutôt
+qu'une ligne télégraphique (« case « Figer le décor », dans… »).
 
 ## « Franchie » est un terme interne, pas un mot de l'écran (#723)
 

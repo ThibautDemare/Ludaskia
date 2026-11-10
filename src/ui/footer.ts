@@ -21,17 +21,42 @@
    système `prefers-reduced-motion` OU réglage profil `html.anim-reduced`) →
    pas de chute animée, mais le clic reste récompensé (le cookie disparaît) ;
    pas de clignotement.
+
+   Le même module câble le bouton « Arrêter le décor » (#785), sur le même principe
+   d'indépendance : voir `initFooterDecor`.
    ============================================================ */
+import pauseSvg from '@phosphor-icons/core/assets/bold/pause-bold.svg?raw';
+import playSvg from '@phosphor-icons/core/assets/bold/play-bold.svg?raw';
+import { brut, type SafeHtml } from '../core/html';
 
 // Mouvement réduit : lu UNIQUEMENT dans le DOM (classe posée par les préférences
 // + média système), pour rester indépendant de la couche profils (la vitrine ne
 // la charge pas). `html.anim-reduced` reflète le réglage in-app du profil actif.
+const MEDIA_MOUVEMENT_REDUIT = '(prefers-reduced-motion: reduce)';
+/* La moitié « appareil » seule : les Préférences de l'appli doivent pouvoir dire
+   laquelle des deux fige le décor (#785, case « Figer le décor »). */
+export function mouvementReduitSysteme(): boolean {
+	return (
+		typeof window !== 'undefined' && window.matchMedia?.(MEDIA_MOUVEMENT_REDUIT).matches === true
+	);
+}
+/* Changement de cette préférence en cours de visite : UN seul écouteur sur la requête
+   média, qui prévient chaque abonné dans l'ordre d'inscription (le bouton du pied de page
+   ici, la case des Préférences dans `main.ts`). */
+const abonnesMouvementReduit: Array<() => void> = [];
+export function surMouvementReduitChange(rappel: () => void): void {
+	if (typeof window === 'undefined') return;
+	if (abonnesMouvementReduit.length === 0)
+		window
+			.matchMedia?.(MEDIA_MOUVEMENT_REDUIT)
+			.addEventListener?.('change', () => abonnesMouvementReduit.forEach((f) => f()));
+	abonnesMouvementReduit.push(rappel);
+}
 function mouvementReduit(): boolean {
 	return (
 		(typeof document !== 'undefined' &&
 			document.documentElement.classList.contains('anim-reduced')) ||
-		(typeof window !== 'undefined' &&
-			window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true)
+		mouvementReduitSysteme()
 	);
 }
 
@@ -150,4 +175,86 @@ export function initFooterCookie(onTrigger?: () => void): void {
 		onTrigger?.();
 		cookieRain();
 	});
+}
+
+/* ---------- Bouton « Arrêter le décor » (#785) ----------
+   Fige la forêt et le décor de saison (classe `decor-fige` sur <html>, lue par les
+   feuilles), et seulement eux : la pluie de cookies, l'aide animée et les effets de
+   réussite continuent (critère 25).
+   Comme pour les cookies, ce module ne sait pas OÙ le réglage est mémorisé : l'appli le
+   range dans le profil actif (critère 4), la vitrine et le guide sur l'appareil
+   (critère 5). C'est l'appelant qui fournit la lecture et l'écriture. */
+export interface ReglageDecor {
+	lire(): boolean;
+	ecrire(fige: boolean): void;
+}
+
+/* Libellés : c'est le TEXTE qui porte l'état, pas la couleur ni l'icône (critère 2). Le
+   nom accessible est ce texte même, sans `aria-pressed` en plus : avec un libellé qui
+   change, l'annonce deviendrait une double négation (avis `designer-ux-enfant`).
+   « Arrêter » plutôt que « Figer » : plus concret pour un enfant de CE2. */
+const LIBELLE_ARRETER = 'Arrêter le décor';
+const LIBELLE_RELANCER = 'Relancer le décor';
+
+/* Icônes Phosphor pause / lecture, importées seules : `icon.ts` embarquerait toute sa
+   table d'icônes dans la vitrine et le guide, qui n'en utilisent que ces deux-là. */
+function iconeDecor(svg: string): SafeHtml {
+	return brut(svg.replace('<svg ', '<svg class="ph-icon" focusable="false" aria-hidden="true" '));
+}
+const ICONE_PAUSE = iconeDecor(pauseSvg);
+const ICONE_LECTURE = iconeDecor(playSvg);
+
+let reglageDecor: ReglageDecor | null = null;
+
+/* Message d'état annoncé après un clic. Le nouveau libellé du bouton ne suffit pas : selon
+   le lecteur d'écran, le changement de nom d'un bouton qui a déjà le focus n'est pas relu.
+   La région est posée À VIDE dès l'initialisation (une région live créée en même temps que
+   son texte n'est pas annoncée), et seul le clic l'alimente : ni le chargement ni un
+   changement de profil ne parlent. */
+const ETAT_ARRETE = 'Décor arrêté.';
+const ETAT_RELANCE = 'Décor relancé.';
+
+/* Câble le bouton `#footerDecor` et applique l'état mémorisé. Le bouton est livré
+   `hidden` dans le balisage : sans JS, il ne promet rien qu'il ne pourrait tenir. */
+export function initFooterDecor(reglage: ReglageDecor): void {
+	if (typeof document === 'undefined') return;
+	reglageDecor = reglage;
+	const bouton = document.getElementById('footerDecor');
+	if (bouton) {
+		const etat = document.createElement('span');
+		etat.className = 'footer-decor-etat';
+		etat.setAttribute('role', 'status');
+		bouton.after(etat);
+		bouton.addEventListener('click', () => {
+			const fige = !reglage.lire();
+			reglage.ecrire(fige);
+			rafraichirDecor();
+			// Vider puis écrire au frame suivant : deux clics identiques de suite sont tous
+			// deux annoncés (un texte inchangé ne déclencherait rien).
+			etat.textContent = '';
+			requestAnimationFrame(() => (etat.textContent = fige ? ETAT_ARRETE : ETAT_RELANCE));
+		});
+	}
+	// L'appareil peut changer de préférence en cours de visite : le bouton suit.
+	surMouvementReduitChange(rafraichirDecor);
+	rafraichirDecor();
+}
+
+/* Remet <html> et le bouton d'accord avec le réglage. À rappeler quand il change
+   ailleurs (case des Préférences, changement de profil, « Réduire les animations »).
+   Ne recrée rien : seuls le texte et l'icône changent, donc le focus reste sur le bouton
+   et le lecteur d'écran lit le nouveau libellé. */
+export function rafraichirDecor(): void {
+	if (typeof document === 'undefined' || !reglageDecor) return;
+	const fige = reglageDecor.lire();
+	document.documentElement.classList.toggle('decor-fige', fige);
+	const bouton = document.getElementById('footerDecor');
+	if (!bouton) return;
+	// Animations réduites : le décor est déjà immobile, le bouton n'aurait rien à faire
+	// (critère 7). Le réglage, lui, est gardé tel quel pour le jour où elles reviennent.
+	bouton.hidden = mouvementReduit();
+	const texte = bouton.querySelector('.footer-decor-texte');
+	if (texte) texte.textContent = fige ? LIBELLE_RELANCER : LIBELLE_ARRETER;
+	const icone = bouton.querySelector('.footer-decor-icone');
+	if (icone) icone.innerHTML = (fige ? ICONE_LECTURE : ICONE_PAUSE).balisage;
 }

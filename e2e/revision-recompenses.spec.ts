@@ -30,7 +30,12 @@
    .levelup-unlock, #levelupOk, #celebrate, #celebrateList.
    ============================================================ */
 import { test, expect, type Page } from '@playwright/test';
-import { watchErrors, gotoHash } from './helpers';
+import { watchErrors, gotoHash, horsDecembre } from './helpers';
+
+/* Pas de dépendance à la saison (#785, critère 33) : cf. `horsDecembre` dans helpers.ts. */
+test.beforeEach(async ({ page }) => {
+	await horsDecembre(page);
+});
 
 /* ---------- Amorçage : deux items dus (opérations posées) + seuils juste en dessous ----------
 

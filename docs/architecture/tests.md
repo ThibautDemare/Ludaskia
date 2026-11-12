@@ -1482,7 +1482,8 @@ Critère 33 : la suite donne le même résultat le 30 novembre et le 15 décembr
   `decorFigeEffectif`), `tests/decor-saison.test.ts` (`saisonDu` aux bords 30/11, 1/12, 31/12,
   1/1 ; bornes de `FLOCONS` et critère 12 par plan ; `brancheCristal` : déterminisme, symétrie, familles), `tests/jours-decembre.test.ts` (déduplication, jour de fin, remise à
   zéro d'une année à l'autre), `tests/foret-saison.test.ts` (`fichierForet` aux bords de
-  décembre ; `composeForest` : sapins sans fruit ni étoile en décembre, forêt habituelle
+  décembre ; `composeForest` : sapins sans fruit ni étoile en décembre, guirlandes sur un
+  sapin sur cinq à un sur deux, festons qui ne débordent pas des coins de leur étage, forêt habituelle
   inchangée hors saison), `tests/trophees-noel.test.ts` (paliers, sans XP, `partage` exclu).
   Les dates sont **passées en argument** ; rien ne lit l'horloge.
 - **e2e** : `decor-figer`, `decor-noel-flocons`, `decor-noel-trophees`, `decor-guide`,

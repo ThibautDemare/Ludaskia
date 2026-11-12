@@ -2422,10 +2422,12 @@ animée, les effets de réussite, la luciole et la pluie de cookies continuent
   `foret-pied.svg`. Les deux SVG sont **générés** par `npm run forest:gen`
   (`tools/forest/generate-forest.mjs`) : `composeForest(seed, n, saison)` compose la même scène
   (mêmes arbres, plus hauts sur les bords), `buildSapin` dessine un sapin en trois étages
-  coniques à bords festonnés, neige sur les épaules, vert bleuté, **ni fruit ni étoile**
-  (seule la neige) ; en décembre, voile de neige sur la colline et moins de touffes d'herbe.
+  coniques au bord du bas festonné d'un coin à l'autre (demi-cercles tracés dans le contour),
+  neige sur les épaules, vert bleuté, **ni fruit ni étoile** ; un sapin sur trois, en nombre
+  fixe, porte des guirlandes de boules (`guirlandesSapin`, tirées après le reste du sapin) ;
+  en décembre, voile de neige sur la colline et moins de touffes d'herbe.
   Les sapins portent les mêmes classes d'animation que les arbres (`.sway`) : « Figer le décor »
-  et « Réduire les animations » les arrêtent. Le fichier de décembre (~100 Ko) est plus léger que
+  et « Réduire les animations » les arrêtent. Le fichier de décembre (~89 Ko) est plus léger que
   l'habituel (~437 Ko). Le script ne s'exécute en ligne de commande que lancé directement ;
   `composeForest` est importable par les tests.
 - **Vitrine sous la neige** : `.v-hero` et `.v-section` n'ont **plus de fond propre**. Le vert

@@ -49,6 +49,10 @@ couleur d'accent).
   proportions en constantes nommées ; une boucle de plus de 40 lignes se découpe ;
 - une même courbe sert à toutes les parties qui la suivent : la neige des sapins lit la
   pente du cône (`pointDePente`), elle ne la recalcule pas ;
+- ce qui se lit sur l'axe d'une silhouette (calotte du sommet) se pose SUR l'axe, et un
+  bord qui part d'un coin part du coin exact : la lumière passe par la couleur, jamais par
+  un décalage de position. Un pixel de travers se voit sur une forêt entière (revue du
+  mainteneur, #785 : calotte décalée à gauche, festons qui débordaient des coins) ;
 - l'ordre des tirages de la graine est fixe et écrit en commentaire : le changer change
   tout le dessin ;
 - un test compare la sortie au fichier commité dans `public/` (cf.

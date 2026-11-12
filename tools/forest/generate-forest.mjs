@@ -289,7 +289,8 @@ function etageSapin(R, g, rad, teinte, L, f) {
 /** Neige d'un étage : une calotte au sommet, des bosses le long des deux pentes sur une
  *  part de la pente proportionnelle à `part`, et une bosse pendante sur deux. */
 function neigeEtage(g, rad, part, cercle) {
-	const bosses = [{ x: g.cx - rad * 0.02, y: g.yHaut + rad * 0.1, r: rad * 0.12 }];
+	// La calotte du sommet sur l'axe du cône : décalée, même d'un pixel, elle penche.
+	const bosses = [{ x: g.cx, y: g.yHaut + rad * 0.1, r: rad * 0.12 }];
 	const n = Math.max(2, Math.round(SAPIN.bossesParPente * part));
 	for (const cote of [-1, 1]) {
 		for (let k = 1; k <= n; k++) {

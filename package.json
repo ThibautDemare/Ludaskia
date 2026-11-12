@@ -18,7 +18,7 @@
 		"verify": "npm run format:check && npm run lint && npm run typecheck && npm test",
 		"verify:full": "npm run verify && npm run test:e2e",
 		"prepare": "husky",
-		"forest:gen": "node tools/forest/generate-forest.mjs 15 14 public/foret-pied.svg",
+		"forest:gen": "node tools/forest/generate-forest.mjs 15 14 public/foret-pied.svg && node tools/forest/generate-forest.mjs 15 14 public/foret-pied-noel.svg noel",
 		"verbs:gen": "node tools/verbs/generate-verbs.mjs",
 		"og:gen": "node tools/og-image/generate.mjs",
 		"pwa:icons": "node tools/pwa-icons/generate.mjs",

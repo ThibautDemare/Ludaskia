@@ -17,19 +17,21 @@ import { fillFooterYear, initFooterCookie, initFooterDecor } from './ui/footer';
 import { majDecorSaison } from './ui/decor-saison';
 import { decorFigeSite, setDecorFigeSite } from './core/decor';
 import { brut } from './core/html';
+import { fichierForet } from './core/decor-saison';
 
-// Décor de saison (#785) : en décembre, une bande de flocons juste au-dessus du titre.
+// Décor de saison (#785) : en décembre, des flocons sur tout l'écran, sous le contenu.
 // Le reste de l'année, rien n'est ajouté à la page.
 majDecorSaison(document.querySelector('.v-hero'));
 
 // Bande décorative « forêt » : même SVG pré-généré que l'accueil de l'app,
 // inséré dans le DOM (pour que l'oscillation respecte « animations réduites »).
+// En décembre, la forêt de sapins enneigés (#785, critère 35).
 const foretEl = document.getElementById('vitrineForet');
 if (foretEl) {
-	fetch(`${import.meta.env.BASE_URL}foret-pied.svg`)
+	fetch(`${import.meta.env.BASE_URL}${fichierForet(new Date())}`)
 		.then((r) => (r.ok ? r.text() : ''))
 		.then((svg) => {
-			// SVG d’ILLUSTRATION servi par le site lui-même (`public/foret-pied.svg`), pas une
+			// SVG d’ILLUSTRATION servi par le site lui-même (`public/foret-pied*.svg`), pas une
 			// donnée : `brut` le déclare de confiance, et la source est celle du déploiement.
 			if (svg) foretEl.innerHTML = brut(svg).balisage;
 		})

@@ -16,6 +16,7 @@
  */
 /* global process */ // script Node en ligne de commande : `process` vient de l'environnement Node
 import { writeFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 /* ---------- PRNG déterministe (mulberry32) ---------- */
 function mulberry32(a) {
@@ -163,8 +164,188 @@ function buildTree(seed) {
 	);
 }
 
-/* ---------- Composition de la bande complète ---------- */
-export function composeForest(seed, n) {
+/* ---------- Sapin enneigé de décembre (#785) ----------
+   Même cadre et mêmes codes que `buildTree` (ombre bas-droite, tronc en dégradé, rien de
+   cerné), autre silhouette : trois étages en cône, du plus large au plus étroit, à bord
+   inférieur festonné de cercles, l'étage du dessus recouvrant la pointe de celui du
+   dessous. Avis `designer-ux-enfant` (12/11/2026), ajusté au rendu :
+   - un vert bleuté (H 140-158), plus sombre que la colline, qui se lit « conifère », et une
+     moitié gauche plus claire (la lumière vient du haut-gauche, comme pour les arbres) ;
+   - un premier jet en « nuages » de cercles faisait des brocolis empilés : les étages sont
+     désormais des cônes, seul leur bord du bas reste rond ;
+   - la neige sur les épaules de chaque étage, le long des deux pentes et au sommet, là où
+     l'étage du dessus ne la cache pas (des calottes au milieu de l'étage se lisaient comme
+     des trous) ; moins sur l'étage du bas, et un sapin sur quatre en porte moins ;
+   - rien d'autre que de la neige : ni fruit ni étoile (critère 39 de l'issue).
+   Des tracés plutôt que des centaines de cercles : le fichier de décembre ne doit pas
+   peser plus lourd que celui de l'année (critère 38).
+   ORDRE DES TIRAGES : chaque sapin consomme sa suite `R` dans un ordre fixe (dimensions,
+   couleurs, étages, tronc, puis teintes de chaque étage). Le changer change tous les
+   sapins, et le test d'égalité avec `public/foret-pied-noel.svg` le signale. */
+const NEIGE = '#f4f8fb';
+const NEIGE_OMBRE = '#cdd9e6';
+
+/** Proportions du sapin, en multiples de `rad` (le « rayon » tiré pour chaque sapin), sauf
+ *  mention contraire. */
+const SAPIN = {
+	pied: { x: 75, y: 156 }, // centre du pied, même cadre 150 × 175 que `buildTree`
+	courbure: 0.42, // point de contrôle des pentes, en part de la demi-largeur et de la hauteur
+	feston: 0.13, // rayon des cercles du bord du bas
+	ombre: 0.04, // décalage de l'ombre portée, vers le bas-droite
+	ombreNeige: 0.035,
+	partPeuNeigeux: 0.25, // part des sapins qui portent moins de neige
+	bossesParPente: 5, // bosses de neige sur une pente, pour une part de neige de 1
+	penteEnneigee: 0.62, // part de la pente couverte, pour une part de neige de 1
+};
+
+/** Étages du bas vers le haut, en multiples de `rad` au-dessus du pied : bas, sommet,
+ *  demi-largeur, plage de clarté du vert, part de neige (0 à 1). */
+function etagesSapin(R) {
+	const peuDeNeige = R.f() < SAPIN.partPeuNeigeux;
+	return [
+		{ bas: 0.42, haut: 1.55, demiLargeur: 0.84, L: R.f(30, 33), neige: peuDeNeige ? 0 : 0.55 },
+		{ bas: 1.18, haut: 2.17, demiLargeur: 0.64, L: R.f(35, 38), neige: peuDeNeige ? 0.5 : 0.85 },
+		{ bas: 1.85, haut: 2.78, demiLargeur: 0.44, L: R.f(40, 44), neige: 0.8 },
+	];
+}
+
+/** Tracé du tronc : il dépasse sous l'étage du bas. */
+function troncSapin(R, rad, f) {
+	const { x: cx, y: baseY } = SAPIN.pied;
+	const topY = baseY - rad * 0.7;
+	const wTop = rad * R.f(0.11, 0.14),
+		wBot = rad * R.f(0.17, 0.21),
+		flare = rad * R.f(0.12, 0.16);
+	const kneeY = baseY - (baseY - topY) * 0.3;
+	return (
+		`M ${f(cx - wTop)},${f(topY)} ` +
+		`L ${f(cx - wBot)},${f(kneeY)} ` +
+		`Q ${f(cx - wBot)},${f(baseY)} ${f(cx - wBot - flare)},${f(baseY)} ` +
+		`L ${f(cx + wBot + flare)},${f(baseY)} ` +
+		`Q ${f(cx + wBot)},${f(baseY)} ${f(cx + wBot)},${f(kneeY)} ` +
+		`L ${f(cx + wTop)},${f(topY)} Z`
+	);
+}
+
+/** Géométrie d'un étage en px, et le point de ses pentes : le cône et la neige lisent la
+ *  MÊME courbe, la neige ne peut donc pas glisser à côté d'une pente retouchée. */
+function geometrieEtage(etage, rad) {
+	const { x: cx, y: baseY } = SAPIN.pied;
+	const yBas = baseY - rad * etage.bas;
+	const yHaut = baseY - rad * etage.haut;
+	const demiLargeur = rad * etage.demiLargeur;
+	const yControle = yHaut + (yBas - yHaut) * SAPIN.courbure;
+	/** Point d'une pente (`cote` -1 à gauche, 1 à droite), à l'avancée `t` (0 au sommet, 1
+	 *  au bas) : la courbe de Bézier quadratique du cône. */
+	const pointDePente = (cote, t) => ({
+		x:
+			(1 - t) * (1 - t) * cx +
+			2 * (1 - t) * t * (cx + cote * demiLargeur * SAPIN.courbure) +
+			t * t * (cx + cote * demiLargeur),
+		y: (1 - t) * (1 - t) * yHaut + 2 * (1 - t) * t * yControle + t * t * yBas,
+	});
+	return { cx, yBas, yHaut, demiLargeur, yControle, pointDePente };
+}
+
+/** Un étage : cône aux pentes bombées et sommet arrondi, bord du bas festonné, ombre
+ *  portée, moitié gauche éclairée. Tire deux teintes dans `R` (ombre, puis éclaircie). */
+function etageSapin(R, g, rad, teinte, L, f, cercle) {
+	const { cx, yBas, yHaut, demiLargeur: w, yControle } = g;
+	const r = rad * SAPIN.feston;
+	const off = rad * SAPIN.ombre;
+	const cone = (dx, dy) =>
+		`M ${f(cx + dx)},${f(yHaut + dy)} ` +
+		`Q ${f(cx - w * SAPIN.courbure + dx)},${f(yControle + dy)} ${f(cx - w + dx)},${f(yBas + dy)} ` +
+		`L ${f(cx + w + dx)},${f(yBas + dy)} ` +
+		`Q ${f(cx + w * SAPIN.courbure + dx)},${f(yControle + dy)} ${f(cx + dx)},${f(yHaut + dy)} Z`;
+	const nFestons = Math.max(4, Math.round((2 * w) / (r * 1.6)));
+	const festons = [];
+	for (let k = 0; k < nFestons; k++) {
+		const t = k / (nFestons - 1);
+		festons.push({ x: cx - w + r * 0.6 + t * (2 * w - r * 1.2), y: yBas - r * 0.15 });
+	}
+	const ombre = teinte(L - R.f(7, 10));
+	const base = teinte(L);
+	const clair = teinte(L + R.f(6, 9));
+	return (
+		`<path d="${cone(off, off)}" fill="${ombre}"/>` +
+		festons.map((o) => cercle(o.x + off, o.y + off, r, ombre)).join('') +
+		`<path d="${cone(0, 0)}" fill="${base}"/>` +
+		festons.map((o) => cercle(o.x, o.y, r, base)).join('') +
+		`<path d="M ${f(cx)},${f(yHaut)} Q ${f(cx - w * SAPIN.courbure)},${f(yControle)} ` +
+		`${f(cx - w * 0.92)},${f(yBas - r * 0.4)} L ${f(cx - w * 0.2)},${f(yBas - r * 0.4)} Z" fill="${clair}"/>`
+	);
+}
+
+/** Neige d'un étage : une calotte au sommet, des bosses le long des deux pentes sur une
+ *  part de la pente proportionnelle à `part`, et une bosse pendante sur deux. */
+function neigeEtage(g, rad, part, cercle) {
+	const bosses = [{ x: g.cx - rad * 0.02, y: g.yHaut + rad * 0.1, r: rad * 0.12 }];
+	const n = Math.max(2, Math.round(SAPIN.bossesParPente * part));
+	for (const cote of [-1, 1]) {
+		for (let k = 1; k <= n; k++) {
+			const t = 0.1 + (SAPIN.penteEnneigee * part * k) / n;
+			const p = g.pointDePente(cote, t);
+			const rr = rad * (0.11 - 0.035 * t);
+			bosses.push({ x: p.x - cote * rr * 0.55, y: p.y + rr * 0.15, r: rr });
+			if (k % 2 === 0) bosses.push({ x: p.x - cote * rr * 0.9, y: p.y + rr * 0.95, r: rr * 0.55 });
+		}
+	}
+	const off = rad * SAPIN.ombreNeige;
+	return (
+		bosses.map((o) => cercle(o.x + off, o.y + off, o.r, NEIGE_OMBRE)).join('') +
+		bosses.map((o) => cercle(o.x, o.y, o.r, NEIGE)).join('')
+	);
+}
+
+function buildSapin(seed) {
+	const R = makeRng(seed >>> 0);
+	const { x: cx, y: baseY } = SAPIN.pied;
+	const rad = 40 * R.f(0.88, 1.1);
+	const hue = R.f(140, 158).toFixed(0);
+	const sat = R.f(32, 42).toFixed(0);
+	const bh = R.f(26, 34),
+		bs = R.f(42, 54),
+		bl = R.f(33, 40);
+	const trunkL = `hsl(${bh} ${bs}% ${bl + 9}%)`;
+	const trunkD = `hsl(${bh} ${bs}% ${bl - 11}%)`;
+	const f = (v) => v.toFixed(1);
+	const cercle = (x, y, rr, fill) =>
+		`<circle cx="${f(x)}" cy="${f(y)}" r="${f(rr)}" fill="${fill}"/>`;
+	const teinte = (L) => `hsl(${hue} ${sat}% ${L.toFixed(0)}%)`;
+
+	const etages = etagesSapin(R);
+	const trunkPath = troncSapin(R, rad, f);
+	let corps = '';
+	for (const etage of etages) {
+		const g = geometrieEtage(etage, rad);
+		corps += etageSapin(R, g, rad, teinte, etage.L, f, cercle);
+		if (etage.neige > 0) corps += neigeEtage(g, rad, etage.neige, cercle);
+	}
+
+	const id = 's' + (seed >>> 0);
+	return (
+		`<defs><linearGradient id="tg${id}" x1="0" y1="0" x2="1" y2="0">` +
+		`<stop offset="0" stop-color="${trunkL}"/><stop offset="1" stop-color="${trunkD}"/>` +
+		`</linearGradient></defs>` +
+		`<g>` +
+		`<ellipse cx="${cx}" cy="${baseY}" rx="${(rad * 0.6).toFixed(1)}" ry="${(rad * 0.11).toFixed(1)}" fill="#1f3b27" opacity="0.13"/>` +
+		`<path d="${trunkPath}" fill="url(#tg${id})"/>` +
+		`${corps}` +
+		`</g>`
+	);
+}
+
+/* ---------- Composition de la bande complète ----------
+   `saison` : absente pour la forêt de l'année ; `'noel'` pour la forêt de décembre
+   (sapins enneigés, voile de neige sur la colline, moins de touffes d'herbe). La forêt
+   de l'année est produite EXACTEMENT comme avant : même graine, même fichier. */
+export function composeForest(seed, n, saison) {
+	// Une saison mal écrite (« noël », « Noel ») donnerait sans bruit la forêt de l'année.
+	if (saison !== undefined && saison !== 'noel') {
+		throw new Error(`Saison de forêt inconnue : « ${saison} » (attendu : rien, ou « noel »).`);
+	}
+	const noel = saison === 'noel';
 	const base = seed >>> 0;
 	const VW = 1200,
 		VH = 290;
@@ -176,14 +357,25 @@ export function composeForest(seed, n) {
 	// au-dessus de TOP_CROP) : la bande « remonte » sans bouger son bas (collé).
 	const TOP_CROP = 50;
 	let band =
-		`<svg class="foret-svg" viewBox="0 ${TOP_CROP} ${VW} ${VH - TOP_CROP}" preserveAspectRatio="xMidYMax meet" ` +
+		`<svg class="foret-svg${noel ? ' foret-noel' : ''}" viewBox="0 ${TOP_CROP} ${VW} ${VH - TOP_CROP}" preserveAspectRatio="xMidYMax meet" ` +
 		`role="presentation" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">`;
-	band += `<defs><linearGradient id="collineGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a6d6ad"/><stop offset="1" stop-color="#7cbd8b"/></linearGradient></defs>`;
+	band += `<defs><linearGradient id="collineGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a6d6ad"/><stop offset="1" stop-color="#7cbd8b"/></linearGradient>`;
+	// Décembre : un voile de neige sur le haut de la colline, qui s'efface en descendant.
+	// Un ajout, pas un remplacement : une colline toute blanche perdrait le vert de la bande.
+	if (noel) {
+		band += `<linearGradient id="neigeColline" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${NEIGE}" stop-opacity="0.7"/><stop offset="0.55" stop-color="${NEIGE}" stop-opacity="0"/></linearGradient>`;
+	}
+	band += `</defs>`;
 	band += `<path d="M0,${VH} L0,245 Q600,165 1200,245 L1200,${VH} Z" fill="url(#collineGrad)"/>`;
+	if (noel) {
+		band += `<path d="M0,${VH} L0,245 Q600,165 1200,245 L1200,${VH} Z" fill="url(#neigeColline)"/>`;
+	}
 
-	// Touffes d'herbe dispersées sur la pente.
+	// Touffes d'herbe dispersées sur la pente (une sur deux en décembre, qui dépassent de
+	// la neige). Le tirage reste le même : seul l'affichage saute des touffes.
 	const gr = makeRng((base * 7919) >>> 0);
 	for (let k = 0; k < 22; k++) {
+		const garder = !noel || k % 2 === 0;
 		const gx = gr.f(20, VW - 20);
 		const gyl = hillY(gx) + gr.f(2, 16);
 		const gs = gr.f(0.7, 1.4);
@@ -195,6 +387,7 @@ export function composeForest(seed, n) {
 			const bh = (7 + gr.f(-2, 3)) * gs;
 			const lean = off * 1.2 * gs + gr.f(-1, 1);
 			const bw = gs;
+			if (!garder) continue;
 			band += `<path d="M${(bx - bw).toFixed(1)},${gyl.toFixed(1)} L${(bx + lean).toFixed(1)},${(
 				gyl - bh
 			).toFixed(1)} L${(bx + bw).toFixed(1)},${gyl.toFixed(1)} Z" fill="${gc}"/>`;
@@ -216,7 +409,7 @@ export function composeForest(seed, n) {
 			`<g transform="translate(${(px - 75 * sx).toFixed(1)},${(py - 156 * sy).toFixed(1)}) ` +
 				`scale(${sx.toFixed(3)},${sy.toFixed(3)})">` +
 				`<g class="sway" style="animation-duration:${dur}s;animation-delay:${del}s">` +
-				`${buildTree(base * 613 + i * 1597)}</g></g>`,
+				`${(noel ? buildSapin : buildTree)(base * 613 + i * 1597)}</g></g>`,
 		);
 	}
 	// Ordre de peinture aléatoire (déterministe) → chevauchements non systématiques.
@@ -230,16 +423,21 @@ export function composeForest(seed, n) {
 	return band;
 }
 
-/* ---------- CLI ---------- */
-const seed = Number(process.argv[2] ?? 15);
-const n = Number(process.argv[3] ?? 14);
-const outFile = process.argv[4];
-const svg = composeForest(seed, n);
-if (outFile) {
-	writeFileSync(outFile, svg + '\n');
-	process.stderr.write(
-		`Forêt écrite dans ${outFile} (graine ${seed}, ${n} arbres, ${svg.length} octets)\n`,
-	);
-} else {
-	process.stdout.write(svg + '\n');
+/* ---------- CLI ----------
+   Seulement quand le script est LANCÉ (`npm run forest:gen`), pas quand un test l'importe
+   pour éprouver `composeForest`. */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+	const seed = Number(process.argv[2] ?? 15);
+	const n = Number(process.argv[3] ?? 14);
+	const outFile = process.argv[4];
+	const saison = process.argv[5]; // `noel` : forêt de sapins enneigés de décembre (#785)
+	const svg = composeForest(seed, n, saison);
+	if (outFile) {
+		writeFileSync(outFile, svg + '\n');
+		process.stderr.write(
+			`Forêt${saison ? ` (${saison})` : ''} écrite dans ${outFile} (graine ${seed}, ${n} arbres, ${svg.length} octets)\n`,
+		);
+	} else {
+		process.stdout.write(svg + '\n');
+	}
 }

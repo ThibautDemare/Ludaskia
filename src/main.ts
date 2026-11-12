@@ -114,6 +114,7 @@ import {
 	surMouvementReduitChange,
 } from './ui/footer';
 import { brut } from './core/html';
+import { fichierForet } from './core/decor-saison';
 import { lireFragment } from './core/partage/liens';
 
 // Quitter ces modes (non reprenables) perd la progression → on confirme (#63). La séance
@@ -442,13 +443,15 @@ function wireDOM() {
 
 	// Bande décorative « forêt » de pied d'accueil : SVG pré-généré, inséré dans le
 	// DOM (pour que l'animation « vent » respecte l'option « animations réduites »).
+	// En décembre, la forêt de sapins enneigés (#785, critère 35) ; choisie au chargement :
+	// une appli restée ouverte au passage du 1er décembre change de forêt au rechargement.
 	const foretEl = document.getElementById('homeForet');
 	if (foretEl) {
-		fetch(`${import.meta.env.BASE_URL}foret-pied.svg`)
+		fetch(`${import.meta.env.BASE_URL}${fichierForet(new Date())}`)
 			.then((r) => (r.ok ? r.text() : ''))
 			.then((svg) => {
 				if (svg) {
-					// SVG d’illustration servi par le site (`public/foret-pied.svg`), pas une donnée.
+					// SVG d’illustration servi par le site (`public/foret-pied*.svg`), pas une donnée.
 					foretEl.innerHTML = brut(svg).balisage;
 					mountForestEgg(); // egg « animal de la forêt » (#331), APRÈS l'injection (sinon écrasé)
 				}

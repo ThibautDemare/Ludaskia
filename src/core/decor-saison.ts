@@ -20,6 +20,14 @@ export function saisonDu(date: Date): Saison | null {
 	return date.getMonth() === DECEMBRE ? 'noel' : null;
 }
 
+/** SVG de la forêt du pied de page, pour une date (critère 35) : les sapins enneigés du
+ *  1er au 31 décembre, la forêt de l'année sinon. Les deux sont pré-générés par
+ *  `tools/forest/generate-forest.mjs` (`npm run forest:gen`). L'accueil et la vitrine s'en
+ *  servent ; le guide, jamais : il garde la forêt de l'année (critère 37). */
+export function fichierForet(date: Date): 'foret-pied-noel.svg' | 'foret-pied.svg' {
+	return saisonDu(date) === 'noel' ? 'foret-pied-noel.svg' : 'foret-pied.svg';
+}
+
 /** Plan de profondeur d'un flocon, du plus lointain au plus proche. Plus un flocon est
  *  proche, plus il est grand, rapide et marqué (couleur `--flocon-proche` devant). Seul le
  *  premier plan est flou (rendu par `decor-saison.scss`) ; les lointains ont un dessin

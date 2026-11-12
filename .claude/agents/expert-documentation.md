@@ -211,6 +211,12 @@ travail :
    **concis**, et dans le **style existant** de la page (voix « tu / je »,
    titres sémantiques — cf. `conventions-redaction.md`). Pas de changelog : tu
    décris l'état courant.
+   **Tu n'as pas de shell, donc pas de Prettier : coupe toi-même tes lignes HTML.** Dans
+   `guide.html` et `index.html`, une phrase allongée garde des lignes d'au plus 100
+   colonnes, tabulations comptées, comme le reste du paragraphe. Sinon
+   `npm run format:check` échoue en CI. Cas d'origine : #785, deux fois dans la même PR.
+   Signale dans ton rendu les fichiers HTML que tu as touchés, pour que le fil principal
+   lance `prettier --write` dessus.
    **Une entrée ajoutée à une liste relit la phrase qui l'introduit** : un chapeau
    qui généralise (« Tout ce qui suit se règle dans *Réglages* ») devient faux dès
    qu'on y glisse une entrée qui ne s'y range pas. Si l'entrée n'appartient pas à la

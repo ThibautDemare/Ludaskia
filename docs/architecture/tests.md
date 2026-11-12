@@ -1481,9 +1481,13 @@ Critère 33 : la suite donne le même résultat le 30 novembre et le 15 décembr
 - **Vitest** : `tests/decor-fige.test.ts` (réglages, deux mémoires disjointes,
   `decorFigeEffectif`), `tests/decor-saison.test.ts` (`saisonDu` aux bords 30/11, 1/12, 31/12,
   1/1 ; bornes de `FLOCONS` et critère 12 par plan ; `brancheCristal` : déterminisme, symétrie, familles), `tests/jours-decembre.test.ts` (déduplication, jour de fin, remise à
-  zéro d'une année à l'autre), `tests/trophees-noel.test.ts` (paliers, sans XP, `partage` exclu).
+  zéro d'une année à l'autre), `tests/foret-saison.test.ts` (`fichierForet` aux bords de
+  décembre ; `composeForest` : sapins sans fruit ni étoile en décembre, forêt habituelle
+  inchangée hors saison), `tests/trophees-noel.test.ts` (paliers, sans XP, `partage` exclu).
   Les dates sont **passées en argument** ; rien ne lit l'horloge.
 - **e2e** : `decor-figer`, `decor-noel-flocons`, `decor-noel-trophees`, `decor-guide`,
+  `decor-noel-foret` (le 15 décembre : sapins sur l'accueil et la vitrine, forêt habituelle
+  sur le guide ; hors décembre, forêt habituelle),
   `decor-vitrine-verre` (le 15 décembre : aucun texte nu sur la neige, panneau ajusté à son
   texte et dans la fenêtre ; le 14 juillet : ni fond ni flou), avec leurs dates fixées par
   `e2e/decor-aide.ts`. Son helper `pileDesFlocons` donne l'**ordre de peinture** (flocons sous

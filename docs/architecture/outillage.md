@@ -38,10 +38,22 @@
 
 En complément, des **scripts de génération** d'assets/données (hors cycle de dev courant) :
 `npm run verbs:gen` (shards de conjugaison LEFFF, cf. `verbs-lookup.ts`), `npm run forest:gen`
-(SVG de la forêt d'accueil), `npm run og:gen` (image Open Graph de la vitrine) et
+(SVG de la forêt d'accueil : `public/foret-pied.svg` et la variante de décembre `public/foret-pied-noel.svg`, sapins enneigés, `tools/forest/generate-forest.mjs`), `npm run og:gen` (image Open Graph de la vitrine) et
 `npm run pwa:icons` (icônes du manifeste PWA dans `public/`, #306 —
 `tools/pwa-icons/generate.mjs`, à relancer après un changement de logo ou de
 couleur d'accent).
+
+**Checklist d'un générateur d'asset tiré au sort** (relecture qualité, #785) :
+
+- une silhouette se découpe en sous-fonctions nommées (tronc, étage, neige) et ses
+  proportions en constantes nommées ; une boucle de plus de 40 lignes se découpe ;
+- une même courbe sert à toutes les parties qui la suivent : la neige des sapins lit la
+  pente du cône (`pointDePente`), elle ne la recalcule pas ;
+- l'ordre des tirages de la graine est fixe et écrit en commentaire : le changer change
+  tout le dessin ;
+- un test compare la sortie au fichier commité dans `public/` (cf.
+  `tests/foret-saison.test.ts`) : un générateur modifié sans régénérer, ou l'inverse,
+  fait échouer `npm test`.
 
 **`npm run apercu:impression -- <id-leçon>… [--niveau ce2|cm1]`** (#777,
 `tools/impression/apercu.mjs`) : captures **papier** d'une liste de leçons, pour juger ce

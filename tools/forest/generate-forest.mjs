@@ -176,12 +176,14 @@ function buildTree(seed) {
    - la neige sur les épaules de chaque étage, le long des deux pentes et au sommet, là où
      l'étage du dessus ne la cache pas (des calottes au milieu de l'étage se lisaient comme
      des trous) ; moins sur l'étage du bas, et un sapin sur quatre en porte moins ;
-   - rien d'autre que de la neige : ni fruit ni étoile (critère 39 de l'issue).
+   - rien d'autre que de la neige, et une guirlande de boules sur un sapin sur trois
+     (revue du mainteneur, critères 39 et 40 de l'issue) : ni fruit ni étoile.
    Des tracés plutôt que des centaines de cercles : le fichier de décembre ne doit pas
    peser plus lourd que celui de l'année (critère 38).
    ORDRE DES TIRAGES : chaque sapin consomme sa suite `R` dans un ordre fixe (dimensions,
-   couleurs, étages, tronc, puis teintes de chaque étage). Le changer change tous les
-   sapins, et le test d'égalité avec `public/foret-pied-noel.svg` le signale. */
+   couleurs, étages, tronc, teintes de chaque étage, puis guirlandes s'il en porte). Le
+   changer change tous les sapins, et le test d'égalité avec `public/foret-pied-noel.svg`
+   le signale. */
 const NEIGE = '#f4f8fb';
 const NEIGE_OMBRE = '#cdd9e6';
 
@@ -196,6 +198,8 @@ const SAPIN = {
 	partPeuNeigeux: 0.25, // part des sapins qui portent moins de neige
 	bossesParPente: 5, // bosses de neige sur une pente, pour une part de neige de 1
 	penteEnneigee: 0.62, // part de la pente couverte, pour une part de neige de 1
+	partGuirlandes: 1 / 3, // part des sapins qui portent une guirlande (critère 40)
+	guirlande: { boules: 5, boule: 0.07, fil: 0.03 }, // boules par fil ; rayon et épaisseur
 };
 
 /** Étages du bas vers le haut, en multiples de `rad` au-dessus du pied : bas, sommet,
@@ -248,30 +252,35 @@ function geometrieEtage(etage, rad) {
 }
 
 /** Un étage : cône aux pentes bombées et sommet arrondi, bord du bas festonné, ombre
- *  portée, moitié gauche éclairée. Tire deux teintes dans `R` (ombre, puis éclaircie). */
-function etageSapin(R, g, rad, teinte, L, f, cercle) {
+ *  portée, moitié gauche éclairée. Tire deux teintes dans `R` (ombre, puis éclaircie).
+ *  Le bord du bas est une rangée de demi-cercles tracés DANS le contour, d'un coin à
+ *  l'autre : le premier et le dernier partent pile des coins. Des ronds posés à part
+ *  débordaient de la pente (revue du mainteneur, critère 41). */
+function etageSapin(R, g, rad, teinte, L, f) {
 	const { cx, yBas, yHaut, demiLargeur: w, yControle } = g;
 	const r = rad * SAPIN.feston;
 	const off = rad * SAPIN.ombre;
-	const cone = (dx, dy) =>
-		`M ${f(cx + dx)},${f(yHaut + dy)} ` +
-		`Q ${f(cx - w * SAPIN.courbure + dx)},${f(yControle + dy)} ${f(cx - w + dx)},${f(yBas + dy)} ` +
-		`L ${f(cx + w + dx)},${f(yBas + dy)} ` +
-		`Q ${f(cx + w * SAPIN.courbure + dx)},${f(yControle + dy)} ${f(cx + dx)},${f(yHaut + dy)} Z`;
 	const nFestons = Math.max(4, Math.round((2 * w) / (r * 1.6)));
-	const festons = [];
-	for (let k = 0; k < nFestons; k++) {
-		const t = k / (nFestons - 1);
-		festons.push({ x: cx - w + r * 0.6 + t * (2 * w - r * 1.2), y: yBas - r * 0.15 });
-	}
+	const corde = (2 * w) / nFestons;
+	const contour = (dx, dy) => {
+		let d =
+			`M ${f(cx + dx)},${f(yHaut + dy)} ` +
+			`Q ${f(cx - w * SAPIN.courbure + dx)},${f(yControle + dy)} ${f(cx - w + dx)},${f(yBas + dy)} `;
+		// Arcs de gauche à droite, drapeau de balayage à 0 : ils bombent vers le bas.
+		for (let k = 1; k <= nFestons; k++) {
+			d += `A ${f(corde / 2)} ${f(corde / 2)} 0 0 0 ${f(cx - w + k * corde + dx)},${f(yBas + dy)} `;
+		}
+		return (
+			d +
+			`Q ${f(cx + w * SAPIN.courbure + dx)},${f(yControle + dy)} ${f(cx + dx)},${f(yHaut + dy)} Z`
+		);
+	};
 	const ombre = teinte(L - R.f(7, 10));
 	const base = teinte(L);
 	const clair = teinte(L + R.f(6, 9));
 	return (
-		`<path d="${cone(off, off)}" fill="${ombre}"/>` +
-		festons.map((o) => cercle(o.x + off, o.y + off, r, ombre)).join('') +
-		`<path d="${cone(0, 0)}" fill="${base}"/>` +
-		festons.map((o) => cercle(o.x, o.y, r, base)).join('') +
+		`<path d="${contour(off, off)}" fill="${ombre}"/>` +
+		`<path d="${contour(0, 0)}" fill="${base}"/>` +
 		`<path d="M ${f(cx)},${f(yHaut)} Q ${f(cx - w * SAPIN.courbure)},${f(yControle)} ` +
 		`${f(cx - w * 0.92)},${f(yBas - r * 0.4)} L ${f(cx - w * 0.2)},${f(yBas - r * 0.4)} Z" fill="${clair}"/>`
 	);
@@ -298,7 +307,47 @@ function neigeEtage(g, rad, part, cercle) {
 	);
 }
 
-function buildSapin(seed) {
+/** Couleurs des boules et du fil : aucune n'est celle d'un fruit ou de l'étincelle de la
+ *  forêt de l'année, que le test du critère 39 cherche. Rouge, or et bleu se distinguent
+ *  aussi par leur clarté, pas seulement par leur teinte, sur le vert du sapin. */
+const BOULES = ['#c62f45', '#f3c94b', '#3f7fd0'];
+const FIL = '#f6dc8a';
+
+/** Guirlandes d'un sapin, sur l'étage du bas et celui du milieu (celui du haut est trop
+ *  étroit) : un fil qui pend d'une pente à l'autre, un peu de biais, et des boules qui y
+ *  pendent. Rend une chaîne par étage, vide pour celui du haut. Tire dans `R`, dans
+ *  l'ordre : la couleur de la première boule, puis pour chaque étage l'accroche gauche,
+ *  l'accroche droite et le creux du fil. */
+function guirlandesSapin(R, geos, rad, f, cercle) {
+	const decalage = R.i(0, BOULES.length - 1);
+	const rb = rad * SAPIN.guirlande.boule;
+	return geos.map((g, k) => {
+		if (k >= 2) return '';
+		const a = g.pointDePente(-1, R.f(0.55, 0.8));
+		const b = g.pointDePente(1, R.f(0.55, 0.8));
+		const c = { x: (a.x + b.x) / 2, y: Math.max(a.y, b.y) + rad * R.f(0.1, 0.16) };
+		const surLeFil = (u) => ({
+			x: (1 - u) * (1 - u) * a.x + 2 * (1 - u) * u * c.x + u * u * b.x,
+			y: (1 - u) * (1 - u) * a.y + 2 * (1 - u) * u * c.y + u * u * b.y,
+		});
+		let boules = '';
+		for (let j = 0; j < SAPIN.guirlande.boules; j++) {
+			const p = surLeFil((j + 0.5) / SAPIN.guirlande.boules);
+			const y = p.y + rb * 0.6;
+			boules +=
+				cercle(p.x, y, rb, BOULES[(decalage + j + k) % BOULES.length]) +
+				`<circle cx="${f(p.x - rb * 0.35)}" cy="${f(y - rb * 0.35)}" r="${f(rb * 0.35)}" fill="#fff" opacity="0.6"/>`;
+		}
+		return (
+			`<g class="guirlande">` +
+			`<path d="M ${f(a.x)},${f(a.y)} Q ${f(c.x)},${f(c.y)} ${f(b.x)},${f(b.y)}" fill="none" ` +
+			`stroke="${FIL}" stroke-width="${f(rad * SAPIN.guirlande.fil)}" stroke-linecap="round"/>` +
+			`${boules}</g>`
+		);
+	});
+}
+
+function buildSapin(seed, guirlande = false) {
 	const R = makeRng(seed >>> 0);
 	const { x: cx, y: baseY } = SAPIN.pied;
 	const rad = 40 * R.f(0.88, 1.1);
@@ -316,12 +365,17 @@ function buildSapin(seed) {
 
 	const etages = etagesSapin(R);
 	const trunkPath = troncSapin(R, rad, f);
+	const geos = etages.map((etage) => geometrieEtage(etage, rad));
+	const feuillage = etages.map((etage, k) => etageSapin(R, geos[k], rad, teinte, etage.L, f));
+	// Tirées après tout le reste : un sapin sans guirlande est identique, tirage pour
+	// tirage, à ce qu'il était avant qu'elles existent.
+	const guirlandes = guirlande ? guirlandesSapin(R, geos, rad, f, cercle) : [];
+	// Par étage : le feuillage, la guirlande, puis la neige qui en recouvre les accroches.
 	let corps = '';
-	for (const etage of etages) {
-		const g = geometrieEtage(etage, rad);
-		corps += etageSapin(R, g, rad, teinte, etage.L, f, cercle);
-		if (etage.neige > 0) corps += neigeEtage(g, rad, etage.neige, cercle);
-	}
+	etages.forEach((etage, k) => {
+		corps += feuillage[k] + (guirlandes[k] ?? '');
+		if (etage.neige > 0) corps += neigeEtage(geos[k], rad, etage.neige, cercle);
+	});
 
 	const id = 's' + (seed >>> 0);
 	return (
@@ -394,6 +448,20 @@ export function composeForest(seed, n, saison) {
 		}
 	}
 
+	// Décembre : les sapins qui portent une guirlande. Un NOMBRE fixe (un sur trois), pas un
+	// tirage par sapin : celui-ci donnerait parfois moins d'un sur cinq (critère 40). Tirés
+	// avec leur propre suite, pour que les autres tirages, donc les sapins, ne bougent pas.
+	const porteurs = new Set();
+	if (noel) {
+		const gu = makeRng((base * 15485863) >>> 0);
+		const indices = [...Array(n).keys()];
+		for (let i = n - 1; i > 0; i--) {
+			const j = Math.floor(gu.f(0, i + 1));
+			[indices[i], indices[j]] = [indices[j], indices[i]];
+		}
+		for (const i of indices.slice(0, Math.round(n * SAPIN.partGuirlandes))) porteurs.add(i);
+	}
+
 	// Arbres : posés sur la courbe, plus hauts (pas plus larges) sur les bords.
 	const margin = 90;
 	const trees = [];
@@ -409,7 +477,7 @@ export function composeForest(seed, n, saison) {
 			`<g transform="translate(${(px - 75 * sx).toFixed(1)},${(py - 156 * sy).toFixed(1)}) ` +
 				`scale(${sx.toFixed(3)},${sy.toFixed(3)})">` +
 				`<g class="sway" style="animation-duration:${dur}s;animation-delay:${del}s">` +
-				`${(noel ? buildSapin : buildTree)(base * 613 + i * 1597)}</g></g>`,
+				`${noel ? buildSapin(base * 613 + i * 1597, porteurs.has(i)) : buildTree(base * 613 + i * 1597)}</g></g>`,
 		);
 	}
 	// Ordre de peinture aléatoire (déterministe) → chevauchements non systématiques.

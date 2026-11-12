@@ -13,6 +13,7 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
+import { FLOCONS } from '../src/core/decor-saison';
 import {
 	DATES,
 	FUSEAU,
@@ -193,7 +194,7 @@ test("critères 1, 5 : figé sur la vitrine, le décor l'est aussi sur le guide 
 				),
 			),
 		)
-		.toEqual(Array(10).fill('paused'));
+		.toEqual(Array(FLOCONS.length).fill('paused'));
 	expect(await page.evaluate((k) => localStorage.getItem(k), CLE_SITE)).toBe('true');
 
 	// Le guide, chargé ensuite, est figé : le réglage vaut pour les deux pages.

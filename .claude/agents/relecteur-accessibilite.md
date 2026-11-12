@@ -98,6 +98,12 @@ concrets** (quel attribut, quelle valeur de contraste, quel sélecteur).
 - **Cartes de texte en colonnes** : `repeat(n, minmax(0, 1fr))` et
   `overflow-wrap: anywhere`. Avec un simple `1fr`, un mot long déborde de sa carte
   au zoom texte 200 %. Cas d'origine : `.v-steps` de la vitrine (2026-10-20).
+- **Texte posé sur un décor animé** : le mesurer au PIRE, contre l'élément du décor le
+  plus foncé à son opacité de pic, en le composant avec le voile ou le panneau qui le
+  protège. Un `backdrop-filter` sur une zone traversée par une animation est recalculé
+  à chaque image : exiger un essai sur l'appareil cible (tablette Firefox/Xiaomi) et un
+  repli qui tient le contraste sans le flou. Cas d'origine : le verre dépoli de la
+  vitrine sous les flocons de décembre (#785, 2026-11-12).
 - **Glyphes décoratifs muets** : un chevron, une puce ou une flèche posés en
   contenu généré (`::before { content: '▸' }`) ou en caractère dans le texte sont
   **lus** par plusieurs lecteurs d'écran (« triangle pointant vers la droite »)

@@ -1,47 +1,34 @@
 /* ============================================================
-   Décor de saison (#785) : la bande de flocons de décembre (accueil de l'appli, vitrine).
+   Décor de saison (#785) : les flocons de décembre (accueil de l'appli, vitrine).
    Rendu par `ui/decor-saison.ts`, qui pose chaque réglage de flocon en variable CSS.
 
-   Une BANDE dans le flux, de hauteur réservée : elle repousse le contenu au lieu de le
-   recouvrir (même principe que la forêt : empilement, jamais superposition), et s'en va
-   avec le haut de la page quand on la fait défiler (critères 13, 14). Le dessin de chaque
-   flocon reste DANS la bande, du haut au bas de sa chute.
+   Un CALQUE FIXE qui couvre l'écran, peint SOUS le contenu (critères 13 et 14, rédaction
+   du 11/11/2026) : les flocons tombent sur toute la hauteur, restent à l'écran quand on
+   fait défiler la page, et une carte, la barre d'outils ou l'en-tête de la vitrine les
+   masquent. `z-index: -1` les place sous tout ce qui est dans le flux, mais au-dessus du
+   fond de page : celui de `body`, que le navigateur reporte sur le canevas. Un conteneur
+   pleine largeur qui reprendrait un fond opaque les cacherait donc tous ; c'est pourquoi
+   les sections de la vitrine n'en portent pas (cf. `vitrine.scss`).
+   Il ne prend aucune place dans le flux : en décembre, la mise en page reste celle du
+   reste de l'année.
    Animée en `transform` et `opacity` seulement : rien qui force la tablette à recalculer
    la page à chaque image (critère 17).
    ============================================================ */
 
 .decor-saison {
-	/* Hauteur de chute. La même durée sur une bande plus courte donne une chute plus lente,
-	   jamais plus rapide : les 15 s minimum du critère 12 tiennent à toutes les tailles. */
-	--decor-h: clamp(72px, 16vh, 150px);
-	position: relative;
-	height: var(--decor-h);
+	/* Hauteur de chute : l'écran. La même durée sur un écran plus court donne une chute plus
+	   lente, jamais plus rapide : les 15 s minimum du critère 12 tiennent à toutes les tailles. */
+	--decor-h: 100vh;
+	position: fixed;
+	inset: 0;
+	z-index: -1;
 	overflow: hidden;
 	pointer-events: none; /* un appui traverse le décor (critère 30) */
 	color: var(--flocon);
 }
-/* Smartphone en paysage : peu de hauteur, la bande se fait plus fine au lieu de disparaître. */
-@media (max-height: 500px) {
-	.decor-saison {
-		--decor-h: 64px;
-	}
-}
-/* Accueil de l'appli sur grand écran : la bande occupe la rangée du logo (`.big`), qui
-   ne porte aucun texte, au lieu d'ajouter une rangée au-dessus. Le logo passe devant les
-   flocons. Sous 920 px, `.big` est masqué (home.scss) et la bande prend sa place. */
-@media (min-width: 921px) {
-	.home-wide > .decor-saison {
-		--decor-h: 96px; /* hauteur du logo (.brand-logo) */
-		margin-bottom: -96px;
-	}
-	.home-wide > .decor-saison + .big {
-		position: relative;
-		z-index: 1;
-	}
-}
 
 .decor-flocon {
-	/* Trajet vertical : du haut de la bande à son bas, dessin compris. */
+	/* Trajet vertical : du haut de l'écran à son bas, dessin compris. */
 	--chute: calc(var(--decor-h) - var(--taille));
 	position: absolute;
 	top: 0;
@@ -50,9 +37,9 @@
 	height: var(--taille);
 	margin-left: calc(var(--taille) / -2);
 	/* État de REPOS, celui qu'on voit quand les animations sont réduites : chaque flocon à
-	   sa hauteur, réparti dans le haut de la bande, à son opacité de pic. Sans lui, ils
-	   seraient tous empilés en haut. */
-	transform: translate3d(0, calc(var(--chute) * var(--repos) * 0.6), 0);
+	   sa hauteur, réparti sur l'écran, à son opacité de pic. Sans lui, ils seraient tous
+	   empilés en haut. */
+	transform: translate3d(0, calc(var(--chute) * var(--repos)), 0);
 	opacity: var(--opacite);
 	animation: decor-chute var(--duree) linear var(--delai) infinite;
 	will-change: transform, opacity;
@@ -63,11 +50,35 @@
 	height: 100%;
 	transform: rotate(var(--rotation)); /* une rotation fixe par flocon, jamais animée */
 }
+/* Profondeur (cf. `FLOCONS`, `core/decor-saison.ts`) :
+   - lointains : petits, un trait plus épais pour rester visibles ;
+   - devant et premier plan : couleur plus marquée (`--flocon-proche`), toujours sous 3:1
+     face au fond (critère 15) ;
+   - premier plan seul : un léger flou de mise au point. Flou FIXE, posé sur le dessin et
+     non sur le flocon animé : il est calculé une fois, puis le flocon le déplace tel quel
+     (critère 17). */
+.decor-flocon--devant,
+.decor-flocon--premier-plan {
+	color: var(--flocon-proche);
+}
+/* Épaisseur du trait, en unités du dessin : elle grossit avec le flocon. Plus épaisse pour
+   les petits (sinon invisibles), plus fine pour les grands (sinon des pâtés). */
+.decor-flocon--loin .decor-flocon-glyphe {
+	stroke-width: 1.8;
+}
+.decor-flocon--devant .decor-flocon-glyphe,
+.decor-flocon--premier-plan .decor-flocon-glyphe {
+	stroke-width: 1;
+}
+.decor-flocon--premier-plan .decor-flocon-glyphe {
+	filter: blur(0.8px);
+}
 
 /* Chute avec une légère dérive de côté (sinusoïde approchée sur huit pas, en `linear` :
-   la descente reste régulière). Apparition rapide en haut, pleine visibilité jusqu'au
-   milieu de la bande, puis effacement en descendant (critère 13). L'opacité n'est nulle
-   qu'aux deux bouts du cycle : 6 à 10 flocons se voient à la fois (critère 12). */
+   la descente reste régulière). Apparition rapide en haut, pleine visibilité sur presque
+   toute la hauteur, effacement juste avant le bas (critère 13). L'opacité n'est nulle
+   qu'aux deux bouts du cycle : presque tous les flocons se voient à la fois, dans les
+   bornes du critère 12 (cf. `FLOCONS`). */
 @keyframes decor-chute {
 	0% {
 		transform: translate3d(0, 0, 0);
@@ -88,7 +99,7 @@
 	50% {
 		transform: translate3d(0, calc(var(--chute) * 0.5), 0);
 	}
-	55% {
+	92% {
 		opacity: var(--opacite);
 	}
 	62.5% {
@@ -123,6 +134,13 @@ html.anim-reduced .decor-flocon {
 
 /* Jamais sur papier (critère 29). */
 @media print {
+	.decor-saison {
+		display: none;
+	}
+}
+/* Jamais en couleurs forcées (critère 10, précision du 11/11/2026) : le navigateur y peint
+   les flocons de la couleur du texte, et un flocon passé derrière un mot l'effacerait. */
+@media (forced-colors: active) {
 	.decor-saison {
 		display: none;
 	}

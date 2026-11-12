@@ -91,6 +91,8 @@ export interface Flocon {
 	bas: number;
 	/** Visible = opacité effective > 0,05 ET dessin (glyphe) dans la vue. */
 	visible: boolean;
+	/** Plan de profondeur, lu sur la classe `decor-flocon--<plan>`. */
+	plan: 'loin' | 'milieu' | 'devant' | 'premier-plan' | null;
 }
 
 /* Lit chaque `.decor-flocon` : l'opacité et la chute sont portées par le flocon, le dessin
@@ -115,6 +117,10 @@ export async function mesurerFlocons(page: Page): Promise<Flocon[]> {
 				droite: r.right,
 				bas: r.bottom,
 				visible: opacite > 0.05 && dansLaVue && g.checkVisibility(),
+				plan:
+					(['loin', 'milieu', 'devant', 'premier-plan'] as const).find((p) =>
+						f.classList.contains(`decor-flocon--${p}`),
+					) ?? null,
 			};
 		});
 	});
@@ -150,80 +156,121 @@ export async function placerAuTemps(page: Page, ms: number, arreter = true): Pro
    éventuels) et choisis non multiples entre eux pour ne pas retomber sur la même phase. */
 export const INSTANTS = [41_000, 57_300, 73_100, 96_400, 133_700, 171_200, 209_900, 250_500];
 
-export interface Recouvrement {
+export interface PileFlocon {
 	flocon: number;
-	avec: string;
+	/** Éléments du contenu que ce flocon recouvre (le flocon est peint AU-DESSUS d'eux). */
+	surLeContenu: string[];
+	/** Éléments à fond opaque peints au-dessus du flocon (il est alors masqué en son centre). */
+	masquePar: string[];
 }
 
-/* Flocons VISIBLES qui recouvrent un nœud texte non vide visible, ou un bouton / lien /
-   champ visible. Rectangles : celui du dessin du flocon contre ceux de `Range.getClientRects`
-   (texte) et de `getBoundingClientRect` (commandes). Recouvrement = intersection de plus de
-   0,5 px dans les deux axes. */
-export async function recouvrements(page: Page): Promise<Recouvrement[]> {
+/* Ordre de peinture au centre et aux quatre quarts du dessin de chaque flocon VISIBLE.
+   `pointer-events: none` rend le décor invisible à `elementsFromPoint` : on le rend atteignable
+   le temps de la lecture (feuille injectée puis retirée), puis on lit la pile (le plus haut
+   d'abord).
+   - `surLeContenu` : sous le flocon dans la pile, un nœud texte réellement sous le point, une
+     commande, ou une carte (fond opaque ou image, qui n'est ni un ancêtre du décor ni un
+     conteneur de page couvrant l'écran).
+   - `masquePar` : au-dessus du flocon, un élément à fond opaque (ni `background-color`
+     transparent, ni `background-image: none`). Sert de témoin : un flocon sans personne
+     d'opaque au-dessus de son centre est réellement VU. */
+export async function pileDesFlocons(
+	page: Page,
+): Promise<{ visibles: number; vus: number; fautes: PileFlocon[] }> {
 	return page.evaluate(() => {
 		const L = window.innerWidth;
 		const H = window.innerHeight;
-		const rects: { r: DOMRect; nom: string }[] = [];
-		const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-		for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-			const el = n.parentElement;
-			if (!el || !(n.textContent ?? '').trim()) continue;
-			if (el.closest('.decor-saison, script, style, noscript, template')) continue;
-			if (!el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
-			// Texte masqué VISUELLEMENT (patron `.sr-only` : boîte ≤ 1 px, `overflow` coupé, ou
-			// `clip` nul) : le clip ne réduit pas `Range.getClientRects`, qui rend la boîte du
-			// texte entier. Seul le texte qu'on VOIT peut être recouvert ; tout le reste est gardé.
-			const masque = (() => {
-				for (let a: HTMLElement | null = el; a && a !== document.body; a = a.parentElement) {
-					const cs = getComputedStyle(a);
-					const b = a.getBoundingClientRect();
-					const coupe = cs.overflow !== 'visible' || cs.overflowX !== 'visible';
-					if (coupe && b.width <= 1 && b.height <= 1) return true;
-					if (/^rect\(0(px)?,? 0(px)?,? 0(px)?,? 0(px)?\)$/.test(cs.clip)) return true;
+		const feuille = document.createElement('style');
+		feuille.textContent = '.decor-saison, .decor-saison * { pointer-events: auto !important; }';
+		document.head.appendChild(feuille);
+		try {
+			const nom = (e: Element) => `${e.tagName.toLowerCase()}#${e.id}.${e.className.toString()}`;
+			const opaque = (e: Element) => {
+				const cs = getComputedStyle(e);
+				const m = /rgba?\(([^)]*)\)/.exec(cs.backgroundColor);
+				const alpha = m ? (m[1]!.split(',').length > 3 ? parseFloat(m[1]!.split(',')[3]!) : 1) : 0;
+				return alpha > 0 || cs.backgroundImage !== 'none';
+			};
+			const commandes = 'button, a[href], input, select, textarea, [role="button"]';
+			const sousLePoint = (e: Element, x: number, y: number) => {
+				for (const n of e.childNodes) {
+					if (n.nodeType !== Node.TEXT_NODE || !(n.textContent ?? '').trim()) continue;
+					const range = document.createRange();
+					range.selectNodeContents(n);
+					for (const r of range.getClientRects()) {
+						if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return true;
+					}
 				}
 				return false;
-			})();
-			if (masque) continue;
-			const range = document.createRange();
-			range.selectNodeContents(n);
-			for (const r of range.getClientRects()) {
-				if (r.width > 0 && r.height > 0) {
-					rects.push({ r, nom: `texte « ${(n.textContent ?? '').trim().slice(0, 30)} »` });
+			};
+			let visibles = 0;
+			let vus = 0;
+			const fautes: PileFlocon[] = [];
+			document.querySelectorAll<HTMLElement>('.decor-saison .decor-flocon').forEach((f, i) => {
+				const g = f.querySelector<HTMLElement>('.decor-flocon-glyphe') ?? f;
+				let opacite = 1;
+				for (let e: Element | null = g; e; e = e.parentElement) {
+					opacite *= parseFloat(getComputedStyle(e).opacity);
 				}
-			}
+				const d = g.getBoundingClientRect();
+				const visible =
+					opacite > 0.05 &&
+					d.width > 0 &&
+					d.height > 0 &&
+					d.right > 0 &&
+					d.left < L &&
+					d.bottom > 0 &&
+					d.top < H &&
+					g.checkVisibility();
+				if (!visible) return;
+				visibles++;
+				const surLeContenu = new Set<string>();
+				const masquePar = new Set<string>();
+				let centreVu = false;
+				const points: [number, number][] = [
+					[0.5, 0.5],
+					[0.25, 0.25],
+					[0.75, 0.25],
+					[0.25, 0.75],
+					[0.75, 0.75],
+				].map(([a, b]) => [d.left + d.width * a!, d.top + d.height * b!]);
+				points.forEach(([x, y], k) => {
+					if (x < 0 || y < 0 || x >= L || y >= H) return;
+					const pile = document.elementsFromPoint(x, y);
+					const rang = pile.findIndex((e) => e.closest('.decor-saison'));
+					if (rang < 0) return;
+					const decor = document.querySelector('.decor-saison')!;
+					// `html` ne masque rien ; le fond de `body` est reporté sur le canevas (peint SOUS les
+					// z-index négatifs) quand `html` n'a pas de fond propre.
+					const fondReporte = !opaque(document.documentElement);
+					const auDessus = pile
+						.slice(0, rang)
+						.filter(
+							(e) =>
+								e !== document.documentElement &&
+								!(e === document.body && fondReporte) &&
+								opaque(e),
+						);
+					for (const e of auDessus) masquePar.add(nom(e));
+					if (k === 0 && auDessus.length === 0) centreVu = true;
+					for (const e of pile.slice(rang + 1)) {
+						if (e.contains(decor) || e === document.documentElement || e === document.body)
+							continue;
+						const r = e.getBoundingClientRect();
+						const conteneurDePage = r.width >= L * 0.98 && r.height >= H * 0.98;
+						if (e.matches(commandes) || sousLePoint(e, x, y) || (opaque(e) && !conteneurDePage)) {
+							surLeContenu.add(nom(e));
+						}
+					}
+				});
+				if (centreVu) vus++; // vu = présent dans la pile ET rien d'opaque au-dessus de son centre
+				if (surLeContenu.size > 0)
+					fautes.push({ flocon: i, surLeContenu: [...surLeContenu], masquePar: [...masquePar] });
+			});
+			return { visibles, vus, fautes };
+		} finally {
+			feuille.remove();
 		}
-		const commandes = 'button, a[href], input, select, textarea, [role="button"]';
-		for (const el of document.querySelectorAll<HTMLElement>(commandes)) {
-			if (el.closest('.decor-saison')) continue;
-			if (!el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
-			const r = el.getBoundingClientRect();
-			if (r.width > 0 && r.height > 0) rects.push({ r, nom: `commande ${el.tagName}#${el.id}` });
-		}
-		const trouvés: { flocon: number; avec: string }[] = [];
-		document.querySelectorAll<HTMLElement>('.decor-saison .decor-flocon').forEach((f, i) => {
-			const g = f.querySelector<HTMLElement>('.decor-flocon-glyphe') ?? f;
-			let opacite = 1;
-			for (let e: Element | null = g; e; e = e.parentElement) {
-				opacite *= parseFloat(getComputedStyle(e).opacity);
-			}
-			const d = g.getBoundingClientRect();
-			const visible =
-				opacite > 0.05 &&
-				d.width > 0 &&
-				d.height > 0 &&
-				d.right > 0 &&
-				d.left < L &&
-				d.bottom > 0 &&
-				d.top < H &&
-				g.checkVisibility();
-			if (!visible) return;
-			for (const { r, nom } of rects) {
-				const dx = Math.min(d.right, r.right) - Math.max(d.left, r.left);
-				const dy = Math.min(d.bottom, r.bottom) - Math.max(d.top, r.top);
-				if (dx > 0.5 && dy > 0.5) trouvés.push({ flocon: i, avec: nom });
-			}
-		});
-		return trouvés;
 	});
 }
 
@@ -233,7 +280,7 @@ export async function laisserPasser(page: Page, ms: number): Promise<void> {
 	await page.evaluate((t) => new Promise<void>((fin) => setTimeout(fin, t)), ms);
 }
 
-/* Vues testées : la bande de flocons n'est pas au même endroit selon la largeur. */
+/* Vues testées : mobile et tablette paysage, où la mise en page de l'accueil diffère. */
 export const VUES = [
 	{ nom: 'mobile (largeur par défaut du projet)', viewport: null },
 	{ nom: 'tablette paysage', viewport: { width: 1180, height: 820 } },

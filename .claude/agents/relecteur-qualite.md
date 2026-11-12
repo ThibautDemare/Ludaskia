@@ -176,6 +176,15 @@ faut.**
   Noël (#785) : flocons, sapin, cadeaux, guirlandes, bonnet, aucun motif religieux
   (rappel en tête de `src/core/decor-saison.ts`). Tout autre motif passe par le
   mainteneur, même s'il « va de soi ».
+- **Un concept renommé ne survit pas dans les commentaires.** Quand un changement
+  remplace un concept (la « bande » de flocons devenue un calque plein écran, #785),
+  chercher l'ancien mot dans `src/`, `tests/` et `e2e/` avant de rendre : un
+  commentaire périmé décrit avec aplomb un comportement qui n'existe plus.
+- **Un sous-système de test autonome a son propre fichier.** Un fichier de test qui
+  dépasse ~1 500 lignes et reçoit un bloc doté de ses propres types et parseurs
+  → l'extraire dans son module, les aides partagées à part. Cas d'origine (#785) : le
+  contraste du décor de saison, sorti de `contraste-tokens.test.ts` vers
+  `contraste-decor-saison.test.ts`.
 - **TypeScript strict, vraiment.** Repère les `any`, les `as` qui masquent un
   vrai problème, les `!` non-null hasardeux, les types trop larges. Le code doit
   passer `tsc --noEmit` sans contournement.

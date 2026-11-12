@@ -216,7 +216,7 @@
 		<main class="v-main">
 			<!-- ===== HERO ===== -->
 			<section class="v-hero" aria-labelledby="vHeroTitle">
-				<div class="v-hero-text">
+				<div class="v-hero-text v-texte">
 					<h1 id="vHeroTitle">S'entraîner en maths et en français, du CE2 au CM1.</h1>
 					<p class="v-hero-sub">
 						Un jeu d'entraînement <strong>gratuit</strong>, sans publicité et sans compte. Les
@@ -256,20 +256,22 @@
 			<!-- ===== C'EST QUOI ===== -->
 			<section class="v-section v-about" aria-labelledby="vAboutTitle">
 				<div class="v-wrap">
-					<h2 id="vAboutTitle">C'est quoi Ludaskia&nbsp;?</h2>
-					<p>
-						Ludaskia est une application web d'entraînement en maths et en français, pensée pour les
-						enfants du CE2 et du CM1. Chaque séance propose des exercices variés, corrigés tout de
-						suite, avec de courtes explications. C'est un complément ludique au travail de la classe
-						et de la maison&nbsp;— pas un substitut à l'école.
-					</p>
+					<div class="v-texte">
+						<h2 id="vAboutTitle">C'est quoi Ludaskia&nbsp;?</h2>
+						<p>
+							Ludaskia est une application web d'entraînement en maths et en français, pensée pour
+							les enfants du CE2 et du CM1. Chaque séance propose des exercices variés, corrigés
+							tout de suite, avec de courtes explications. C'est un complément ludique au travail de
+							la classe et de la maison&nbsp;— pas un substitut à l'école.
+						</p>
+					</div>
 				</div>
 			</section>
 
 			<!-- ===== MATIÈRES ===== -->
 			<section class="v-section v-section--soft v-matieres" aria-labelledby="vMatieresTitle">
 				<div class="v-wrap">
-					<h2 id="vMatieresTitle">Deux matières, organisées comme en classe</h2>
+					<h2 class="v-texte" id="vMatieresTitle">Deux matières, organisées comme en classe</h2>
 					<div class="v-cards v-cards--2">
 						<article class="v-card">
 							<span class="v-card-ico v-ico--math">
@@ -333,7 +335,7 @@
 			<!-- ===== MODES ===== -->
 			<section class="v-section v-modes" aria-labelledby="vModesTitle">
 				<div class="v-wrap">
-					<h2 id="vModesTitle">Plusieurs façons de s'entraîner</h2>
+					<h2 class="v-texte" id="vModesTitle">Plusieurs façons de s'entraîner</h2>
 					<div class="v-cards v-cards--3">
 						<article class="v-mode">
 							<span class="v-mode-ico">
@@ -469,7 +471,7 @@
 			<!-- ===== GAMIFICATION SAINE ===== -->
 			<section class="v-section v-section--soft v-gamif" aria-labelledby="vGamifTitle">
 				<div class="v-wrap v-gamif-grid">
-					<div class="v-gamif-text">
+					<div class="v-gamif-text v-texte">
 						<h2 id="vGamifTitle">Une progression qui motive, sans pression</h2>
 						<p>
 							Pour donner envie de revenir, Ludaskia récompense les efforts&nbsp;: des points
@@ -512,7 +514,7 @@
 			<section class="v-section v-encadrant" aria-labelledby="vEncTitle">
 				<div class="v-wrap">
 					<div class="v-enc-top">
-						<div class="v-enc-text">
+						<div class="v-enc-text v-texte">
 							<div class="v-enc-head">
 								<span class="v-enc-ico">
 									<svg
@@ -660,20 +662,22 @@
 						</article>
 					</div>
 
-					<p class="v-enc-more">
-						On y règle aussi la classe de chaque enfant, les aménagements pour les troubles
-						«&nbsp;dys&nbsp;» et pour l'attention, les leçons déjà vues en classe et la longueur des
-						séances de révision. Plusieurs profils cohabitent sur le même appareil, chacun avec sa
-						progression et sa sauvegarde&nbsp;; un code à 4&nbsp;chiffres peut garder tout cela hors
-						de portée des curieux.
-					</p>
-					<p class="v-enc-doctrine">
-						<strong
-							>Aucune note, aucune moyenne, aucun classement, aucune comparaison entre
-							enfants.</strong
-						>
-						C'est un outil pour accompagner, pas un bulletin.
-					</p>
+					<div class="v-texte">
+						<p class="v-enc-more">
+							On y règle aussi la classe de chaque enfant, les aménagements pour les troubles
+							«&nbsp;dys&nbsp;» et pour l'attention, les leçons déjà vues en classe et la longueur
+							des séances de révision. Plusieurs profils cohabitent sur le même appareil, chacun
+							avec sa progression et sa sauvegarde&nbsp;; un code à 4&nbsp;chiffres peut garder tout
+							cela hors de portée des curieux.
+						</p>
+						<p class="v-enc-doctrine">
+							<strong
+								>Aucune note, aucune moyenne, aucun classement, aucune comparaison entre
+								enfants.</strong
+							>
+							C'est un outil pour accompagner, pas un bulletin.
+						</p>
+					</div>
 				</div>
 			</section>
 
@@ -687,27 +691,29 @@
 			   ou plusieurs élèves (relecture de langue, 2026-10-20 ; « il » ne couvrait qu'un cas). -->
 			<section class="v-section v-section--soft v-partage" aria-labelledby="vPartageTitle">
 				<div class="v-wrap">
-					<div class="v-partage-head">
-						<span class="v-partage-ico">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								viewBox="0 0 256 256"
-								fill="currentColor"
-								class="ph-icon ph-lg"
-								focusable="false"
-								aria-hidden="true"
-							>
-								<path
-									d="M117.18,188.74a12,12,0,0,1,0,17l-5.12,5.12A58.26,58.26,0,0,1,70.6,228h0A58.62,58.62,0,0,1,29.14,127.92L63.89,93.17a58.64,58.64,0,0,1,98.56,28.11,12,12,0,1,1-23.37,5.44,34.65,34.65,0,0,0-58.22-16.58L46.11,144.89A34.62,34.62,0,0,0,70.57,204h0a34.41,34.41,0,0,0,24.49-10.14l5.11-5.12A12,12,0,0,1,117.18,188.74ZM226.83,45.17a58.65,58.65,0,0,0-82.93,0l-5.11,5.11a12,12,0,0,0,17,17l5.12-5.12a34.63,34.63,0,1,1,49,49L175.1,145.86A34.39,34.39,0,0,1,150.61,156h0a34.63,34.63,0,0,1-33.69-26.72,12,12,0,0,0-23.38,5.44A58.64,58.64,0,0,0,150.56,180h.05a58.28,58.28,0,0,0,41.47-17.17l34.75-34.75a58.62,58.62,0,0,0,0-82.91Z"
-								/>
-							</svg>
-						</span>
-						<h2 id="vPartageTitle">Le même exercice pour chacun, par un simple lien</h2>
+					<div class="v-texte">
+						<div class="v-partage-head">
+							<span class="v-partage-ico">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 256 256"
+									fill="currentColor"
+									class="ph-icon ph-lg"
+									focusable="false"
+									aria-hidden="true"
+								>
+									<path
+										d="M117.18,188.74a12,12,0,0,1,0,17l-5.12,5.12A58.26,58.26,0,0,1,70.6,228h0A58.62,58.62,0,0,1,29.14,127.92L63.89,93.17a58.64,58.64,0,0,1,98.56,28.11,12,12,0,1,1-23.37,5.44,34.65,34.65,0,0,0-58.22-16.58L46.11,144.89A34.62,34.62,0,0,0,70.57,204h0a34.41,34.41,0,0,0,24.49-10.14l5.11-5.12A12,12,0,0,1,117.18,188.74ZM226.83,45.17a58.65,58.65,0,0,0-82.93,0l-5.11,5.11a12,12,0,0,0,17,17l5.12-5.12a34.63,34.63,0,1,1,49,49L175.1,145.86A34.39,34.39,0,0,1,150.61,156h0a34.63,34.63,0,0,1-33.69-26.72,12,12,0,0,0-23.38,5.44A58.64,58.64,0,0,0,150.56,180h.05a58.28,58.28,0,0,0,41.47-17.17l34.75-34.75a58.62,58.62,0,0,0,0-82.91Z"
+									/>
+								</svg>
+							</span>
+							<h2 id="vPartageTitle">Le même exercice pour chacun, par un simple lien</h2>
+						</div>
+						<p class="v-partage-lead">
+							Un exercice précis à faire faire à votre enfant, ou à plusieurs élèves, chacun sur son
+							appareil&nbsp;? Vous l'envoyez comme n'importe quel message, ou par l'ENT de l'école.
+						</p>
 					</div>
-					<p class="v-partage-lead">
-						Un exercice précis à faire faire à votre enfant, ou à plusieurs élèves, chacun sur son
-						appareil&nbsp;? Vous l'envoyez comme n'importe quel message, ou par l'ENT de l'école.
-					</p>
 					<!-- role="list" : sans puces, WebKit/VoiceOver retire la sémantique de liste. -->
 					<ol class="v-steps" role="list">
 						<li class="v-step">
@@ -775,7 +781,7 @@
 							</p>
 						</li>
 					</ol>
-					<p class="v-partage-note">
+					<p class="v-partage-note v-texte">
 						<span class="v-partage-note-ico" aria-hidden="true"
 							><svg
 								xmlns="http://www.w3.org/2000/svg"
@@ -915,7 +921,7 @@
 							/>
 						</svg>
 					</span>
-					<div>
+					<div class="v-texte">
 						<h2 id="vA11yTitle">Un peu de confort en plus</h2>
 						<p>
 							Tout se règle selon les préférences de chacun&nbsp;: un bouton «&nbsp;Écouter&nbsp;»
@@ -941,7 +947,7 @@
 				aria-labelledby="vExTitle"
 			>
 				<div class="v-wrap">
-					<h2 id="vExTitle">À quoi ça ressemble&nbsp;?</h2>
+					<h2 class="v-texte" id="vExTitle">À quoi ça ressemble&nbsp;?</h2>
 					<div class="v-ex-grid" aria-hidden="true">
 						<div class="v-demo-card">
 							<span class="v-demo-tag">Calcul mental</span>
@@ -975,8 +981,9 @@
 			<!-- ===== FAQ ===== -->
 			<section class="v-section v-faq" aria-labelledby="vFaqTitle">
 				<div class="v-wrap">
-					<h2 id="vFaqTitle">Questions fréquentes</h2>
-					<!-- Cette FAQ est DUPLIQUÉE en JSON-LD `FAQPage` dans le <head> de cette
+					<div class="v-texte">
+						<h2 id="vFaqTitle">Questions fréquentes</h2>
+						<!-- Cette FAQ est DUPLIQUÉE en JSON-LD `FAQPage` dans le <head> de cette
 					     page (#631). Le rappel est ici, au point d'édition réel : personne
 					     ne relit le <head> en corrigeant une réponse 700 lignes plus bas.
 					     • Question ajoutée ou retirée → la reporter dans le JSON-LD, sinon
@@ -984,84 +991,87 @@
 					     • Texte d'une réponse modifié → le reporter À LA MAIN : ce n'est PAS
 					       vérifié automatiquement, et l'écart est invisible dans la page
 					       (cf. docs/architecture/tests.md). -->
-					<div class="v-faq-list">
-						<div class="v-faq-item">
-							<h3>Faut-il créer un compte&nbsp;?</h3>
-							<p>
-								Non. Aucune inscription, aucun mot de passe&nbsp;: on ouvre Ludaskia et on commence.
-								La progression est enregistrée automatiquement sur l'appareil.
-							</p>
-						</div>
-						<div class="v-faq-item">
-							<h3>Est-ce payant&nbsp;?</h3>
-							<p>
-								Non, Ludaskia est entièrement gratuit. Pas de publicité, pas d'achat dans
-								l'application, rien à débloquer en payant.
-							</p>
-						</div>
-						<div class="v-faq-item">
-							<h3>Que deviennent les données de mon enfant&nbsp;?</h3>
-							<p>
-								Elles restent sur votre appareil, dans le navigateur. Rien n'est envoyé sur un
-								serveur, et rien n'est partagé sans votre geste. Si vous effacez les données du
-								navigateur, la progression est perdue&nbsp;— vous pouvez en faire une sauvegarde
-								depuis l'application.
-							</p>
-						</div>
-						<!-- #306 : la promesse hors-ligne est de nouveau large (service worker +
+						<div class="v-faq-list">
+							<div class="v-faq-item">
+								<h3>Faut-il créer un compte&nbsp;?</h3>
+								<p>
+									Non. Aucune inscription, aucun mot de passe&nbsp;: on ouvre Ludaskia et on
+									commence. La progression est enregistrée automatiquement sur l'appareil.
+								</p>
+							</div>
+							<div class="v-faq-item">
+								<h3>Est-ce payant&nbsp;?</h3>
+								<p>
+									Non, Ludaskia est entièrement gratuit. Pas de publicité, pas d'achat dans
+									l'application, rien à débloquer en payant.
+								</p>
+							</div>
+							<div class="v-faq-item">
+								<h3>Que deviennent les données de mon enfant&nbsp;?</h3>
+								<p>
+									Elles restent sur votre appareil, dans le navigateur. Rien n'est envoyé sur un
+									serveur, et rien n'est partagé sans votre geste. Si vous effacez les données du
+									navigateur, la progression est perdue&nbsp;— vous pouvez en faire une sauvegarde
+									depuis l'application.
+								</p>
+							</div>
+							<!-- #306 : la promesse hors-ligne est de nouveau large (service worker +
 						     manifeste), mais elle reste HONNÊTE. La couverture est PROGRESSIVE :
 						     l'application ne récupère pas tout d'un coup, elle complète en fond aux
 						     moments calmes. On promet donc « après quelques utilisations », pas un
 						     hors-ligne inconditionnel dès la première seconde. La nuance iOS
 						     (Safari efface les données d'un site non installé après ~7 jours sans
 						     ouverture) fait partie de l'honnêteté : d'où le renvoi à l'installation. -->
-						<div class="v-faq-item">
-							<h3>Ça marche sans connexion&nbsp;?</h3>
-							<p>
-								Oui. Après quelques utilisations, Ludaskia s'enregistre sur l'appareil et se rouvre
-								sans réseau&nbsp;— en voiture, en voyage, ou simplement quand la connexion lâche.
-								L'application complète ce qu'elle a mis de côté petit à petit, en
-								arrière-plan&nbsp;: laissez-lui quelques passages avant de compter dessus.
-							</p>
-							<p>
-								Pour que ce soit durable, mieux vaut l'<strong>ajouter à l'écran d'accueil</strong>
-								(le <a href="guide.html#installer">guide pour les parents</a> explique comment,
-								selon l'appareil). C'est surtout vrai sur iPhone et iPad&nbsp;: sans cela, Safari
-								finit par effacer les données d'un site resté longtemps sans être ouvert.
-							</p>
-						</div>
-						<div class="v-faq-item">
-							<h3>Pour quelles classes&nbsp;?</h3>
-							<p>
-								Le CE2 et le CM1 pour le moment&nbsp;: on choisit la classe au démarrage pour avoir
-								les bons exercices. D'autres classes&nbsp;— et d'autres matières&nbsp;— viendront
-								s'ajouter au fil du temps.
-							</p>
-						</div>
-						<div class="v-faq-item">
-							<h3>Puis-je suivre les progrès de mon enfant&nbsp;?</h3>
-							<p>
-								Oui, depuis l'espace encadrants de l'application. Vous y voyez où en est chaque
-								notion, l'activité des dernières semaines et les erreurs récentes avec la réponse
-								donnée et celle qui était attendue. Ni note, ni moyenne, ni classement, ni
-								comparaison entre enfants&nbsp;: c'est fait pour accompagner, pas pour évaluer.
-							</p>
-						</div>
-						<div class="v-faq-item">
-							<h3>Puis-je entrer la liste de mots de la dictée&nbsp;?</h3>
-							<p>
-								Oui. Vous saisissez la liste de la semaine, celle du cahier, dans la rubrique des
-								dictées de mots. Elle devient alors une leçon que votre enfant travaille comme les
-								autres, et vous en suivez l'avancement depuis l'espace encadrants.
-							</p>
-						</div>
-						<div class="v-faq-item">
-							<h3>Plusieurs enfants sur le même appareil&nbsp;?</h3>
-							<p>
-								Oui, un profil par enfant&nbsp;: chacun garde sa progression, ses réglages et son
-								avatar, et on passe de l'un à l'autre en deux touches. Chaque progression peut être
-								sauvegardée dans un fichier, puis reprise sur un autre appareil.
-							</p>
+							<div class="v-faq-item">
+								<h3>Ça marche sans connexion&nbsp;?</h3>
+								<p>
+									Oui. Après quelques utilisations, Ludaskia s'enregistre sur l'appareil et se
+									rouvre sans réseau&nbsp;— en voiture, en voyage, ou simplement quand la connexion
+									lâche. L'application complète ce qu'elle a mis de côté petit à petit, en
+									arrière-plan&nbsp;: laissez-lui quelques passages avant de compter dessus.
+								</p>
+								<p>
+									Pour que ce soit durable, mieux vaut l'<strong
+										>ajouter à l'écran d'accueil</strong
+									>
+									(le <a href="guide.html#installer">guide pour les parents</a> explique comment,
+									selon l'appareil). C'est surtout vrai sur iPhone et iPad&nbsp;: sans cela, Safari
+									finit par effacer les données d'un site resté longtemps sans être ouvert.
+								</p>
+							</div>
+							<div class="v-faq-item">
+								<h3>Pour quelles classes&nbsp;?</h3>
+								<p>
+									Le CE2 et le CM1 pour le moment&nbsp;: on choisit la classe au démarrage pour
+									avoir les bons exercices. D'autres classes&nbsp;— et d'autres matières&nbsp;—
+									viendront s'ajouter au fil du temps.
+								</p>
+							</div>
+							<div class="v-faq-item">
+								<h3>Puis-je suivre les progrès de mon enfant&nbsp;?</h3>
+								<p>
+									Oui, depuis l'espace encadrants de l'application. Vous y voyez où en est chaque
+									notion, l'activité des dernières semaines et les erreurs récentes avec la réponse
+									donnée et celle qui était attendue. Ni note, ni moyenne, ni classement, ni
+									comparaison entre enfants&nbsp;: c'est fait pour accompagner, pas pour évaluer.
+								</p>
+							</div>
+							<div class="v-faq-item">
+								<h3>Puis-je entrer la liste de mots de la dictée&nbsp;?</h3>
+								<p>
+									Oui. Vous saisissez la liste de la semaine, celle du cahier, dans la rubrique des
+									dictées de mots. Elle devient alors une leçon que votre enfant travaille comme les
+									autres, et vous en suivez l'avancement depuis l'espace encadrants.
+								</p>
+							</div>
+							<div class="v-faq-item">
+								<h3>Plusieurs enfants sur le même appareil&nbsp;?</h3>
+								<p>
+									Oui, un profil par enfant&nbsp;: chacun garde sa progression, ses réglages et son
+									avatar, et on passe de l'un à l'autre en deux touches. Chaque progression peut
+									être sauvegardée dans un fichier, puis reprise sur un autre appareil.
+								</p>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -1082,7 +1092,7 @@
 		     « vent » figée par prefers-reduced-motion (cf. foret.scss). -->
 		<div class="home-foret" id="vitrineForet" aria-hidden="true"></div>
 
-		<footer class="v-footer">
+		<footer class="v-footer v-texte">
 			<p class="v-footer-copy">
 				© <span data-footer-year>2026</span> Ludaskia — tous droits réservés.
 			</p>

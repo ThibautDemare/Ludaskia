@@ -1437,7 +1437,7 @@ doc de conception : `docs/design-orthographe.md` (§ Atelier du mot pour
   clé **brute par appareil** pour la vitrine et le guide (`decorFigeSite`), `decorFigeEffectif`
   (figé si le réglage le demande **ou** si les animations sont réduites) ; module léger, importé
   par la vitrine. **`decor-saison.ts`** : `saisonDu(date)` (`'noel'` du 1er au 31 décembre, heure
-  locale) et `FLOCONS` (positions fixes, sans tirage), sans autre dépendance que
+  locale) et `FLOCONS` (`FloconSpec` : positions fixes, `plan` `PlanFlocon` loin / milieu / devant / premier-plan, et `graine`), ainsi que `brancheCristal(graine, simple)` : le dessin SVG d'un cristal, tiré de la graine (mulberry32, déterministe), en familles étoile / plaque / fougère, symétrie d'ordre 6 par construction ; sans autre dépendance que
   **`date-locale.ts`** (pur : `jourLocal(d)`, format `AAAA-MM-JJ` partagé avec
   `progress.ts:todayStr`, et `DECEMBRE`). **`jours-decembre.ts`** :
   jours de travail distincts du dernier mois de décembre (`noterJourDecembre`,

@@ -66,7 +66,7 @@ rapprocher le PID du bon worktree, ou dans le doute couper ce serveur avant de r
   distinct : ni l'antériorité ni l'indépendance ne protègent de ce défaut-là. Écrire
   la mutation en commentaire du test est le minimum ; l'avoir jouée est la règle.
 - **Aucun test ne dépend de la date du jour (#785).** Depuis le décor de Noël, décembre change
-  ce que voit l'accueil (une bande de flocons le décale) et la 1re partie du mois peut annoncer
+  ce que voit l'accueil (des flocons tombent sur l'écran) et la 1re partie du mois peut annoncer
   un trophée dans `#celebrate`, dont la modale intercepte les clics. Une spec dont le propos
   n'est **pas** la saison pose donc **`horsDecembre(page)`** (`helpers.ts` : `setSystemTime` au
   14/07/2026, l'horloge continue de s'écouler pour les gardes de double appui et les minuteurs),

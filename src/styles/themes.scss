@@ -114,6 +114,9 @@
 	/* Flocon (#785) : un flocon clair dépasserait 3:1 sur ce fond dès la demi-opacité, et
 	   se lirait comme une pastille à toucher. Bleu-gris sombre, 2,1 à 2,8:1. */
 	--flocon: #50627a;
+	/* Déjà à 2,77:1 à pleine opacité : rien à gagner sous le plafond de 3:1. La profondeur
+	   tient ici à l'opacité des lointains (0,75-0,8, environ 2,1:1). */
+	--flocon-proche: #50627a;
 	--accent: #52c98a; /* vert vif : lisible comme texte/icône sur fond sombre */
 	--accent-dark: #3fa86d; /* survol des boutons accent */
 	--accent-soft: #22382c; /* surface teintée vert sombre (ex-#e4f0e8 clair) */

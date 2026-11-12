@@ -178,8 +178,9 @@ a.v-brand:focus-visible {
 /* ============================================================
    HERO
    ============================================================ */
+/* Pas de fond propre : celui de `body.vitrine` (le même) suffit, et un fond posé ici
+   cacherait les flocons de décembre, peints sous le contenu (#785, `decor-saison.scss`). */
 .v-hero {
-	background: var(--page-bg);
 	padding: 40px 20px 56px;
 }
 .v-hero-text {
@@ -265,15 +266,73 @@ a.v-brand:focus-visible {
 /* ============================================================
    Sections : rythme et fonds alternés
    ============================================================ */
+/* Les sections ne portent pas de fond propre : celui de `body.vitrine` (le même) suffit,
+   et un fond posé ici cacherait les flocons de décembre, peints sous le contenu (#785). */
 .v-section {
 	padding: 48px 0;
-	background: var(--page-bg);
 }
+/* Le vert des sections `--soft` est peint par un pseudo-élément en `z-index: -2`, SOUS le
+   calque des flocons (`z-index: -1`) : la neige passe sur la bande verte comme sur le fond
+   de page, et reste sous le texte. `position: relative` sans `z-index` : la section ne crée
+   pas de contexte d'empilement, sinon ce fond repasserait au-dessus des flocons. */
 .v-section--soft {
+	position: relative;
+}
+.v-section--soft::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -2;
 	/* Vert nettement plus marqué que --page-bg : l'alternance des bandes se voit
 	   (sinon « fadouille »). Reste AA pour le texte gris/ink/accent-dark (≥ 5,4:1) ;
 	   --ink et --grey y sont tenus par tests/contraste-tokens.test.ts. */
 	background: #c7e2ce;
+}
+
+/* Verre dépoli sous le texte, en décembre (#785, critère 14 précisé le 12/11/2026).
+   Les flocons passent sous le contenu, et presque tout le texte de la vitrine est posé à
+   même le fond : sous un flocon, le gris tombait vers 2,5:1. Chaque bloc de texte
+   (`.v-texte`, titre et paragraphes ensemble) prend alors un voile de la couleur de son
+   fond et floute ce qui passe derrière. Ce sont les plus faibles voiles qui tiennent 4,5:1
+   au pire (flocon le plus foncé à pleine opacité), SANS compter le flou : 55 % sur le fond
+   de page, 75 % sur le vert. Tenus par `tests/contraste-decor-saison.test.ts`.
+   Le panneau est AJUSTÉ à son texte (`fit-content`), sinon il courait sur toute la
+   largeur de la section. La marge négative compense sa marge intérieure : le texte ne
+   bouge pas d'un pixel.
+   Hors décembre, pas de décor, donc aucune de ces règles : la vitrine reste celle de
+   toujours (critère 34). Le guide partage ces classes mais n'a jamais de décor.
+   - `screen` seulement : le décor n'est jamais imprimé (`decor-saison.scss`), mais il reste
+     dans le DOM, et ces panneaux seraient restés sur le papier ;
+   - le flou est recalculé à chaque image quand un flocon passe derrière. Si la vitrine
+     saccade sur un appareil modeste, le repli est de retirer le flou : le voile seul tient
+     déjà 4,5:1 ;
+   - la vitrine n'a jamais de thème sombre (aucun `data-theme`) : une seule palette à tenir. */
+@media screen {
+	body.vitrine:has(.decor-saison) .v-texte {
+		box-sizing: border-box;
+		width: fit-content;
+		max-width: calc(100% + 36px);
+		margin-inline: -18px;
+		padding: 14px 18px;
+		border-radius: 16px;
+		background: color-mix(in srgb, var(--page-bg) 55%, transparent);
+		-webkit-backdrop-filter: blur(3px);
+		backdrop-filter: blur(3px);
+	}
+	body.vitrine:has(.decor-saison) .v-section--soft .v-texte {
+		background: color-mix(in srgb, #c7e2ce 75%, transparent);
+	}
+	/* Pied de page : texte centré, le panneau reste centré. */
+	body.vitrine:has(.decor-saison) .v-footer.v-texte {
+		margin-inline: auto;
+	}
+}
+/* Couleurs forcées : le décor est masqué, le flou ne servirait à rien. */
+@media (forced-colors: active) {
+	body.vitrine .v-texte {
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
 }
 .v-section h2 {
 	margin: 0 0 20px;

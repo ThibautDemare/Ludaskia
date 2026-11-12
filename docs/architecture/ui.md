@@ -2401,15 +2401,27 @@ animée, les effets de réussite, la luciole et la pluie de cookies continuent
   (profil, sinon appareil, via `mouvementReduitSysteme`). Le réglage mémorisé n'est pas touché :
   décocher « Réduire les animations » rend la case à son état d'avant.
 - **Décor de saison** : `core/decor-saison.ts` (`saisonDu(date)` → `'noel'` du 1er au 31
-  décembre à l'heure **locale**, `FLOCONS` : 10 flocons à positions/durées fixes, 16 à 24 s) ;
-  `ui/decor-saison.ts` (`majDecorSaison(repere, date)`) pose une **bande dans le flux**
-  (`.decor-saison`, `aria-hidden`, `pointer-events: none`, jamais un calque sur le contenu) juste
-  avant le repère : `#home > .big` à `render.ts`, `.v-hero` sur la vitrine. **Jamais** sur le
-  guide, un autre écran ou à l'impression ; idempotent, et hors saison rien dans le DOM. Animée en
+  décembre à l'heure **locale**, `FLOCONS` : 16 flocons à positions/durées fixes, sur quatre
+  plans `PlanFlocon` : loin, milieu, devant, premier-plan) ;
+  `ui/decor-saison.ts` (`majDecorSaison(repere, date)`) pose un **calque FIXE** qui couvre
+  l'écran (`.decor-saison`, `aria-hidden`, `pointer-events: none`), **peint SOUS le contenu**
+  (`z-index: -1`, `decor-saison.scss`), inséré avant le repère : `#home > .big` à `render.ts`,
+  `.v-hero` sur la vitrine. Il tombe donc sur toute la hauteur de l'écran. **Jamais** sur le
+  guide, un autre écran ou à l'impression ; **masqué en couleurs forcées** ; idempotent, et hors
+  saison rien dans le DOM. Chaque flocon a un **cristal unique** tiré de sa graine
+  (`brancheCristal`, cf. [Core](core.md)). Seul le **premier plan** est flou. Animée en
   `transform`/`opacity` seulement ; couleur par le token `--flocon` (`base.scss`, `themes.scss`),
-  tenu en contraste par `tests/contraste-tokens.test.ts`. Liste de motifs **fermée** : flocons,
+  plus marqué en `--flocon-proche` pour les plans de devant ; contraste tenu **par plan** par
+  `tests/contraste-decor-saison.test.ts`. Liste de motifs **fermée** : flocons,
   sapin, cadeaux, guirlandes, bonnet, aucun motif religieux ; tout autre passe par le mainteneur.
   La forêt continue de bouger en décembre.
+- **Vitrine sous la neige** : `.v-hero` et `.v-section` n'ont **plus de fond propre**. Le vert
+  des sections `--soft` est peint par un `::before` en `z-index: -2`, sous les flocons. En
+  décembre, les blocs de texte posés à même le fond (`.v-texte`, dont quatre enveloppes
+  ajoutées dans `index.html`) reposent sur un **panneau de verre dépoli** (`vitrine.scss`,
+  bloc « Verre dépoli », sous `@media screen`). Contraste tenu sur le vert et sous le verre.
+- **Accueil de l'appli** : la ligne d'aide `#home > .printlink` est dans un **bloc blanc toute
+  l'année** (`home.scss`), pour rester lisible sous les flocons.
 - **Renvoi côté encadrant** : cf. [Espace encadrant](espace-encadrant.md).
 - Trophées de Noël : cf. [Gamification](gamification.md).
 
@@ -2434,6 +2446,15 @@ animée, les effets de réussite, la luciole et la pluie de cookies continuent
 - *Rejet écrit (relecture qualité) :* `.footer-decor-etat` recopie le motif `.sr-only`
   d'`accessibility.scss`, que la vitrine et le guide ne chargent pas. Accepté pour un seul
   besoin ; au troisième, extraire le motif dans `base.scss`, que les trois pages chargent.
+- *Rejet écrit (relecture qualité) :* **le flou du verre de la vitrine est recalculé à chaque
+  image** (les flocons bougent dessous). Coût accepté. Repli prévu : retirer le flou, puisque le
+  voile seul tient 4,5:1. À vérifier sur la tablette avant la mise en prod.
+- *Rejet écrit :* **un panneau ajusté (`fit-content`) peut dépasser la fin d'une ligne coupée**
+  de la largeur d'un mot. Limite de CSS, tolérée par `e2e/decor-vitrine-verre.spec.ts`.
+- *Rejet écrit (relecture qualité) :* **le vert des sections `--soft` est écrit deux fois en
+  littéral** (`#c7e2ce`, dans le `::before` de `.v-section--soft` et dans le voile du verre).
+  Gardé ainsi : `tests/contraste-decor-saison.test.ts` lit les deux par expression régulière et exige
+  qu'ils restent égaux. Une variable SCSS, compilée, serait illisible pour ce test.
 
 ### Checklist a11y issue de #772 (jugement, pas de gate)
 

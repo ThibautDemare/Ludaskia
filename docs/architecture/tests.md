@@ -1480,14 +1480,18 @@ ne se voyait justement pas sur un run unique. Détails et procédure : `e2e/READ
 Critère 33 : la suite donne le même résultat le 30 novembre et le 15 décembre.
 - **Vitest** : `tests/decor-fige.test.ts` (réglages, deux mémoires disjointes,
   `decorFigeEffectif`), `tests/decor-saison.test.ts` (`saisonDu` aux bords 30/11, 1/12, 31/12,
-  1/1 ; bornes de `FLOCONS`), `tests/jours-decembre.test.ts` (déduplication, jour de fin, remise à
+  1/1 ; bornes de `FLOCONS` et critère 12 par plan ; `brancheCristal` : déterminisme, symétrie, familles), `tests/jours-decembre.test.ts` (déduplication, jour de fin, remise à
   zéro d'une année à l'autre), `tests/trophees-noel.test.ts` (paliers, sans XP, `partage` exclu).
   Les dates sont **passées en argument** ; rien ne lit l'horloge.
-- **e2e** : `decor-figer`, `decor-noel-flocons`, `decor-noel-trophees`, `decor-guide`, avec leurs
-  dates fixées par `e2e/decor-aide.ts`. Toutes les **autres** specs que Noël perturberait posent
+- **e2e** : `decor-figer`, `decor-noel-flocons`, `decor-noel-trophees`, `decor-guide`,
+  `decor-vitrine-verre` (le 15 décembre : aucun texte nu sur la neige, panneau ajusté à son
+  texte et dans la fenêtre ; le 14 juillet : ni fond ni flou), avec leurs dates fixées par
+  `e2e/decor-aide.ts`. Son helper `pileDesFlocons` donne l'**ordre de peinture** (flocons sous
+  le contenu) ; il remplace `recouvrements`. Toutes les **autres** specs que Noël perturberait posent
   `horsDecembre` (`e2e/helpers.ts`), cf. `e2e/README.md`.
-- Le couple de couleur `--flocon` / fond est tenu sur les six thèmes par
-  `tests/contraste-tokens.test.ts` (fourchette 1,5:1 à 3:1 du critère 15).
+- Les couples de couleur `--flocon` / `--flocon-proche` et fond sont tenus **par plan** sur les
+  six thèmes par `tests/contraste-decor-saison.test.ts` (fourchette 1,5:1 à 3:1 du critère 15), sur le
+  vert de la vitrine, et le texte est tenu **sous le verre** dépoli.
 - **Gates de rédaction et de périmètre** :
   - `tests/decor-fige.test.ts` lit toutes les feuilles SCSS : chaque sélecteur qui porte
     `decor-fige` doit viser une cible de sa liste blanche, la forêt et les flocons (critère 25).
@@ -1497,8 +1501,12 @@ Critère 33 : la suite donne le même résultat le 30 novembre et le 15 décembr
     consigne (impératif, infinitif, y compris réfléchi : « S'entraîner… »). Même motif que
     `tests/trophees-ancres.test.ts` ; les deux copies évoluent ensemble.
 - **`tests/aide-scss.ts`** (pas une suite) : lecture des feuilles SCSS partagée par
-  `contraste-tokens` et `decor-fige` (commentaires retirés, listes de sélecteurs, imbrication
-  `&` résolue).
+  `contraste-tokens`, `contraste-decor-saison` et `decor-fige` (commentaires retirés, listes de
+  sélecteurs, imbrication `&` résolue, déclarations et leurs `@media`).
+- **`tests/aide-couleurs.ts`** (pas une suite) : palettes des six thèmes lues dans
+  `base.scss`/`themes.scss`, et vert des sections `--soft` de la vitrine, partagés par
+  `contraste-tokens` et `contraste-decor-saison` (extrait en #785 : le contraste du décor de
+  saison, avec ses propres types et parseurs, faisait passer `contraste-tokens` à 1 790 lignes).
 
 ### Rappel des mots difficiles (#618) — deux volets NON rejoués en e2e, et pourquoi
 

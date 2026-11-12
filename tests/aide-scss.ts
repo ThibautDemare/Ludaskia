@@ -1,13 +1,14 @@
 /* ============================================================
    Lecture statique des feuilles SCSS, partagée par les gates qui les inspectent
-   (`contraste-tokens.test.ts`, `decor-fige.test.ts`). Pas une suite : le nom sans
-   `.test.` la tient hors de l'include de Vitest.
+   (`contraste-tokens.test.ts`, `contraste-decor-saison.test.ts`, `decor-fige.test.ts`).
+   Pas une suite : le nom sans `.test.` la tient hors de l'include de Vitest.
 
    Ce que ces fonctions savent faire : retirer les commentaires sans toucher aux chaînes,
    couper une liste de sélecteurs aux virgules de premier niveau, résoudre l'imbrication
-   SCSS avec ou sans `&`. Ce qu'elles ignorent : les préludes `@` (`@media`, `@mixin`,
-   `@at-root`…) sont sautés, pas interprétés ; à l'appelant de décider s'il doit les
-   signaler.
+   SCSS avec ou sans `&`, lister les déclarations `propriété: valeur` avec la règle qui les
+   porte. Ce qu'elles ignorent : les préludes `@` (`@media`, `@mixin`, `@at-root`…) sont
+   sautés, pas interprétés (`declarations` les rapporte tels quels dans `conditions`) ; à
+   l'appelant de décider s'il doit les signaler.
    ============================================================ */
 
 /** Retire les commentaires `/* … *\/` et `// …` sans toucher aux chaînes, et en gardant
@@ -76,3 +77,68 @@ export function resoudreImbrication(pile: readonly string[]): string[] {
 	}
 	return courants;
 }
+
+/** Une déclaration `propriété: valeur` d'une feuille, et la règle qui la porte. */
+export type Declaration = {
+	fichier: string;
+	ligne: number;
+	/** Sélecteurs complets de la règle (imbrication et `&` résolus, at-rules ignorées). */
+	selecteurs: string[];
+	/** Préludes `@` qui enveloppent la règle (`@media screen`…), du plus extérieur au plus
+	 *  intérieur : `selecteurs` les ignore, ce champ dit OÙ la règle s'applique (#785). */
+	conditions: string[];
+	propriete: string;
+	valeur: string;
+};
+
+/** Déclarations `propriété: valeur` d'une feuille, avec la règle qui les porte. */
+export function declarations(fichier: string, scss: string): Declaration[] {
+	const src = sansCommentairesScss(scss);
+	const pile: string[] = [];
+	const trouvees: Declaration[] = [];
+	let tampon = '';
+	let ligne = 1;
+	let ligneTampon = 1;
+	let guillemet = '';
+	for (let i = 0; i < src.length; i++) {
+		const c = src[i];
+		if (c === '\n') ligne++;
+		if (!tampon.trim() && /\S/.test(c)) ligneTampon = ligne;
+		if (guillemet) {
+			tampon += c;
+			if (c === guillemet) guillemet = '';
+		} else if (c === '"' || c === "'") {
+			guillemet = c;
+			tampon += c;
+		} else if (c === '#' && src[i + 1] === '{') {
+			// Interpolation SCSS `#{…}` : ses accolades ne sont pas celles d'une règle.
+			const fin = src.indexOf('}', i);
+			tampon += src.slice(i, fin + 1);
+			i = fin;
+		} else if (c === '{') {
+			pile.push(tampon.trim());
+			tampon = '';
+		} else if (c === ';' || c === '}') {
+			const m = tampon.trim().match(/^([\w-]+)\s*:([\s\S]*)$/);
+			if (m)
+				trouvees.push({
+					fichier,
+					ligne: ligneTampon,
+					selecteurs: resoudreImbrication(pile),
+					conditions: pile.filter((p) => p.startsWith('@')),
+					propriete: m[1].toLowerCase(),
+					valeur: m[2].trim(),
+				});
+			tampon = '';
+			if (c === '}') pile.pop();
+		} else tampon += c;
+	}
+	return trouvees;
+}
+
+/** Dernier composé d'un sélecteur : l'élément que la règle colore. */
+export const sujet = (selecteur: string) => selecteur.split(/\s*[>+~]\s*|\s+/).pop() ?? '';
+
+/** Une déclaration sur une ligne, pour les messages d'échec. */
+export const decrire = (d: Declaration) =>
+	`${d.fichier}:${d.ligne}  ${d.selecteurs.join(', ')} { ${d.propriete}: ${d.valeur} }`;

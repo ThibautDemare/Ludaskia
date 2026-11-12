@@ -3,7 +3,7 @@
    Écrit AVANT l'implémentation, depuis les critères de l'issue et le contrat DOM.
 
    Contrat : en décembre seulement, `#home` contient `.decor-saison[aria-hidden="true"]` avec
-   10 `.decor-flocon` (le flocon porte la chute et l'opacité, son enfant
+   `FLOCONS.length` `.decor-flocon` (le flocon porte la chute et l'opacité, son enfant
    `.decor-flocon-glyphe` est le dessin). Hors décembre : AUCUN `.decor-saison` dans le DOM.
    Vitrine : `.decor-saison` juste avant `.v-hero`. Guide : jamais (cf. `decor-guide.spec.ts`).
 
@@ -11,12 +11,13 @@
    la mesure. Plutôt que d'attendre, `placerAuTemps` règle toutes les animations du décor sur
    un instant donné (« la page est ouverte depuis N secondes ») : mesures espacées, mais
    déterministes. Un « visible » = opacité effective > 0,05 ET dessin dans la vue.
-   Largeurs : mobile (défaut du projet) ET tablette paysage, où la bande n'est pas au même
-   endroit. Horloge : voir `decor-aide.ts`.
+   Largeurs : mobile (défaut du projet) ET tablette paysage, où la mise en page de l'accueil
+   diffère. Horloge : voir `decor-aide.ts`.
    ============================================================ */
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { watchErrors, gotoHash } from './helpers';
+import { FLOCONS } from '../src/core/decor-saison';
 import {
 	DATES,
 	FUSEAU,
@@ -27,7 +28,7 @@ import {
 	ouvrirAccueil,
 	ouvrirVitrine,
 	placerAuTemps,
-	recouvrements,
+	pileDesFlocons,
 	attendreEtat,
 	basculerDecor,
 } from './decor-aide';
@@ -46,6 +47,55 @@ async function decorAffiche(page: Page): Promise<number> {
 	);
 }
 
+/* Critère 13 : à l'un des instants au moins, un flocon visible a le centre de son dessin sous
+   la mi-hauteur de l'écran ; après un défilement d'un écran, des flocons sont encore visibles.
+   La page doit vraiment défiler, sinon le second volet ne prouve rien. */
+async function verifierToutEcran(page: Page): Promise<void> {
+	const hauteur = await page.evaluate(() => window.innerHeight);
+	let dansLaMoitieBasse = 0;
+	for (const t of INSTANTS) {
+		await placerAuTemps(page, t);
+		for (const f of (await mesurerFlocons(page)).filter((x) => x.visible)) {
+			if ((f.haut + f.bas) / 2 > hauteur / 2) dansLaMoitieBasse++;
+		}
+	}
+	expect(
+		dansLaMoitieBasse,
+		`aucun flocon visible sous la mi-hauteur (${hauteur / 2} px) aux ${INSTANTS.length} instants`,
+	).toBeGreaterThan(0);
+
+	await page.evaluate(() => window.scrollTo(0, window.innerHeight));
+	expect(
+		await page.evaluate(() => window.scrollY),
+		'la page défile d’un écran (sinon le test ne prouve rien)',
+	).toBeGreaterThanOrEqual(hauteur - 1);
+	for (const t of INSTANTS) {
+		await placerAuTemps(page, t);
+		const encore = (await mesurerFlocons(page)).filter((f) => f.visible).length;
+		expect(encore, `à ${t} ms, après défilement : des flocons restent dans la vue`).toBeGreaterThan(
+			0,
+		);
+	}
+}
+
+/* Critère 14 : là où un flocon visible chevauche un texte, une commande ou une carte, il est
+   SOUS lui dans la pile de peinture. TÉMOIN : à un instant au moins, un flocon est réellement
+   vu (rien d'opaque au-dessus de son centre), sinon « jamais par-dessus » serait vrai d'une
+   couche enfouie sous un conteneur opaque. */
+async function verifierDerriere(page: Page): Promise<void> {
+	let vus = 0;
+	for (const t of INSTANTS) {
+		await placerAuTemps(page, t);
+		const pile = await pileDesFlocons(page);
+		vus += pile.vus;
+		expect(pile.fautes, `à ${t} ms : un flocon est peint au-dessus du contenu`).toEqual([]);
+	}
+	expect(
+		vus,
+		'témoin : au moins un flocon est vu (aucun fond opaque au-dessus de son centre)',
+	).toBeGreaterThan(0);
+}
+
 /* ---------- Présence selon la date (critères 10, 33, 34) ---------- */
 
 test.describe('présence du décor selon la date', () => {
@@ -62,7 +112,7 @@ test.describe('présence du décor selon la date', () => {
 	] as const;
 
 	for (const [nom, date] of EN_PERIODE) {
-		test(`critère 10 : le ${nom}, l'accueil porte 10 flocons dans un décor masqué aux lecteurs d'écran`, async ({
+		test(`critère 10 : le ${nom}, l'accueil porte tous ses flocons dans un décor masqué aux lecteurs d'écran`, async ({
 			page,
 		}) => {
 			const errors = watchErrors(page);
@@ -70,7 +120,7 @@ test.describe('présence du décor selon la date', () => {
 			const decor = page.locator('#home .decor-saison');
 			await expect(decor).toHaveCount(1);
 			await expect(decor).toHaveAttribute('aria-hidden', 'true');
-			await expect(decor.locator('.decor-flocon')).toHaveCount(10);
+			await expect(decor.locator('.decor-flocon')).toHaveCount(FLOCONS.length);
 			expect(errors).toEqual([]);
 		});
 	}
@@ -83,9 +133,9 @@ test.describe('présence du décor selon la date', () => {
 			// TÉMOIN : le même appareil, le 15 décembre, porte bien le décor. Sans lui, « rien hors
 			// période » serait vrai par simple absence de la fonctionnalité.
 			await ouvrirAccueil(page, DATES.noel);
-			await expect(page.locator('#home .decor-saison .decor-flocon')).toHaveCount(10);
+			await expect(page.locator('#home .decor-saison .decor-flocon')).toHaveCount(FLOCONS.length);
 			await ouvrirVitrine(page, DATES.noel);
-			await expect(page.locator('.decor-saison .decor-flocon')).toHaveCount(10);
+			await expect(page.locator('.decor-saison .decor-flocon')).toHaveCount(FLOCONS.length);
 
 			await ouvrirAccueil(page, date);
 			// Rien dans le DOM, pas seulement rien de visible.
@@ -107,12 +157,51 @@ test.describe('présence du décor selon la date', () => {
 		const decor = page.locator('.decor-saison');
 		await expect(decor).toHaveCount(1);
 		await expect(decor).toHaveAttribute('aria-hidden', 'true');
-		await expect(decor.locator('.decor-flocon')).toHaveCount(10);
+		await expect(decor.locator('.decor-flocon')).toHaveCount(FLOCONS.length);
 		await expect(page.locator('.v-hero').locator('xpath=preceding-sibling::*[1]')).toHaveClass(
 			/decor-saison/,
 		);
 		expect(errors).toEqual([]);
 	});
+
+	/* Critère 10 (couleurs forcées) : le navigateur peindrait les flocons de la couleur du texte,
+	   qui effacerait un mot de même couleur. On teste le RENDU (`checkVisibility`), pas la
+	   présence dans le DOM : le décor peut y rester. */
+	const flocons = (page: Page) =>
+		page.evaluate(
+			() =>
+				[...document.querySelectorAll<HTMLElement>('.decor-flocon')].filter((e) =>
+					e.checkVisibility(),
+				).length,
+		);
+	const ECRANS = [
+		['accueil', ouvrirAccueil],
+		['vitrine', ouvrirVitrine],
+	] as const;
+	for (const [nom, ouvrir] of ECRANS) {
+		test(`critère 10 (couleurs forcées, ${nom}) : le 15 décembre, aucun flocon n’est affiché`, async ({
+			page,
+		}) => {
+			const errors = watchErrors(page);
+			// TÉMOIN : sans couleurs forcées, tous les flocons sont affichés (sinon le test passerait
+			// aussi sans aucun décor).
+			await page.emulateMedia({ forcedColors: 'none' });
+			await ouvrir(page, DATES.noel);
+			await expect(page.locator('.decor-flocon')).toHaveCount(FLOCONS.length);
+			expect(await flocons(page), 'témoin : tous les flocons affichés hors couleurs forcées').toBe(
+				FLOCONS.length,
+			);
+
+			await page.emulateMedia({ forcedColors: 'active' });
+			await ouvrir(page, DATES.noel);
+			expect(
+				await page.evaluate(() => matchMedia('(forced-colors: active)').matches),
+				'les couleurs forcées sont bien actives',
+			).toBe(true);
+			expect(await flocons(page), 'couleurs forcées : aucun flocon rendu').toBe(0);
+			expect(errors).toEqual([]);
+		});
+	}
 });
 
 /* ---------- Rendu des flocons, par largeur ---------- */
@@ -121,95 +210,98 @@ for (const vue of VUES) {
 	test.describe(`flocons — ${vue.nom}`, () => {
 		if (vue.viewport) test.use({ viewport: { ...vue.viewport } });
 
-		test('critère 12 : entre 6 et 10 flocons visibles à la fois, à plusieurs instants', async ({
+		test('critère 12 : au moins 6 visibles, au plus 11 hors lointains, au plus 5 lointains, à plusieurs instants', async ({
 			page,
 		}) => {
 			const errors = watchErrors(page);
 			await ouvrirAccueil(page, DATES.noel);
-			await expect(page.locator('.decor-flocon')).toHaveCount(10);
+			await expect(page.locator('.decor-flocon')).toHaveCount(FLOCONS.length);
 
-			const nb: number[] = [];
+			const mesures: { total: number; saillants: number; loin: number }[] = [];
 			for (const t of INSTANTS) {
 				const animations = await placerAuTemps(page, t);
 				expect(
 					animations,
 					'les flocons sont animés en CSS (une animation au moins chacun)',
-				).toBeGreaterThanOrEqual(10);
-				nb.push((await mesurerFlocons(page)).filter((f) => f.visible).length);
-			}
-			for (const [i, n] of nb.entries()) {
-				expect(n, `à ${INSTANTS[i]} ms : ${nb.join(', ')}`).toBeGreaterThanOrEqual(6);
-				expect(n, `à ${INSTANTS[i]} ms : ${nb.join(', ')}`).toBeLessThanOrEqual(10);
-			}
-			expect(errors).toEqual([]);
-		});
-
-		test('critère 13 : flocons dans le haut de la page (jamais sous la mi-hauteur du premier écran), hors vue après un défilement d’un écran', async ({
-			page,
-		}) => {
-			const errors = watchErrors(page);
-			await ouvrirAccueil(page, DATES.noel);
-			await expect(page.locator('.decor-flocon')).toHaveCount(10);
-			const hauteur = await page.evaluate(() => window.innerHeight);
-
-			for (const t of INSTANTS) {
-				await placerAuTemps(page, t);
+				).toBeGreaterThanOrEqual(FLOCONS.length);
 				const visibles = (await mesurerFlocons(page)).filter((f) => f.visible);
-				expect(visibles.length, 'au moins un flocon à voir').toBeGreaterThan(0);
-				for (const f of visibles) {
-					const milieuDessin = (f.haut + f.bas) / 2;
-					expect(
-						milieuDessin,
-						`à ${t} ms : un flocon est dessiné sous la mi-hauteur (${hauteur / 2} px)`,
-					).toBeLessThanOrEqual(hauteur / 2);
-				}
+				const loin = visibles.filter((f) => f.plan === 'loin').length;
+				mesures.push({ total: visibles.length, saillants: visibles.length - loin, loin });
 			}
-
-			// Défilement d'un écran : le décor appartient à la page, il s'en va avec le haut.
-			await page.evaluate(() => window.scrollTo(0, window.innerHeight));
-			expect(await page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(hauteur - 1);
-			for (const t of INSTANTS) {
-				await placerAuTemps(page, t);
-				const encoreVisibles = (await mesurerFlocons(page)).filter((f) => f.visible);
-				expect(encoreVisibles, `à ${t} ms, après défilement`).toEqual([]);
+			const resume = JSON.stringify(mesures);
+			for (const [i, m] of mesures.entries()) {
+				const ctx = `à ${INSTANTS[i]} ms : ${resume}`;
+				expect(m.total, ctx).toBeGreaterThanOrEqual(6);
+				expect(m.saillants, ctx).toBeLessThanOrEqual(11);
+				expect(m.loin, ctx).toBeLessThanOrEqual(5);
 			}
 			expect(errors).toEqual([]);
 		});
 
-		test('critère 14 : aucun flocon visible ne recouvre un texte, un bouton, un lien ou un champ (accueil)', async ({
+		test('critère 12 (garde) : chaque flocon porte exactement un plan, et le DOM suit la répartition de FLOCONS', async ({
 			page,
 		}) => {
 			const errors = watchErrors(page);
 			await ouvrirAccueil(page, DATES.noel);
-			await expect(page.locator('.decor-flocon')).toHaveCount(10); // témoin : il y a des flocons à vérifier
-			let vus = 0;
-			for (const t of INSTANTS) {
-				await placerAuTemps(page, t);
-				vus += (await mesurerFlocons(page)).filter((f) => f.visible).length;
-				const gene = await recouvrements(page);
-				expect(gene, `à ${t} ms : ${JSON.stringify(gene)}`).toEqual([]);
-			}
-			expect(vus, 'témoin : des flocons visibles ont bien été comparés au texte').toBeGreaterThan(
-				0,
+			await expect(page.locator('.decor-flocon')).toHaveCount(FLOCONS.length);
+			const plansDom = await page.evaluate(() =>
+				[...document.querySelectorAll('.decor-saison .decor-flocon')].map(
+					(f) =>
+						[...f.classList].filter((c) =>
+							['loin', 'milieu', 'devant', 'premier-plan'].some((p) => c === `decor-flocon--${p}`),
+						).length,
+				),
 			);
+			expect(plansDom, 'chaque flocon porte exactement une classe de plan').toEqual(
+				Array(FLOCONS.length).fill(1),
+			);
+			const mesures = await mesurerFlocons(page);
+			for (const p of ['loin', 'milieu', 'devant', 'premier-plan'] as const) {
+				expect(
+					mesures.filter((f) => f.plan === p).length,
+					`flocons du plan « ${p} » dans le DOM`,
+				).toBe(FLOCONS.filter((f) => f.plan === p).length);
+			}
 			expect(errors).toEqual([]);
 		});
 
-		test('critère 14 (vitrine) : aucun flocon visible ne recouvre un texte ni une commande', async ({
+		test('critère 13 : flocons sur toute la hauteur de l’écran (dont la moitié basse), encore là après un défilement d’un écran', async ({
+			page,
+		}) => {
+			const errors = watchErrors(page);
+			await ouvrirAccueil(page, DATES.noel);
+			await expect(page.locator('.decor-flocon')).toHaveCount(FLOCONS.length);
+			await verifierToutEcran(page);
+			expect(errors).toEqual([]);
+		});
+
+		test('critère 13 (vitrine) : flocons sur toute la hauteur de l’écran, encore là après un défilement d’un écran', async ({
 			page,
 		}) => {
 			const errors = watchErrors(page);
 			await ouvrirVitrine(page, DATES.noel);
-			let vus = 0;
-			for (const t of INSTANTS) {
-				expect(await placerAuTemps(page, t)).toBeGreaterThanOrEqual(10);
-				vus += (await mesurerFlocons(page)).filter((f) => f.visible).length;
-				const gene = await recouvrements(page);
-				expect(gene, `à ${t} ms : ${JSON.stringify(gene)}`).toEqual([]);
-			}
-			expect(vus, 'témoin : des flocons visibles ont bien été comparés au texte').toBeGreaterThan(
-				0,
-			);
+			await expect(page.locator('.decor-flocon')).toHaveCount(FLOCONS.length);
+			await verifierToutEcran(page);
+			expect(errors).toEqual([]);
+		});
+
+		test('critère 14 : les flocons passent derrière le contenu, jamais par-dessus un texte, une commande ou une carte (accueil)', async ({
+			page,
+		}) => {
+			const errors = watchErrors(page);
+			await ouvrirAccueil(page, DATES.noel);
+			await expect(page.locator('.decor-flocon')).toHaveCount(FLOCONS.length);
+			await verifierDerriere(page);
+			expect(errors).toEqual([]);
+		});
+
+		test('critère 14 (vitrine) : les flocons passent derrière le contenu, jamais par-dessus un texte, une commande ou une carte', async ({
+			page,
+		}) => {
+			const errors = watchErrors(page);
+			await ouvrirVitrine(page, DATES.noel);
+			await expect(page.locator('.decor-flocon')).toHaveCount(FLOCONS.length);
+			await verifierDerriere(page);
 			expect(errors).toEqual([]);
 		});
 
@@ -250,7 +342,7 @@ for (const vue of VUES) {
 		}) => {
 			const errors = watchErrors(page);
 			await ouvrirAccueil(page, DATES.noel);
-			await expect(page.locator('.decor-flocon')).toHaveCount(10);
+			await expect(page.locator('.decor-flocon')).toHaveCount(FLOCONS.length);
 			// Un instant où les flocons sont bien lancés.
 			await placerAuTemps(page, INSTANTS[3], false);
 
@@ -275,7 +367,7 @@ for (const vue of VUES) {
 						),
 					),
 				)
-				.toEqual(Array(10).fill('paused'));
+				.toEqual(Array(FLOCONS.length).fill('paused'));
 
 			const t1 = await positions();
 			await laisserPasser(page, 600);
@@ -283,7 +375,7 @@ for (const vue of VUES) {
 			expect(t2, 'figé : positions identiques à deux instants').toEqual(t1);
 
 			// Figé ne veut pas dire disparu. Le clic a fait défiler jusqu'au pied de page : on
-			// remonte en haut avant de regarder la bande (sinon « hors vue » ≠ « disparu »).
+			// remonte en haut avant de regarder les flocons (sinon « hors vue » ≠ « disparu »).
 			await page.evaluate(() => window.scrollTo(0, 0));
 			const visibles = (await mesurerFlocons(page)).filter((f) => f.visible);
 			expect(visibles.length, 'les flocons restent visibles une fois figés').toBeGreaterThanOrEqual(
@@ -297,13 +389,13 @@ for (const vue of VUES) {
 		}) => {
 			const errors = watchErrors(page);
 			await ouvrirAccueil(page, DATES.noel);
-			await expect(page.locator('.decor-flocon')).toHaveCount(10);
+			await expect(page.locator('.decor-flocon')).toHaveCount(FLOCONS.length);
 
 			await gotoHash(page, 'profils');
 			await page.locator('#prefDecor').check();
 			await expect(page.locator('#prefDecor')).toBeChecked();
 			await gotoHash(page, 'accueil');
-			await expect(page.locator('#home .decor-flocon')).toHaveCount(10);
+			await expect(page.locator('#home .decor-flocon')).toHaveCount(FLOCONS.length);
 			await attendreEtat(page, 'fige'); // le bouton du pied de page suit la case
 			await expect
 				.poll(() =>
@@ -313,7 +405,7 @@ for (const vue of VUES) {
 						),
 					),
 				)
-				.toEqual(Array(10).fill('paused'));
+				.toEqual(Array(FLOCONS.length).fill('paused'));
 
 			await page.evaluate(() => window.scrollTo(0, 0));
 			await placerAuTemps(page, INSTANTS[3], false);
@@ -342,7 +434,7 @@ test('critère 31 : le 15 décembre, ni l’accueil ni la galerie des trophées 
 	const accueil = await texte();
 	// Témoin : c'est bien le texte de l'accueil, avec le décor présent.
 	expect(accueil).toContain((await page.locator('#home h1, #home h2').first().innerText()).trim());
-	await expect(page.locator('#home .decor-flocon')).toHaveCount(10);
+	await expect(page.locator('#home .decor-flocon')).toHaveCount(FLOCONS.length);
 	expect(accueil).not.toMatch(RAPPEL);
 
 	await page.locator('[data-act="open-trophees"]').click();

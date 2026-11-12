@@ -271,6 +271,20 @@
 	text-decoration: underline;
 	font-weight: 700;
 }
+/* Sur l'accueil, la ligne d'aide est posée dans un bloc blanc, comme les cartes, toute
+   l'année (mainteneur, #785). C'était le seul texte de l'accueil à même le fond. En
+   décembre, les flocons passent sous le contenu ; derrière ce gris, ils le feraient tomber
+   sous 4,5:1. Le gris sur `--paper` est tenu par `tests/contraste-tokens.test.ts`. Les
+   autres `.printlink` (profils, sprint, bilan) ne sont pas concernés. */
+#home > .printlink {
+	width: fit-content;
+	max-width: 100%;
+	margin-inline: auto;
+	padding: 12px 20px;
+	background: var(--paper);
+	border-radius: 14px;
+	box-shadow: 0 6px 22px rgba(34, 92, 60, 0.14); /* même ombre que `.card` */
+}
 
 /* Bouton « ← Retour » d'un cran, en haut du contenu (vues catégories/catégorie)
    et réutilisé en fin de leçon (bandeau résultat). Cible tactile ≥ 48 px, style

@@ -1,8 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { contraste, melange, SEUIL_NON_TEXTE_AA, SEUIL_TEXTE_AA } from '../tools/contrast/wcag.js';
-import { FLOCONS } from '../src/core/decor-saison';
-import { resoudreImbrication, sansCommentairesScss } from './aide-scss';
+import { declarations, decrire, sansCommentairesScss, sujet, type Declaration } from './aide-scss';
+import {
+	BASE,
+	FOND_VERT_VITRINE,
+	PALETTES,
+	RACINE,
+	THEMES,
+	THEMES_NOMS,
+	tokens,
+} from './aide-couleurs';
 
 /* ============================================================
    Contraste WCAG AA des tokens de couleur, thème par thème (#576 puis #582).
@@ -64,43 +72,13 @@ import { resoudreImbrication, sansCommentairesScss } from './aide-scss';
        `aria-hidden` doublé par le mot en clair, donc objet graphique et non texte), et
        tout `#8a5200` écrit à la main hors de la définition du token (base.scss, et sa
        palette miroir d'impression print.scss).
+
+   ── Ailleurs ───────────────────────────────────────────────────────────────────
+   Le décor de saison (#785 : flocons de Noël, verre dépoli de la vitrine) a son propre
+   fichier, `contraste-decor-saison.test.ts`. Les lectures communes aux deux sont dans
+   `aide-couleurs.ts` (palettes des thèmes, fond vert de la vitrine) et `aide-scss.ts`
+   (déclarations SCSS).
    ============================================================ */
-
-/** Tokens `--x: #rrggbb;` d'un bloc de déclarations. Volontairement limité aux
- *  littéraux hexadécimaux : un token défini par `var(--autre)` serait invisible ici,
- *  et le test « les palettes sont bien lues » échouerait bruyamment plutôt que de
- *  mesurer du vide. D'où la consigne, dans themes.scss, d'écrire la valeur en dur. */
-function tokens(bloc: string): Record<string, string> {
-	const t: Record<string, string> = {};
-	for (const m of bloc.matchAll(/(--[\w-]+):\s*(#[0-9a-fA-F]{6})\s*(?:!important)?\s*;/g))
-		t[m[1]] = m[2].toLowerCase();
-	return t;
-}
-
-const BASE = readFileSync('src/styles/base.scss', 'utf8');
-const THEMES = readFileSync('src/styles/themes.scss', 'utf8');
-
-const debutRacine = BASE.indexOf(':root {');
-const RACINE = tokens(BASE.slice(debutRacine, BASE.indexOf('\n}', debutRacine)));
-
-/** Palette effective de chaque thème : la racine, écrasée par ses propres tokens. */
-function palettes(): Record<string, Record<string, string>> {
-	const p: Record<string, Record<string, string>> = { defaut: { ...RACINE } };
-	for (const m of THEMES.matchAll(/:root\[data-theme='([\w-]+)'\]\s*\{([\s\S]*?)\n\}/g)) {
-		// « auto » ne déclare aucun token : il inclut le mixin Nuit derrière une media
-		// query, non résolue en JS. L'ajouter produirait un doublon exact de « defaut »
-		// (donc 6 cas de plus qui ne testent rien de neuf) alors que sa vraie palette
-		// est celle de « nuit », déjà couverte ci-dessous.
-		if (m[1] === 'auto') continue;
-		p[m[1]] = { ...RACINE, ...tokens(m[2]) };
-	}
-	const nuit = THEMES.match(/@mixin nuit-palette\s*\{([\s\S]*?)\n\}/);
-	if (nuit) p.nuit = { ...RACINE, ...tokens(nuit[1]) };
-	return p;
-}
-
-const PALETTES = palettes();
-const THEMES_NOMS = Object.keys(PALETTES);
 
 /** Opacité des arêtes de profondeur des solides (#387), lue dans le module de figures :
  *  c'est du TypeScript et non une feuille, mais la couleur qui en résulte est composée
@@ -710,67 +688,11 @@ const WARN_EN_COULEUR_TOLEREE: ToleranceWarn[] = [
 	},
 ];
 
-type Declaration = {
-	fichier: string;
-	ligne: number;
-	/** Sélecteurs complets de la règle (imbrication et `&` résolus, at-rules ignorées). */
-	selecteurs: string[];
-	propriete: string;
-	valeur: string;
-};
-
-/** Déclarations `propriété: valeur` d'une feuille, avec la règle qui les porte. */
-function declarations(fichier: string, scss: string): Declaration[] {
-	const src = sansCommentairesScss(scss);
-	const pile: string[] = [];
-	const trouvees: Declaration[] = [];
-	let tampon = '';
-	let ligne = 1;
-	let ligneTampon = 1;
-	let guillemet = '';
-	for (let i = 0; i < src.length; i++) {
-		const c = src[i];
-		if (c === '\n') ligne++;
-		if (!tampon.trim() && /\S/.test(c)) ligneTampon = ligne;
-		if (guillemet) {
-			tampon += c;
-			if (c === guillemet) guillemet = '';
-		} else if (c === '"' || c === "'") {
-			guillemet = c;
-			tampon += c;
-		} else if (c === '#' && src[i + 1] === '{') {
-			// Interpolation SCSS `#{…}` : ses accolades ne sont pas celles d'une règle.
-			const fin = src.indexOf('}', i);
-			tampon += src.slice(i, fin + 1);
-			i = fin;
-		} else if (c === '{') {
-			pile.push(tampon.trim());
-			tampon = '';
-		} else if (c === ';' || c === '}') {
-			const m = tampon.trim().match(/^([\w-]+)\s*:([\s\S]*)$/);
-			if (m)
-				trouvees.push({
-					fichier,
-					ligne: ligneTampon,
-					selecteurs: resoudreImbrication(pile),
-					propriete: m[1].toLowerCase(),
-					valeur: m[2].trim(),
-				});
-			tampon = '';
-			if (c === '}') pile.pop();
-		} else tampon += c;
-	}
-	return trouvees;
-}
-
 /** `color: var(--warn)` au sens strict : la propriété `color` exactement (donc ni
  *  `border-left-color` ni `outline-color`), et le token `--warn` lui-même (ni
  *  `--warn-text` ni `--warn-bg`), avec ou sans valeur de repli. */
 const estTexteEnWarn = (d: Declaration) =>
 	d.propriete === 'color' && /var\(\s*--warn\s*[,)]/.test(d.valeur);
-
-/** Dernier composé d'un sélecteur : l'élément que la règle colore. */
-const sujet = (selecteur: string) => selecteur.split(/\s*[>+~]\s*|\s+/).pop() ?? '';
 
 const tolereePar = (t: ToleranceWarn, d: Declaration) =>
 	d.fichier === t.fichier && d.selecteurs.every((s) => sujet(s) === t.sujet);
@@ -811,8 +733,6 @@ const SOURCES = FEUILLES.map((fichier) => ({
 }));
 
 const lignesDe = (ds: { ligne: number }[]) => ds.map((d) => d.ligne);
-const decrire = (d: Declaration) =>
-	`${d.fichier}:${d.ligne}  ${d.selecteurs.join(', ')} { ${d.propriete}: ${d.valeur} }`;
 
 describe("Texte d'alerte : --warn-text, jamais --warn en texte (décision du 10 octobre 2026)", () => {
 	it('les feuilles sont bien lues et le lecteur de déclarations voit le vrai code', () => {
@@ -1179,6 +1099,8 @@ describe('Les recopies de --accent suivent leur source (#600)', () => {
 
 /* ============================================================
    Le fond vert des sections de la vitrine, écrit en dur
+   Lu par `fondVertDe` (aide-couleurs.ts) ; les flocons et le verre de #785 le mesurent
+   aussi, dans contraste-decor-saison.test.ts.
    ============================================================ */
 
 describe('Texte sur les sections vertes de la vitrine (index.html)', () => {
@@ -1192,14 +1114,14 @@ describe('Texte sur les sections vertes de la vitrine (index.html)', () => {
 	   `.v-partage-lead`, `.v-partage-note`). ÉCARTÉ : la flèche `--accent-dark` entre deux
 	   étapes du partage, décorative (l'ordre est porté par la liste et les numéros), donc
 	   exemptée par WCAG 1.4.11. */
-	const VITRINE = readFileSync('src/styles/vitrine.scss', 'utf8');
-	const fond = VITRINE.match(/\.v-section--soft \{[^}]*?background: (#[0-9a-fA-F]{6})/)?.[1];
+	const fond = FOND_VERT_VITRINE;
 
 	it('le fond est bien lu (garde contre un test à vide)', () => {
 		expect(
 			fond,
-			'Fond de `.v-section--soft` introuvable dans src/styles/vitrine.scss : la règle a ' +
-				'changé de forme (token, dégradé…), ce test ne garde plus rien. Corriger le motif.',
+			'Fond de `.v-section--soft::before` introuvable dans src/styles/vitrine.scss : la ' +
+				'règle a changé de forme (token, dégradé, fond remis sur la section…), ce test ne ' +
+				'garde plus rien. Corriger le motif.',
 		).toBeTruthy();
 	});
 
@@ -1214,79 +1136,6 @@ describe('Texte sur les sections vertes de la vitrine (index.html)', () => {
 				`section par section.`,
 		).toBeGreaterThanOrEqual(SEUIL_TEXTE_AA);
 	});
-});
-
-/* ============================================================
-   #785 — le flocon du décor de Noël (critère 15)
-   ============================================================ */
-
-/* Le flocon est DÉCORATIF : WCAG 1.4.11 ne le vise pas (cf. l'en-tête), et ces bornes ne
-   sont pas des seuils WCAG. Elles viennent de l'avis `designer-ux-enfant` du 09/11/2026 :
-   - PLANCHER, au pic le plus PÂLE des flocons : il doit se voir sur une tablette, sinon
-     le décor n'existe pas ;
-   - PLAFOND, au pic le plus MARQUÉ : il ne doit jamais être pris pour un bouton. 3:1 est
-     le seuil d'un composant d'interface (1.4.11) ; au-delà, un rond net sur le fond se
-     lit comme une pastille à toucher.
-   Mesuré sur `--page-bg` et nulle part ailleurs : aucun flocon ne passe sur une carte.
-   Le flocon est composé sur le fond à l'opacité de pic de CHAQUE flocon (`opacite`,
-   lue dans `FLOCONS`) : c'est la couleur que le navigateur rend, pas celle du token.
-   Comme le contraste croît avec l'opacité, le pic le plus pâle tient le plancher pour
-   tous, et le plus marqué tient le plafond pour tous.
-   Ordres de grandeur, pour qui choisit la couleur : un flocon BLANC sur les fonds clairs
-   reste vers 1,1:1 (invisible) ; un flocon clair sur le fond de Nuit dépasse 3:1 dès la
-   demi-opacité. D'où un token par palette, `:root` et `nuit-palette`. */
-const PLANCHER_FLOCON = 1.5;
-const PLAFOND_FLOCON = 3;
-
-describe('Flocon du décor de Noël sur le fond de page, tous thèmes (#785, critère 15)', () => {
-	const opacites = FLOCONS.map((f) => f.opacite);
-
-	it('garde contre un test à vide : --flocon lu sur les six thèmes, au moins 6 flocons', () => {
-		expect(THEMES_NOMS.length).toBeGreaterThanOrEqual(6);
-		expect(
-			FLOCONS.length,
-			'FLOCONS est vide : aucune opacité de pic à mesurer',
-		).toBeGreaterThanOrEqual(6);
-		for (const theme of THEMES_NOMS)
-			expect(
-				PALETTES[theme]['--flocon'],
-				`Thème « ${theme} » : --flocon n'a pas été lu. Le déclarer en hexadécimal écrit en ` +
-					`dur dans :root (base.scss) et dans @mixin nuit-palette (themes.scss).`,
-			).toMatch(/^#[0-9a-f]{6}$/);
-	});
-
-	it.each(THEMES_NOMS)('%s : le flocon le plus pâle se voit encore (≥ 1,5:1)', (theme) => {
-		const p = PALETTES[theme];
-		expect(p['--flocon'], `--flocon absent du thème « ${theme} »`).toMatch(/^#[0-9a-f]{6}$/);
-		expect(FLOCONS.length).toBeGreaterThanOrEqual(6);
-		const alpha = Math.min(...opacites);
-		const compose = melange(p['--flocon'], p['--page-bg'], alpha);
-		const r = contraste(compose, p['--page-bg']);
-		expect(
-			r,
-			`Thème « ${theme} » : --flocon (${p['--flocon']}) à l'opacité ${alpha} se compose en ` +
-				`${compose} sur --page-bg (${p['--page-bg']}), soit ${r.toFixed(2)}:1 — sous le ` +
-				`plancher de ${PLANCHER_FLOCON}:1 : le flocon disparaît sur une tablette.`,
-		).toBeGreaterThanOrEqual(PLANCHER_FLOCON);
-	});
-
-	it.each(THEMES_NOMS)(
-		'%s : le flocon le plus marqué ne passe pas pour un bouton (≤ 3:1)',
-		(theme) => {
-			const p = PALETTES[theme];
-			expect(p['--flocon'], `--flocon absent du thème « ${theme} »`).toMatch(/^#[0-9a-f]{6}$/);
-			expect(FLOCONS.length).toBeGreaterThanOrEqual(6);
-			const alpha = Math.max(...opacites);
-			const compose = melange(p['--flocon'], p['--page-bg'], alpha);
-			const r = contraste(compose, p['--page-bg']);
-			expect(
-				r,
-				`Thème « ${theme} » : --flocon (${p['--flocon']}) à l'opacité ${alpha} se compose en ` +
-					`${compose} sur --page-bg (${p['--page-bg']}), soit ${r.toFixed(2)}:1 — au-dessus du ` +
-					`plafond de ${PLAFOND_FLOCON}:1 : un rond aussi net se lit comme une pastille à toucher.`,
-			).toBeLessThanOrEqual(PLAFOND_FLOCON);
-		},
-	);
 });
 
 /* ============================================================
